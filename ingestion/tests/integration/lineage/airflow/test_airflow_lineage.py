@@ -99,13 +99,13 @@ class AirflowLineageTest(TestCase):
             t1 = BashOperator(  # Using BashOperator as a random example
                 task_id="task1",
                 bash_command="date",
-                outlets={"tables": ["test-service-table-lineage.test-db.lineage-test"]},
+                outlets={"tables": ["test-service-table-lineage:test-db:lineage-test"]},
             )
 
             t2 = BashOperator(  # Using BashOperator as a random example
                 task_id="task2",
                 bash_command="sleep 5",
-                inlets={"tables": ["test-service-table-lineage.test-db.lineage-test"]},
+                inlets={"tables": ["test-service-table-lineage:test-db:lineage-test"]},
             )
 
             t3 = BashOperator(
@@ -124,12 +124,12 @@ class AirflowLineageTest(TestCase):
 
         self.assertIsNone(get_xlets(self.dag.get_task("task1"), "_inlets"))
         self.assertEqual(
-            ["test-service-table-lineage.test-db.lineage-test"],
+            ["test-service-table-lineage:test-db:lineage-test"],
             get_xlets(self.dag.get_task("task1"), "_outlets"),
         )
 
         self.assertEqual(
-            ["test-service-table-lineage.test-db.lineage-test"],
+            ["test-service-table-lineage:test-db:lineage-test"],
             get_xlets(self.dag.get_task("task2"), "_inlets"),
         )
         self.assertIsNone(get_xlets(self.dag.get_task("task2"), "_outlets"))
@@ -159,11 +159,11 @@ class AirflowLineageTest(TestCase):
         )
 
         self.assertIsNotNone(
-            self.metadata.get_by_name(entity=Pipeline, fqdn="local_airflow_3.lineage")
+            self.metadata.get_by_name(entity=Pipeline, fqdn="local_airflow_3:lineage")
         )
 
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.lineage"
+            entity=Pipeline, fqdn="local_airflow_3:lineage"
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
@@ -212,7 +212,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.task_group_lineage", fields=["tasks"]
+            entity=Pipeline, fqdn="local_airflow_3:task_group_lineage", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
-        self.assertIn("group1_DOT_task1", {task.name for task in pipeline.tasks})
+        self.assertIn("group1.task1", {task.name for task in pipeline.tasks})

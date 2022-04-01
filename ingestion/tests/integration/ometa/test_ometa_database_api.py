@@ -66,7 +66,7 @@ class OMetaDatabaseTest(TestCase):
             id=uuid.uuid4(),
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
-            fullyQualifiedName="test-service-db.test-db",
+            fullyQualifiedName="test-service-db:test-db",
         )
 
         cls.create = CreateDatabaseRequest(
@@ -81,7 +81,7 @@ class OMetaDatabaseTest(TestCase):
         """
         db_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-db.test-db"
+                entity=Database, fqdn="test-service-db:test-db"
             ).id.__root__
         )
 

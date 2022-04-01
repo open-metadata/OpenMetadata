@@ -7,7 +7,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
-      "$ref": "../../entity/data/table.json#/definitions/tableName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Description of entity instance.",

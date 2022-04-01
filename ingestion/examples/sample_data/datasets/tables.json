@@ -3,7 +3,6 @@
     {
       "id": "3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
       "name": "dim_address",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_address",
       "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
       "version": 0.1,
       "updatedAt": 1638354087391,
@@ -16,7 +15,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "Unique identifier for the address.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
           "tags": [],
           "ordinalPosition": 1
         },
@@ -25,7 +23,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.shop_id",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -35,7 +32,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "First name of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.first_name",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -45,7 +41,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Last name of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.last_name",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -55,7 +50,6 @@
           "dataLength": 500,
           "dataTypeDisplay": "varchar",
           "description": "The first address line. For example, 150 Elgin St.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address1",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -65,7 +59,6 @@
           "dataLength": 500,
           "dataTypeDisplay": "varchar",
           "description": "The second address line. For example, Suite 800.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address2",
           "tags": [],
           "ordinalPosition": 6
         },
@@ -75,7 +68,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the customer's business, if one exists.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.company",
           "tags": [],
           "ordinalPosition": 7
         },
@@ -85,7 +77,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the city. For example, Palo Alto.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.city",
           "tags": [],
           "ordinalPosition": 8
         },
@@ -95,7 +86,6 @@
           "dataLength": 512,
           "dataTypeDisplay": "varchar",
           "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.region",
           "tags": [],
           "ordinalPosition": 9
         },
@@ -105,7 +95,6 @@
           "dataLength": 10,
           "dataTypeDisplay": "varchar",
           "description": "The ZIP or postal code. For example, 90210.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.zip",
           "tags": [],
           "ordinalPosition": 10
         },
@@ -115,7 +104,6 @@
           "dataLength": 50,
           "dataTypeDisplay": "varchar",
           "description": "The full name of the country. For example, Canada.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.country",
           "tags": [],
           "ordinalPosition": 11
         },
@@ -125,7 +113,6 @@
           "dataLength": 15,
           "dataTypeDisplay": "varchar",
           "description": "The phone number of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.phone",
           "tags": [],
           "ordinalPosition": 12
         }
@@ -171,7 +158,7 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 35
               }
             ]
@@ -180,43 +167,43 @@
             "columnName": "address_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 49
               }
             ]
@@ -1102,7 +1089,6 @@
     {
       "id": "753833e0-f526-47b6-8555-97f5bb2882d5",
       "name": "dim_api_client",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client",
       "description": "This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.",
       "version": 0.1,
       "updatedAt": 1638354087454,
@@ -1115,7 +1101,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
           "tags": [],
           "ordinalPosition": 1
         },
@@ -1125,7 +1110,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Full name of the app or channel. For example, Point of Sale, Online Store.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.title",
           "tags": [],
           "ordinalPosition": 2
         }
@@ -1162,63 +1146,63 @@
             "columnName": "api_client_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:customer_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:shop_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 55
               }
             ]
@@ -1454,7 +1438,6 @@
     {
       "id": "9c96042f-311a-4826-b5b2-8658914e2ee8",
       "name": "dim_customer",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer",
       "description": "The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.",
       "version": 0.1,
       "updatedAt": 1638354087492,
@@ -1467,7 +1450,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the customer. This is the primary key column for this table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -1477,7 +1459,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -1486,7 +1467,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The average amount of money that the customer spends on orders from the store. The value is formatted in the store's currency and it is calculated using the following formula: total_order_value / total_order_count.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.average_order_size",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -1495,7 +1475,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The total number of orders that the customer has made from this store across their lifetime.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.total_order_count",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -1504,7 +1483,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.total_order_value",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -1513,7 +1491,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.first_order_date",
           "tags": [],
           "ordinalPosition": 6
         },
@@ -1522,7 +1499,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.last_order_date",
           "tags": [],
           "ordinalPosition": 7
         },
@@ -1531,7 +1507,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "A numeric ranking of the customer's lifetime value for the store relative to all customers.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.rank",
           "tags": [],
           "ordinalPosition": 8
         },
@@ -1540,7 +1515,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true if the customer made their first order in the last 30 days. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.new",
           "tags": [],
           "ordinalPosition": 9
         },
@@ -1549,7 +1523,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer has made more than one order. Returns false when the customer has made one order only. Returns Null when the customer exists in Shopify, but they have not made any orders. For example, this column can be null because the customer provided their contact information and then abandoned the checkout. Customers can also be created manually in the Shopify admin and by apps that use the Admin API.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.returning",
           "tags": [],
           "ordinalPosition": 10
         },
@@ -1558,7 +1531,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer has a high probability of returning, and has placed more orders than the average customer. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.loyal",
           "tags": [],
           "ordinalPosition": 11
         },
@@ -1567,7 +1539,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true for repeat customers, who have a medium probability of returning and have not placed an order in a while. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.at_risk",
           "tags": [],
           "ordinalPosition": 12
         },
@@ -1576,7 +1547,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer has a very low probability of returning to make another purchase. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.dormant",
           "tags": [],
           "ordinalPosition": 13
         },
@@ -1585,7 +1555,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer has a high probability of returning and becoming a loyal customer. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.promising",
           "tags": [],
           "ordinalPosition": 14
         },
@@ -1594,7 +1563,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The predicated number of days between future orders.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.predicted_average_number_of_days_between_orders",
           "tags": [],
           "ordinalPosition": 15
         },
@@ -1603,7 +1571,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The total purchase amount of the orders that the customer is expected to make in the next 30 days. The value is formatted in the store's currency.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.expected_purchase_value_in_next_30_days",
           "tags": [],
           "ordinalPosition": 16
         },
@@ -1613,7 +1580,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The first name of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.first_name",
           "tags": [],
           "ordinalPosition": 17
         },
@@ -1623,7 +1589,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The last name of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.last_name",
           "tags": [],
           "ordinalPosition": 18
         },
@@ -1633,7 +1598,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The city from the customer's billing address. For example, Topeka.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.city",
           "tags": [],
           "ordinalPosition": 19
         },
@@ -1643,7 +1607,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the region, such as the province or state, from the customer's billing address. For example, Alberta, Florida. This column is the same as CustomerAddress.province in the Admin API.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.region",
           "tags": [],
           "ordinalPosition": 20
         },
@@ -1653,7 +1616,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The country from the customer's billing address. For example, United States.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.country",
           "tags": [],
           "ordinalPosition": 21
         },
@@ -1663,7 +1625,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The email of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.email",
           "tags": [],
           "ordinalPosition": 22
         },
@@ -1673,7 +1634,6 @@
           "dataLength": 15,
           "dataTypeDisplay": "varchar",
           "description": "The phone number of the customer.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.phone",
           "tags": [],
           "ordinalPosition": 23
         },
@@ -1683,7 +1643,6 @@
           "dataLength": 15,
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer's email has been verified. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.verified_email",
           "tags": [],
           "ordinalPosition": 24
         },
@@ -1692,7 +1651,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2018-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.created_at",
           "tags": [],
           "ordinalPosition": 25
         },
@@ -1701,7 +1659,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "Returns true when the customer has agreed to accept marketing. Otherwise returns false.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.accepts_marketing",
           "tags": [],
           "ordinalPosition": 26
         },
@@ -1710,7 +1667,6 @@
           "dataType": "STRUCT",
           "dataTypeDisplay": "struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>",
           "description": "Customer Personal Details",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer",
           "tags": [],
           "ordinalPosition": 27,
           "children": [
@@ -1719,7 +1675,6 @@
               "dataType": "VARCHAR",
               "dataLength": 20,
               "dataTypeDisplay": "VARCHAR(32)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.username",
               "tags": []
             },
             {
@@ -1727,7 +1682,6 @@
               "dataType": "VARCHAR",
               "dataLength": 20,
               "dataTypeDisplay": "VARCHAR(32)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.name",
               "tags": []
             },
             {
@@ -1735,7 +1689,6 @@
               "dataType": "CHAR",
               "dataLength": 1,
               "dataTypeDisplay": "CHAR(1)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.sex",
               "tags": []
             },
             {
@@ -1743,7 +1696,6 @@
               "dataType": "VARCHAR",
               "dataLength": 128,
               "dataTypeDisplay": "VARCHAR(128)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.address",
               "tags": []
             },
             {
@@ -1751,7 +1703,7 @@
               "dataType": "VARCHAR",
               "dataLength": 64,
               "dataTypeDisplay": "VARCHAR(64)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.mail",
+
               "tags": []
             },
             {
@@ -1759,7 +1711,6 @@
               "dataType": "VARCHAR",
               "dataLength": 16,
               "dataTypeDisplay": "VARCHAR(16)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer.birthdate",
               "tags": []
             }
           ]
@@ -1769,7 +1720,6 @@
           "dataType": "ARRAY",
           "arrayDataType": "STRUCT",
           "dataTypeDisplay": "array<struct<name:varchar(32),street_address:varchar(128), city:varchar(32),postcode:varchar(8)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shipping_address",
           "tags": []
         },
         {
@@ -1777,7 +1727,6 @@
           "dataType": "ARRAY",
           "arrayDataType": "STRUCT",
           "dataTypeDisplay": "array<struct<product_id:varchar(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:varchar(64)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.orders",
           "tags": []
         }
       ],
@@ -1813,31 +1762,31 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:api_client_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:customer_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 45
               }
             ]
@@ -1846,67 +1795,67 @@
             "columnName": "customer_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:api_client_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:shop_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 45
               }
             ]
@@ -3897,7 +3846,6 @@
     {
       "id": "e64426b9-852a-468e-ac16-1231bb01fe96",
       "name": "dim_location",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_location",
       "description": "The dimension table contains metrics about your Shopify POS. This table contains one row per Shopify POS location. You can use this table to generate a list of the Shopify POS locations or you can join the table with the sales table to measure sales performance.",
       "version": 0.1,
       "updatedAt": 1638354087532,
@@ -3909,7 +3857,6 @@
           "name": "location_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -3919,7 +3866,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.shop_id",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -3929,7 +3875,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Name of the POS location as provided by the merchant. For example, 150 Elgin Street or Downtown Boutique.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.name",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -3937,7 +3882,6 @@
           "name": "address",
           "dataType": "STRUCT",
           "dataTypeDisplay": "struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address",
           "tags": [],
           "children": [
             {
@@ -3945,14 +3889,12 @@
               "dataType": "VARCHAR",
               "dataLength": 24,
               "dataTypeDisplay": "VARCHAR(24)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.street_name",
               "tags": []
             },
             {
               "name": "zipcode",
               "dataType": "INT",
               "dataTypeDisplay": "int",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.zipcode",
               "tags": []
             },
             {
@@ -3960,21 +3902,18 @@
               "dataType": "VARCHAR",
               "dataLength": 100,
               "dataTypeDisplay": "VARCHAR(100)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.city",
               "tags": []
             },
             {
               "name": "country",
               "dataType": "STRUCT",
               "dataTypeDisplay": "struct<country_code:int, country_name:varchar(100)>",
-              "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.country",
               "tags": [],
               "children": [
                 {
                   "name": "country_code",
                   "dataType": "INT",
                   "dataTypeDisplay": "INT",
-                  "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.country.country_code",
                   "tags": []
                 },
                 {
@@ -3982,7 +3921,6 @@
                   "dataType": "VARCHAR",
                   "dataLength": 100,
                   "dataTypeDisplay": "VARCHAR(100)",
-                  "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.address.country.country_name",
                   "tags": []
                 }
               ]
@@ -4022,43 +3960,43 @@
             "columnName": "location_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 50
               }
             ]
@@ -4246,8 +4184,7 @@
     },
     {
       "id": "f888bde6-ce08-42c3-96aa-1d726e248930",
-      "name": "dim_product",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_product",
+      "name": "dim.product",
       "description": "This dimension table contains information about each of the products in your store. This table contains one row per product. This table reflects the current state of products in your Shopify admin.",
       "version": 0.1,
       "updatedAt": 1638354087567,
@@ -4260,7 +4197,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "Unique identifier for the product. This column is the primary key for this table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -4270,7 +4206,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.shop_id",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -4280,7 +4215,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Name of the product.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.title",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -4290,7 +4224,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Name of the manufacturer, wholesaler, or other vendor of the product.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.vendor",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -4299,7 +4232,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "Date (ISO 8601) and time (UTC) when the product was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.created_at",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -4308,7 +4240,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "Date (ISO 8601) and time (UTC) when the product was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.deleted_at",
           "tags": [],
           "ordinalPosition": 6
         }
@@ -4345,11 +4276,11 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product:product_id",
                 "joinCount": 5
               }
             ]
@@ -4358,59 +4289,59 @@
             "columnName": "product_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product.variant:product_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product.variant:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product:product_id",
                 "joinCount": 5
               }
             ]
@@ -4631,35 +4562,34 @@
       },
       "tableQueries": [
         {
-          "query": "select product_id from dim_product",
+          "query": "select product_id from dim.product",
           "duration": 0.598
         },
         {
-          "query": "select shop_id from dim_product",
+          "query": "select shop_id from dim.product",
           "duration": 0.205
         },
         {
-          "query": "select title from dim_product",
+          "query": "select title from dim.product",
           "duration": 0.165
         },
         {
-          "query": "select vendor from dim_product",
+          "query": "select vendor from dim.product",
           "duration": 0.847
         },
         {
-          "query": "select created_at from dim_product",
+          "query": "select created_at from dim.product",
           "duration": 0.114
         },
         {
-          "query": "select deleted_at from dim_product",
+          "query": "select deleted_at from dim.product",
           "duration": 0.559
         }
       ]
     },
     {
       "id": "c71690a3-0764-4791-a1d3-0c47f1e0c2ab",
-      "name": "dim_product_variant",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant",
+      "name": "dim.product.variant",
       "description": "This dimension table contains current information about each of the product variants in your store. This table contains one row per product variant.",
       "version": 0.1,
       "updatedAt": 1638354087601,
@@ -4672,7 +4602,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the product variant. This column is the primary key for this table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.product_variant_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -4681,8 +4610,7 @@
           "name": "product_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "The ID of the product. This column is a foreign key reference to the product_id column in dim_product table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.product_id",
+          "description": "The ID of the product. This column is a foreign key reference to the product_id column in dim.product table.",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -4691,7 +4619,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.shop_id",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -4701,7 +4628,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The title of the product variant.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.title",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -4711,7 +4637,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The Barcode, UPC, or ISBN number of the product variant.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.barcode",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -4721,7 +4646,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The SKU of the product variant.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.sku",
           "tags": [],
           "ordinalPosition": 6
         },
@@ -4730,7 +4654,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The price of the product variant, in your store's currency.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.price",
           "tags": [],
           "ordinalPosition": 7
         },
@@ -4739,7 +4662,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "Number of grams that the product variant weighs.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.grams",
           "tags": [],
           "ordinalPosition": 8
         },
@@ -4748,7 +4670,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the product variant was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.created_at",
           "tags": [],
           "ordinalPosition": 9
         },
@@ -4757,7 +4678,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the product variant was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.deleted_at",
           "tags": [],
           "ordinalPosition": 10
         }
@@ -4794,11 +4714,11 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product:product_id",
                 "joinCount": 5
               }
             ]
@@ -4807,11 +4727,11 @@
             "columnName": "product_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product:product_id",
                 "joinCount": 5
               }
             ]
@@ -5136,51 +5056,50 @@
       },
       "tableQueries": [
         {
-          "query": "select product_variant_id from dim_product_variant",
+          "query": "select product_variant_id from dim.product_variant",
           "duration": 0.716
         },
         {
-          "query": "select product_id from dim_product_variant",
+          "query": "select product_id from dim.product_variant",
           "duration": 0.636
         },
         {
-          "query": "select shop_id from dim_product_variant",
+          "query": "select shop_id from dim.product_variant",
           "duration": 0.015
         },
         {
-          "query": "select title from dim_product_variant",
+          "query": "select title from dim.product_variant",
           "duration": 0.459
         },
         {
-          "query": "select barcode from dim_product_variant",
+          "query": "select barcode from dim.product_variant",
           "duration": 0.828
         },
         {
-          "query": "select sku from dim_product_variant",
+          "query": "select sku from dim.product_variant",
           "duration": 0.561
         },
         {
-          "query": "select price from dim_product_variant",
+          "query": "select price from dim.product_variant",
           "duration": 0.488
         },
         {
-          "query": "select grams from dim_product_variant",
+          "query": "select grams from dim.product_variant",
           "duration": 0.669
         },
         {
-          "query": "select created_at from dim_product_variant",
+          "query": "select created_at from dim.product_variant",
           "duration": 0.029
         },
         {
-          "query": "select deleted_at from dim_product_variant",
+          "query": "select deleted_at from dim.product_variant",
           "duration": 0.368
         }
       ]
     },
     {
       "id": "bf6a7486-617d-474c-8d40-0f3735cc9272",
-      "name": "dim_shop",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop",
+      "name": "dim.shop",
       "description": "This dimension table contains online shop information. This table contains one shop per row.",
       "version": 0.1,
       "updatedAt": 1638354087633,
@@ -5193,7 +5112,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "Unique identifier for the store. This column is the primary key for this table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -5204,7 +5122,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Name of your store.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.name",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -5214,7 +5131,6 @@
           "dataLength": 1000,
           "dataTypeDisplay": "varchar",
           "description": "Primary domain specified for your online store. Your primary domain is the one that your customers and search engines see. For example, www.mycompany.com.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.domain",
           "tags": [],
           "ordinalPosition": 3
         }
@@ -5222,7 +5138,7 @@
       "database": {
         "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
         "type": "database",
-        "name": "bigquery_gcp.shopify",
+        "name": "bigquery_gcp:shopify",
         "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
         "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
       },
@@ -5251,71 +5167,71 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:shop_id",
                 "joinCount": 35
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 35
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:shop_id",
                 "joinCount": 35
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product_variant:product_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product_variant.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.product_variant:shop_id",
                 "joinCount": 5
               }
             ]
@@ -5458,15 +5374,15 @@
       },
       "tableQueries": [
         {
-          "query": "select shop_id from dim_shop",
+          "query": "select shop_id from dim.shop",
           "duration": 0.566
         },
         {
-          "query": "select name from dim_shop",
+          "query": "select name from dim.shop",
           "duration": 0.513
         },
         {
-          "query": "select domain from dim_shop",
+          "query": "select domain from dim.shop",
           "duration": 0.452
         }
       ]
@@ -5474,7 +5390,6 @@
     {
       "id": "7a0483c9-68c8-4faa-a553-a353e135aeff",
       "name": "dim_staff",
-      "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff",
       "description": "This dimension table contains information about the staff accounts in the store. It contains one row per staff account. Use this table to generate a list of your staff accounts, or join it with the sales, API clients and locations tables to analyze staff performance at Shopify POS locations.",
       "version": 0.1,
       "updatedAt": 1638354087663,
@@ -5487,7 +5402,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "Unique identifier for the user of your Shopify POS or your Shopify admin.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -5496,8 +5410,7 @@
           "name": "shop_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.shop_id",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -5507,7 +5420,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "First name of the staff member.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.first_name",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -5517,7 +5429,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Last name of the staff member.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.last_name",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -5527,7 +5438,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "Email address of the staff member.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.email",
           "tags": [],
           "ordinalPosition": 5
         }
@@ -5535,7 +5445,7 @@
       "database": {
         "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
         "type": "database",
-        "name": "bigquery_gcp.shopify",
+        "name": "bigquery_gcp:shopify",
         "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
         "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
       },
@@ -5564,15 +5474,15 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim.shop:shop_id",
                 "joinCount": 35
               }
             ]
@@ -5581,67 +5491,67 @@
             "columnName": "user_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:api_client_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:customer_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:shop_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 35
               }
             ]
@@ -5959,7 +5869,7 @@
           "name": "product_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the dim_product table.",
+          "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the dim.product table.",
           "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.product_id",
           "tags": [],
           "ordinalPosition": 4
@@ -6760,7 +6670,7 @@
           "name": "shop_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.",
           "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
           "tags": [],
           "ordinalPosition": 7
@@ -6872,23 +6782,23 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               }
             ]
@@ -6897,23 +6807,23 @@
             "columnName": "api_client_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               }
             ]
@@ -6922,27 +6832,27 @@
             "columnName": "user_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:shop_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               }
             ]
@@ -6951,23 +6861,23 @@
             "columnName": "customer_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               }
             ]
@@ -6976,59 +6886,59 @@
             "columnName": "order_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:api_client_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:billing_address_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:customer_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:location_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:product_variant_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shipping_address_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:shop_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_sale:user_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 30
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 25
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 5
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               }
             ]
@@ -7623,7 +7533,7 @@
           "name": "product_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim_product table. When the line item describes a shipping charge, then there is no product ID.",
+          "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim.product table. When the line item describes a shipping charge, then there is no product ID.",
           "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
           "tags": [],
           "ordinalPosition": 8
@@ -7632,7 +7542,7 @@
           "name": "product_variant_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim_product_variant table. When the row describes a shipping charge, then there is no product variant ID.",
+          "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim.product_variant table. When the row describes a shipping charge, then there is no product variant ID.",
           "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
           "tags": [],
           "ordinalPosition": 9
@@ -7650,7 +7560,7 @@
           "name": "shop_id",
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
-          "description": "ID of your store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
+          "description": "ID of your store. This column is a foreign key reference to the shop_id column in the dim.shop table.",
           "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
           "tags": [],
           "ordinalPosition": 11
@@ -7833,35 +7743,35 @@
             "columnName": "billing_address_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -7870,35 +7780,35 @@
             "columnName": "shop_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -7907,7 +7817,7 @@
             "columnName": "line_item_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.line_item_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_line_item:line_item_id",
                 "joinCount": 20
               }
             ]
@@ -7916,35 +7826,35 @@
             "columnName": "shipping_address_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -7953,35 +7863,35 @@
             "columnName": "api_client_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -7990,39 +7900,39 @@
             "columnName": "user_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:shop_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -8031,35 +7941,35 @@
             "columnName": "product_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -8068,35 +7978,35 @@
             "columnName": "product_variant_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -8105,39 +8015,39 @@
             "columnName": "customer_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:shop_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -8146,51 +8056,51 @@
             "columnName": "order_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:api_client_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:customer_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:shop_id",
                 "joinCount": 60
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:user_id",
                 "joinCount": 60
               }
             ]
@@ -8199,35 +8109,35 @@
             "columnName": "location_id",
             "joinedWith": [
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_address.address_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_address:address_id",
                 "joinCount": 49
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_api_client.api_client_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_api_client:api_client_id",
                 "joinCount": 55
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_customer.customer_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_customer:customer_id",
                 "joinCount": 45
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_location.location_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_location:location_id",
                 "joinCount": 50
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_product.product_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim:product:product_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_shop.shop_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_shop:shop_id",
                 "joinCount": 40
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.dim_staff.user_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:dim_staff:user_id",
                 "joinCount": 20
               },
               {
-                "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                "fullyQualifiedName": "bigquery_gcp:shopify:fact_order:order_id",
                 "joinCount": 60
               }
             ]
@@ -10088,7 +9998,6 @@
     {
       "id": "e12a4906-aaa3-47f8-960c-f19409a5e5a4",
       "name": "fact_session",
-      "fullyQualifiedName": "bigquery_gcp.shopify.fact_session",
       "description": "This fact table contains information about the visitors to your online store. This table has one row per session, where one session can contain many page views. If you use Urchin Traffic Module (UTM) parameters in marketing campaigns, then you can use this table to track how many customers they direct to your store.",
       "version": 0.1,
       "updatedAt": 1638354087797,
@@ -10102,7 +10011,6 @@
           "dataLength": 200,
           "dataTypeDisplay": "varchar",
           "description": "The ID of the visitor session. This column is the primary key for the table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.derived_session_token",
           "tags": [],
           "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -10112,7 +10020,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.shop_id",
           "tags": [],
           "ordinalPosition": 2
         },
@@ -10121,7 +10028,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The time that the visitor spent in your store during the session. This value is the sum of the time spent on each page view (except for the last page viewed) during the session. The maximum value is 1800 seconds (30 minutes).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.session_duration",
           "tags": [],
           "ordinalPosition": 3
         },
@@ -10130,7 +10036,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The number of pages viewed during the session.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.count_of_pageviews",
           "tags": [],
           "ordinalPosition": 4
         },
@@ -10139,7 +10044,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when this visitor session begins. It is the timestamp when the visitor first visits the store during this session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.session_started_at",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -10149,7 +10053,6 @@
           "dataLength": 200,
           "dataTypeDisplay": "varchar",
           "description": "The ID of the session token that is created by the browser. A session token expires after 30 minutes of inactivity.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.session_token",
           "tags": [],
           "ordinalPosition": 6
         },
@@ -10159,7 +10062,6 @@
           "dataLength": 20,
           "dataTypeDisplay": "varchar",
           "description": "The unique token assigned to the user. A user token expires after 2 years of inactivity.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.user_token",
           "tags": [],
           "constraint": "UNIQUE",
           "ordinalPosition": 7
@@ -10170,7 +10072,6 @@
           "dataLength": 1000,
           "dataTypeDisplay": "varchar",
           "description": "The full URL of the first page visited during the session. For example, https://www.myshop.com/products/cool-tshirt?utm_source=Shop&utm_medium=....",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.landing_page_url",
           "tags": [],
           "ordinalPosition": 8
         },
@@ -10180,7 +10081,6 @@
           "dataLength": 1000,
           "dataTypeDisplay": "varchar",
           "description": "The path portion of the URL of the last page that the visitor visited during the session. This field is the same as exit_page_url except that it doesn’t contain the name of the store or any parameters. For example, /products/cool-tshirt.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.exit_page_path",
           "tags": [],
           "ordinalPosition": 9
         },
@@ -10190,7 +10090,6 @@
           "dataLength": 1000,
           "dataTypeDisplay": "varchar",
           "description": "The full URL of the last page that the visitor visited during the session. For example, https://www.myshop.com/products/cool-tshirt?utm_source=Shop&utm_medium=....",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.exit_page_url",
           "tags": [],
           "ordinalPosition": 10
         },
@@ -10200,7 +10099,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The top-level domain of the referring website. For example, if the hostname is www.facebook.com, then the referrer_tld is com.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.referrer_tld",
           "tags": [],
           "ordinalPosition": 11
         },
@@ -10210,7 +10108,6 @@
           "dataLength": 200,
           "dataTypeDisplay": "varchar",
           "description": "The name of the browser that the visitor used. For example, Mobile Safari, Chrome.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.ua_browser",
           "tags": [],
           "ordinalPosition": 12
         },
@@ -10220,7 +10117,6 @@
           "dataLength": 2000,
           "dataTypeDisplay": "varchar",
           "description": "The string that identifies the user agent of the user. User agent shows data about the operating system and device that a visitor uses to browse your store.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.ua_raw",
           "tags": [],
           "ordinalPosition": 13
         },
@@ -10229,7 +10125,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The number of orders created during the session.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.count_of_orders_completed",
           "tags": [],
           "ordinalPosition": 14
         },
@@ -10238,7 +10133,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the visitor completes their first order during this session. Contains NULL if the visitor never completes an order during this session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.completed_first_order_at",
           "tags": [],
           "ordinalPosition": 15
         },
@@ -10247,7 +10141,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the visitor first visits the checkout page during this session. Contains NULL if the visitor never visits the checkout page during the session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.hit_first_checkout_at",
           "tags": [],
           "ordinalPosition": 16
         },
@@ -10256,7 +10149,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the visitor first starts entering their information into the checkout fields. Contains NULL if the visitor never enters their information during the session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.started_first_checkout_at",
           "tags": [],
           "ordinalPosition": 17
         },
@@ -10265,7 +10157,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The number of items added to the cart during the session. For example, if a customer adds 5 t-shirts and 1 lipstick to their cart, and then removes one of the t-shirts, then the value in this column is 6.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.count_of_cart_additions",
           "tags": [],
           "ordinalPosition": 18
         },
@@ -10274,7 +10165,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The number of distinct products added to the cart during the session. For example, if a customer adds 5 t-shirts and 1 lipstick are added to the cart, then the value in this column is 2.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.count_of_distinct_products_added_to_cart",
           "tags": [],
           "ordinalPosition": 19
         },
@@ -10283,7 +10173,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The number of distinct product variants added to the cart during the session. For example, if a customer adds 2 small and 3 large t-shirts and 1 lipstick to the cart, then the value in this column is 3.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.count_of_distinct_product_variants_added_to_cart",
           "tags": [],
           "ordinalPosition": 20
         },
@@ -10292,7 +10181,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when an an error appears during the checkout that is not a payment error, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_error",
           "tags": [],
           "ordinalPosition": 21
         },
@@ -10301,7 +10189,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when a payment error occurs during the checkout, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_payment_error",
           "tags": [],
           "ordinalPosition": 22
         },
@@ -10310,7 +10197,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when an out-of-stock warning appears on the checkout page, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_out_of_stock_warning",
           "tags": [],
           "ordinalPosition": 23
         },
@@ -10319,7 +10205,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when a payment error occurs because of a credit card error, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_credit_card_info_error",
           "tags": [],
           "ordinalPosition": 24
         },
@@ -10328,7 +10213,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when a checkout error occurs because of a discount error, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_discount",
           "tags": [],
           "ordinalPosition": 25
         },
@@ -10337,7 +10221,6 @@
           "dataType": "BOOLEAN",
           "dataTypeDisplay": "boolean",
           "description": "True when the order has no shipping cost, False otherwise.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.had_free_shipping",
           "tags": [],
           "ordinalPosition": 26
         },
@@ -10347,7 +10230,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the city where the visitor is located. For example, Topeka.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.location_city",
           "tags": [],
           "ordinalPosition": 27
         },
@@ -10357,7 +10239,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the region, such as a province or state, where the visitor is located. For example, Kansas.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.location_region",
           "tags": [],
           "ordinalPosition": 28
         },
@@ -10367,7 +10248,6 @@
           "dataLength": 200,
           "dataTypeDisplay": "varchar",
           "description": "The code for the region, such as a province or state, where the visitor is located. For example, KS.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.location_region_code",
           "tags": [],
           "ordinalPosition": 29
         },
@@ -10377,7 +10257,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The name of the country where the visitor is located. For example, United States.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.location_country",
           "tags": [],
           "ordinalPosition": 30
         },
@@ -10387,7 +10266,6 @@
           "dataLength": 100,
           "dataTypeDisplay": "varchar",
           "description": "The two-digit ISO country code where the visitor is located. For example, US.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.fact_session.location_country_code",
           "tags": [],
           "ordinalPosition": 31
         }
@@ -12500,7 +12378,6 @@
     {
       "id": "d3e3283f-9a51-4de9-add7-c12c3ed58ba1",
       "name": "raw_customer",
-      "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer",
       "description": "This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables",
       "version": 0.1,
       "updatedAt": 1638354087833,
@@ -12513,7 +12390,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.comments",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 1
@@ -12523,7 +12399,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.creditcard",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 2
@@ -12533,7 +12408,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.membership",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 4
@@ -12544,7 +12418,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.orders",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 5
@@ -12554,7 +12427,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.platform",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 6
@@ -12564,7 +12436,6 @@
           "dataType": "MAP",
           "dataLength": 1,
           "dataTypeDisplay": "map<character varying(32),boolean>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.preference",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 7
@@ -12575,7 +12446,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.shipping_address",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 8
@@ -12585,7 +12455,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.shipping_date",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 9
@@ -12595,7 +12464,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.transaction_date",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 10
@@ -12605,7 +12473,6 @@
           "dataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "struct<username:character varying(32),name:character varying(32),sex:char(1),address:character varying(128),mail:character varying(64),birthdate:character varying(16)>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 3,
@@ -12615,7 +12482,6 @@
               "dataType": "VARCHAR",
               "dataLength": 32,
               "dataTypeDisplay": "character varying(32)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.username",
               "tags": [],
               "constraint": "NULL"
             },
@@ -12624,7 +12490,6 @@
               "dataType": "VARCHAR",
               "dataLength": 32,
               "dataTypeDisplay": "character varying(32)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.name",
               "tags": [],
               "constraint": "NULL"
             },
@@ -12633,7 +12498,6 @@
               "dataType": "CHAR",
               "dataLength": 1,
               "dataTypeDisplay": "char(1)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.sex",
               "tags": [],
               "constraint": "NULL"
             },
@@ -12642,7 +12506,6 @@
               "dataType": "VARCHAR",
               "dataLength": 128,
               "dataTypeDisplay": "character varying(128)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.address",
               "tags": [],
               "constraint": "NULL"
             },
@@ -12651,7 +12514,6 @@
               "dataType": "VARCHAR",
               "dataLength": 64,
               "dataTypeDisplay": "character varying(64)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.mail",
               "tags": [],
               "constraint": "NULL"
             },
@@ -12660,7 +12522,6 @@
               "dataType": "VARCHAR",
               "dataLength": 16,
               "dataTypeDisplay": "character varying(16)",
-              "fullyQualifiedName": "bigquery_gcp.shopify.raw_customer.customer.birthdate",
               "tags": [],
               "constraint": "NULL"
             }
@@ -13445,7 +13306,6 @@
     {
       "id": "96b4af15-3bdf-4483-a602-3014bbd8ebc6",
       "name": "raw_order",
-      "fullyQualifiedName": "bigquery_gcp.shopify.raw_order",
       "description": "This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables",
       "version": 0.1,
       "updatedAt": 1638354087862,
@@ -13458,7 +13318,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.comments",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 1
@@ -13468,7 +13327,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.creditcard",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 2
@@ -13478,7 +13336,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.membership",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 4
@@ -13489,7 +13346,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.orders",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 5
@@ -13499,7 +13355,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.platform",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 6
@@ -13509,7 +13364,6 @@
           "dataType": "MAP",
           "dataLength": 1,
           "dataTypeDisplay": "map<character varying(32),boolean>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.preference",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 7
@@ -13520,7 +13374,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.shipping_address",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 8
@@ -13530,7 +13383,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.shipping_date",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 9
@@ -13540,7 +13392,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.transaction_date",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 10
@@ -13550,7 +13401,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The total number of orders that the customer has made from this store across their lifetime.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.total_order_count",
           "tags": [],
           "ordinalPosition": 11
         },
@@ -13559,7 +13409,6 @@
           "dataType": "NUMERIC",
           "dataTypeDisplay": "numeric",
           "description": "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.total_order_value",
           "tags": [],
           "ordinalPosition": 12
         },
@@ -13568,7 +13417,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.first_order_date",
           "tags": [],
           "ordinalPosition": 13
         },
@@ -13577,7 +13425,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_order.last_order_date",
           "tags": [],
           "ordinalPosition": 14
         }
@@ -14555,7 +14402,6 @@
     {
       "id": "afce49e7-8ae1-41e3-971e-8f79c254b24a",
       "name": "raw_product_catalog",
-      "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog",
       "description": "This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB. ",
       "version": 0.1,
       "updatedAt": 1638354087891,
@@ -14568,7 +14414,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.comments",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 1
@@ -14579,7 +14424,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.products",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 2
@@ -14589,7 +14433,6 @@
           "dataType": "STRING",
           "dataLength": 1,
           "dataTypeDisplay": "string",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.platform",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 3
@@ -14600,7 +14443,6 @@
           "arrayDataType": "STRUCT",
           "dataLength": 1,
           "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.store_address",
           "tags": [],
           "constraint": "NULL",
           "ordinalPosition": 4
@@ -14610,7 +14452,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.first_order_date",
           "tags": [],
           "ordinalPosition": 5
         },
@@ -14619,7 +14460,6 @@
           "dataType": "TIMESTAMP",
           "dataTypeDisplay": "timestamp",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-          "fullyQualifiedName": "bigquery_gcp.shopify.raw_product_catalog.last_order_date",
           "tags": [],
           "ordinalPosition": 6
         }

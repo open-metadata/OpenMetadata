@@ -19,6 +19,7 @@ from typing import Iterable
 
 import dateutil.parser as dateparser
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -257,8 +258,8 @@ class SupersetSource(Source[Entity]):
         if database_id and table_name:
             platform = self._get_service_type_from_database_id(database_id)
             dataset_fqn = (
-                f"{platform}.{database_name + '.' if database_name else ''}"
-                f"{schema_name + '.' if schema_name else ''}"
+                f"{platform}{FQDN_SEPARATOR}{database_name + FQDN_SEPARATOR if database_name else ''}"
+                f"{schema_name + FQDN_SEPARATOR if schema_name else ''}"
                 f"{table_name}"
             )
             return dataset_fqn

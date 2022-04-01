@@ -35,7 +35,7 @@ const followHandler = jest.fn();
 const versionHandler = jest.fn();
 const onThreadLinkSelect = jest.fn();
 const mockTier = {
-  tagFQN: 'Tier.Tier1',
+  tagFQN: 'Tier:Tier1',
   description: '',
   source: 'Tag',
   labelType: 'Manual',

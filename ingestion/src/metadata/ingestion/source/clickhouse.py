@@ -121,6 +121,11 @@ def execute(self, query, params=None):
 
 
 @reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    return []
+
+
+@reflection.cache
 def get_pk_constraint(self, bind, table_name, schema=None, **kw):
     return {"constrained_columns": [], "name": "undefined"}
 
@@ -130,6 +135,7 @@ def get_table_comment(self, connection, table_name, schema=None, **kw):
     return {"text": None}
 
 
+ClickHouseDialect.get_unique_constraints = get_unique_constraints
 ClickHouseDialect.get_pk_constraint = get_pk_constraint
 ClickHouseDialect._get_column_type = _get_column_type
 ClickHouseDialect.get_table_comment = get_table_comment

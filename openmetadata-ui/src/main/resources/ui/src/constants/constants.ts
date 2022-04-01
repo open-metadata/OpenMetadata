@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FQN_SEPARATOR_CHAR } from './char.constants';
+
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -59,11 +61,11 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
-  { key: 'Tier.Tier1', doc_count: 0 },
-  { key: 'Tier.Tier2', doc_count: 0 },
-  { key: 'Tier.Tier3', doc_count: 0 },
-  { key: 'Tier.Tier4', doc_count: 0 },
-  { key: 'Tier.Tier5', doc_count: 0 },
+  { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
+  { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
+  { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
+  { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
+  { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
 ];
 
 export const versionTypes = [

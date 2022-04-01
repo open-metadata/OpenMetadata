@@ -177,10 +177,10 @@ class OrmProfilerProcessor(Processor[Table]):
         # Prepare the profilers for all table columns
         profiler = self.build_profiler(orm, table=table)
 
-        logger.info(f"Executing profilers for {table.fullyQualifiedName}...")
+        logger.info(f"Executing profilers for {table.fullyQualifiedName.__root__}...")
         profiler.execute()
 
-        self.status.processed(table.fullyQualifiedName)
+        self.status.processed(table.fullyQualifiedName.__root__)
         return profiler.get_profile()
 
     def log_test_result(self, name: str, result: TestCaseResult) -> None:
@@ -203,7 +203,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: Unique name for this execution
         """
         col = f".{column_name}." if column_name else "."
-        return table.fullyQualifiedName + col + test_type
+        return table.fullyQualifiedName.__root__ + col + test_type
 
     def run_table_test(
         self,
@@ -313,7 +313,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :param profiler_results: TableProfile with computed metrics
         """
 
-        logger.info(f"Checking validations for {table.fullyQualifiedName}...")
+        logger.info(f"Checking validations for {table.fullyQualifiedName.__root__}...")
 
         # Check if I have tests for the table I am processing
         my_record_tests = self.get_record_test_def(table)
@@ -357,7 +357,7 @@ class OrmProfilerProcessor(Processor[Table]):
             iter(
                 test
                 for test in self.config.test_suite.tests
-                if test.table == table.fullyQualifiedName
+                if test.table == table.fullyQualifiedName.__root__
             ),
             None,
         )
@@ -403,7 +403,7 @@ class OrmProfilerProcessor(Processor[Table]):
             )
             if config_tests
             else TestDef(
-                table=table.fullyQualifiedName, table_tests=[], column_tests=[]
+                table=table.fullyQualifiedName.__root__, table_tests=[], column_tests=[]
             )
         )
 

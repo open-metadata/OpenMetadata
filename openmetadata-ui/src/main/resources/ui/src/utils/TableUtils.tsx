@@ -18,6 +18,7 @@ import { EntityTags, TableDetail } from 'Models';
 import React, { Fragment } from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
@@ -74,7 +75,7 @@ export const getTierFromTableTags = (
 ): EntityTags['tagFQN'] => {
   const tierTag = tags.find(
     (item) =>
-      item.tagFQN.startsWith('Tier.Tier') &&
+      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
       !isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 
@@ -84,7 +85,7 @@ export const getTierFromTableTags = (
 export const getTierTags = (tags: Array<TagLabel>) => {
   const tierTag = tags.find(
     (item) =>
-      item.tagFQN.startsWith('Tier.Tier') &&
+      item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
       !isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 
@@ -96,7 +97,7 @@ export const getTagsWithoutTier = (
 ): Array<EntityTags> => {
   return tags.filter(
     (item) =>
-      !item.tagFQN.startsWith('Tier.Tier') ||
+      !item.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
       isNaN(parseInt(item.tagFQN.substring(9).trim()))
   );
 };
@@ -104,7 +105,8 @@ export const getTagsWithoutTier = (
 export const getTierFromSearchTableTags = (tags: Array<string>): string => {
   const tierTag = tags.find(
     (item) =>
-      item.startsWith('Tier.Tier') && !isNaN(parseInt(item.substring(9).trim()))
+      item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) &&
+      !isNaN(parseInt(item.substring(9).trim()))
   );
 
   return tierTag || '';
@@ -115,7 +117,8 @@ export const getSearchTableTagsWithoutTier = (
 ): Array<string> => {
   return tags.filter(
     (item) =>
-      !item.startsWith('Tier.Tier') || isNaN(parseInt(item.substring(9).trim()))
+      !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
+      isNaN(parseInt(item.substring(9).trim()))
   );
 };
 

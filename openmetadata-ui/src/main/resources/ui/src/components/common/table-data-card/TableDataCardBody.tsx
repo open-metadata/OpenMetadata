@@ -34,13 +34,13 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 }: Props) => {
   const getTagValue = (tag: string | TagLabel): string | TagLabel => {
     if (isString(tag)) {
-      return tag.startsWith('Tier.Tier')
+      return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
         ? tag.split(FQN_SEPARATOR_CHAR)[1]
         : tag;
     } else {
       return {
         ...tag,
-        tagFQN: tag.tagFQN.startsWith('Tier.Tier')
+        tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
           ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
           : tag.tagFQN,
       };

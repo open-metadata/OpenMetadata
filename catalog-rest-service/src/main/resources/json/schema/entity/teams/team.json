@@ -4,18 +4,13 @@
   "title": "Team",
   "description": "This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.",
   "type": "object",
-  "definitions": {
-    "teamName": {
-      "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    }
-  },
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/definitions/teamName"
+      "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Science team'.",

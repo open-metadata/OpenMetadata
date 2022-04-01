@@ -395,7 +395,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      TableJoins joins)
+      @Valid TableJoins joins)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addJoins(UUID.fromString(id), joins);
@@ -409,7 +409,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      TableData tableData)
+      @Valid TableData tableData)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addSampleData(UUID.fromString(id), tableData);
@@ -423,7 +423,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      TableProfile tableProfile)
+      @Valid TableProfile tableProfile)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addTableProfileData(UUID.fromString(id), tableProfile);
@@ -457,7 +457,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      SQLQuery sqlQuery)
+      @Valid SQLQuery sqlQuery)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addQuery(UUID.fromString(id), sqlQuery);
@@ -474,7 +474,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      DataModel dataModel)
+      @Valid DataModel dataModel)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Table table = dao.addDataModel(UUID.fromString(id), dataModel);
@@ -488,7 +488,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      CreateTableTest createTableTest)
+      @Valid CreateTableTest createTableTest)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TableTest tableTest = getTableTest(securityContext, createTableTest);
@@ -518,7 +518,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      CreateColumnTest createColumnTest)
+      @Valid CreateColumnTest createColumnTest)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     ColumnTest columnTest = getColumnTest(securityContext, createColumnTest);
@@ -533,7 +533,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
-      CreateCustomMetric createCustomMetric)
+      @Valid CreateCustomMetric createCustomMetric)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);

@@ -344,7 +344,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "string")) @PathParam("id") String id,
-      PipelineStatus pipelineStatus)
+      @Valid PipelineStatus pipelineStatus)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Pipeline pipeline = dao.addPipelineStatus(UUID.fromString(id), pipelineStatus);

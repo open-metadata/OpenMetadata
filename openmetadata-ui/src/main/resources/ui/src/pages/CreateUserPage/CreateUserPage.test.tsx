@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { createUser } from '../../axiosAPIs/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
 
 jest.mock('../../components/containers/PageContainerV1', () => {
@@ -33,8 +40,16 @@ jest.mock('../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../components/CreateUser/CreateUser.component', () => {
-  return jest.fn().mockReturnValue(<div>CreateUser component</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ onSave }) => (
+      <div onClick={onSave}>CreateUser component</div>
+    ));
 });
+
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  createUser: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
 
 jest.mock('../../AppState', () =>
   jest.fn().mockReturnValue({
@@ -42,6 +57,8 @@ jest.mock('../../AppState', () =>
     userTeams: [],
   })
 );
+
+const mockCreateUser = jest.fn(() => Promise.resolve({}));
 
 describe('Test AddUserPage component', () => {
   it('AddUserPage component should render properly', async () => {
@@ -57,5 +74,19 @@ describe('Test AddUserPage component', () => {
 
     expect(pageContainerV1).toBeInTheDocument();
     expect(createUserComponent).toBeInTheDocument();
+  });
+
+  it('should create user', async () => {
+    (createUser as jest.Mock).mockImplementationOnce(mockCreateUser);
+
+    const { container } = render(<AddUserPageComponent />, {
+      wrapper: MemoryRouter,
+    });
+
+    await act(async () => {
+      fireEvent.click(await findByText(container, /CreateUser component/i));
+    });
+
+    expect(mockCreateUser).toBeCalled();
   });
 });

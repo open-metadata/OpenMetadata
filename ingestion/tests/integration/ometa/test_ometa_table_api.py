@@ -107,7 +107,7 @@ class OMetaTableTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             database=cls.db_reference,
-            fullyQualifiedName="test-service-table.test-db.test",
+            fullyQualifiedName="test-service-table:test-db:test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -124,13 +124,13 @@ class OMetaTableTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service-table.test-db.test"
+                entity=Table, fqdn="test-service-table:test-db:test"
             ).id.__root__
         )
 
         database_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-table.test-db"
+                entity=Database, fqdn="test-service-table:test-db"
             ).id.__root__
         )
 
@@ -341,7 +341,7 @@ class OMetaTableTest(TestCase):
                     columnName="id",
                     joinedWith=[
                         JoinedWithItem(
-                            fullyQualifiedName="test-service-table.test-db.another-test.another_id",
+                            fullyQualifiedName="test-service-table:test-db:another-test:another_id",
                             joinCount=2,
                         )
                     ],
@@ -526,7 +526,7 @@ class OMetaTableTest(TestCase):
         assert table.profileSample is None
 
         updated = self.metadata.update_profile_sample(
-            fqdn=table.fullyQualifiedName, profile_sample=50.0
+            fqdn=table.fullyQualifiedName.__root__, profile_sample=50.0
         )
         assert updated.profileSample == 50.0
 

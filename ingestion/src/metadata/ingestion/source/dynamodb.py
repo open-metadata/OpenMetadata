@@ -3,6 +3,7 @@ import traceback
 import uuid
 from typing import Iterable
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -72,9 +73,9 @@ class DynamodbSource(Source[Entity]):
             logger.error(err)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
-        try:
-            tables = list(self.dynamodb.tables.all())
-            for table in tables:
+        tables = list(self.dynamodb.tables.all())
+        for table in tables:
+            try:
                 if not self.config.table_filter_pattern.included(table.name):
                     self.status.filter(
                         "{}".format(table.name),
@@ -86,7 +87,7 @@ class DynamodbSource(Source[Entity]):
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
-                fqn = f"{self.config.service_name}.{database_entity.name}.{table}"
+                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{database_entity.name}{FQDN_SEPARATOR}{table}"
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table.attribute_definitions)
                 table_entity = Table(
@@ -101,15 +102,15 @@ class DynamodbSource(Source[Entity]):
                     database=database_entity,
                 )
                 yield table_and_db
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
-            logger.error(err)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.debug(traceback.print_exc())
+                logger.error(err)
 
     def get_columns(self, column_data):
         for column in column_data:
             try:
-                if "S" in column["AttributeType"].lower():
+                if "S" in column["AttributeType"].upper():
                     column["AttributeType"] = column["AttributeType"].replace(" ", "")
                 parsed_string = ColumnTypeParser._parse_datatype_string(
                     column["AttributeType"].lower()

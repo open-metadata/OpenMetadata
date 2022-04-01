@@ -55,10 +55,6 @@ export const fetchAuthenticationConfig: Function =
     return APIClient.get('/config/auth');
   };
 
-export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/authorizer');
-};
-
 export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/sandbox');
 };

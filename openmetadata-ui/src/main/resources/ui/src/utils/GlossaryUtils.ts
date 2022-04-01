@@ -127,7 +127,7 @@ const createGlossaryTermNode = (
   leafFqn: string,
   name: string
 ): GlossaryTermTreeNode => {
-  const arrFQN = leafFqn.split(`${name}.`);
+  const arrFQN = leafFqn.split(`${name}${FQN_SEPARATOR_CHAR}`);
   const childName = arrFQN[1]?.split(FQN_SEPARATOR_CHAR)[0];
 
   return !childName
@@ -239,7 +239,9 @@ export const getActionsList = () => {
  */
 export const getHierarchicalKeysByFQN = (fqn: string) => {
   const keys = fqn.split(FQN_SEPARATOR_CHAR).reduce((prev, curr) => {
-    const currFqn = prev.length ? `${prev[prev.length - 1]}.${curr}` : curr;
+    const currFqn = prev.length
+      ? `${prev[prev.length - 1]}${FQN_SEPARATOR_CHAR}${curr}`
+      : curr;
 
     return [...prev, currFqn];
   }, [] as string[]);

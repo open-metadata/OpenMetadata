@@ -40,7 +40,6 @@ import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import {
-  ERROR404,
   getTeamDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -61,6 +60,7 @@ import {
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -91,6 +91,10 @@ const TeamsPage = () => {
 
   const showToast = useToastContext();
 
+  /**
+   * Take error message as input and display toast message
+   * @param errMessage - error message
+   */
   const handleShowErrorToast = (errMessage: string) => {
     showToast({
       variant: 'error',
@@ -114,6 +118,10 @@ const TeamsPage = () => {
     },
   ];
 
+  /**
+   * Check if current team is the owner or not
+   * @returns - True true or false based on hasEditAccess response
+   */
   const isOwner = () => {
     return hasEditAccess(
       currentTeam?.owner?.type || '',
@@ -121,20 +129,32 @@ const TeamsPage = () => {
     );
   };
 
+  /**
+   * Make API call to fetch all the teams
+   */
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
-        if (!team) {
-          setCurrentTeam(res.data.data[0]);
+        if (res.data) {
+          if (!team) {
+            setCurrentTeam(res.data.data[0]);
+          }
+          setTeams(res.data.data);
+          AppState.updateUserTeam(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
-        setTeams(res.data.data);
-        AppState.updateUserTeam(res.data.data);
       })
       .catch((err: AxiosError) => {
-        if (err?.response?.data.code) {
-          setError(ERROR404);
-        }
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
+
+        setError(errMsg);
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -150,20 +170,32 @@ const TeamsPage = () => {
     }
   };
 
+  /**
+   * Make API call to fetch current team data
+   */
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
       setIsLoading(true);
       getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
         .then((res: AxiosResponse) => {
-          setCurrentTeam(res.data);
-          if (teams.length <= 0) {
-            fetchTeams();
+          if (res.data) {
+            setCurrentTeam(res.data);
+            if (teams.length <= 0) {
+              fetchTeams();
+            }
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((err: AxiosError) => {
-          if (err?.response?.data.code) {
-            setError(ERROR404);
-          }
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-teams-error']
+          );
+
+          setError(errMsg);
+
+          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsLoading(false);
@@ -171,6 +203,12 @@ const TeamsPage = () => {
     }
   };
 
+  /**
+   * Handle new data change
+   * @param data - team data
+   * @param forceSet - boolean value
+   * @returns - errorData
+   */
   const onNewDataChange = (data: Team, forceSet = false) => {
     if (errorData || forceSet) {
       const errData: { [key: string]: string } = {};
@@ -200,6 +238,10 @@ const TeamsPage = () => {
     return {};
   };
 
+  /**
+   * Take Team data as input and create the team
+   * @param data - Team Data
+   */
   const createNewTeam = (data: Team) => {
     const errData = onNewDataChange(data, true);
     if (!Object.values(errData).length) {
@@ -212,13 +254,17 @@ const TeamsPage = () => {
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchTeams();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
         .catch((error: AxiosError) => {
-          showToast({
-            variant: 'error',
-            body: error.message ?? 'Something went wrong!',
-          });
+          const errMsg = getErrorText(
+            error,
+            jsonData['api-error-messages']['create-team-error']
+          );
+
+          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingTeam(false);
@@ -226,20 +272,41 @@ const TeamsPage = () => {
     }
   };
 
-  const createUsers = (data: Array<UserTeams>) => {
+  /**
+   * Take users data as input and add users to team
+   * @param data
+   */
+  const addUsersToTeam = (data: Array<UserTeams>) => {
     const updatedTeam = {
       ...currentTeam,
       users: [...(currentTeam?.users as Array<UserTeams>), ...data],
     };
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentTeam(res.data.name, true);
-      }
-    });
-    setIsAddingUsers(false);
+    patchTeamDetail(currentTeam?.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentTeam(res.data.name, true);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        const errMsg = getErrorText(
+          error,
+          jsonData['api-error-messages']['update-team-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
+      .finally(() => {
+        setIsAddingUsers(false);
+      });
   };
 
+  /**
+   * Take user id as input to find out the user data and set it for delete
+   * @param id - user id
+   */
   const deleteUserHandler = (id: string) => {
     const user = [...(currentTeam?.users as Array<UserTeams>)].find(
       (u) => u.id === id
@@ -247,7 +314,11 @@ const TeamsPage = () => {
     setDeletingUser({ user, state: true });
   };
 
-  const deleteUser = (id: string) => {
+  /**
+   * Take user id and remove that user from the team
+   * @param id - user id
+   */
+  const removeUserFromTeam = (id: string) => {
     const users = [...(currentTeam?.users as Array<UserTeams>)];
     const newUsers = users.filter((user) => {
       return user.id !== id;
@@ -261,54 +332,75 @@ const TeamsPage = () => {
       .then((res: AxiosResponse) => {
         if (res.data) {
           fetchCurrentTeam(res.data.name, true);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message ?? 'Error while removing user',
-        });
+      .catch((error: AxiosError) => {
+        const errMsg = getErrorText(
+          error,
+          jsonData['api-error-messages']['update-team-error']
+        );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingUser({ user: undefined, state: false });
       });
   };
 
+  /**
+   * It will set current team for delete
+   */
   const deleteTeamHandler = () => {
     const team = currentTeam;
     setDeletingTeam({ team: team, state: true });
   };
 
+  /**
+   * Take team id and delete the team
+   * @param id - Team id
+   */
   const deleteTeamById = (id: string) => {
     deleteTeam(id)
       .then((res: AxiosResponse) => {
         if (res.data) {
           goToTeams();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['delete-team-error']
-          );
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['delete-team-error']
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['delete-team-error']
         );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingTeam({ team: undefined, state: false });
       });
   };
 
+  /**
+   * Take tab value and return active class if tab value if equal to currentTab
+   * @param tab - tab value
+   * @returns - class for active tab
+   */
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
+
+  /**
+   * Handle current team route
+   * @param name - team name
+   */
   const changeCurrentTeam = (name: string) => {
     history.push(getTeamDetailsPath(name));
   };
 
-  const getTabs = () => {
+  const Tabs = () => {
     return (
       <div className="tw-mb-3 tw-flex-initial">
         <nav
@@ -358,6 +450,10 @@ const TeamsPage = () => {
     );
   };
 
+  /**
+   * Check for current team users and return the user cards
+   * @returns - user cards
+   */
   const getUserCards = () => {
     if ((currentTeam?.users?.length as number) <= 0) {
       return (
@@ -411,6 +507,10 @@ const TeamsPage = () => {
     );
   };
 
+  /**
+   * Check for current team datasets and return the dataset cards
+   * @returns - dataset cards
+   */
   const getDatasetCards = () => {
     if ((currentTeam?.owns?.length as number) <= 0) {
       return (
@@ -451,6 +551,10 @@ const TeamsPage = () => {
     );
   };
 
+  /**
+   * Check for team default role and return roles card
+   * @returns - roles card
+   */
   const getDefaultRoles = () => {
     if ((currentTeam?.defaultRoles?.length as number) === 0) {
       return (
@@ -477,6 +581,10 @@ const TeamsPage = () => {
     );
   };
 
+  /**
+   *
+   * @returns - Teams data for left panel
+   */
   const fetchLeftPanel = () => {
     return (
       <>
@@ -520,29 +628,57 @@ const TeamsPage = () => {
       </>
     );
   };
+
+  /**
+   * Update team description
+   * @param updatedHTML - updated description
+   */
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (currentTeam?.description !== updatedHTML) {
       const updatedTeam = { ...currentTeam, description: updatedHTML };
       const jsonPatch = compare(currentTeam as Team, updatedTeam);
-      patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
-        }
-      });
+      patchTeamDetail(currentTeam?.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((error: AxiosError) => {
+          const errMsg = getErrorText(
+            error,
+            jsonData['api-error-messages']['update-team-error']
+          );
 
-      setIsEditable(false);
+          handleShowErrorToast(errMsg);
+        })
+        .finally(() => {
+          setIsEditable(false);
+        });
     } else {
       setIsEditable(false);
     }
   };
+
+  /**
+   * Set description update state as editable
+   */
   const onDescriptionEdit = (): void => {
     setIsEditable(true);
   };
 
+  /**
+   * Set description update state as non editable
+   */
   const onCancel = (): void => {
     setIsEditable(false);
   };
 
+  /**
+   * Filter out the already added user and return unique user list
+   * @returns - unique user list
+   */
   const getUniqueUserList = () => {
     const uniqueList = userList
       .filter((user) => {
@@ -565,7 +701,13 @@ const TeamsPage = () => {
     return uniqueList;
   };
 
-  const handleUpdateOwner = (
+  /**
+   * Update team settings
+   * @param owner - owner data
+   * @param isJoinable - boolean value
+   * @returns - Promise with update team API call
+   */
+  const handleUpdateTeam = (
     owner: Team['owner'],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _tier = '',
@@ -583,19 +725,22 @@ const TeamsPage = () => {
     return new Promise<void>((_, reject) => {
       patchTeamDetail(currentTeam?.id, jsonPatch)
         .then((res: AxiosResponse) => {
-          fetchCurrentTeam(res.data.name, true);
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
           reject();
-          const message = err.response?.data?.message;
-          showToast({
-            variant: 'error',
-            body:
-              message ??
-              `${jsonData['api-error-messages']['update-owner-error']} for ${
-                currentTeam?.displayName ?? currentTeam?.name
-              }`,
-          });
+          const errMsg = getErrorText(
+            err,
+            `${jsonData['api-error-messages']['update-owner-error']} for ${
+              currentTeam?.displayName ?? currentTeam?.name
+            }`
+          );
+
+          handleShowErrorToast(errMsg);
         });
     });
   };
@@ -616,7 +761,9 @@ const TeamsPage = () => {
   return (
     <>
       {error ? (
-        <ErrorPlaceHolder />
+        <ErrorPlaceHolder>
+          <p data-testid="error-message">{error}</p>
+        </ErrorPlaceHolder>
       ) : (
         <PageContainerV1 className="tw-pt-4 tw-mb-4">
           <PageLayout classes="tw-h-full" leftPanel={fetchLeftPanel()}>
@@ -724,7 +871,7 @@ const TeamsPage = () => {
                       </div>
                     </Fragment>
                     <div className="tw-flex tw-flex-col tw-flex-grow">
-                      {getTabs()}
+                      <Tabs />
 
                       <div className="tw-flex-grow">
                         {currentTab === 1 && getUserCards()}
@@ -740,7 +887,7 @@ const TeamsPage = () => {
                             currentUser={currentTeam?.owner?.id}
                             hasEditAccess={isOwner()}
                             isJoinable={currentTeam?.isJoinable}
-                            onSave={handleUpdateOwner}
+                            onSave={handleUpdateTeam}
                           />
                         )}
                       </div>
@@ -753,7 +900,7 @@ const TeamsPage = () => {
                         }`}
                         list={getUniqueUserList()}
                         onCancel={() => setIsAddingUsers(false)}
-                        onSave={(data) => createUsers(data)}
+                        onSave={(data) => addUsersToTeam(data)}
                       />
                     )}
                   </div>
@@ -807,7 +954,7 @@ const TeamsPage = () => {
                       setDeletingUser({ user: undefined, state: false })
                     }
                     onConfirm={() => {
-                      deleteUser(deletingUser.user?.id as string);
+                      removeUserFromTeam(deletingUser.user?.id as string);
                     }}
                   />
                 )}

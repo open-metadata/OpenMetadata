@@ -4,21 +4,14 @@
   "title": "User",
   "description": "This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
   "type": "object",
-
-  "definitions": {
-    "userName": {
-      "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    }
-  },
-
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a user entity instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/definitions/userName"
+      "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "description": {
       "description": "Used for user biography.",

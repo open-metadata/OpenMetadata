@@ -4,13 +4,6 @@
   "title": "Database",
   "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of tables.",
   "type": "object",
-
-  "definitions": {
-    "databaseName": {
-      "description": "Name that identifies the database.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this database instance.",
@@ -18,11 +11,11 @@
     },
     "name": {
       "description": "Name that identifies the database.",
-      "$ref": "#/definitions/databaseName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database.",

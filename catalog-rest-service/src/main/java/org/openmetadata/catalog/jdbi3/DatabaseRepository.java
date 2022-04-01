@@ -88,7 +88,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
-    addOwnerRelationship(database.getId(), Entity.DATABASE, database.getOwner());
+    storeOwner(database, database.getOwner());
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {

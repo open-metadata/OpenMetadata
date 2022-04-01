@@ -66,7 +66,7 @@ class OMetaDashboardTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-dashboard.test",
+            fullyQualifiedName="test-service-dashboard:test",
         )
 
         cls.create = CreateDashboardRequest(
@@ -81,7 +81,7 @@ class OMetaDashboardTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Dashboard, fqdn="test-service-dashboard.test"
+                entity=Dashboard, fqdn="test-service-dashboard:test"
             ).id.__root__
         )
 

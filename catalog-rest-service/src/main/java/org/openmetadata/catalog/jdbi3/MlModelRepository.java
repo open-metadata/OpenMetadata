@@ -163,7 +163,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeRelationships(MlModel mlModel) {
-    addOwnerRelationship(mlModel.getId(), Entity.MLMODEL, mlModel.getOwner());
+    storeOwner(mlModel, mlModel.getOwner());
 
     setDashboard(mlModel, mlModel.getDashboard());
 

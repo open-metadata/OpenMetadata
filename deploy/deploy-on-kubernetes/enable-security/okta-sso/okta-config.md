@@ -7,7 +7,8 @@ Once the **Client Id**, and **Issuer URL** are generated, add those details in `
 ```yaml
 authenticationConfiguration:
   provider: "okta"
-  publicKey: "{ISSUER_URL}/v1/keys"
+  publicKeyUrls:
+    - "{ISSUER_URL}/v1/keys"
   authority: "{ISSUER_URL}"
   clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"

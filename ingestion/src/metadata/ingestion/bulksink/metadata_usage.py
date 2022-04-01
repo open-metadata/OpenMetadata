@@ -13,7 +13,7 @@ import json
 import logging
 from datetime import datetime
 
-from metadata.config.common import ConfigModel
+from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
@@ -206,7 +206,7 @@ class MetadataUsageBulkSink(BulkSink):
                 return tbl_column.fullyQualifiedName.__root__
 
     def __get_table_entity(self, database_name: str, table_name: str) -> Table:
-        table_fqn = f"{self.service_name}.{database_name}.{table_name}"
+        table_fqn = f"{self.service_name}{FQDN_SEPARATOR}{database_name}{FQDN_SEPARATOR}{table_name}"
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         return table_entity
 

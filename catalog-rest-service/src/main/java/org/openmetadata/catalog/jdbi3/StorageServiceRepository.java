@@ -75,7 +75,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
   @Override
   public void storeRelationships(StorageService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   public static class StorageServiceEntityInterface extends EntityInterface<StorageService> {
