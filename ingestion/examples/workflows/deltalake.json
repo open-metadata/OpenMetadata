@@ -6,6 +6,7 @@
       "database": "delta",
       "service_name": "local_deltalake",
       "metastore_host_port":"localhost:9083",
+      "metastore_file_path":"<path_to_metastore>/metastore_db",
       "app_name": "MyApp",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]

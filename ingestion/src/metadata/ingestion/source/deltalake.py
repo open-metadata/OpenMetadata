@@ -33,7 +33,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 class DeltalakeSourceConfig(ConfigModel):
     database: str = "delta"
     platform_name: str = "deltalake"
-    metastore_host_port: str
+    metastore_host_port: Optional[str]
+    metastore_file_path: Optional[str]
     app_name: str
     schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
     table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
@@ -68,15 +69,20 @@ class DeltalakeSource(Source):
         builder = (
             pyspark.sql.SparkSession.builder.appName(self.config.app_name)
             .enableHiveSupport()
-            .config(
-                "hive.metastore.uris", f"thrift://{self.config.metastore_host_port}"
-            )
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config(
                 "spark.sql.catalog.spark_catalog",
                 "org.apache.spark.sql.delta.catalog.DeltaCatalog",
             )
         )
+        if self.config.metastore_host_port:
+            builder.config(
+                "hive.metastore.uris", f"thrift://{self.config.metastore_host_port}"
+            )
+        elif self.config.metastore_file_path:
+            builder.config(
+                "spark.sql.warehouse.dir", f"{self.config.metastore_file_path}"
+            )
         self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
 
     def set_spark(self, spark):
