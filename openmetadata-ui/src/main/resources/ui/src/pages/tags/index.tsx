@@ -28,6 +28,7 @@ import {
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -48,12 +49,15 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -63,6 +67,7 @@ import {
 import Form from './Form';
 
 const TagsPage = () => {
+  const showToast = useToastContext();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
@@ -85,18 +90,35 @@ const TagsPage = () => {
     return getTagOptionsFromFQN(filteredTags);
   }, [currentCategory, editTag]);
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
   const fetchCategories = () => {
     setIsLoading(true);
     getTagCategories('usageCount')
       .then((res) => {
-        setCategoreis(res.data);
-        setCurrentCategory(res.data[0]);
-        setIsLoading(false);
+        if (res.data) {
+          setCategoreis(res.data);
+          setCurrentCategory(res.data[0]);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err) => {
-        if (err.data.data.code === 404) {
-          setError('No Data Found');
-        }
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-tags-category-error']
+        );
+
+        handleShowErrorToast(errMsg);
+
+        setError(errMsg);
+      })
+      .finally(() => {
         setIsLoading(false);
       });
   };
@@ -106,12 +128,21 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentCategory = await getCategory(name, 'usageCount');
-        setCurrentCategory(currentCategory.data);
-        setIsLoading(false);
-      } catch (err) {
-        if ((err as AxiosError).response?.data.code) {
-          setError('No Data Found');
+        if (currentCategory.data) {
+          setCurrentCategory(currentCategory.data);
+          setIsLoading(false);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
+      } catch (err) {
+        const errMsg = getErrorText(
+          err as AxiosError,
+          jsonData['api-error-messages']['fetch-tags-category-error']
+        );
+
+        handleShowErrorToast(errMsg);
+
+        setError(errMsg);
         setIsLoading(false);
       }
     }
@@ -146,12 +177,25 @@ const TagsPage = () => {
   const createCategory = (data: CreateTagCategory) => {
     const errData = onNewCategoryChange(data, true);
     if (!Object.values(errData).length) {
-      createTagCategory(data).then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCategories();
-        }
-      });
-      setIsAddingCategory(false);
+      createTagCategory(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCategories();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['create-tag-category-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        })
+        .finally(() => {
+          setIsAddingCategory(false);
+        });
     }
   };
 
@@ -160,12 +204,25 @@ const TagsPage = () => {
       name: currentCategory?.name,
       description: updatedHTML,
       categoryType: currentCategory?.categoryType,
-    }).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentCategory(currentCategory?.name as string, true);
-      }
-    });
-    setIsEditCategory(false);
+    })
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentCategory(currentCategory?.name as string, true);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-tag-category-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
+      .finally(() => {
+        setIsEditCategory(false);
+      });
   };
 
   const onNewTagChange = (data: TagCategory, forceSet = false) => {
@@ -200,26 +257,53 @@ const TagsPage = () => {
       createTag(currentCategory?.name, {
         name: data.name,
         description: data.description,
-      }).then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        }
-      });
-      setIsAddingTag(false);
+      })
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentCategory(currentCategory?.name as string, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['create-tag-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        })
+        .finally(() => {
+          setIsAddingTag(false);
+        });
     }
   };
+
   const updatePrimaryTag = (updatedHTML: string) => {
     updateTag(currentCategory?.name, editTag?.name, {
       name: editTag?.name,
       description: updatedHTML,
       associatedTags: editTag?.associatedTags,
-    }).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentCategory(currentCategory?.name as string, true);
-      }
-    });
-    setIsEditTag(false);
-    setEditTag(undefined);
+    })
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentCategory(currentCategory?.name as string, true);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
+      .finally(() => {
+        setIsEditTag(false);
+        setEditTag(undefined);
+      });
   };
 
   const handleTagSelection = (tags?: Array<EntityTags>) => {
@@ -229,11 +313,22 @@ const TagsPage = () => {
         description: editTag?.description,
         name: editTag?.name,
         associatedTags: newTags,
-      }).then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentCategory(currentCategory?.name as string, true);
-        }
-      });
+      })
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentCategory(currentCategory?.name as string, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['update-tags-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        });
     }
 
     setEditTag(undefined);
@@ -305,7 +400,9 @@ const TagsPage = () => {
   return (
     <>
       {error ? (
-        <p className="tw-text-2xl tw-text-center tw-m-auto">{error}</p>
+        <ErrorPlaceHolder>
+          <p className="tw-text-center tw-m-auto">{error}</p>
+        </ErrorPlaceHolder>
       ) : (
         <PageContainerV1 className="tw-py-4">
           <PageLayout leftPanel={fetchLeftPanel()}>
