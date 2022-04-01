@@ -86,10 +86,10 @@ const MyDataPage = () => {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         handleShowErrorToast(
           getErrorText(
-            error,
+            err,
             jsonData['api-error-messages']['unexpected-server-response']
           )
         );
@@ -105,10 +105,10 @@ const MyDataPage = () => {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         handleShowErrorToast(
           getErrorText(
-            error,
+            err,
             jsonData['api-error-messages']['unexpected-server-response']
           )
         );
@@ -124,10 +124,10 @@ const MyDataPage = () => {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         handleShowErrorToast(
           getErrorText(
-            error,
+            err,
             jsonData['api-error-messages']['unexpected-server-response']
           )
         );
@@ -143,10 +143,10 @@ const MyDataPage = () => {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         handleShowErrorToast(
           getErrorText(
-            error,
+            err,
             jsonData['api-error-messages']['unexpected-server-response']
           )
         );
@@ -162,10 +162,10 @@ const MyDataPage = () => {
           }, 0);
           setCountServices(total);
         })
-        .catch((error: AxiosError) => {
+        .catch((err: AxiosError) => {
           handleShowErrorToast(
             getErrorText(
-              error,
+              err,
               jsonData['api-error-messages']['unexpected-server-response']
             )
           );

@@ -331,12 +331,12 @@ const DashboardDetailsPage = () => {
           setDashboardUrl(dashboardUrl);
           fetchCharts(ChartIds)
             .then((chart) => setCharts(chart))
-            .catch((err: AxiosError) => {
-              const errMsg = getErrorText(
-                err,
+            .catch((error: AxiosError) => {
+              const msg = getErrorText(
+                error,
                 jsonData['api-error-messages']['fetch-chart-error']
               );
-              handleShowErrorToast(errMsg);
+              handleShowErrorToast(msg);
             });
         } else {
           setIsError(true);
