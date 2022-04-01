@@ -137,7 +137,7 @@ public class DatabaseServicePageTest {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("ingestions"));
+    Events.click(webDriver, common.ingestion());
     try {
       WebElement runIngestion =
           wait.until(ExpectedConditions.presenceOfElementLocated(databaseServicePage.runIngestion()));
@@ -173,7 +173,7 @@ public class DatabaseServicePageTest {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.sendKeys(webDriver, common.databaseName(), "1");
