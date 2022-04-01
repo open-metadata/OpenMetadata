@@ -242,11 +242,20 @@ class SampleDataSource(Source[Entity]):
         self.topics = json.load(
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
+        kafka_config = {
+            "connection": {
+                "bootstrapServers": self.kafka_service_json["config"]["connection"][
+                    "bootstrapServers"
+                ],
+                "schemaRegistryURL": self.kafka_service_json["config"]["connection"][
+                    "schemaRegistry"
+                ],
+            }
+        }
         self.kafka_service = get_messaging_service_or_create(
             service_name=self.kafka_service_json.get("name"),
             message_service_type=self.kafka_service_json.get("serviceType"),
-            schema_registry_url=self.kafka_service_json.get("schemaRegistry"),
-            brokers=self.kafka_service_json.get("brokers"),
+            config=kafka_config,
             metadata_config=self.metadata_config,
         )
         self.dashboard_service_json = json.load(
@@ -261,9 +270,7 @@ class SampleDataSource(Source[Entity]):
         self.dashboard_service = get_dashboard_service_or_create(
             service_name=self.dashboard_service_json.get("name"),
             dashboard_service_type=self.dashboard_service_json.get("serviceType"),
-            username=self.dashboard_service_json.get("username"),
-            password=self.dashboard_service_json.get("password"),
-            dashboard_url=self.dashboard_service_json.get("dashboardUrl"),
+            config=self.dashboard_service_json.get("config"),
             metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(

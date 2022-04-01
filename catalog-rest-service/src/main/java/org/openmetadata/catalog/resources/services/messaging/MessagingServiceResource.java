@@ -325,7 +325,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDescription(create.getDescription())
-        .withConnection(create.getConnection())
+        .withConnection(create.getConfig())
         .withServiceType(create.getServiceType())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

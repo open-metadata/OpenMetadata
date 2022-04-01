@@ -12,7 +12,7 @@
 import logging
 import traceback
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -75,17 +75,25 @@ def get_database_service_or_create(
             else None
         )
         service = {
-            "databaseConnection": {
-                "hostPort": config.host_port if hasattr(config, "host_port") else None,
-                "username": config.username if hasattr(config, "username") else None,
-                "password": password,
-                "database": config.database if hasattr(config, "database") else None,
-                "connectionOptions": config.options
-                if hasattr(config, "options")
-                else None,
-                "connectionArguments": config.connect_args
-                if hasattr(config, "connect_args")
-                else None,
+            "config": {
+                "connection": {
+                    "hostPort": config.host_port
+                    if hasattr(config, "host_port")
+                    else None,
+                    "username": config.username
+                    if hasattr(config, "username")
+                    else None,
+                    "password": password,
+                    "database": config.database
+                    if hasattr(config, "database")
+                    else None,
+                    "connectionOptions": config.options
+                    if hasattr(config, "options")
+                    else None,
+                    "connectionArguments": config.connect_args
+                    if hasattr(config, "connect_args")
+                    else None,
+                }
             },
             "name": config.service_name,
             "description": "",
@@ -101,8 +109,7 @@ def get_database_service_or_create(
 def get_messaging_service_or_create(
     service_name: str,
     message_service_type: str,
-    schema_registry_url: str,
-    brokers: List[str],
+    config: dict,
     metadata_config,
 ) -> MessagingService:
     metadata = OpenMetadata(metadata_config)
@@ -112,10 +119,7 @@ def get_messaging_service_or_create(
     else:
         created_service = metadata.create_or_update(
             CreateMessagingServiceRequest(
-                name=service_name,
-                serviceType=message_service_type,
-                brokers=brokers,
-                schemaRegistry=schema_registry_url,
+                name=service_name, serviceType=message_service_type, config=config
             )
         )
         return created_service
@@ -124,9 +128,7 @@ def get_messaging_service_or_create(
 def get_dashboard_service_or_create(
     service_name: str,
     dashboard_service_type: str,
-    username: str,
-    password: str,
-    dashboard_url: str,
+    config: dict,
     metadata_config,
 ) -> DashboardService:
     metadata = OpenMetadata(metadata_config)
@@ -136,11 +138,7 @@ def get_dashboard_service_or_create(
     else:
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
-                name=service_name,
-                serviceType=dashboard_service_type,
-                username=username,
-                password=password,
-                dashboardUrl=dashboard_url,
+                name=service_name, serviceType=dashboard_service_type, config=config
             )
         )
         return created_service

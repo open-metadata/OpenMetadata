@@ -309,7 +309,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         databaseServiceResourceTest
             .createRequest(test, 1)
             .withServiceType(DatabaseServiceType.Snowflake)
-            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
+            .withConfig(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
@@ -317,21 +317,21 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createDatabaseService
         .withName("redshiftDB")
         .withServiceType(DatabaseServiceType.Redshift)
-        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
+        .withConfig(TestUtils.REDSHIFT_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService
         .withName("bigQueryDB")
         .withServiceType(DatabaseServiceType.BigQuery)
-        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
+        .withConfig(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService
         .withName("mysqlDB")
         .withServiceType(DatabaseServiceType.MySQL)
-        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+        .withConfig(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
@@ -341,7 +341,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         new CreateMessagingService()
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
-            .withConnection(TestUtils.KAFKA_CONNECTION);
+            .withConfig(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
@@ -349,7 +349,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createMessaging
         .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConnection(new PulsarConnection()));
+        .withConfig(new MessagingConnection().withConnection(new PulsarConnection()));
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
