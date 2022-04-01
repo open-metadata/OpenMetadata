@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -43,6 +44,34 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     ) : null;
   };
 
+  const getThreadFooter = (
+    postLength: number,
+    lastPost: Post,
+    repliedUsers: Array<string>,
+    replies: number,
+    threadId: string
+  ) => {
+    return postLength > 1 ? (
+      <div className="tw-mb-6">
+        <div className="tw-ml-9 tw-flex tw-mb-6">
+          <FeedCardFooter
+            isFooterVisible
+            className="tw--mt-4"
+            lastReplyTimeStamp={lastPost?.postTs}
+            repliedUsers={repliedUsers}
+            replies={replies}
+            threadId={threadId}
+            onThreadSelect={(id: string) => {
+              onThreadIdSelect('');
+              onThreadSelect(id);
+              onViewMore();
+            }}
+          />
+        </div>
+      </div>
+    ) : null;
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -72,25 +101,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {postLength > 0 ? (
                 <Fragment>
-                  {postLength > 1 ? (
-                    <div className="tw-mb-6">
-                      <div className="tw-ml-9 tw-flex tw-mb-6">
-                        <FeedCardFooter
-                          isFooterVisible
-                          className="tw--mt-4"
-                          lastReplyTimeStamp={lastPost?.postTs}
-                          repliedUsers={repliedUsers}
-                          replies={replies}
-                          threadId={feed.id}
-                          onThreadSelect={(id: string) => {
-                            onThreadIdSelect('');
-                            onThreadSelect(id);
-                            onViewMore();
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
+                  {getThreadFooter(
+                    postLength,
+                    lastPost,
+                    repliedUsers,
+                    replies,
+                    feed.id
+                  )}
                   <ActivityFeedCard
                     className="tw-mb-6 tw-ml-9"
                     data-testid="latest-message"
