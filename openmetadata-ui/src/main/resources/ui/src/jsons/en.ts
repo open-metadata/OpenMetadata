@@ -91,6 +91,12 @@ const jsonData = {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
   },
+  label: {
+    // Add UI label texts here
+  },
+  message: {
+    'no-services': 'No services',
+  },
 };
 
 export default jsonData;

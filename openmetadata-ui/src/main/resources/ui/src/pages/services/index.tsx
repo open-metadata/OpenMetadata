@@ -580,7 +580,7 @@ const ServicesPage = () => {
           jsonData['api-error-messages']['fetch-services-error']
         );
         setIsLoading(false);
-        setErrorMessage('No services');
+        setErrorMessage(jsonData['message']['no-services']);
         handleShowErrorToast(errMsg);
       });
   }, []);
