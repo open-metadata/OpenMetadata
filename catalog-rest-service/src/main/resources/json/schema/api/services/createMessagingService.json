@@ -16,7 +16,7 @@
     "serviceType": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingServiceType"
     },
-    "connection": {
+    "config": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingConnection"
     },
     "owner": {

@@ -33,7 +33,8 @@
     },
     "awsSecretAccessKey": {
       "description": "AWS Secret Access Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "awsSessionToken": {
       "description": "AWS Session Token.",

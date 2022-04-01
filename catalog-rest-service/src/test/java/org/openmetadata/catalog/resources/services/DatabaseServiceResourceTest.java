@@ -80,7 +80,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
-    CreateDatabaseService create = createRequest(test).withConnection(null);
+    CreateDatabaseService create = createRequest(test).withConfig(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
   }
 
@@ -97,7 +97,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     SnowflakeConnection snowflakeConnection =
         new SnowflakeConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConnection(snowflakeConnection);
-    update.withConnection(databaseConnection);
+    update.withConfig(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
     ConnectionArguments connectionArguments =
@@ -107,7 +107,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     ConnectionOptions connectionOptions =
         new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
     snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
-    update.withConnection(databaseConnection);
+    update.withConfig(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // Get the recently updated entity and verify the changes
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
@@ -133,7 +133,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withPassword("password")
             .withUsername("username");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConnection(snowflakeConnection);
-    update.withConnection(databaseConnection);
+    update.withConfig(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // Get the recently updated entity and verify the changes
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
@@ -146,7 +146,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
     snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
     databaseConnection.withConnection(snowflakeConnection);
-    update.withConnection(databaseConnection);
+    update.withConfig(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // Get the recently updated entity and verify the changes
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
@@ -180,7 +180,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return new CreateDatabaseService()
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
+        .withConfig(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
         .withOwner(owner)
         .withDescription(description);
   }
@@ -195,7 +195,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
-    validateDatabaseConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
+    validateDatabaseConnection(createRequest.getConfig(), service.getConnection(), service.getServiceType());
   }
 
   @Override

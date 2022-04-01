@@ -16,7 +16,7 @@
     "serviceType": {
       "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardServiceType"
     },
-    "connection": {
+    "config": {
       "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardConnection"
     },
     "owner": {
