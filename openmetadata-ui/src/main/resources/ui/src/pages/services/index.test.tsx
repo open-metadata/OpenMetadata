@@ -19,6 +19,13 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  deleteService,
+  getServiceDetails,
+  getServices,
+  postService,
+  updateService,
+} from '../../axiosAPIs/serviceAPI';
 import ServicesPage from './index';
 
 const mockServiceDetails = {
@@ -244,7 +251,7 @@ describe('Test Service page', () => {
     const { container } = render(<ServicesPage />, {
       wrapper: MemoryRouter,
     });
-    const addService = await findByTestId(container, 'add-new-user-button');
+    const addService = await findByTestId(container, 'add-new-service-button');
     fireEvent.click(addService);
 
     expect(
@@ -278,5 +285,84 @@ describe('Test Service page', () => {
     expect(type.length).toBe(mockDatabaseService.data.data.length);
     expect(deleteIcon.length).toBe(mockDatabaseService.data.data.length);
     expect(icon.length).toBe(mockDatabaseService.data.data.length);
+  });
+});
+
+describe('Test Service Page Error Handling', () => {
+  it('Should render error placholder if getServiceDetails API fails', async () => {
+    (getServiceDetails as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { data: { message: 'Error' } } })
+    );
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('Should render page if updateService API fails', async () => {
+    (updateService as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { data: { message: 'Error' } } })
+    );
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const services = await findByTestId(container, 'services-container');
+    const tabs = await findAllByTestId(container, 'tab');
+    const dataContainer = await findByTestId(container, 'data-container');
+
+    expect(services).toBeInTheDocument();
+    expect(tabs.length).toBe(mockServiceDetails.data.length);
+    expect(dataContainer).toBeInTheDocument();
+  });
+
+  it('Should render services-container if getServices API fails', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { data: { message: 'Error' } } })
+    );
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const services = await findByTestId(container, 'services-container');
+
+    expect(services).toBeInTheDocument();
+  });
+
+  it('Should render page if postService API fails', async () => {
+    (postService as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { data: { message: 'UnExpected Response' } } })
+    );
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const services = await findByTestId(container, 'services-container');
+    const tabs = await findAllByTestId(container, 'tab');
+    const dataContainer = await findByTestId(container, 'data-container');
+
+    expect(services).toBeInTheDocument();
+    expect(tabs.length).toBe(mockServiceDetails.data.length);
+    expect(dataContainer).toBeInTheDocument();
+  });
+
+  it('Should render page if deleteService API fails', async () => {
+    (deleteService as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { data: { message: 'UnExpected Response' } } })
+    );
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const services = await findByTestId(container, 'services-container');
+    const tabs = await findAllByTestId(container, 'tab');
+    const dataContainer = await findByTestId(container, 'data-container');
+
+    expect(services).toBeInTheDocument();
+    expect(tabs.length).toBe(mockServiceDetails.data.length);
+    expect(dataContainer).toBeInTheDocument();
   });
 });
