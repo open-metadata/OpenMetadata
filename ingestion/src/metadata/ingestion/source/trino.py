@@ -60,7 +60,7 @@ class TrinoSource(SQLSource):
         self.schema_names = None
         self.inspector = None
         try:
-            from sqlalchemy_trino import (
+            from trino import (
                 dbapi,  # pylint: disable=import-outside-toplevel,unused-import
             )
         except ModuleNotFoundError:
