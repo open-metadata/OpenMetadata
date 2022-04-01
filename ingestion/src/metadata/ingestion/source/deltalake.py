@@ -263,7 +263,6 @@ class DeltalakeSource(Source):
             return []
         parsed_columns: [Column] = []
         partition_cols = False
-        row_order = 0
         for row in raw_columns:
             col_name = row["col_name"]
             if col_name == "" or "#" in col_name:
@@ -272,7 +271,6 @@ class DeltalakeSource(Source):
             if not partition_cols:
                 column = self._get_col_info(row)
                 parsed_columns.append(column)
-                row_order += 1
 
         return parsed_columns
 
