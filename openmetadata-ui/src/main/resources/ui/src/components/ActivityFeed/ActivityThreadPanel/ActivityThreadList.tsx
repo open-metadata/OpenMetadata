@@ -31,7 +31,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
     getFeedListWithRelativeDays(threads);
 
   const toggleReplyEditor = (id: string) => {
-    onThreadIdSelect(selectedThreadId ? '' : id);
+    onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
 
   return (

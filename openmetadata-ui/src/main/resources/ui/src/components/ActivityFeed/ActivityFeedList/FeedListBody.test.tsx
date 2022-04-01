@@ -15,6 +15,8 @@ import {
   findAllByTestId,
   findAllByText,
   findByTestId,
+  findByText,
+  fireEvent,
   queryByTestId,
   queryByText,
   render,
@@ -87,12 +89,14 @@ const mockThreads = [
   },
 ];
 
+const onThreadIdSelect = jest.fn();
+
 const mockFeedListBodyProp = {
   updatedFeedList: mockThreads,
   relativeDay: 'Today',
   isEntityFeed: false,
   onThreadSelect: jest.fn(),
-  onThreadIdSelect: jest.fn(),
+  onThreadIdSelect,
   postFeed: jest.fn(),
   onViewMore: jest.fn(),
   selectedThreadId: '',
@@ -177,5 +181,59 @@ describe('Test FeedListBody Component', () => {
 
     // should get rendered with latest post for quick reply
     expect(message2QuickReply).toBeInTheDocument();
+  });
+
+  it('Should toggle FeedEditor on reply button click', async () => {
+    const { container, rerender } = render(
+      <FeedListBody {...mockFeedListBodyProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const messages = await findAllByTestId(container, 'message-container');
+
+    const message2 = messages[1];
+
+    const message2FeedCardFooter = queryByText(message2, /FeedCardFooter/i);
+
+    const message2QuickReply = await findByTestId(message2, 'quick-reply');
+
+    // should get rendered to see all the messages in sidepanel
+    expect(message2FeedCardFooter).toBeInTheDocument();
+
+    // should get rendered with latest post for quick reply
+    expect(message2QuickReply).toBeInTheDocument();
+
+    fireEvent.click(
+      message2QuickReply,
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    );
+
+    expect(onThreadIdSelect).toBeCalled();
+
+    rerender(
+      <FeedListBody
+        {...mockFeedListBodyProp}
+        selectedThreadId="40c2faec-0159-4d86-9b15-c17f3e1c081b"
+      />
+    );
+
+    expect(
+      await findByText(container, /ActivityFeedEditor/i)
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      message2QuickReply,
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    );
+
+    expect(onThreadIdSelect).toBeCalled();
+
+    rerender(<FeedListBody {...mockFeedListBodyProp} selectedThreadId="" />);
+
+    expect(
+      queryByText(container, /ActivityFeedEditor/i)
+    ).not.toBeInTheDocument();
   });
 });

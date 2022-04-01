@@ -30,7 +30,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onConfirmation,
 }) => {
   const toggleReplyEditor = (id: string) => {
-    onThreadIdSelect(selectedThreadId ? '' : id);
+    onThreadIdSelect(selectedThreadId === id ? '' : id);
   };
 
   const getFeedEditor = (id: string) => {
