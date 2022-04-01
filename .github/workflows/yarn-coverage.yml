@@ -1,4 +1,4 @@
-name: Node Yarn Coverage + Sonar
+name: SonarCloud + Node Yarn Coverage
 
 on:
   # Trigger analysis when pushing in master or pull requests, and when creating
@@ -41,7 +41,7 @@ jobs:
       run: npm install -g sonarqube-scanner
       id: npm_install_sonar_scanner
     - name: SonarCloud Scan On PR
-      if: steps.npm_install_sonar_scanner.outcome == 'success' && github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && steps.npm_install_sonar_scanner.outcome == 'success'
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: |
         sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
@@ -61,13 +61,7 @@ jobs:
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: |
         sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
-        -Dproject.settings=sonar-project.properties \
-        -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-        -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-        -Dsonar.pullrequest.base=main \
-        -Donar.pullrequest.github.repository=OpenMetadata \
-        -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-        -Dsonar.pullrequest.provider=github
+        -Dproject.settings=sonar-project.properties
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
