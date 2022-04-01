@@ -81,11 +81,9 @@ public class AirflowRESTClient {
   public String deploy(AirflowPipeline airflowPipeline, CatalogApplicationConfig config, Boolean decrypt) {
     try {
       // TODO USE AIRFLOW PIPELINE DIRECTLY AS THE REST BODY
-      AirflowPipeline pipeline =
-          AirflowUtils.toIngestionPipeline(airflowPipeline, config.getAirflowConfiguration(), decrypt);
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
-      String pipelinePayload = JsonUtils.pojoToJson(pipeline);
+      String pipelinePayload = JsonUtils.pojoToJson(airflowPipeline);
       String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
       String deployUrl = String.format(deployEndPoint, url);
       HttpRequest request =
