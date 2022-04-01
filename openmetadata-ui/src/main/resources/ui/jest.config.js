@@ -52,4 +52,7 @@ module.exports = {
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
   },
+
+  // Sonar Cloud Configuration
+  testResultsProcessor: 'jest-sonar-reporter',
 };
