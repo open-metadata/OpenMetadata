@@ -20,21 +20,33 @@ import { API_RES_MAX_SIZE } from '../constants/constants';
 
 // Moving this code here from App.tsx
 const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, API_RES_MAX_SIZE).then((res) => {
-    AppState.updateUsers(res.data.data);
-  });
+  getUsers(arrQueryFields, API_RES_MAX_SIZE)
+    .then((res) => {
+      AppState.updateUsers(res.data.data);
+    })
+    .catch(() => {
+      AppState.updateUsers([]);
+    });
 };
 
 const getAllTeams = (): void => {
-  getTeams('defaultRoles').then((res: AxiosResponse) => {
-    AppState.updateUserTeam(res.data.data);
-  });
+  getTeams('defaultRoles')
+    .then((res: AxiosResponse) => {
+      AppState.updateUserTeam(res.data.data);
+    })
+    .catch(() => {
+      AppState.updateUserTeam([]);
+    });
 };
 
 const getAllRoles = (): void => {
-  getRoles().then((res: AxiosResponse) => {
-    AppState.updateUserRole(res.data.data);
-  });
+  getRoles()
+    .then((res: AxiosResponse) => {
+      AppState.updateUserRole(res.data.data);
+    })
+    .catch(() => {
+      AppState.updateUserRole([]);
+    });
 };
 
 export const fetchAllUsers = () => {

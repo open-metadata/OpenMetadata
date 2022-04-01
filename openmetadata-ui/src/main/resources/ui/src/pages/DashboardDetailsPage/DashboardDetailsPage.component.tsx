@@ -329,7 +329,15 @@ const DashboardDetailsPage = () => {
           });
 
           setDashboardUrl(dashboardUrl);
-          fetchCharts(charts).then((charts) => setCharts(charts));
+          fetchCharts(charts)
+            .then((charts) => setCharts(charts))
+            .catch((err: AxiosError) => {
+              const errMsg = getErrorText(
+                err,
+                jsonData['api-error-messages']['fetch-chart-error']
+              );
+              handleShowErrorToast(errMsg);
+            });
         } else {
           setIsError(true);
 

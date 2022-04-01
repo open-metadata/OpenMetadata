@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize } from 'lodash';
 import { FormatedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -30,17 +33,40 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
+  const showToast = useToastContext();
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   useEffect(() => {
     getSuggestions(
       searchValue,
       SearchIndex[entityType as keyof typeof SearchIndex]
-    ).then((res: AxiosResponse) => {
-      setData(formatDataResponse(res.data.suggest['table-suggest'][0].options));
-    });
+    )
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setData(
+            formatDataResponse(res.data.suggest['table-suggest'][0].options)
+          );
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-suggestions-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      });
   }, [searchValue]);
 
   useEffect(() => {

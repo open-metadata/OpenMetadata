@@ -195,8 +195,8 @@ const MyDataPage = () => {
       myDataSearchIndex
     );
 
-    Promise.allSettled([ownedEntity, followedEntity]).then(
-      ([resOwnedEntity, resFollowedEntity]) => {
+    Promise.allSettled([ownedEntity, followedEntity])
+      .then(([resOwnedEntity, resFollowedEntity]) => {
         if (resOwnedEntity.status === 'fulfilled') {
           setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
         }
@@ -205,8 +205,11 @@ const MyDataPage = () => {
             formatDataResponse(resFollowedEntity.value.data.hits.hits)
           );
         }
-      }
-    );
+      })
+      .catch(() => {
+        setOwnedData([]);
+        setFollowedData([]);
+      });
   };
 
   const getFeedData = (feedFilter: FeedFilter) => {
