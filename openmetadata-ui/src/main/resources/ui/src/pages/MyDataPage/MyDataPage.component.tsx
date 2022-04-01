@@ -74,6 +74,19 @@ const MyDataPage = () => {
     setFeedFilter(filter);
   };
 
+  const setTableCount = (count = 0) => {
+    setCountTables(count);
+  };
+  const setTopicCount = (count = 0) => {
+    setCountTopics(count);
+  };
+  const setPipelineCount = (count = 0) => {
+    setCountPipelines(count);
+  };
+  const setDashboardCount = (count = 0) => {
+    setCountDashboards(count);
+  };
+
   const fetchData = (fetchService = false) => {
     setError('');
 
@@ -81,7 +94,7 @@ const MyDataPage = () => {
     getAllTables('', 0)
       .then((res) => {
         if (res.data) {
-          setCountTables(res.data.paging.total || 0);
+          setTableCount(res.data.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -100,7 +113,7 @@ const MyDataPage = () => {
     getAllTopics('', '', 0)
       .then((res) => {
         if (res.data) {
-          setCountTopics(res.data.paging.total || 0);
+          setTopicCount(res.data.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -119,7 +132,7 @@ const MyDataPage = () => {
     getAllPipelines('', '', 0)
       .then((res) => {
         if (res.data) {
-          setCountPipelines(res.data.paging.total || 0);
+          setPipelineCount(res.data.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -138,7 +151,7 @@ const MyDataPage = () => {
     getAllDashboards('', '', 0)
       .then((res) => {
         if (res.data) {
-          setCountDashboards(res.data.paging.total || 0);
+          setDashboardCount(res.data.paging.total);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
