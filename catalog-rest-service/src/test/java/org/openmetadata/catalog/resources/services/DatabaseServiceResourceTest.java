@@ -163,9 +163,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withSchemaFilterPattern(new FilterPattern().withExcludes(asList("information_schema.*", "test.*")))
             .withTableFilterPattern(new FilterPattern().withIncludes(asList("sales.*", "users.*")));
     PipelineConfig pipelineConfig =
-        new PipelineConfig()
-            .withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE)
-            .withConfig(databaseServiceMetadataPipeline);
+        new PipelineConfig().withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE);
     createAirflowPipeline.withPipelineConfig(pipelineConfig);
     AirflowPipeline airflowPipeline =
         airflowPipelineResourceTest.createEntity(createAirflowPipeline, ADMIN_AUTH_HEADERS);
