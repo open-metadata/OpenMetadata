@@ -26,6 +26,8 @@ import {
 } from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { getErrorText } from '../../utils/StringsUtils';
 
 const WebhooksPage: FunctionComponent = () => {
   const history = useHistory();
@@ -34,6 +36,13 @@ const WebhooksPage: FunctionComponent = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [data, setData] = useState<Array<Webhook>>([]);
   const [selectedStatus, setSelectedStatus] = useState<Status[]>([]);
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
@@ -45,13 +54,17 @@ const WebhooksPage: FunctionComponent = () => {
         } else {
           setData([]);
           setPaging(pagingObject);
+
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Something went wrong!',
-        });
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-webhook-error']
+        );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
