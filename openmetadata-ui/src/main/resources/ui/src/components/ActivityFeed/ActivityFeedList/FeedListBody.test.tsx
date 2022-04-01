@@ -95,7 +95,7 @@ const mockFeedListBodyProp = {
   onThreadIdSelect: jest.fn(),
   postFeed: jest.fn(),
   onViewMore: jest.fn(),
-  selctedThreadId: 'id1',
+  selectedThreadId: '',
   onConfirmation: jest.fn(),
   onThreadIdDeselect: jest.fn(),
 };
@@ -163,7 +163,7 @@ describe('Test FeedListBody Component', () => {
     const message2FeedCardFooter = queryByText(message2, /FeedCardFooter/i);
     const message2ReplyInSidePanel = queryByText(message2, 'replyInSidePanel');
 
-    const message2QuickReply = queryByTestId(message2, 'quick-reply');
+    const message2QuickReply = await findByTestId(message2, 'quick-reply');
 
     // message2 has 3 posts so there should be 2 feedcards
     // one is for main post and another is for latest post

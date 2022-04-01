@@ -880,60 +880,99 @@
 }
 .ql-snow .ql-tooltip {
   background-color: #fff;
-  border: 1px solid #ccc;
+  border: 1px solid #dce3ec;
+  border-radius: 4px;
   box-shadow: 0px 0px 5px #ddd;
-  color: #444;
+  color: #37352f;
   padding: 5px 12px;
   white-space: nowrap;
+  width: 300px;
+  inset: 0 !important;
+  margin: auto;
 }
 .ql-snow .ql-tooltip::before {
-  content: 'Visit URL:';
+  content: 'Visit Url:';
   line-height: 26px;
   margin-right: 8px;
 }
 .ql-snow .ql-tooltip input[type='text'] {
   display: none;
   border: 1px solid #ccc;
+  border-radius: 4px;
   font-size: 13px;
   height: 26px;
   margin: 0px;
-  padding: 3px 5px;
-  width: 170px;
+  padding: 14px;
+  width: 100%;
 }
 .ql-snow .ql-tooltip a.ql-preview {
-  display: inline-block;
-  max-width: 200px;
+  display: block;
+  width: 100%;
   overflow-x: hidden;
   text-overflow: ellipsis;
-  vertical-align: top;
 }
 .ql-snow .ql-tooltip a.ql-action::after {
   border-right: 1px solid #ccc;
   content: 'Edit';
-  margin-left: 16px;
   padding-right: 8px;
+  color: #ffffff;
+  background: #7147e8;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 4px;
 }
 .ql-snow .ql-tooltip a.ql-remove::before {
   content: 'Remove';
   margin-left: 8px;
+  color: #ffffff;
+  background: #7147e8;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 4px;
 }
 .ql-snow .ql-tooltip a {
   line-height: 26px;
+  color: #7147e8;
+}
+
+.ql-snow .ql-tooltip a:hover {
+  color: #7147e8;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-preview,
 .ql-snow .ql-tooltip.ql-editing a.ql-remove {
   display: none;
 }
 .ql-snow .ql-tooltip.ql-editing input[type='text'] {
+  display: block;
+}
+.ql-snow .ql-tooltip.ql-editing input[type='text']:hover,
+.ql-snow .ql-tooltip.ql-editing input[type='text']:focus {
+  border: 1px solid #7147e8;
+  outline: none;
+}
+.ql-snow .ql-tooltip.ql-editing a.ql-action {
   display: inline-block;
+  margin-top: 4px;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-action::after {
   border-right: 0px;
   content: 'Save';
   padding-right: 0px;
+  margin: 0px;
+  color: #ffffff;
+  background: #7147e8;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 4px;
 }
 .ql-snow .ql-tooltip[data-mode='link']::before {
-  content: 'Enter link:';
+  content: 'Enter Url:';
 }
 .ql-snow .ql-tooltip[data-mode='formula']::before {
   content: 'Enter formula:';

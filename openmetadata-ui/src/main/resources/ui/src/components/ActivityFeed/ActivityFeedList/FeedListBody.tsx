@@ -25,9 +25,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onThreadIdSelect,
   postFeed,
   onViewMore,
-  selctedThreadId,
+  selectedThreadId,
   onConfirmation,
 }) => {
+  const toggleReplyEditor = (id: string) => {
+    onThreadIdSelect(selectedThreadId ? '' : id);
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -88,11 +92,11 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
                     data-testid="quick-reply"
                     onClick={() => {
-                      onThreadIdSelect(feed.id);
+                      toggleReplyEditor(feed.id);
                     }}>
                     Reply
                   </p>
-                  {selctedThreadId === feed.id ? (
+                  {selectedThreadId === feed.id ? (
                     <ActivityFeedEditor
                       buttonClass="tw-mr-4"
                       className="tw-ml-5 tw-mr-2"
