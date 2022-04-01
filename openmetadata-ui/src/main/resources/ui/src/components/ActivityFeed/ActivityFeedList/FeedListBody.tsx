@@ -32,6 +32,17 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     onThreadIdSelect(selectedThreadId ? '' : id);
   };
 
+  const getFeedEditor = (id: string) => {
+    return selectedThreadId === id ? (
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2"
+        data-testid="quick-reply-editor"
+        onSave={postFeed}
+      />
+    ) : null;
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -96,14 +107,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     }}>
                     Reply
                   </p>
-                  {selectedThreadId === feed.id ? (
-                    <ActivityFeedEditor
-                      buttonClass="tw-mr-4"
-                      className="tw-ml-5 tw-mr-2"
-                      data-testid="quick-reply-editor"
-                      onSave={postFeed}
-                    />
-                  ) : null}
+                  {getFeedEditor(feed.id)}
                 </Fragment>
               ) : (
                 <p
