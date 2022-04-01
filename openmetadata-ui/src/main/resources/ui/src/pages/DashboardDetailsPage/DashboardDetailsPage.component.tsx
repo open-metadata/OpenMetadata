@@ -286,7 +286,7 @@ const DashboardDetailsPage = () => {
             tags,
             owner,
             displayName,
-            charts,
+            charts: ChartIds,
             dashboardUrl,
             serviceType,
             version,
@@ -329,8 +329,8 @@ const DashboardDetailsPage = () => {
           });
 
           setDashboardUrl(dashboardUrl);
-          fetchCharts(charts)
-            .then((charts) => setCharts(charts))
+          fetchCharts(ChartIds)
+            .then((chart) => setCharts(chart))
             .catch((err: AxiosError) => {
               const errMsg = getErrorText(
                 err,
