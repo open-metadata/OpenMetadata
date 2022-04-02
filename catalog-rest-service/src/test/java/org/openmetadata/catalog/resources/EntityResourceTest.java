@@ -584,22 +584,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           return entityInterface.getId().equals(deleted.getId());
         };
 
+    // Test listing entities that include deleted, non-deleted, and all the entities
     for (String include : List.of("non-deleted", "all", "deleted")) {
+      if (!supportsSoftDelete && include.equals("deleted")) {
+        continue;
+      }
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", include);
+      ;
 
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("include", include);
-            }
-          };
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with limit set from 1 to maxTables size
-      // Each time compare the returned list with allTables list to make sure right results are
-      // returned
+      // List entity with "limit" set from 1 to maxTables size
+      // Each time compare the returned list with allTables list to make sure right results are returned
       for (int limit = 1; limit < maxEntities; limit++) {
         String after = null;
         String before;
@@ -651,7 +651,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         } while (before != null);
 
         if ("all".equals(include) || "deleted".equals(include)) {
-          assertTrue(foundDeleted);
+          assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
         }
@@ -687,8 +687,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           BAD_REQUEST,
           container.getType() + " is not empty");
 
-      // Now delete the container with recursive flag on
-      containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
+      // Now soft-delete the container with recursive flag on
+      containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
       // Make sure entities that belonged to the container are deleted and the new list operation returns less entities
       ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
@@ -710,6 +710,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
+
+      // Now hard-delete the container with recursive flag on and make sure GET operation can't get the entity
+      containerTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
+      containerTest.assertEntityDeleted(container.getId(), true);
     }
   }
 
@@ -752,6 +756,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void get_deletedVersion(TestInfo test) throws IOException {
+    if (!supportsSoftDelete) {
+      return;
+    }
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
@@ -764,21 +771,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws IOException {
+    if (!supportsSoftDelete) {
+      return;
+    }
     K create = createRequest(test);
     // Create first time using POST
     T entity = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     T entityBeforeDeletion = getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+
     // delete it
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    assertResponse(
-        () -> getEntity(entityInterface.getId(), null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getId()));
-    assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
+    assertEntityDeleted(entityInterface, false);
 
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
@@ -789,16 +793,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
     }
-
-    queryParams.put("include", "non-deleted");
-    assertResponse(
-        () -> getEntity(entityInterface.getId(), queryParams, null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getId()));
-    assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1316,14 +1310,19 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Soft delete the entity
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
 
-    // Send PUT request (with no changes) to restore the entity from soft deleted state
-    ChangeDescription change = getChangeDescription(version);
-    change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
-    updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Soft entry is soft deleted
+    if (supportsSoftDelete) {
+      Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
+
+      // Send PUT request (with no changes) to restore the entity from soft deleted state
+      ChangeDescription change = getChangeDescription(version);
+      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+      updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } else {
+      assertEntityDeleted(entityInterface, true);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1428,21 +1427,21 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final void deleteAndCheckEntity(T entity, Map<String, String> authHeaders) throws IOException {
-    deleteAndCheckEntity(entity, false, authHeaders);
+    deleteAndCheckEntity(entity, false, false, authHeaders);
   }
 
-  public final void deleteAndCheckEntity(T entity, boolean recursive, Map<String, String> authHeaders)
-      throws IOException {
+  public final void deleteAndCheckEntity(
+      T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     UUID id = entityInterface.getId();
-    long timestamp = System.currentTimeMillis();
 
     // Delete entity
-    deleteEntity(id, recursive, authHeaders);
+    T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
+    long timestamp = getEntityInterface(deletedEntity).getUpdatedAt();
 
     // Validate delete change event
     Double expectedVersion = EntityUtil.nextVersion(entityInterface.getVersion());
-    if (supportsSoftDelete) {
+    if (supportsSoftDelete && !hardDelete) {
       validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
 
       // Validate that the entity version is updated after soft delete
@@ -1463,18 +1462,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
-  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    deleteEntity(id, false, authHeaders);
+  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return deleteEntity(id, false, false, authHeaders);
   }
 
-  public final void deleteEntity(UUID id, boolean recursive, Map<String, String> authHeaders)
+  public final T deleteEntity(UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id);
-    if (recursive) {
-      target = target.queryParam("recursive", true);
-    }
-    TestUtils.delete(target, entityClass, authHeaders);
+    target = recursive ? target.queryParam("recursive", true) : target;
+    target = hardDelete ? target.queryParam("hardDelete", true) : target;
+    T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
+    return entity;
   }
 
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
@@ -1983,6 +1982,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private void printEntities(ResultList<T> list) {
     list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+  }
+
+  public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+
+    // Make sure getting entity by ID get 404 not found response
+    assertEntityDeleted(entityInterface.getId(), hardDelete);
+
+    // Make sure getting entity by name gets 404 not found response
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, "", ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
+  }
+
+  public void assertEntityDeleted(UUID id, boolean hardDelete) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    assertResponse(() -> getEntity(id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(entityType, id));
   }
 
   /**

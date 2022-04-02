@@ -346,10 +346,14 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }

@@ -449,15 +449,16 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive) throws IOException {
-    return delete(updatedBy, id, recursive, false);
+  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
+      throws IOException {
+    return delete(updatedBy, id, recursive, hardDelete, false);
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean internal)
-      throws IOException {
+  public final DeleteResponse<T> delete(
+      String updatedBy, String id, boolean recursive, boolean hardDelete, boolean internal) throws IOException {
     // Validate entity
-    String json = dao.findJsonById(id, Include.NON_DELETED);
+    String json = dao.findJsonById(id, hardDelete ? Include.ALL : Include.NON_DELETED);
     if (json == null) {
       if (!internal) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
@@ -467,7 +468,7 @@ public abstract class EntityRepository<T> {
     }
 
     T original = JsonUtils.readValue(json, entityClass);
-    setFields(original, putFields);
+    setFields(original, putFields); // TODO why this?
 
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityReference> contains =
@@ -480,23 +481,25 @@ public abstract class EntityRepository<T> {
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
         LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, true);
+        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
       }
     }
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
     EntityInterface<T> entityInterface = getEntityInterface(updated);
-    entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
-    if (supportsSoftDelete) {
+    if (supportsSoftDelete && hardDelete == false) {
+      entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
       entityInterface.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
       updater.update();
       changeType = RestUtil.ENTITY_SOFT_DELETED;
     } else {
       // Hard delete
-      dao.delete(id);
       daoCollection.relationshipDAO().deleteAll(id, entityType);
+      daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+      daoCollection.entityExtensionDAO().deleteAll(id);
+      dao.delete(id);
       changeType = RestUtil.ENTITY_DELETED;
     }
     return new DeleteResponse<>(updated, changeType);

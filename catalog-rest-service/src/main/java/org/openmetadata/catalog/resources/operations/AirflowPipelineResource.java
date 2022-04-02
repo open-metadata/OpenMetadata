@@ -393,9 +393,16 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
     AirflowPipeline pipeline = (AirflowPipeline) response.getEntity();
     airflowRESTClient.deletePipeline(pipeline.getName());
     return response;
