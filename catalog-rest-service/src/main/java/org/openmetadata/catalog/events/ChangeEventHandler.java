@@ -127,7 +127,19 @@ public class ChangeEventHandler implements EventHandler {
       EntityReference entityReference = Entity.getEntityReference(entity);
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getName();
-      EventType eventType = changeType.equals(RestUtil.ENTITY_UPDATED) ? ENTITY_UPDATED : ENTITY_SOFT_DELETED;
+      EventType eventType = null;
+      switch (changeType) {
+        case RestUtil.ENTITY_UPDATED:
+          eventType = ENTITY_UPDATED;
+          break;
+        case RestUtil.ENTITY_SOFT_DELETED:
+          eventType = ENTITY_SOFT_DELETED;
+          break;
+        case RestUtil.ENTITY_DELETED:
+          eventType = ENTITY_DELETED;
+          break;
+      }
+
       return getChangeEvent(eventType, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
           .withEntity(entity)
