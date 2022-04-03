@@ -17,79 +17,8 @@
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },
-    "config": {
-      "type": "object",
-      "description": "Database Connection.",
-      "properties": {
-        "connection": {
-          "oneOf": [
-            {
-              "$ref": "../../entity/services/connections/database/athenaConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/azureSQLConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/clickhouseConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/databricksConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/db2Connection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/druidConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/dynamoDBConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/glueConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/hiveConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/mariaDBConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/mssqlConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/mysqlConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/oracleConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/postgresConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/prestoConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/redshiftConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/salesforceConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/singleStoreConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/snowflakeConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/trinoConnection.json"
-            },
-            {
-              "$ref": "../../entity/services/connections/database/verticaConnection.json"
-            }
-          ]
-        }
-      },
-      "additionalProperties": false
+    "connection": {
+      "$ref": "../../entity/services/databaseService.json#/definitions/databaseConnection"
     },
     "owner": {
       "description": "Owner of this database service.",

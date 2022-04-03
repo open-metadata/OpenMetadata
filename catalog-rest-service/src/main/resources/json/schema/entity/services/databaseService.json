@@ -109,7 +109,7 @@
       "type": "object",
       "description": "Database Connection.",
       "properties": {
-        "connection": {
+        "config": {
           "oneOf": [
             {
               "$ref": "./connections/database/athenaConnection.json"

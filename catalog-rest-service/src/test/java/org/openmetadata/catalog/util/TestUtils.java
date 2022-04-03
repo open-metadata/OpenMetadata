@@ -95,18 +95,17 @@ public final class TestUtils {
   static {
     MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConnection(
-                new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
     REDSHIFT_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConnection(
+            .withConfig(
                 new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
     BIGQUERY_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConnection(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
+            .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
     SNOWFLAKE_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConnection(
+            .withConfig(
                 new SnowflakeConnection()
                     .withHostPort("snowflake:1000")
                     .withUsername("snowflake")
