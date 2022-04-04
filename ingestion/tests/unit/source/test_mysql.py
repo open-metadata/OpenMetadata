@@ -16,7 +16,6 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
-from proto import ENUM
 from pymysql.constants import FIELD_TYPE
 from sqlalchemy.types import (
     BIGINT,
@@ -27,6 +26,7 @@ from sqlalchemy.types import (
     TEXT,
     TIMESTAMP,
     VARCHAR,
+    Enum,
 )
 
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
@@ -123,7 +123,7 @@ MOCK_GET_COLUMN = [
     },
     {
         "name": "LOG_TYPE.TEST",
-        "type": ENUM,
+        "type": Enum,
         "default": None,
         "comment": "The log type to which the transactions were written.",
         "nullable": False,
