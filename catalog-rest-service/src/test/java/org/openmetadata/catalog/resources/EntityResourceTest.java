@@ -154,8 +154,8 @@ import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -393,11 +393,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
-    USER_ADDRESS_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("User", "Address"));
-    PERSONAL_DATA_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("PersonalData", "Personal"));
-    PII_SENSITIVE_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("PII", "Sensitive"));
-    TIER1_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("Tier", "Tier1"));
-    TIER2_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("Tier", "Tier2"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
+    PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
+    TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
+    TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =

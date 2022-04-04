@@ -2,6 +2,15 @@ package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,17 +40,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityNameUtil;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
@@ -351,7 +350,7 @@ class TableESIndex extends ElasticSearchIndex {
     if (table.getDatabase() != null) {
       String databaseFQN = table.getDatabase().getName();
       // TODO fix this code
-      String[] databaseFQNSplit = EntityNameUtil.splitFQN(databaseFQN);
+      String[] databaseFQNSplit = FullyQualifiedName.split(databaseFQN);
       if (databaseFQNSplit.length == 2) {
         tableESIndexBuilder.database(databaseFQNSplit[1]);
       } else {
@@ -394,7 +393,7 @@ class TableESIndex extends ElasticSearchIndex {
     for (Column col : columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
-        columnName = EntityNameUtil.addToFQN(optParentColumn.get(), columnName);
+        columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
       }
       if (col.getTags() != null) {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
