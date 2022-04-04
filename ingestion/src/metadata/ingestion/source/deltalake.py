@@ -84,6 +84,15 @@ class DeltalakeSource(Source):
                 "spark.sql.warehouse.dir", f"{self.config.metastore_file_path}"
             )
         self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
+        self.table_type_map = {
+            TableType.External.value.lower(): TableType.External.value,
+            TableType.View.value.lower(): TableType.View.value,
+            TableType.SecureView.value.lower(): TableType.SecureView.value,
+            TableType.Iceberg.value.lower(): TableType.Iceberg.value,
+        }
+        self.array_datatype_replace_map = {"(": "<", ")": ">", "=": ":", "<>": ""}
+        self.ARRAY_CHILD_START_INDEX = 6
+        self.ARRAY_CHILD_END_INDEX = -1
 
     def set_spark(self, spark):
         self.spark = spark
@@ -108,16 +117,8 @@ class DeltalakeSource(Source):
     def prepare(self):
         return super().prepare()
 
-    def _get_table_type(self, table_type):
-        if table_type.lower() == TableType.External.value.lower():
-            return TableType.External.value
-        elif table_type.lower() == TableType.View.value.lower():
-            return TableType.View.value
-        elif table_type.lower() == TableType.SecureView.value.lower():
-            return TableType.SecureView.value
-        elif table_type.lower() == TableType.Iceberg.value.lower():
-            return TableType.Iceberg.value
-        return TableType.Regular.value
+    def _get_table_type(self, table_type: str):
+        return self.table_type_map.get(table_type.lower(), TableType.Regular.value)
 
     def fetch_tables(self, schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for table in self.spark.catalog.listTables(schema):
@@ -213,19 +214,18 @@ class DeltalakeSource(Source):
                 parsed_string["dataType"], row["data_type"]
             )
             if row["data_type"] == "array":
-                array_data_type_display = (
-                    repr(row["data_type"])
-                    .replace("(", "<")
-                    .replace(")", ">")
-                    .replace("=", ":")
-                    .replace("<>", "")
-                    .lower()
-                )
-                parsed_string["dataTypeDisplay"] = f"{array_data_type_display}"
+                array_data_type_display = repr(row["data_type"]).lower()
+                for original, new in self.array_datatype_replace_map.items():
+                    array_data_type_display.replace(original, new)
+                parsed_string["dataTypeDisplay"] = array_data_type_display
+                # Parse Primitive Datatype string
+                # if Datatype is Arrya(int) -> Parse int
                 parsed_string[
                     "arrayDataType"
                 ] = ColumnTypeParser._parse_primitive_datatype_string(
-                    array_data_type_display[6:-1]
+                    array_data_type_display[
+                        self.ARRAY_CHILD_START_INDEX : self.ARRAY_CHILD_END_INDEX
+                    ]
                 )[
                     "dataType"
                 ]
@@ -243,7 +243,7 @@ class DeltalakeSource(Source):
 
             column = Column(
                 name=row["col_name"],
-                description=row["comment"] if row["comment"] else None,
+                description=row.get("comment"),
                 dataType=col_type,
                 dataLength=charlen,
                 displayName=row["data_type"],
