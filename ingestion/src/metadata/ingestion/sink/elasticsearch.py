@@ -96,23 +96,20 @@ class ElasticsearchSink(Sink[Entity]):
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = ElasticSearchConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: ElasticSearchConfig,
         metadata_config: MetadataServerConfig,
     ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         self.status = SinkStatus()
         self.metadata = OpenMetadata(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"

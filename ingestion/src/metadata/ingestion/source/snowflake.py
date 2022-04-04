@@ -61,7 +61,7 @@ class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
 
 
 class SnowflakeSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
+    def __init__(self, config, metadata_config):
         if config.connect_args.get("private_key"):
             private_key = config.connect_args["private_key"]
             p_key = serialization.load_pem_private_key(
@@ -75,7 +75,7 @@ class SnowflakeSource(SQLSource):
                 encryption_algorithm=serialization.NoEncryption(),
             )
             config.connect_args["private_key"] = pkb
-        super().__init__(config, metadata_config, ctx)
+        super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
         if self.config.database != None:
@@ -122,10 +122,10 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SnowflakeConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
 
 @reflection.cache

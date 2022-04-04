@@ -64,8 +64,9 @@ def get_database_service_or_create(
     config, metadata_config, service_name=None
 ) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
-    config.service_name = service_name if service_name else config.service_name
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=config.service_name)
+    if not service_name:
+        service_name = config.serviceName
+    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
     if service:
         return service
     else:
@@ -75,8 +76,8 @@ def get_database_service_or_create(
             else None
         )
         service = {
-            "config": {
-                "connection": {
+            "connection": {
+                "config": {
                     "hostPort": config.host_port
                     if hasattr(config, "host_port")
                     else None,
@@ -95,14 +96,14 @@ def get_database_service_or_create(
                     else None,
                 }
             },
-            "name": config.service_name,
+            "name": service_name,
             "description": "",
-            "serviceType": config.get_service_type(),
+            "serviceType": config.service_type,
         }
-        logger.info(f"Creating DatabaseService instance for {config.service_name}")
         created_service = metadata.create_or_update(
             CreateDatabaseServiceRequest(**service)
         )
+        logger.info(f"Creating DatabaseService instance for {service_name}")
         return created_service
 
 
@@ -119,7 +120,7 @@ def get_messaging_service_or_create(
     else:
         created_service = metadata.create_or_update(
             CreateMessagingServiceRequest(
-                name=service_name, serviceType=message_service_type, config=config
+                name=service_name, serviceType=message_service_type, connection=config
             )
         )
         return created_service
@@ -138,7 +139,7 @@ def get_dashboard_service_or_create(
     else:
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
-                name=service_name, serviceType=dashboard_service_type, config=config
+                name=service_name, serviceType=dashboard_service_type, connection=config
             )
         )
         return created_service

@@ -77,12 +77,10 @@ class AmundsenStatus(SourceStatus):
 
 
 class AmundsenSource(Source[Entity]):
-    def __init__(
-        self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
-    ):
+    def __init__(self, config: AmundsenConfig, metadata_config: MetadataServerConfig):
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         neo4j_config = Neo4JConfig(
             username=self.config.neo4j_username,
             password=self.config.neo4j_password.get_secret_value(),
@@ -95,10 +93,10 @@ class AmundsenSource(Source[Entity]):
         self.status = AmundsenStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = AmundsenConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

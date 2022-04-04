@@ -84,15 +84,14 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(
-        createRequest(test, 3).withConnection(new DashboardConnection().withConnection(supersetConnection)),
-        authHeaders);
+        createRequest(test, 3).withConnection(new DashboardConnection().withConfig(supersetConnection)), authHeaders);
   }
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     DashboardConnection dashboardConnection =
         new DashboardConnection()
-            .withConnection(
+            .withConfig(
                 new SupersetConnection()
                     .withSupersetURL(new URI("http://localhost:8080"))
                     .withUsername("user")
@@ -104,7 +103,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     // Update dashboard description and ingestion service that are null
     DashboardConnection dashboardConnection1 =
         new DashboardConnection()
-            .withConnection(
+            .withConfig(
                 new SupersetConnection()
                     .withSupersetURL(new URI("http://localhost:9000"))
                     .withUsername("user1")
@@ -134,7 +133,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
           .withConnection(
               new DashboardConnection()
-                  .withConnection(
+                  .withConfig(
                       new SupersetConnection()
                           .withSupersetURL(new URI("http://localhost:8080"))
                           .withUsername("admin")
@@ -193,8 +192,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     if (fieldName.equals("connection")) {
       DashboardConnection expectedDashboardConnection = (DashboardConnection) expected;
       DashboardConnection actualDashboardConnection = JsonUtils.readValue((String) actual, DashboardConnection.class);
-      actualDashboardConnection.setConnection(
-          JsonUtils.convertValue(actualDashboardConnection.getConnection(), SupersetConnection.class));
+      actualDashboardConnection.setConfig(
+          JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class));
       assertEquals(expectedDashboardConnection, actualDashboardConnection);
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
@@ -207,14 +206,13 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       CreateDashboardService.DashboardServiceType dashboardServiceType) {
     if (expectedDashboardConnection != null) {
       if (dashboardServiceType == CreateDashboardService.DashboardServiceType.Superset) {
-        SupersetConnection expectedSupersetConnection =
-            (SupersetConnection) expectedDashboardConnection.getConnection();
+        SupersetConnection expectedSupersetConnection = (SupersetConnection) expectedDashboardConnection.getConfig();
         SupersetConnection actualSupersetConnection;
-        if (actualDashboardConnection.getConnection() instanceof SupersetConnection) {
-          actualSupersetConnection = (SupersetConnection) actualDashboardConnection.getConnection();
+        if (actualDashboardConnection.getConfig() instanceof SupersetConnection) {
+          actualSupersetConnection = (SupersetConnection) actualDashboardConnection.getConfig();
         } else {
           actualSupersetConnection =
-              JsonUtils.convertValue(actualDashboardConnection.getConnection(), SupersetConnection.class);
+              JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class);
         }
         assertEquals(expectedSupersetConnection.getSupersetURL(), actualSupersetConnection.getSupersetURL());
         assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());

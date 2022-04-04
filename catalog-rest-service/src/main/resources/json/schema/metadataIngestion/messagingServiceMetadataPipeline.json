@@ -7,7 +7,7 @@
   "properties": {
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
-      "$ref": "workflow.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false

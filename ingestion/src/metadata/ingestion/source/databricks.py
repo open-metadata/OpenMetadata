@@ -114,11 +114,11 @@ class DatabricksConfig(DatabricksConnection, SQLConnectionConfig):
 
 
 class DatabricksSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = DatabricksConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

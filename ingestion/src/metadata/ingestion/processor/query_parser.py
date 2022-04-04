@@ -56,26 +56,19 @@ class QueryParserProcessor(Processor):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: QueryParserProcessorConfig,
         metadata_config: MetadataServerConfig,
     ):
-        super().__init__(ctx)
+
         self.config = config
         self.metadata_config = metadata_config
         self.status = ProcessorStatus()
 
     @classmethod
-    def create(
-        cls,
-        config_dict: dict,
-        metadata_config_dict: dict,
-        ctx: WorkflowContext,
-        **kwargs
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict, **kwargs):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def process(self, record: TableQuery) -> QueryParserData:
         try:

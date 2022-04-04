@@ -95,7 +95,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         createRequest(test, 3)
             .withConnection(
                 new MessagingConnection()
-                    .withConnection(
+                    .withConfig(
                         new KafkaConnection()
                             .withBootstrapServers("localhost:9092")
                             .withSchemaRegistryURL(new URI("localhost:8081")))),
@@ -110,7 +110,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                 .withDescription(null)
                 .withConnection(
                     new MessagingConnection()
-                        .withConnection(
+                        .withConfig(
                             new KafkaConnection()
                                 .withBootstrapServers("localhost:9092")
                                 .withSchemaRegistryURL(new URI("localhost:8081")))),
@@ -118,7 +118,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     MessagingConnection messagingConnection =
         new MessagingConnection()
-            .withConnection(
+            .withConfig(
                 new KafkaConnection()
                     .withBootstrapServers("localhost:9092")
                     .withSchemaRegistryURL(new URI("localhost:8081")));
@@ -132,7 +132,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     // Update connection
     MessagingConnection messagingConnection1 =
         new MessagingConnection()
-            .withConnection(
+            .withConfig(
                 new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
     change = getChangeDescription(service.getVersion());
     change
@@ -148,7 +148,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     // Update description and connection
     MessagingConnection messagingConnection2 =
         new MessagingConnection()
-            .withConnection(
+            .withConfig(
                 new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
     change = getChangeDescription(service.getVersion());
@@ -171,7 +171,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         .withServiceType(MessagingServiceType.Kafka)
         .withConnection(
             new MessagingConnection()
-                .withConnection(
+                .withConfig(
                     new KafkaConnection()
                         .withBootstrapServers(KAFKA_BROKERS)
                         .withSchemaRegistryURL(SCHEMA_REGISTRY_URL)))
@@ -224,7 +224,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     if ("connection".equals(fieldName)) {
       MessagingConnection expectedConnection = (MessagingConnection) expected;
       MessagingConnection actualConnection = JsonUtils.readValue((String) actual, MessagingConnection.class);
-      actualConnection.setConnection(JsonUtils.convertValue(actualConnection.getConnection(), KafkaConnection.class));
+      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class));
       assertEquals(expectedConnection, actualConnection);
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
@@ -235,14 +235,14 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
       MessagingConnection expectedConnection,
       MessagingConnection actualConnection,
       MessagingServiceType messagingServiceType) {
-    if (expectedConnection.getConnection() != null) {
+    if (expectedConnection.getConfig() != null) {
       if (messagingServiceType == MessagingServiceType.Kafka) {
-        KafkaConnection expectedKafkaConnection = (KafkaConnection) expectedConnection.getConnection();
+        KafkaConnection expectedKafkaConnection = (KafkaConnection) expectedConnection.getConfig();
         KafkaConnection actualKafkaConnection;
-        if (actualConnection.getConnection() instanceof KafkaConnection) {
-          actualKafkaConnection = (KafkaConnection) actualConnection.getConnection();
+        if (actualConnection.getConfig() instanceof KafkaConnection) {
+          actualKafkaConnection = (KafkaConnection) actualConnection.getConfig();
         } else {
-          actualKafkaConnection = JsonUtils.convertValue(actualConnection.getConnection(), KafkaConnection.class);
+          actualKafkaConnection = JsonUtils.convertValue(actualConnection.getConfig(), KafkaConnection.class);
         }
         assertEquals(expectedKafkaConnection.getBootstrapServers(), actualKafkaConnection.getBootstrapServers());
         assertEquals(expectedKafkaConnection.getSchemaRegistryURL(), actualKafkaConnection.getSchemaRegistryURL());

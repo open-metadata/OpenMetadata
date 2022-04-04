@@ -40,11 +40,10 @@ class MetadataUsageBulkSink(BulkSink):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: MetadataUsageSinkConfig,
         metadata_config: MetadataServerConfig,
     ):
-        super().__init__(ctx)
+
         self.config = config
         self.metadata_config = metadata_config
         self.service_name = None
@@ -56,12 +55,10 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def handle_work_unit_start(self, wu):
         pass

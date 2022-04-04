@@ -88,9 +88,8 @@ class MetabaseSource(Source[Entity]):
         self,
         config: MetabaseSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
@@ -119,7 +118,7 @@ class MetabaseSource(Source[Entity]):
         self.metric_charts = []
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         """Instantiate object
 
         Args:
@@ -131,7 +130,7 @@ class MetabaseSource(Source[Entity]):
         """
         config = MetabaseSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_dashboards()

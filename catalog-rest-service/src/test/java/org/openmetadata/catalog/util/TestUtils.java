@@ -116,7 +116,7 @@ public final class TestUtils {
     try {
       KAFKA_CONNECTION =
           new MessagingConnection()
-              .withConnection(
+              .withConfig(
                   new KafkaConnection()
                       .withBootstrapServers("localhost:9092")
                       .withSchemaRegistryURL(new URI("http://localhost:8081")));
@@ -130,7 +130,7 @@ public final class TestUtils {
     try {
       SUPERSET_CONNECTION =
           new DashboardConnection()
-              .withConnection(
+              .withConfig(
                   new SupersetConnection()
                       .withSupersetURL(new URI("http://localhost:8080"))
                       .withUsername("admin")

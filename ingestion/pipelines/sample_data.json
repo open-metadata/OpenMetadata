@@ -1,19 +1,20 @@
 {
   "source": {
     "type": "sample-data",
-    "config": {
-      "sample_data_folder": "./examples/sample_data"
-    }
+    "serviceName": "bigquery_gcp",
+    "serviceConnection": "",
+    "sourceConfig": {}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
+  "workflowConfig": {
+    "openMetadataServerConfig": {
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
+    },
+    "config": {
     }
   }
 }

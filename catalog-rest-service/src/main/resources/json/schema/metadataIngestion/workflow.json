@@ -5,30 +5,6 @@
   "description": "OpenMetadata Ingestion Framework definition.",
   "type": "object",
   "definitions": {
-    "filterPattern": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.FilterPattern",
-      "description": "Regex to only fetch dashboards or charts that matches the pattern.",
-      "properties": {
-        "includes": {
-          "description": "List of strings/regex patterns to match and include only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        },
-        "excludes": {
-          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    },
     "googleSSOConfig": {
       "description": "Google SSO client security configs.",
       "type": "object",
@@ -156,7 +132,9 @@
       "description": "key/value pairs to pass to sink component.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.metadataingestion.ComponentConfig",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
@@ -288,9 +266,12 @@
         },
         "bulkSink": {
           "$ref": "#/definitions/bulkSink"
+        },
+        "workflowConfig": {
+          "$ref": "#/definitions/workflowConfig"
         }
       },
-      "required": ["source", "sink", "workflowConfig"],
+      "required": ["source", "workflowConfig"],
       "additionalProperties": false
     }
   },

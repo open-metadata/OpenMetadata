@@ -39,6 +39,12 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
@@ -105,13 +111,9 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceConfig(ConfigModel):
-    sample_data_folder: str
-    service_name: str = "bigquery_gcp"
-    database: str = "warehouse"
-    service_type: str = DatabaseServiceType.BigQuery.value
-    scheme: str = "bigquery+pymysql"
-    host_port: str = "9999"
+class SampleDataSourceConfig(WorkflowSource):
+    service_type = DatabaseServiceType.BigQuery.value
+    sample_data_folder: str = "./examples/sample_data"
 
     def get_sample_data_folder(self):
         return self.sample_data_folder
@@ -187,9 +189,9 @@ class SampleDataSource(Source[Entity]):
     """
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
@@ -243,7 +245,7 @@ class SampleDataSource(Source[Entity]):
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
         kafka_config = {
-            "connection": {
+            "config": {
                 "bootstrapServers": self.kafka_service_json["config"]["connection"][
                     "bootstrapServers"
                 ],
@@ -270,7 +272,7 @@ class SampleDataSource(Source[Entity]):
         self.dashboard_service = get_dashboard_service_or_create(
             service_name=self.dashboard_service_json.get("name"),
             dashboard_service_type=self.dashboard_service_json.get("serviceType"),
-            config=self.dashboard_service_json.get("config"),
+            config=self.dashboard_service_json.get("connection"),
             metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(
@@ -298,10 +300,10 @@ class SampleDataSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SampleDataSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

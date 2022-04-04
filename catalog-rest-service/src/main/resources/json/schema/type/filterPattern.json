@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/type/filterPattern.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataWorkflow",
+  "description": "OpenMetadata Ingestion Framework definition.",
+  "type": "object",
+  "definitions": {
+    "filterPattern": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.FilterPattern",
+      "description": "Regex to only fetch dashboards or charts that matches the pattern.",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

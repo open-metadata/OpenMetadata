@@ -76,7 +76,6 @@ class TableauSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -95,9 +94,8 @@ class TableauSource(Source[Entity]):
         self,
         config: TableauSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.client = self.tableau_client()
@@ -152,12 +150,10 @@ class TableauSource(Source[Entity]):
         return conn
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = TableauSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

@@ -31,7 +31,7 @@
       "javaType": "org.openmetadata.catalog.type.MessagingConnection",
       "description": "Dashboard Connection.",
       "properties": {
-        "connection": {
+        "config": {
           "oneOf": [
             {
               "$ref": "./connections/messaging/kafkaConnection.json"

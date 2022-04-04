@@ -86,8 +86,8 @@ class BigQueryConfig(BigQueryConnection, SQLConnectionConfig):
 
 
 class BigquerySource(SQLSource, BigQueryConfig):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
         self.temp_credentials = None
 
     #  and "policy_tags" in column and column["policy_tags"]
@@ -105,7 +105,7 @@ class BigquerySource(SQLSource, BigQueryConfig):
             logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
@@ -124,7 +124,7 @@ class BigquerySource(SQLSource, BigQueryConfig):
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
                     "https://docs.open-metadata.org/connectors/bigquery"
                 )
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     @staticmethod
     def create_credential_temp_file(credentials: dict) -> str:

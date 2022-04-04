@@ -37,9 +37,9 @@ class DynamoDBSourceConfig(AWSClientConfigModel):
 
 class DynamodbSource(Source[Entity]):
     def __init__(
-        self, config: DynamoDBSourceConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: DynamoDBSourceConfig, metadata_config: MetadataServerConfig
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.status = SQLSourceStatus()
 
         self.config = config
@@ -53,10 +53,10 @@ class DynamodbSource(Source[Entity]):
         self.dynamodb = AWSClient(self.config).get_resource("dynamodb")
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = DynamoDBSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

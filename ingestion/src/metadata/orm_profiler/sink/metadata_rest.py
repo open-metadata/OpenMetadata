@@ -49,9 +49,7 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)

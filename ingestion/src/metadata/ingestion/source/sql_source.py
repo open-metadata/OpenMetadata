@@ -40,9 +40,8 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import Source as TagSource
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
@@ -95,9 +94,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self,
         config: SQLConnectionConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(
@@ -165,9 +163,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self._parse_data_model()
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         pass
 
     @staticmethod
@@ -664,7 +660,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                         tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
                                         labelType="Automated",
                                         state="Suggested",
-                                        source=TagSource.Tag.name,
+                                        source="Tag",
                                     )
                                 ]
                         except Exception as err:

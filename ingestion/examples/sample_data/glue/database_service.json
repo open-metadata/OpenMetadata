@@ -2,8 +2,8 @@
   "name": "glue",
   "serviceType": "Glue",
   "description": "Glue service used for table with location",
-  "config": {
-    "connection": {
+  "connection": {
+    "config": {
       "hostPort": "localhost:8000"
     }
   }
