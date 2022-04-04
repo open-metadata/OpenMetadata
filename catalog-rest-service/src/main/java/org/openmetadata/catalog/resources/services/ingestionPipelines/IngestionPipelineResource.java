@@ -85,10 +85,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private OpenMetadataServerConfig serverConfig;
 
   @Override
-  public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline IngestionPipeline) {
-    Entity.withHref(uriInfo, IngestionPipeline.getOwner());
-    Entity.withHref(uriInfo, IngestionPipeline.getService());
-    return IngestionPipeline;
+  public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
+    Entity.withHref(uriInfo, ingestionPipeline.getOwner());
+    Entity.withHref(uriInfo, ingestionPipeline.getService());
+    return ingestionPipeline;
   }
 
   public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
@@ -286,9 +286,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   @POST
   @Operation(
-      summary = "Create a Airflow Pipeline",
+      summary = "Create a Ingestion Pipeline",
       tags = "IngestionPipelines",
-      description = "Create a new Airflow Pipeline.",
+      description = "Create a new Ingestion Pipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -302,9 +302,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
-    IngestionPipeline IngestionPipeline = getIngestionPipeline(securityContext, create);
-    Response response = create(uriInfo, securityContext, IngestionPipeline, ADMIN | BOT);
-    deploy(IngestionPipeline);
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, create);
+    Response response = create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
+    deploy(ingestionPipeline);
     return response;
   }
 
@@ -349,9 +349,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
-    IngestionPipeline pipeline = getIngestionPipeline(securityContext, update);
-    Response response = createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
-    deploy(pipeline); // TODO cleanup
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, update);
+    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
+    deploy(ingestionPipeline);
     return response;
   }
 

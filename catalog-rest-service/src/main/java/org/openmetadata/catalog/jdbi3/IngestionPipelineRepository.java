@@ -48,17 +48,17 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     this.allowEdits = true;
   }
 
-  public static String getFQN(IngestionPipeline IngestionPipeline) {
-    return (IngestionPipeline != null && IngestionPipeline.getService() != null)
-        ? EntityUtil.getFQN(IngestionPipeline.getService().getName(), IngestionPipeline.getName())
+  public static String getFQN(IngestionPipeline ingestionPipeline) {
+    return (ingestionPipeline != null && ingestionPipeline.getService() != null)
+        ? EntityUtil.getFQN(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
         : null;
   }
 
   @Override
-  public IngestionPipeline setFields(IngestionPipeline IngestionPipeline, Fields fields) throws IOException {
-    IngestionPipeline.setService(getService(IngestionPipeline));
-    IngestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(IngestionPipeline) : null);
-    return IngestionPipeline;
+  public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
+    ingestionPipeline.setService(getService(ingestionPipeline));
+    ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
+    return ingestionPipeline;
   }
 
   @Override
@@ -67,39 +67,39 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void prepare(IngestionPipeline IngestionPipeline) throws IOException {
-    EntityReference entityReference = Entity.getEntityReference(IngestionPipeline.getService());
-    IngestionPipeline.setService(entityReference);
-    IngestionPipeline.setFullyQualifiedName(getFQN(IngestionPipeline));
-    IngestionPipeline.setOwner(Entity.getEntityReference(IngestionPipeline.getOwner()));
+  public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
+    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
+    ingestionPipeline.setService(entityReference);
+    ingestionPipeline.setFullyQualifiedName(getFQN(ingestionPipeline));
+    ingestionPipeline.setOwner(Entity.getEntityReference(ingestionPipeline.getOwner()));
   }
 
   @Override
-  public void storeEntity(IngestionPipeline IngestionPipeline, boolean update) throws IOException {
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = IngestionPipeline.getOwner();
-    EntityReference service = IngestionPipeline.getService();
+    EntityReference owner = ingestionPipeline.getOwner();
+    EntityReference service = ingestionPipeline.getService();
 
     // Don't store owner. Build it on the fly based on relationships
-    IngestionPipeline.withOwner(null).withService(null).withHref(null);
+    ingestionPipeline.withOwner(null).withService(null).withHref(null);
 
-    store(IngestionPipeline.getId(), IngestionPipeline, update);
+    store(ingestionPipeline.getId(), ingestionPipeline, update);
 
     // Restore the relationships
-    IngestionPipeline.withOwner(owner).withService(service);
+    ingestionPipeline.withOwner(owner).withService(service);
   }
 
   @Override
-  public void storeRelationships(IngestionPipeline IngestionPipeline) {
-    EntityReference service = IngestionPipeline.getService();
+  public void storeRelationships(IngestionPipeline ingestionPipeline) {
+    EntityReference service = ingestionPipeline.getService();
     addRelationship(
         service.getId(),
-        IngestionPipeline.getId(),
+        ingestionPipeline.getId(),
         service.getType(),
         Entity.INGESTION_PIPELINE,
         Relationship.CONTAINS);
-    storeOwner(IngestionPipeline, IngestionPipeline.getOwner());
-    applyTags(IngestionPipeline);
+    storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
+    applyTags(ingestionPipeline);
   }
 
   @Override
@@ -107,8 +107,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(IngestionPipeline IngestionPipeline) throws IOException {
-    return getContainer(IngestionPipeline.getId(), Entity.INGESTION_PIPELINE);
+  private EntityReference getService(IngestionPipeline ingestionPipeline) throws IOException {
+    return getContainer(ingestionPipeline.getId(), Entity.INGESTION_PIPELINE);
   }
 
   public static class IngestionPipelineEntityInterface extends EntityInterface<IngestionPipeline> {

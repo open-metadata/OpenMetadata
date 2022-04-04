@@ -80,7 +80,6 @@ public class AirflowRESTClient {
 
   public String deploy(IngestionPipeline ingestionPipeline) {
     try {
-      // TODO USE AIRFLOW PIPELINE DIRECTLY AS THE REST BODY
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);

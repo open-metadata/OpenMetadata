@@ -79,7 +79,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public void prepare(DatabaseService databaseService) throws IOException {
     // Check if owner is valid and set the relationship
     databaseService.setOwner(Entity.getEntityReference(databaseService.getOwner()));
-    DatabaseConnection databaseConnection = databaseService.getConnection();
   }
 
   @Override

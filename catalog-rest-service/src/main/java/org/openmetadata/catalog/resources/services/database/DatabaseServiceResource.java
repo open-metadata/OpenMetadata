@@ -173,8 +173,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    DatabaseService service = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return service;
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
@@ -293,8 +292,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext);
-    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
-    return response;
+    return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
@@ -316,8 +314,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext);
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
-    return response;
+    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
@@ -345,8 +342,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
-    return response;
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
   private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {

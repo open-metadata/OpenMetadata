@@ -24,7 +24,6 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -147,7 +146,7 @@ public final class TablesInitializer {
     Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
-      execute(flyway, client, schemaMigrationOptionSpecified, dataSourceFactory);
+      execute(flyway, client, schemaMigrationOptionSpecified);
       System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified);
     } catch (Exception e) {
       System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified, e);
@@ -175,12 +174,8 @@ public final class TablesInitializer {
         .load();
   }
 
-  private static void execute(
-      Flyway flyway,
-      RestHighLevelClient client,
-      SchemaMigrationOption schemaMigrationOption,
-      DataSourceFactory dataSourceFactory)
-      throws SQLException, IOException {
+  private static void execute(Flyway flyway, RestHighLevelClient client, SchemaMigrationOption schemaMigrationOption)
+      throws SQLException {
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
