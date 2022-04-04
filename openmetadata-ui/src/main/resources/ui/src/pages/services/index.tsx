@@ -596,10 +596,10 @@ const ServicesPage = () => {
     ) : null;
   };
 
-  const noServicesText = (searchText: string) => {
+  const noServicesText = (strSearch: string) => {
     let text = 'No services found';
-    if (searchText) {
-      text = `${text} for ${searchText}`;
+    if (strSearch) {
+      text = `${text} for ${strSearch}`;
     }
 
     return text;
