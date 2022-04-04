@@ -271,7 +271,7 @@
           "$ref": "#/definitions/workflowConfig"
         }
       },
-      "required": ["source", "sink", "workflowConfig"],
+      "required": ["source", "workflowConfig"],
       "additionalProperties": false
     }
   },
