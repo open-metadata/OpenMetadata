@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.services.ingestionPipelines;
+package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -37,8 +37,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
@@ -70,6 +72,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionPipeline, CreateIngestionPipeline> {
   public static SourceConfig DATABASE_METADATA_CONFIG;
   public static AirflowConfiguration AIRFLOW_CONFIG;

@@ -275,6 +275,13 @@
       "additionalProperties": false
     }
   },
-  "required": ["name", "openMetadataWorkflowConfig"],
+  "anyOf": [
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
+    },
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "bulkSink"]
+    }
+  ],
   "additionalProperties": false
 }

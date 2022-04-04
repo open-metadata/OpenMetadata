@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.services.ingestionPipelines;
+package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
@@ -64,7 +64,6 @@ import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig;
 import org.openmetadata.catalog.metadataingestion.Source;
-import org.openmetadata.catalog.metadataingestion.SourceConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
@@ -432,7 +431,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     Source source;
     String serviceType = create.getService().getType();
     Fields serviceFields = new Fields(List.of("connection"));
-    SourceConfig sourceConfig = create.getSourceConfig();
     switch (serviceType) {
       case Entity.DATABASE_SERVICE:
         DatabaseService databaseService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);

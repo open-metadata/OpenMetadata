@@ -206,8 +206,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    DatabaseService service = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return service;
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET

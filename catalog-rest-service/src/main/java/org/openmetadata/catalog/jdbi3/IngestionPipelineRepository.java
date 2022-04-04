@@ -24,7 +24,7 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig;
 import org.openmetadata.catalog.metadataingestion.Source;
-import org.openmetadata.catalog.resources.services.ingestionPipelines.IngestionPipelineResource;
+import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
