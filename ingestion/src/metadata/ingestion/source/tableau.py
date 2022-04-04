@@ -76,7 +76,6 @@ class TableauSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:

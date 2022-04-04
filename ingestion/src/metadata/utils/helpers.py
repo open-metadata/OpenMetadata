@@ -139,7 +139,7 @@ def get_dashboard_service_or_create(
     else:
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
-                name=service_name, serviceType=dashboard_service_type, config=config
+                name=service_name, serviceType=dashboard_service_type, connection=config
             )
         )
         return created_service

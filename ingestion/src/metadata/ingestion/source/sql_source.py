@@ -40,7 +40,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel, TagSource
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -660,7 +660,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                         tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
                                         labelType="Automated",
                                         state="Suggested",
-                                        source=TagSource.Tag.name,
+                                        source="Tag",
                                     )
                                 ]
                         except Exception as err:

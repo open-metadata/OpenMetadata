@@ -254,7 +254,6 @@ class SampleDataSource(Source[Entity]):
                 ],
             }
         }
-        print(self.kafka_service_json)
         self.kafka_service = get_messaging_service_or_create(
             service_name=self.kafka_service_json.get("name"),
             message_service_type=self.kafka_service_json.get("serviceType"),
@@ -273,7 +272,7 @@ class SampleDataSource(Source[Entity]):
         self.dashboard_service = get_dashboard_service_or_create(
             service_name=self.dashboard_service_json.get("name"),
             dashboard_service_type=self.dashboard_service_json.get("serviceType"),
-            config=self.dashboard_service_json.get("config"),
+            config=self.dashboard_service_json.get("connection"),
             metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(

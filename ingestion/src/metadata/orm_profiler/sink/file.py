@@ -49,7 +49,7 @@ class FileSink(Sink[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, _, ctx: WorkflowContext):
+    def create(cls, config_dict: dict, _):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(ctx, config)
 

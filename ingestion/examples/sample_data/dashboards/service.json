@@ -2,8 +2,8 @@
   "name": "sample_superset",
   "serviceType": "Superset",
   "description": "Supset Service",
-  "config": {
-    "connection": {
+  "connection": {
+    "config": {
       "supersetURL": "http://localhost:8088"
     }
   },

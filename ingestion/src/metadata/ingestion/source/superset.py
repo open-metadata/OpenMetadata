@@ -146,7 +146,6 @@ class SupersetSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:

@@ -80,7 +80,7 @@ class AmundsenSource(Source[Entity]):
     def __init__(self, config: AmundsenConfig, metadata_config: MetadataServerConfig):
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         neo4j_config = Neo4JConfig(
             username=self.config.neo4j_username,
             password=self.config.neo4j_password.get_secret_value(),

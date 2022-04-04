@@ -42,7 +42,6 @@ class SnowflakeUsageSource(Source[TableQuery]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
