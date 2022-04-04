@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
@@ -203,6 +204,14 @@ class OpenMetadata(
             return "/databases"
 
         if issubclass(
+            entity,
+            get_args(
+                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
+            ),
+        ):
+            return "/databaseSchemas"
+
+        if issubclass(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
         ):
             return "/pipelines"
@@ -345,7 +354,7 @@ class OpenMetadata(
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name.lower()
+        file_name = class_name[0].lower() + class_name[1:]
 
         class_path = ".".join(
             [
@@ -353,7 +362,7 @@ class OpenMetadata(
                 self.entity_path,
                 self.get_module_path(create),
                 file_name.replace("service", "Service")
-                if "service" in create.__name__.lower()
+                if "service" in create.__name__[0].lower() + create.__name__[1:]
                 else file_name,
             ]
         )
