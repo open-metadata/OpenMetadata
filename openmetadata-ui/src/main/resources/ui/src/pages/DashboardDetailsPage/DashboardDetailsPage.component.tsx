@@ -286,7 +286,7 @@ const DashboardDetailsPage = () => {
             tags,
             owner,
             displayName,
-            charts,
+            charts: ChartIds,
             dashboardUrl,
             serviceType,
             version,
@@ -329,7 +329,15 @@ const DashboardDetailsPage = () => {
           });
 
           setDashboardUrl(dashboardUrl);
-          fetchCharts(charts).then((charts) => setCharts(charts));
+          fetchCharts(ChartIds)
+            .then((chart) => setCharts(chart))
+            .catch((error: AxiosError) => {
+              const msg = getErrorText(
+                error,
+                jsonData['api-error-messages']['fetch-chart-error']
+              );
+              handleShowErrorToast(msg);
+            });
         } else {
           setIsError(true);
 

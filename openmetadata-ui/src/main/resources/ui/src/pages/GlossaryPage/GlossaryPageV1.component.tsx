@@ -59,6 +59,7 @@ import {
   getTermPosFromGlossaries,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 
 export type ModifiedGlossaryData = Glossary & {
   children?: GlossaryTerm[];
@@ -395,17 +396,26 @@ const GlossaryPageV1 = () => {
       const promiseArr = newGlossaries.map((item) => {
         return getGlossariesByName(item, ['owner', 'tags', 'reviewers']);
       });
-      Promise.all(promiseArr).then((res) => {
-        arrNewData = res.reduce((prev, curr) => {
-          return curr?.data ? [...prev, curr.data] : prev;
-        }, [] as ModifiedGlossaryData[]);
-        const arrData = updateGlossaryListBySearchedTerms(
-          [...arrGlossaries, ...arrNewData],
-          searchedTerms
-        );
-        setGlossariesList(arrData);
-        handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
-      });
+      Promise.all(promiseArr)
+        .then((res) => {
+          arrNewData = res.reduce((prev, curr) => {
+            return curr?.data ? [...prev, curr.data] : prev;
+          }, [] as ModifiedGlossaryData[]);
+          const arrData = updateGlossaryListBySearchedTerms(
+            [...arrGlossaries, ...arrNewData],
+            searchedTerms
+          );
+          setGlossariesList(arrData);
+          handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-glossary-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        });
     } else {
       const arrData = updateGlossaryListBySearchedTerms(
         arrGlossaries,
@@ -421,46 +431,49 @@ const GlossaryPageV1 = () => {
    */
   const fetchSearchedTerms = useCallback(() => {
     if (searchText) {
-      searchData(
-        searchText,
-        1,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
-        SearchIndex.GLOSSARY
-      ).then((res: AxiosResponse) => {
-        if (res.data) {
-          const searchedTerms: FormattedGlossarySuggestion[] =
-            res.data.hits?.hits?.map(
-              (item: GlossarySuggestionHit) => item._source
-            ) || [];
-          if (searchedTerms.length) {
-            const searchedGlossaries: string[] = [
-              ...new Set(
-                searchedTerms.map((item) => {
-                  return item.glossary_name;
-                }) as string[]
-              ),
-            ];
-            const searchedData: ModifiedGlossaryData[] = [];
-            const newGlossaries: string[] = [];
-            for (const glossary of searchedGlossaries) {
-              const obj = glossariesList.find((item) => item.name === glossary);
-              if (obj) {
-                searchedData.push(obj);
-              } else {
-                newGlossaries.push(glossary);
+      searchData(searchText, 1, PAGE_SIZE, '', '', '', SearchIndex.GLOSSARY)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            const searchedTerms: FormattedGlossarySuggestion[] =
+              res.data.hits?.hits?.map(
+                (item: GlossarySuggestionHit) => item._source
+              ) || [];
+            if (searchedTerms.length) {
+              const searchedGlossaries: string[] = [
+                ...new Set(
+                  searchedTerms.map((item) => {
+                    return item.glossary_name;
+                  }) as string[]
+                ),
+              ];
+              const searchedData: ModifiedGlossaryData[] = [];
+              const newGlossaries: string[] = [];
+              for (const glossary of searchedGlossaries) {
+                const obj = glossariesList.find(
+                  (item) => item.name === glossary
+                );
+                if (obj) {
+                  searchedData.push(obj);
+                } else {
+                  newGlossaries.push(glossary);
+                }
               }
+              getSearchedGlossaries(searchedData, newGlossaries, searchedTerms);
+              setIsSearchResultEmpty(false);
+            } else if (glossaries.length) {
+              setGlossariesList(glossaries);
+              setIsSearchResultEmpty(true);
             }
-            getSearchedGlossaries(searchedData, newGlossaries, searchedTerms);
-            setIsSearchResultEmpty(false);
-          } else if (glossaries.length) {
-            setGlossariesList(glossaries);
-            setIsSearchResultEmpty(true);
           }
-        }
-      });
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-glossary-term-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        });
     } else {
       setGlossariesList(glossaries);
       if (glossaries.length) {

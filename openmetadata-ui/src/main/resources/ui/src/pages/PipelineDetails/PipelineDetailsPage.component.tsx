@@ -492,13 +492,21 @@ const PipelineDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      setLeafNode(res.data, pos);
-      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
-      setTimeout(() => {
-        setNodeLoading((prev) => ({ ...prev, state: false }));
-      }, 500);
-    });
+    getLineageByFQN(node.name, node.type)
+      .then((res: AxiosResponse) => {
+        setLeafNode(res.data, pos);
+        setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        setTimeout(() => {
+          setNodeLoading((prev) => ({ ...prev, state: false }));
+        }, 500);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
+        handleShowErrorToast(errMsg);
+      });
   };
 
   const versionHandler = () => {
