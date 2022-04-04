@@ -55,9 +55,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   private List<EntityReference> getIngestionPipelines(DatabaseService service) throws IOException {
-    if (service == null) {
-      return null;
-    }
     List<String> ingestionPipelineIds =
         findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
     List<EntityReference> ingestionPipelines = new ArrayList<>();
