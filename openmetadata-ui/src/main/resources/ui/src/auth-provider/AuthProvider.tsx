@@ -50,6 +50,7 @@ import { ClientErrors } from '../enums/axios.enum';
 import { AuthTypes } from '../enums/signin.enum';
 import { User } from '../generated/entity/teams/user';
 import useToastContext from '../hooks/useToastContext';
+import jsonData from '../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -60,6 +61,7 @@ import {
   setMsalInstance,
 } from '../utils/AuthProvider.util';
 import { getImages } from '../utils/CommonUtils';
+import { getErrorText } from '../utils/StringsUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
@@ -92,6 +94,13 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const onLoginHandler = () => {
     authenticatorRef.current?.invokeLogin();
@@ -127,12 +136,14 @@ export const AuthProvider = ({
       .then((res: AxiosResponse) => {
         appState.updateUserPermissions(res.data.metadataOperations);
       })
-      .catch(() =>
-        showToast({
-          variant: 'error',
-          body: 'Error while getting user permissions',
-        })
-      )
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-user-permission-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
       .finally(() => setLoading(false));
   };
 
