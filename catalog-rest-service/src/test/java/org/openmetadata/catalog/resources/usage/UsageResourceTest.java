@@ -131,7 +131,7 @@ class UsageResourceTest extends CatalogApplicationTest {
     // Add table usages of each table - 0, 1 to TABLE_COUNT - 1 to get database usage
     final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1) / 2;
     UUID databaseId = TABLES.get(0).getDatabase().getId();
-    UUID schemaId = TABLES.get(0).getSchema().getId();
+    UUID schemaId = TABLES.get(0).getDatabaseSchema().getId();
     for (int day = 0; day < DAYS_OF_USAGE; day++) {
       String date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, day);
       LOG.info("Posting usage information for date {}", date);

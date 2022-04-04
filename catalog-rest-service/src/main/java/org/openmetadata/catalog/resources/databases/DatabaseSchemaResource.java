@@ -343,9 +343,10 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @DefaultValue("false") @QueryParam("harddelete") boolean harddelete,
       @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, harddelete, ADMIN | BOT);
   }
 
   private DatabaseSchema getDatabaseSchema(SecurityContext securityContext, CreateDatabaseSchema create) {

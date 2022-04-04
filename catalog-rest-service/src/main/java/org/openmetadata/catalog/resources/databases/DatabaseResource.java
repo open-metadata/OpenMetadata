@@ -73,7 +73,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
-    Entity.withHref(uriInfo, db.getSchemas());
+    Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());

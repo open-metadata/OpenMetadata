@@ -123,7 +123,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
-    assertListNull(database.getOwner(), database.getSchemas(), database.getUsageSummary(), database.getLocation());
+    assertListNull(
+        database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
 
     fields = "owner,schemas,usageSummary,location";
     database =
@@ -133,8 +134,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
     assertListNotNull(
-        database.getOwner(), database.getSchemas() /*database.getUsageSummary(), database.getLocation()*/);
-    TestUtils.validateEntityReferences(database.getSchemas());
+        database.getOwner(), database.getDatabaseSchemas() /*database.getUsageSummary(), database.getLocation()*/);
+    TestUtils.validateEntityReferences(database.getDatabaseSchemas());
   }
 
   @Override

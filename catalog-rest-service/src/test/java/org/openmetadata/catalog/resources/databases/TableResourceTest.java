@@ -463,7 +463,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
     EntityReference schema = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE_SCHEMA);
-    CreateTable create = createRequest(test).withSchema(schema);
+    CreateTable create = createRequest(test).withDatabaseSchema(schema);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
@@ -1969,7 +1969,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
-        .withSchema(getContainer())
+        .withDatabaseSchema(getContainer())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint))
         .withDescription(description)
@@ -2003,7 +2003,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
-    assertReference(createRequest.getSchema(), createdEntity.getSchema());
+    assertReference(createRequest.getDatabaseSchema(), createdEntity.getDatabaseSchema());
     validateEntityReference(createdEntity.getDatabase());
     validateEntityReference(createdEntity.getService());
     validateTableConstraints(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
@@ -2011,7 +2011,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
     assertEquals(
-        getFQN(createdEntity.getSchema().getName(), createdEntity.getName()), createdEntity.getFullyQualifiedName());
+        getFQN(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
+        createdEntity.getFullyQualifiedName());
   }
 
   private void validateTableConstraints(List<TableConstraint> expected, List<TableConstraint> actual) {
@@ -2048,7 +2049,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
     assertEquals(
-        EntityNameUtil.getFQN(patched.getSchema().getName(), patched.getName()), patched.getFullyQualifiedName());
+        EntityNameUtil.getFQN(patched.getDatabaseSchema().getName(), patched.getName()),
+        patched.getFullyQualifiedName());
   }
 
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {
