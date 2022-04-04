@@ -14,9 +14,6 @@ from collections import namedtuple
 import psycopg2
 
 # This import verifies that the dependencies are available.
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -24,30 +21,26 @@ from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 
-class PostgresConfig(SQLConnectionConfig):
-    # defaults
-    scheme = "postgresql+psycopg2"
-    service_name = "postgres"
-    service_type = DatabaseServiceType.Postgres.value
 
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.service_type]
-
+class PostgresConfig(PostgresConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
 
 class PostgresSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
         self.pgconn = self.engine.raw_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = PostgresConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def get_status(self) -> SourceStatus:
         return self.status

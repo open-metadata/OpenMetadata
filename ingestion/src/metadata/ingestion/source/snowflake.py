@@ -25,9 +25,6 @@ from sqlalchemy.sql import text
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -41,16 +38,14 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 
-class SnowflakeConfig(SQLConnectionConfig):
-    scheme = "snowflake"
-    account: str
-    database: Optional[str]
-    warehouse: Optional[str]
+
+class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
     result_limit: int = 1000
-    role: Optional[str]
     duration: Optional[int]
-    service_type = DatabaseServiceType.Snowflake.value
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
@@ -66,7 +61,7 @@ class SnowflakeConfig(SQLConnectionConfig):
 
 
 class SnowflakeSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
+    def __init__(self, config, metadata_config):
         if config.connect_args.get("private_key"):
             private_key = config.connect_args["private_key"]
             p_key = serialization.load_pem_private_key(
@@ -80,7 +75,7 @@ class SnowflakeSource(SQLSource):
                 encryption_algorithm=serialization.NoEncryption(),
             )
             config.connect_args["private_key"] = pkb
-        super().__init__(config, metadata_config, ctx)
+        super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
         if self.config.database != None:
@@ -127,10 +122,10 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SnowflakeConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
 
 @reflection.cache

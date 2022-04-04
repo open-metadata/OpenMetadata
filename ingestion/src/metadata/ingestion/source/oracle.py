@@ -15,20 +15,18 @@ from typing import Optional
 import cx_Oracle  # noqa: F401
 import pydantic
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class OracleConfig(SQLConnectionConfig):
+class OracleConfig(OracleConnection, SQLConnectionConfig):
     # defaults
-    scheme = "oracle+cx_oracle"
     oracle_service_name: Optional[str] = None
     query: Optional[str] = "select * from {}.{} where ROWNUM <= 50"
-    service_type = DatabaseServiceType.Oracle.value
 
     @pydantic.validator("oracle_service_name")
     def check_oracle_service_name(cls, v, values):
@@ -47,11 +45,11 @@ class OracleConfig(SQLConnectionConfig):
 
 
 class OracleSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = OracleConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

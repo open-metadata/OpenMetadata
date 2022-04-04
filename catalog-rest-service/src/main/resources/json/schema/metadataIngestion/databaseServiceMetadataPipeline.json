@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org//schema/entity/services/ingestionPipelines/databaseServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceMetadataPipeline",
+  "description": "DatabaseService Metadata Pipeline Configuration.",
+  "properties": {
+    "markDeletedTables": {
+      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": "true"
+    },
+    "generateSampleData": {
+      "description": "Option to turn on/off generating sample data during metadata extraction.",
+      "type": "boolean",
+      "default": "true"
+    },
+    "sampleDataQuery": {
+      "description": "Sample data extraction query.",
+      "type": "string",
+      "default": "select * from {}.{} limit 50"
+    },
+    "enableDataProfiler": {
+      "description": "Run data profiler as part of this metadata ingestion to get table profile data.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "dbtCatalogFilePath": {
+      "description": "DBT catalog file to extract dbt models with their column schemas.",
+      "type": "string"
+    },
+    "dbtManifestFilePath": {
+      "description": "DBT manifest file path to extract dbt models and associate with tables.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

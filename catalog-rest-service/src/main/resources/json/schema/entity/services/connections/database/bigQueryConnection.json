@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/bigQueryConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BigQueryConnection",
+  "description": "Google BigQuery Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
+  "definitions": {
+    "bigqueryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["BigQuery"],
+      "default": "BigQuery"
+    },
+    "bigqueryScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["bigquery"],
+      "default": "bigquery"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/bigqueryType",
+      "default": "BigQuery"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/bigqueryScheme",
+      "default": "bigquery"
+    },
+    "hostPort": {
+      "description": "BigQuery APIs URL",
+      "type": "string",
+      "default": "bigquery.googleapis.com"
+    },
+    "username": {
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+      "type": "string"
+    },
+    "projectID": {
+      "description": "Google BigQuery project id.",
+      "type": "string"
+    },
+    "enablePolicyTagImport": {
+      "description": "Enable importing policy tags of BigQuery into OpenMetadata",
+      "type": "boolean",
+      "default": "true"
+    },
+    "tagCategoryName": {
+      "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
+      "type": "string",
+      "default": "BigqueryPolicyTags"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata", "Usage"]
+      },
+      "default": ["Metadata", "Usage"]
+    }
+  },
+  "additionalProperties": false
+}

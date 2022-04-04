@@ -12,9 +12,6 @@
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -26,23 +23,22 @@ def get_pk_constraint(self, bind, table_name, schema=None, **kw):
 
 
 DB2Dialect.get_pk_constraint = get_pk_constraint
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    DB2Connection,
+)
 
 
-class Db2Config(SQLConnectionConfig):
-    host_port = "localhost:50000"
-    scheme = "db2+ibm_db"
-    service_type = DatabaseServiceType.Db2.value
-
+class Db2Config(DB2Connection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
 
 class Db2Source(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = Db2Config.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

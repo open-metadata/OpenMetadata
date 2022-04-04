@@ -1,0 +1,287 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/workflow.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataWorkflow",
+  "description": "OpenMetadata Ingestion Framework definition.",
+  "type": "object",
+  "definitions": {
+    "googleSSOConfig": {
+      "description": "Google SSO client security configs.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.security.GoogleSSOConfig",
+      "properties": {
+        "secretKey": {
+          "description": "Google SSO client secret key path or contents.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["secretKey"]
+    },
+    "oktaSSOConfig": {
+      "description": "Okta SSO client security configs.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.security.OktaSSOConfig",
+      "properties": {
+        "clientId": {
+          "description": "Okta Client ID.",
+          "type": "string"
+        },
+        "orgURL": {
+          "description": "Okta org url.",
+          "type": "string"
+        },
+        "privateKey": {
+          "description": "Okta Private Key.",
+          "type": "string"
+        },
+        "email": {
+          "description": "Okta Service account Email.",
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "description": "Okta client scopes.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientId", "orgURL", "privateKey", "email"]
+    },
+    "auth0SSOConfig": {
+      "description": "Auth0 SSO client security configs.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.security.Auth0SSOConfig",
+      "properties": {
+        "clientId": {
+          "description": "Auth0 Client ID.",
+          "type": "string"
+        },
+        "secretKey": {
+          "description": "Auth0 Client Secret Key.",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Auth0 Domain.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientId", "secretKey", "domain"]
+    },
+    "openMetadataServerConfig": {
+      "description": "OpenMetadata Server Connection Details.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig",
+      "properties": {
+        "hostPort": {
+          "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
+          "type": "string",
+          "default": "http://localhost:8585/api"
+        },
+        "authProvider": {
+          "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
+          "type": "string",
+          "enum": ["no-auth", "google", "okta", "auth0"]
+        },
+        "securityConfig": {
+          "description": "OpenMetadata Client security configuration.",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/googleSSOConfig"
+            },
+            {
+              "$ref": "#/definitions/oktaSSOConfig"
+            },
+            {
+              "$ref": "#/definitions/auth0SSOConfig"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["hostPort", "authProvider"]
+    },
+    "sourceConfig": {
+      "description": "Additional connection configuration.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.SourceConfig",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "databaseServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "databaseServiceQueryUsagePipeline.json"
+            },
+            {
+              "$ref": "dashboardServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "messagingServiceMetadataPipeline.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "componentConfig": {
+      "description": "key/value pairs to pass to sink component.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.ComponentConfig",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.Source",
+      "properties": {
+        "type": {
+          "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
+          "type": "string"
+        },
+        "serviceConnection": {
+          "description": "Connection configuration for the source. ex: mysql , tableau connection.",
+          "$ref": "../entity/services/connections/serviceConnection.json#/definitions/serviceConnection"
+        },
+        "sourceConfig": {
+          "$ref": "#/definitions/sourceConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "serviceName", "serviceConnection", "sourceConfig"]
+    },
+    "processor": {
+      "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.Processor",
+      "properties": {
+        "type": {
+          "description": "Type of processor component ex: pii-processor",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "stage": {
+      "description": "Configuration for Stage Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.Stage",
+      "properties": {
+        "type": {
+          "description": "Type of stage component ex: table-usage",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "sink": {
+      "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of sink component ex: metadata",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "bulkSink": {
+      "description": "Configuration for BulkSink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.BulkSink",
+      "properties": {
+        "type": {
+          "description": "Type of BulkSink component ex: metadata-usage",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "workflowConfig": {
+      "description": "Configuration for the entire Ingestion Workflow.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.metadataingestion.WorkflowConfig",
+      "properties": {
+        "openMetadataServerConfig": {
+          "ref": "#/definitions/openMetadataServerConfig"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["openMetadataServerConfig"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this pipeline.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "openMetadataWorkflowConfig": {
+      "description": "OpenMetadata Ingestion Workflow Config.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "processor": {
+          "$ref": "#/definitions/processor"
+        },
+        "sink": {
+          "$ref": "#/definitions/sink"
+        },
+        "stage": {
+          "$ref": "#/definitions/stage"
+        },
+        "bulkSink": {
+          "$ref": "#/definitions/bulkSink"
+        },
+        "workflowConfig": {
+          "$ref": "#/definitions/workflowConfig"
+        }
+      },
+      "required": ["source", "workflowConfig"],
+      "additionalProperties": false
+    }
+  },
+  "anyOf": [
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
+    },
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "bulkSink"]
+    }
+  ],
+  "additionalProperties": false
+}

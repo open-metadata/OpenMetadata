@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRu
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import S3StorageClass, StorageServiceType
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -44,10 +44,8 @@ class S3Source(Source[Entity]):
     config: S3SourceConfig
     status: SourceStatus
 
-    def __init__(
-        self, config: S3SourceConfig, metadata_config: MetadataServerConfig, ctx
-    ):
-        super().__init__(ctx)
+    def __init__(self, config: S3SourceConfig, metadata_config: MetadataServerConfig):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = SourceStatus()
@@ -61,12 +59,10 @@ class S3Source(Source[Entity]):
         self.s3 = AWSClient(self.config).get_client("s3")
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = S3SourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

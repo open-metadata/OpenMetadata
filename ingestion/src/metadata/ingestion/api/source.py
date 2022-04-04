@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
 
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
@@ -37,13 +37,9 @@ class SourceStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ) -> "Source":
+    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Source":
         pass
 
     @abstractmethod

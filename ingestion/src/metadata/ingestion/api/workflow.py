@@ -11,19 +11,15 @@
 
 import importlib
 import logging
-import uuid
-from typing import Optional, Type, TypeVar
+from typing import Type, TypeVar
 
 import click
-from pydantic import Field
 
-from metadata.config.common import (
-    ConfigModel,
-    DynamicTypedConfig,
-    WorkflowExecutionError,
+from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
@@ -34,19 +30,8 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class WorkflowConfig(ConfigModel):
-    run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
-    source: DynamicTypedConfig
-    metadata_server: DynamicTypedConfig
-    processor: Optional[DynamicTypedConfig] = None
-    sink: Optional[DynamicTypedConfig] = None
-    stage: Optional[DynamicTypedConfig] = None
-    bulk_sink: Optional[DynamicTypedConfig] = None
-
-
 class Workflow:
-    config: WorkflowConfig
-    ctx: WorkflowContext
+    config: OpenMetadataWorkflowConfig
     source: Source
     processor: Processor
     stage: Stage
@@ -54,9 +39,8 @@ class Workflow:
     bulk_sink: BulkSink
     report = {}
 
-    def __init__(self, config: WorkflowConfig):
+    def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        self.ctx = WorkflowContext(workflow_id=self.config.run_id)
         source_type = self.config.source.type
         source_class = self.get(
             "metadata.ingestion.source.{}.{}Source".format(
@@ -64,9 +48,11 @@ class Workflow:
                 self.typeClassFetch(source_type, False),
             )
         )
-        metadata_config = self.config.metadata_server.dict().get("config", {})
+        metadata_config = self.config.workflowConfig.dict().get(
+            "openMetadataServerConfig", {}
+        )
         self.source: Source = source_class.create(
-            self.config.source.dict().get("config", {}), metadata_config, self.ctx
+            self.config.source.dict(), metadata_config
         )
         logger.debug(f"Source type:{source_type},{source_class} configured")
         self.source.prepare()
@@ -82,7 +68,7 @@ class Workflow:
             )
             processor_config = self.config.processor.dict().get("config", {})
             self.processor: Processor = processor_class.create(
-                processor_config, metadata_config, self.ctx
+                processor_config, metadata_config
             )
             logger.debug(
                 f"Processor Type: {processor_type}, {processor_class} configured"
@@ -97,9 +83,7 @@ class Workflow:
                 )
             )
             stage_config = self.config.stage.dict().get("config", {})
-            self.stage: Stage = stage_class.create(
-                stage_config, metadata_config, self.ctx
-            )
+            self.stage: Stage = stage_class.create(stage_config, metadata_config)
             logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
 
         if self.config.sink:
@@ -111,23 +95,23 @@ class Workflow:
                 )
             )
             sink_config = self.config.sink.dict().get("config", {})
-            self.sink: Sink = sink_class.create(sink_config, metadata_config, self.ctx)
+            self.sink: Sink = sink_class.create(sink_config, metadata_config)
             logger.debug(f"Sink type:{self.config.sink.type},{sink_class} configured")
 
-        if self.config.bulk_sink:
-            bulk_sink_type = self.config.bulk_sink.type
+        if self.config.bulkSink:
+            bulk_sink_type = self.config.bulkSink.type
             bulk_sink_class = self.get(
                 "metadata.ingestion.bulksink.{}.{}BulkSink".format(
                     self.typeClassFetch(bulk_sink_type, True),
                     self.typeClassFetch(bulk_sink_type, False),
                 )
             )
-            bulk_sink_config = self.config.bulk_sink.dict().get("config", {})
+            bulk_sink_config = self.config.bulkSink.dict().get("config", {})
             self.bulk_sink: BulkSink = bulk_sink_class.create(
-                bulk_sink_config, metadata_config, self.ctx
+                bulk_sink_config, metadata_config
             )
             logger.info(
-                f"BulkSink type:{self.config.bulk_sink.type},{bulk_sink_class} configured"
+                f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
             )
 
     def typeClassFetch(self, type: str, isFile: bool):
@@ -146,7 +130,7 @@ class Workflow:
 
     @classmethod
     def create(cls, config_dict: dict) -> "Workflow":
-        config = WorkflowConfig.parse_obj(config_dict)
+        config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
         return cls(config)
 
     def execute(self):

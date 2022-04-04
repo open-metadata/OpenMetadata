@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/ingestionPipelines/createIngestionPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateIngestionPipelineRequest",
+  "description": "Ingestion Pipeline Config is used to setup a Airflow DAG.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this pipeline.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the pipeline.",
+      "type": "string"
+    },
+    "pipelineType": {
+      "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"
+    },
+    "sourceConfig": {
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sourceConfig"
+    },
+    "airflowConfig": {
+      "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/airflowConfig"
+    },
+    "service": {
+      "description": "Link to the database service where this database is hosted in.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "owner": {
+      "description": "Owner of this Pipeline.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    }
+  },
+  "required": [
+    "name",
+    "service",
+    "pipelineType",
+    "sourceConfig",
+    "airflowConfig"
+  ],
+  "additionalProperties": false
+}

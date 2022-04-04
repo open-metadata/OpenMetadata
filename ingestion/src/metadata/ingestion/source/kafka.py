@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, WorkflowContext, logger
+from metadata.ingestion.api.common import IncludeFilterPattern, logger
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_messaging_service_or_create
@@ -66,9 +66,8 @@ class KafkaSource(Source[CreateTopicRequest]):
         self,
         config: KafkaSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = KafkaSourceStatus()
@@ -90,10 +89,10 @@ class KafkaSource(Source[CreateTopicRequest]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = KafkaSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

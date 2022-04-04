@@ -42,7 +42,6 @@ class SnowflakeUsageSource(Source[TableQuery]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -74,8 +73,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Snowflake.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__()
         self.config = config
         start, end = get_start_and_end(config.duration)
         end = end + timedelta(days=1)
@@ -85,17 +84,17 @@ class SnowflakeUsageSource(Source[TableQuery]):
             start_date=start, end_date=end, result_limit=self.config.result_limit
         )
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, ctx, "Snowflake", self.sql_stmt
+            config, metadata_config, "Snowflake", self.sql_stmt
         )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SnowflakeConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

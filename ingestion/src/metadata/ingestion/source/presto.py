@@ -16,9 +16,6 @@ from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -71,14 +68,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 PrestoDialect.get_columns = get_columns
 
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+)
 
-class PrestoConfig(SQLConnectionConfig):
-    host_port = "localhost:8080"
-    scheme = "presto"
-    service_type = DatabaseServiceType.Presto.value
-    catalog: str
-    include_views = False
 
+class PrestoConfig(PrestoConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
@@ -86,7 +81,7 @@ class PrestoConfig(SQLConnectionConfig):
             if self.password:
                 url += f":{quote_plus(self.password.get_secret_value())}"
             url += "@"
-        url += f"{self.host_port}"
+        url += f"{self.hostPort}"
         url += f"/{self.catalog}"
         if self.database:
             url += f"?schema={quote_plus(self.database)}"
@@ -94,11 +89,11 @@ class PrestoConfig(SQLConnectionConfig):
 
 
 class PrestoSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = PrestoConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

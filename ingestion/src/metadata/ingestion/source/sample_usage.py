@@ -32,9 +32,9 @@ class SampleUsageSource(Source[TableQuery]):
     service_type = DatabaseServiceType.BigQuery.value
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
@@ -49,10 +49,10 @@ class SampleUsageSource(Source[TableQuery]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SampleDataSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass
@@ -68,7 +68,7 @@ class SampleUsageSource(Source[TableQuery]):
                 database="shopify",
                 aborted=False,
                 sql=row["query"],
-                service_name=self.config.service_name,
+                service_name=self.config.serviceName,
             )
             yield tq
 

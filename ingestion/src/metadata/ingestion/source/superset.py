@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -146,7 +146,6 @@ class SupersetSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -168,9 +167,8 @@ class SupersetSource(Source[Entity]):
         self,
         config: SupersetConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata_client = OpenMetadata(self.metadata_config)
@@ -186,12 +184,10 @@ class SupersetSource(Source[Entity]):
         )
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = SupersetConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

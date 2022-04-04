@@ -79,9 +79,8 @@ class SampleEntitySource(Source[Entity]):
         self,
         config: SampleEntitySourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.faker = Faker()
         self.status = SampleEntitySourceStatus()
         self.config = config
@@ -112,10 +111,10 @@ class SampleEntitySource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SampleEntitySourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

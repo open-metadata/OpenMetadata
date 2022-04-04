@@ -10,14 +10,10 @@
 #  limitations under the License.
 
 import re
-from typing import Optional
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -60,26 +56,25 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 HiveDialect.get_columns = get_columns
 
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveSQLConnection,
+)
 
-class HiveConfig(SQLConnectionConfig):
-    scheme = "hive"
-    auth_options: Optional[str] = None
-    service_type = DatabaseServiceType.Hive.value
 
+class HiveConfig(HiveSQLConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = super().get_connection_url()
-        if self.auth_options is not None:
-            return f"{url};{self.auth_options}"
-        else:
-            return url
+        if self.authOptions:
+            return f"{url};{self.authOptions}"
+        return url
 
 
 class HiveSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = HiveConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

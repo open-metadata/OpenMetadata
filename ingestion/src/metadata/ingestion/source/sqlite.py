@@ -14,31 +14,25 @@ Sqlite source implementation.
 Useful for testing!
 """
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class SQLiteConfig(SQLConnectionConfig):
-    host_port = ""
-    scheme = "sqlite+pysqlite"
-    service_type = DatabaseServiceType.SQLite.value
-    connector_type = "sqlite"
-    database = ":memory:"
-
+class SQLiteConfig(SQLiteConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
 
 class SqliteSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SQLiteConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

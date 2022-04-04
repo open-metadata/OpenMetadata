@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import enum
-from typing import Optional
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -20,9 +19,6 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -141,23 +137,22 @@ ClickHouseDialect._get_column_type = _get_column_type
 ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
 
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
+)
 
-class ClickhouseConfig(SQLConnectionConfig):
-    host_port = "localhost:8123"
-    scheme = "clickhouse+http"
-    service_type = DatabaseServiceType.ClickHouse.value
-    duration: Optional[int]
 
+class ClickhouseConfig(ClickhouseConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
 
 class ClickhouseSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = ClickhouseConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

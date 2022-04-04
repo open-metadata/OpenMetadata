@@ -17,7 +17,7 @@
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
     },
-    "databaseConnection": {
+    "connection": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseConnection"
     },
     "owner": {
@@ -25,6 +25,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "databaseConnection"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -80,11 +80,10 @@ class MetadataRestSink(Sink[Entity]):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: MetadataRestSinkConfig,
         metadata_config: MetadataServerConfig,
     ):
-        super().__init__(ctx)
+
         self.config = config
         self.metadata_config = metadata_config
         self.status = SinkStatus()
@@ -95,12 +94,10 @@ class MetadataRestSink(Sink[Entity]):
         self.team_entities = {}
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):

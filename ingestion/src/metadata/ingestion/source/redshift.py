@@ -28,9 +28,6 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
@@ -423,7 +420,12 @@ def _get_column_info(
 
 PGDialect._get_column_info = _get_column_info
 # pylint: disable=useless-super-delegation
-class RedshiftConfig(SQLConnectionConfig):
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
+
+
+class RedshiftConfig(RedshiftConnection, SQLConnectionConfig):
     """
     Redshift config class
 
@@ -434,10 +436,8 @@ class RedshiftConfig(SQLConnectionConfig):
         service_type:
     """
 
-    scheme = "redshift+psycopg2"
     where_clause: Optional[str] = None
     duration: int = 1
-    service_type = DatabaseServiceType.Redshift.value
     query = 'select * from "{}"."{}"'
 
     def get_identifier(self, schema: str, table: str) -> str:
@@ -472,26 +472,24 @@ class RedshiftSource(SQLSource):
     Args:
         confi:
         metadata_config:
-        ctx:
     """
 
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         """
         Create source
 
         Args:
             config_dict:
             metadata_config_dict:
-            ctx:
         Returns:
         """
         config = RedshiftConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def get_status(self) -> SourceStatus:
         """

@@ -36,6 +36,36 @@
           "name": "PowerBI"
         }
       ]
+    },
+    "dashboardConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.DashboardConnection",
+      "description": "Dashboard Connection.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/dashboard/lookerConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/metabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/powerBIConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/redashConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/supersetConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/tableauConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -59,6 +89,17 @@
       "description": "Description of a dashboard service instance.",
       "type": "string"
     },
+    "connection": {
+      "$ref": "#/definitions/dashboardConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this dashboard service.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "owner": {
+      "description": "Owner of this dashboard service.",
+      "$ref": "../../type/entityReference.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -70,27 +111,6 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
-    },
-    "owner": {
-      "description": "Owner of this dashboard service.",
-      "$ref": "../../type/entityReference.json"
-    },
-    "dashboardUrl": {
-      "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.",
-      "type": "string",
-      "format": "uri"
-    },
-    "username": {
-      "description": "Username to log-into Dashboard Service.",
-      "type": "string"
-    },
-    "password": {
-      "description": "Password to log-into Dashboard Service.",
-      "type": "string"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this dashboard service.",
@@ -106,6 +126,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "dashboardUrl"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }

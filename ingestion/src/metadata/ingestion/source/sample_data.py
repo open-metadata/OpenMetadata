@@ -22,7 +22,6 @@ from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,6 +38,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
@@ -105,13 +107,9 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceConfig(ConfigModel):
-    sample_data_folder: str
-    service_name: str = "bigquery_gcp"
-    database: str = "warehouse"
-    service_type: str = DatabaseServiceType.BigQuery.value
-    scheme: str = "bigquery+pymysql"
-    host_port: str = "9999"
+class SampleDataSourceConfig(WorkflowSource):
+    service_type = DatabaseServiceType.BigQuery.value
+    sample_data_folder: str = "./examples/sample_data"
 
     def get_sample_data_folder(self):
         return self.sample_data_folder
@@ -187,9 +185,9 @@ class SampleDataSource(Source[Entity]):
     """
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
@@ -242,11 +240,20 @@ class SampleDataSource(Source[Entity]):
         self.topics = json.load(
             open(self.config.sample_data_folder + "/topics/topics.json", "r")
         )
+        kafka_config = {
+            "config": {
+                "bootstrapServers": self.kafka_service_json["config"]["connection"][
+                    "bootstrapServers"
+                ],
+                "schemaRegistryURL": self.kafka_service_json["config"]["connection"][
+                    "schemaRegistry"
+                ],
+            }
+        }
         self.kafka_service = get_messaging_service_or_create(
             service_name=self.kafka_service_json.get("name"),
             message_service_type=self.kafka_service_json.get("serviceType"),
-            schema_registry_url=self.kafka_service_json.get("schemaRegistry"),
-            brokers=self.kafka_service_json.get("brokers"),
+            config=kafka_config,
             metadata_config=self.metadata_config,
         )
         self.dashboard_service_json = json.load(
@@ -261,9 +268,7 @@ class SampleDataSource(Source[Entity]):
         self.dashboard_service = get_dashboard_service_or_create(
             service_name=self.dashboard_service_json.get("name"),
             dashboard_service_type=self.dashboard_service_json.get("serviceType"),
-            username=self.dashboard_service_json.get("username"),
-            password=self.dashboard_service_json.get("password"),
-            dashboard_url=self.dashboard_service_json.get("dashboardUrl"),
+            config=self.dashboard_service_json.get("connection"),
             metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(
@@ -291,10 +296,10 @@ class SampleDataSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = SampleDataSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

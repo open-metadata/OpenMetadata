@@ -18,9 +18,6 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.sqltypes import VARCHAR, String
 from sqlalchemy_vertica.base import VerticaDialect
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -211,23 +208,22 @@ VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-
 VerticaDialect.get_view_definition = (
     get_view_definition  # pylint: disable=protected-access
 )
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+)
 
 
-class VerticaConfig(SQLConnectionConfig):
-    host_port = "localhost:5433"
-    scheme = "vertica+vertica_python"
-    service_type = DatabaseServiceType.Vertica.value
-
+class VerticaConfig(VerticaConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
 
 class VerticaSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = VerticaConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

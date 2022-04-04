@@ -9,48 +9,40 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
-
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class AthenaConfig(SQLConnectionConfig):
-    scheme: str = "awsathena+rest"
-    username: Optional[str] = None
-    password: Optional[SecretStr] = None
-    database: Optional[str] = None
-    aws_region: str
-    s3_staging_dir: str
-    work_group: str
-
+class AthenaConfig(AthenaConnection, SQLConnectionConfig):
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
             url += f"{quote_plus(self.username)}"
             if self.password:
-                url += f":{quote_plus(self.password.get_secret_value())}"
+                url += f":{quote_plus(self.password)}"
         else:
             url += ":"
-        url += f"@athena.{self.aws_region}.amazonaws.com:443/"
+        url += f"@athena.{self.awsRegion}.amazonaws.com:443/"
         if self.database:
             url += f"{self.database}"
-        url += f"?s3_staging_dir={quote_plus(self.s3_staging_dir)}"
-        url += f"&work_group={self.work_group}"
+        url += f"?s3_staging_dir={quote_plus(self.s3StagingDir)}"
+        url += f"&work_group={self.workgroup}"
 
         return url
 
 
 class AthenaSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = AthenaConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

@@ -22,12 +22,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    ConfigModel,
-    Entity,
-    IncludeFilterPattern,
-    WorkflowContext,
-)
+from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -78,9 +73,8 @@ class LookerSource(Source[Entity]):
         self,
         config: LookerSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.client = self.looker_client()
@@ -116,12 +110,10 @@ class LookerSource(Source[Entity]):
             logger.error(f"ERROR: {repr(err)}")
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = LookerSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

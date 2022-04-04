@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRu
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import GcsStorageClass, StorageServiceType
-from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -50,7 +50,6 @@ class GcsSource(Source[Entity]):
         config:
         GcsSourceConfig:
         metadata_config:
-        ctx:
     Attributes:
         config:
         status:
@@ -61,10 +60,8 @@ class GcsSource(Source[Entity]):
     config: GcsSourceConfig
     status: SourceStatus
 
-    def __init__(
-        self, config: GcsSourceConfig, metadata_config: MetadataServerConfig, ctx
-    ):
-        super().__init__(ctx)
+    def __init__(self, config: GcsSourceConfig, metadata_config: MetadataServerConfig):
+        super().__init__()
         self.config = config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
@@ -77,12 +74,10 @@ class GcsSource(Source[Entity]):
         self.gcs = storage.Client()
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = GcsSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

@@ -104,7 +104,7 @@ public final class Entity {
   //
   // Operations
   //
-  public static final String AIRFLOW_PIPELINE = "airflowPipeline";
+  public static final String INGESTION_PIPELINE = "ingestionPipeline";
   public static final String WEBHOOK = "webhook";
 
   //
@@ -117,7 +117,7 @@ public final class Entity {
           ROLE,
           POLICY,
           BOTS,
-          AIRFLOW_PIPELINE,
+          INGESTION_PIPELINE,
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,

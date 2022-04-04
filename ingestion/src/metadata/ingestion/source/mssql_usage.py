@@ -38,7 +38,6 @@ class MssqlUsageSource(Source[TableQuery]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -48,22 +47,22 @@ class MssqlUsageSource(Source[TableQuery]):
         report:
     """
 
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__()
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
+            config, metadata_config, DatabaseServiceType.MSSQL.value, self.sql_stmt
         )
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = MssqlConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         return super().prepare()

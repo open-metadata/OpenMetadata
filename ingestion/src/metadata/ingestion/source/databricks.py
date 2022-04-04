@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import re
-from typing import Optional
 
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
@@ -18,9 +17,6 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -104,27 +100,25 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 DatabricksDialect.get_columns = get_columns
 
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 
-class DatabricksConfig(SQLConnectionConfig):
-    host_port: str
-    scheme = "databricks+connector"
-    service_type = DatabaseServiceType.Databricks.value
-    token: str
-    database: Optional[str]
 
+class DatabricksConfig(DatabricksConnection, SQLConnectionConfig):
     def get_connection_url(self):
-        url = f"{self.scheme}://token:{self.token}@{self.host_port}"
+        url = f"{self.scheme}://token:{self.token}@{self.hostPort}"
         if self.database:
             url += f"/{self.database}"
         return url
 
 
 class DatabricksSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = DatabricksConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)

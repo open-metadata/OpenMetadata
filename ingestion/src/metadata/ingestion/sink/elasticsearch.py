@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import entityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     DashboardESDocument,
@@ -96,23 +96,20 @@ class ElasticsearchSink(Sink[Entity]):
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = ElasticSearchConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: ElasticSearchConfig,
         metadata_config: MetadataServerConfig,
     ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         self.status = SinkStatus()
         self.metadata = OpenMetadata(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"

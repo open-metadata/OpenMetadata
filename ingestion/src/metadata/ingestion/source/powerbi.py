@@ -22,12 +22,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    ConfigModel,
-    Entity,
-    IncludeFilterPattern,
-    WorkflowContext,
-)
+from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -56,7 +51,6 @@ class PowerbiSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
     Attributes:
         config:
         metadata_config:
@@ -73,9 +67,8 @@ class PowerbiSource(Source[Entity]):
         self,
         config: PowerbiSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = SourceStatus()
@@ -96,19 +89,18 @@ class PowerbiSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         """Instantiate object
 
         Args:
             config_dict:
             metadata_config_dict:
-            ctx:
         Returns:
             PowerBiSource
         """
         config = PowerbiSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_dashboards()

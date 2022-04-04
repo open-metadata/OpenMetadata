@@ -15,11 +15,8 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -27,11 +24,10 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private static final String UPDATE_FIELDS = "owner";
+  private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -60,7 +56,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public void prepare(MessagingService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
@@ -215,19 +210,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void entitySpecificUpdate() throws IOException {
       MessagingService origService = original.getEntity();
       MessagingService updatedService = updated.getEntity();
-      recordChange("schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
-      recordChange(
-          "ingestionSchedule", origService.getIngestionSchedule(), updatedService.getIngestionSchedule(), true);
-      updateBrokers();
-    }
-
-    private void updateBrokers() throws JsonProcessingException {
-      List<String> origBrokers = original.getEntity().getBrokers();
-      List<String> updatedBrokers = updated.getEntity().getBrokers();
-
-      List<String> addedBrokers = new ArrayList<>();
-      List<String> deletedBrokers = new ArrayList<>();
-      recordListChange("brokers", origBrokers, updatedBrokers, addedBrokers, deletedBrokers, EntityUtil.stringMatch);
+      recordChange("connection", origService.getConnection(), updatedService.getConnection(), true);
     }
   }
 }

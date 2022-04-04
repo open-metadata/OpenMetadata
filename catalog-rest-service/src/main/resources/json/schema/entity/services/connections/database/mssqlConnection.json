@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mssqlConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MssqlConnection",
+  "description": "Mssql Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.MssqlConnection",
+  "definitions": {
+    "mssqlType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["MSSQL"],
+      "default": "MSSQL"
+    },
+    "mssqlScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
+      "default": "mysql+pymysql"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/mssqlType",
+      "default": "MSSQL"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/mssqlScheme",
+      "default": "mssql+pyodbc"
+    },
+    "username": {
+      "description": "username to connect  to the MsSQL. This user should have privileges to read all the metadata in MsSQL.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the MsSQL.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the MsSQL.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in MsSQL.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}
