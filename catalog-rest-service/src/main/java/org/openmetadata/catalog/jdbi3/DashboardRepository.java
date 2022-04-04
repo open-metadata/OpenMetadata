@@ -54,7 +54,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? EntityNameUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
+        ? EntityNameUtil.addToFQN(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 

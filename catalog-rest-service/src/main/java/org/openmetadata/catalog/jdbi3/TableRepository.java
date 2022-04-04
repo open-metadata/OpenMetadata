@@ -164,7 +164,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
-      String columnFQN = EntityNameUtil.getFQN(table.getFullyQualifiedName(), join.getColumnName());
+      String columnFQN = EntityNameUtil.addToFQN(table.getFullyQualifiedName(), join.getColumnName());
       addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
     }
     return table.withJoins(getJoins(table));
@@ -513,7 +513,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
-          String columnFqn = EntityNameUtil.getFQN(parentFQN, c.getName());
+          String columnFqn = EntityNameUtil.addToFQN(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
             setColumnFQN(columnFqn, c.getChildren());

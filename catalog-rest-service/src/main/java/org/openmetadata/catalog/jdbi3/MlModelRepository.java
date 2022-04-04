@@ -91,7 +91,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(EntityNameUtil.getFQN(s.getDataSource().getName(), s.getName()));
+            s.setFullyQualifiedName(EntityNameUtil.addToFQN(s.getDataSource().getName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }
@@ -101,7 +101,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
-          String featureFqn = EntityNameUtil.getFQN(parentFQN, f.getName());
+          String featureFqn = EntityNameUtil.addToFQN(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
             setMlFeatureSourcesFQN(f.getFeatureSources());

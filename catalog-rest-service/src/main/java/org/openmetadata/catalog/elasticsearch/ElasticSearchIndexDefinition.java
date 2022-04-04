@@ -2,15 +2,6 @@ package org.openmetadata.catalog.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -41,6 +32,16 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityNameUtil;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
@@ -393,7 +394,7 @@ class TableESIndex extends ElasticSearchIndex {
     for (Column col : columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
-        columnName = EntityNameUtil.getFQN(optParentColumn.get(), columnName);
+        columnName = EntityNameUtil.addToFQN(optParentColumn.get(), columnName);
       }
       if (col.getTags() != null) {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());

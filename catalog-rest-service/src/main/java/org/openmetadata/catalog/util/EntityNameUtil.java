@@ -1,19 +1,49 @@
 package org.openmetadata.catalog.util;
 
-import java.util.regex.Pattern;
 import org.openmetadata.catalog.Entity;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public final class EntityNameUtil {
+  // Match the sub parts of fqn string "sss". or sss. or sss$
+  private static final Pattern partsPattern = Pattern.compile("(\")([^\"]+)(\")|([^.]+)([.$])?");
+
+  // Quoted name of format "sss" or sss
+  private static final Pattern namePattern = Pattern.compile("(\")([^\"]+)(\")|(.*)$");
+
   private EntityNameUtil() {
     /* Util class with static methods */
   }
 
+  public static String addToFQN(String fqn, String name) {
+    return fqn + Entity.SEPARATOR + quoteName(name);
+  }
+
   public static String getFQN(String... strings) {
-    return String.join(Entity.SEPARATOR, strings);
+    List<String> list = new ArrayList<>();
+    for (String string : strings) {
+      if (string.contains(".")) {
+        string = String.format("\"%s\"", string);
+      }
+      list.add(string);
+    }
+    return String.join(Entity.SEPARATOR, list);
   }
 
   public static String[] splitFQN(String string) {
-    return string.split(Pattern.quote(Entity.SEPARATOR));
+    List<String> list = new ArrayList<>();
+    Matcher matcher = partsPattern.matcher(string);
+    while (matcher.find()) {
+      if (matcher.group(1) != null) {
+        list.add(matcher.group(2));
+      } else {
+        list.add(matcher.group(4));
+      }
+    }
+    return list.toArray(new String[list.size()]);
   }
 
   public static String getTableFQN(String columnFQN) {
@@ -32,5 +62,27 @@ public final class EntityNameUtil {
 
   public static String getServiceName(String fqn) {
     return EntityNameUtil.splitFQN(fqn)[0];
+  }
+
+  /** Adds quotes to name as required */
+  public static String quoteName(String name) {
+    Matcher matcher = namePattern.matcher(name);
+    if (matcher.find()) {
+      if (matcher.end() != name.length()) {
+        throw new IllegalArgumentException("Invalid name " + name); // Partial match
+      }
+      // Name is already quoted. Return unquoted name if "." does not exist in the name
+      if (matcher.group(1) != null) {
+        String unquotedName = matcher.group(2);
+        return unquotedName.contains(".") ? name : unquotedName;
+        // Name is not quoted. Return quoted name if "." does not exist in the name
+      } else {
+        String unquotedName = matcher.group(4);
+        if (!unquotedName.contains("\"")) {
+          return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
+        }
+      }
+    }
+    throw new IllegalArgumentException("Invalid name " + name);
   }
 }

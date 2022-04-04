@@ -34,6 +34,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
+import static org.openmetadata.catalog.util.EntityNameUtil.addToFQN;
 import static org.openmetadata.catalog.util.EntityNameUtil.getFQN;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
@@ -1338,12 +1339,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("database", DATABASE.getFullyQualifiedName());
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
     ResultList<Table> tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), null);
@@ -2012,9 +2009,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
-    assertEquals(
-        getFQN(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
-        createdEntity.getFullyQualifiedName());
+        addToFQN(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
+                createdEntity.getFullyQualifiedName());
   }
 
   private void validateTableConstraints(List<TableConstraint> expected, List<TableConstraint> actual) {

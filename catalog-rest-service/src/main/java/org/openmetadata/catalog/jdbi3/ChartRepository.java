@@ -53,7 +53,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? EntityNameUtil.getFQN(chart.getService().getName(), chart.getName())
+        ? EntityNameUtil.addToFQN(chart.getService().getName(), chart.getName())
         : null;
   }
 

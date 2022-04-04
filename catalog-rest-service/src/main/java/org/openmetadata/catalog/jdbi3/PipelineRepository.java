@@ -63,7 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline != null && pipeline.getService() != null)
-        ? EntityNameUtil.getFQN(pipeline.getService().getName(), pipeline.getName())
+        ? EntityNameUtil.addToFQN(pipeline.getService().getName(), pipeline.getName())
         : null;
   }
 
