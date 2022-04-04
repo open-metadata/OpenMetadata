@@ -87,7 +87,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -126,7 +125,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -136,7 +134,7 @@ public class TableDetailsUIErrorHandling {
     Events.click(webDriver, common.explore());
     Events.click(webDriver, common.selectTableLink(2));
     Thread.sleep(2000);
-    Events.click(webDriver, tableDetails.openConversationThread());
+    Events.click(webDriver, tableDetails.openTagConversationThread());
     Events.click(webDriver, tableDetails.addConversation());
     Events.click(webDriver, tableDetails.conversationBox());
     Events.sendKeys(webDriver, tableDetails.conversationBox(), "@");
@@ -150,7 +148,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -160,7 +157,7 @@ public class TableDetailsUIErrorHandling {
     Events.click(webDriver, common.explore());
     Events.click(webDriver, common.selectTableLink(2));
     interceptor.interceptor("/feed", "/test");
-    Events.click(webDriver, tableDetails.openConversationThread());
+    Events.click(webDriver, tableDetails.openTagConversationThread());
     Thread.sleep(2000);
     String errorMessage = webDriver.findElement(toastMessage).getText();
     Assert.assertEquals(errorMessage, "Error while fetching threads!");
@@ -168,7 +165,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -177,7 +173,7 @@ public class TableDetailsUIErrorHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.explore());
     Events.click(webDriver, common.selectTableLink(2));
-    Events.click(webDriver, tableDetails.openConversationThread());
+    Events.click(webDriver, tableDetails.openTagConversationThread());
     Events.click(webDriver, tableDetails.mainMessageReply());
     Events.click(webDriver, tableDetails.conversationBox());
     Events.sendKeys(webDriver, tableDetails.conversationBox(), "Message");
@@ -190,7 +186,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -212,7 +207,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -236,7 +230,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -262,7 +255,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -290,7 +282,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -309,7 +300,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -329,7 +319,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -352,7 +341,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -375,7 +363,6 @@ public class TableDetailsUIErrorHandling {
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @Test
@@ -391,12 +378,11 @@ public class TableDetailsUIErrorHandling {
     Events.click(webDriver, tableDetails.saveManage());
     Thread.sleep(2000);
     String errorMessage = webDriver.findElement(toastMessage).getText();
-    Assert.assertEquals(errorMessage, "Error while updating owner");
+    Assert.assertEquals(errorMessage, "Error while updating entity!");
     checkTabs = tableDetails.checkTabs();
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
     }
-    assertElements();
   }
 
   @AfterEach

@@ -88,7 +88,7 @@ public class CommonTests {
     //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData:Personal");
     Events.click(webDriver, common.tagListItem());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "User.FacePhoto");
     Events.click(webDriver, common.tagListItem());
@@ -96,7 +96,7 @@ public class CommonTests {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
+    Object tagCount = webDriver.findElements(common.containsText("#PersonalData:Personal")).size();
     Assert.assertEquals(tagCount, 1);
   }
 

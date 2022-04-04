@@ -53,9 +53,9 @@ public class TableDetails {
   By columnDescription = By.xpath("(//div[@id='column-description-3'])[1]");
   By joinedTables = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
   By joinedColumns = By.xpath("(//div[@data-testid='frequently-joined-columns']/span/a)");
-  By sampleDataTable = By.xpath("//table[@data-testid=\"sample-data-table\"]");
+  By sampleDataTable = By.xpath("//table[@data-testid='sample-data-table']");
   By columnTags = By.xpath("(//div[@data-testid='tag-conatiner'])[1]");
-  By queries = By.cssSelector("[data-testid='tab'][id='queries']");
+  By queries = By.cssSelector("[data-testid='Queries']");
   By openSidePanel = By.xpath("//p[@class='link-text tw-flex-none tw-ml-2']");
   By conversationBox = By.xpath("//div[@class='ql-editor ql-blank']");
   By sendButton = By.cssSelector("[data-testid='send-button']");
@@ -65,7 +65,7 @@ public class TableDetails {
   By mainMessageReply = By.cssSelector("[data-testid=\"main-message-reply-button\"]");
   By quickReply = By.cssSelector("[data-testid=\"quick-reply-button\"]");
   By threadHeader = By.cssSelector("[data-testid='thread0']");
-  By dataQuality = By.cssSelector("[data-testid='tab'][id='dataQuality']");
+  By dataQuality = By.cssSelector("[data-testid='Data Quality']]");
   By addTest = By.cssSelector("[data-testid=\"add-new-test-button\"]");
   By tableTest = By.xpath("//div[@data-testid=\"list-item\"][@id=\"menu-item-0\"]");
   By columnTest = By.xpath("//div[@data-testid=\"list-item\"][@id=\"menu-item-1\"]");
@@ -80,6 +80,9 @@ public class TableDetails {
   By dismissToast = By.cssSelector("[data-testid='dismiss']");
   By lineageNode = By.cssSelector("[data-testid='lineage-entity']");
   By checkTabs = By.cssSelector("[data-testid='tab']");
+  By addTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
+  By addDescriptionConversationThread = By.cssSelector("[data-testid='start-description-thread']");
+  By openTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);

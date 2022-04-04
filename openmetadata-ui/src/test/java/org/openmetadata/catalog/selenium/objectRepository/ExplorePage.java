@@ -41,7 +41,7 @@ public class ExplorePage {
   By tagSpecialCategoryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"PersonalData.SpecialCategory\"]");
   By tierTier3Checkbox = By.xpath("//input[@data-testid='checkbox'][@id='Tier:Tier3']");
   By selectedCheckbox = By.xpath("//label[@data-testid='filter-container-Superset']/span");
-  By kafka = By.xpath("//input[@data-testid='checkbox'][@id='Kafka']");
+  By kafka = By.cssSelector("[data-testid='checkbox'][id='Kafka']");
   By superset = By.cssSelector("[data-testid='checkbox'][id='Superset']");
   By airflow = By.xpath("//input[@data-testid='checkbox'][@id='Airflow']");
 
