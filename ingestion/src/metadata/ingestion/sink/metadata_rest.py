@@ -170,7 +170,7 @@ class MetadataRestSink(Sink[Entity]):
                 tableType=db_schema_and_table.table.tableType,
                 columns=db_schema_and_table.table.columns,
                 description=db_schema_and_table.table.description,
-                schema_=db_schema_ref,
+                databaseSchema=db_schema_ref,
                 tableConstraints=db_schema_and_table.table.tableConstraints,
             )
             if db_schema_and_table.table.viewDefinition:
