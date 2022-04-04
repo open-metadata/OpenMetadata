@@ -184,6 +184,14 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "trino_db"
 ```
 
+#### **proxies (optional)**
+
+You can set a proxy for the connection with trino. If this field is not included, no proxy is set.
+
+```javascript
+"proxies": {"http": "<http proxy>", "https": "<https proxy>"}
+```
+
 ### **5. Enable/disable the data profiler**
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
