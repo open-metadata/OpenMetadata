@@ -1,25 +1,25 @@
 [{
-    "from": { "fqn":"bigquery_gcp:shopify:raw_customer", "type": "table"},
+    "from": { "fqn":"bigquery_gcp:ecommerce_db:shopify:raw_customer", "type": "table"},
     "to": { "fqn":"sample_airflow:dim_address_etl", "type": "pipeline"}
   },
   {
       "from": {"fqn":"sample_airflow:dim_address_etl", "type": "pipeline"},
-      "to": {"fqn":"bigquery_gcp:shopify:dim_address", "type": "table"}
+      "to": {"fqn":"bigquery_gcp:ecommerce_db:shopify:dim_address", "type": "table"}
   },
   {
-    "from": {"fqn":"bigquery_gcp:shopify:raw_order", "type": "table"},
+    "from": {"fqn":"bigquery_gcp:ecommerce_db:shopify:raw_order", "type": "table"},
     "to": {"fqn":"sample_airflow:dim_product_etl", "type": "pipeline"}
   },
   {
-      "from": {"fqn":"bigquery_gcp:shopify:raw_customer", "type": "table"},
+      "from": {"fqn":"bigquery_gcp:ecommerce_db:shopify:raw_customer", "type": "table"},
       "to": {"fqn":"sample_airflow:dim_product_etl", "type": "pipeline"}
   },
   {
       "from": {"fqn":"sample_airflow:dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"bigquery_gcp:shopify:dim.product", "type": "table"}
+      "to": {"fqn":"bigquery_gcp:ecommerce_db:shopify:dim.product", "type": "table"}
   },
   {
       "from": {"fqn": "sample_airflow:dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"bigquery_gcp:shopify:dim.product.variant", "type": "table"}
+      "to": {"fqn":"bigquery_gcp:ecommerce_db:shopify:dim.product.variant", "type": "table"}
   }
 ]

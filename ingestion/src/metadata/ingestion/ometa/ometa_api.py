@@ -354,16 +354,15 @@ class OpenMetadata(
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name[0].lower() + class_name[1:]
-
+        file_name = class_name.lower()
         class_path = ".".join(
             [
                 self.class_root,
                 self.entity_path,
                 self.get_module_path(create),
                 file_name.replace("service", "Service")
-                if "service" in create.__name__[0].lower() + create.__name__[1:]
-                else file_name,
+                if "service" in create.__name__.lower()
+                else file_name.replace("databaseschema", "databaseSchema"),
             ]
         )
 
