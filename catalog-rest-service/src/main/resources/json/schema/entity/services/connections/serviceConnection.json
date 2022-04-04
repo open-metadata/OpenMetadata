@@ -9,13 +9,13 @@
       "description": "Supported services",
       "oneOf": [
         {
-          "$ref": "dashboardService.json#/definitions/dashboardConnection"
+          "$ref": "../dashboardService.json#/definitions/dashboardConnection"
         },
         {
-          "$ref": "databaseService.json#/definitions/databaseConnection"
+          "$ref": "../databaseService.json#/definitions/databaseConnection"
         },
         {
-          "$ref": "messagingService.json#/definitions/messagingConnection"
+          "$ref": "../messagingService.json#/definitions/messagingConnection"
         }
       ]
     }

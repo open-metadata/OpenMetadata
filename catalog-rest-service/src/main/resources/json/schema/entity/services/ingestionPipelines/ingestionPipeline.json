@@ -1,51 +1,25 @@
 {
-  "$id": "https://open-metadata.org/schema/operations/pipelines/airflowPipeline.json",
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/ingestionPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AirflowPipeline",
-  "description": "Airflow Pipeline is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
+  "title": "IngestionPipeline",
+  "description": "Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
   "definitions": {
     "pipelineType": {
-      "description": "Type of Pipeline - metadata, query-usage",
+      "description": "Type of Pipeline - metadata, usage",
       "type": "string",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.PipelineType",
-      "enum": ["metadata", "queryUsage"]
-    },
-    "pipelineConfig": {
-      "description": "OpenMetadata Pipeline Config.",
-      "type": "object",
-      "properties": {
-        "ingestionConfig": {
-          "oneOf": [
-            { "$ref": "databaseServiceMetadataPipeline.json" },
-            { "$ref": "databaseServiceQueryUsagePipeline.json" }
-          ]
-        },
-        "schema": {
-          "enum": [
-            "databaseServiceMetadataPipeline",
-            "databaseServiceQueryUsagePipeline"
-          ]
-        },
-        "sourceConfig": {
-          "description": "A connection to a dashboard service, database service or messaging service.",
-          "$ref": "../../entity/services/serviceConnection.json#/definitions/serviceConnection"
-        },
-        "sinkConfig": {
-          // let's do the same approach as with the source, currently just with the metadata-rest
-        }
-      },
-      "additionalProperties": false
+      "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType",
+      "enum": ["metadata", "usage"]
     },
     "airflowConfig": {
       "description": "Properties to configure the Airflow pipeline that will run the workflow.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipeline.AirflowConfig",
+      "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig",
       "properties": {
         "forceDeploy": {
           "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
           "type": "boolean",
-          "default": "true"
+          "default": "false"
         },
         "pausePipeline": {
           "description": "pause the pipeline from running once the deploy is finished successfully.",
@@ -59,15 +33,15 @@
         },
         "startDate": {
           "description": "Start date of the pipeline.",
-          "$ref": "../../type/basic.json#/definitions/date"
+          "$ref": "../../../type/basic.json#/definitions/date"
         },
         "endDate": {
           "description": "End Date of the pipeline.",
-          "$ref": "../../type/basic.json#/definitions/date"
+          "$ref": "../../../type/basic.json#/definitions/date"
         },
         "nextExecutionDate": {
           "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
-          "$ref": "../../type/basic.json#/definitions/date"
+          "$ref": "../../../type/basic.json#/definitions/date"
         },
         "pipelineTimezone": {
           "description": "Timezone in which pipeline going to be scheduled.",
@@ -128,7 +102,7 @@
         },
         "email": {
           "description": "Email to notify workflow status.",
-          "$ref": "../../type/basic.json#/definitions/email"
+          "$ref": "../../../type/basic.json#/definitions/email"
         }
       },
       "additionalProperties": false,
@@ -138,11 +112,11 @@
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this pipeline.",
-      "$ref": "../../type/basic.json#/definitions/uuid"
+      "$ref": "../../../type/basic.json#/definitions/uuid"
     },
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline.",
@@ -157,34 +131,37 @@
     },
     "owner": {
       "description": "Owner of this Pipeline.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../../type/entityReference.json",
       "default": null
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a Pipeline.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "pipelineConfig": {
-      "$ref": "#/definitions/pipelineConfig"
+    "source": {
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/source"
+    },
+    "openMetadataServerConnection": {
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/openMetadataServerConfig"
     },
     "airflowConfig": {
       "$ref": "#/definitions/airflowConfig"
     },
     "service": {
-      "description": "Link to the pipeline service where this pipeline is hosted in.",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the database service where this database is hosted in.",
+      "$ref": "../../../type/entityReference.json"
     },
     "href": {
-      "description": "Link to this pipeline resource.",
-      "$ref": "../../type/basic.json#/definitions/href"
+      "description": "Link to this ingestion pipeline resource.",
+      "$ref": "../../../type/basic.json#/definitions/href"
     },
     "version": {
       "description": "Metadata version of the entity.",
-      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+      "$ref": "../../../type/entityHistory.json#/definitions/entityVersion"
     },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
-      "$ref": "../../type/basic.json#/definitions/timestamp"
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
     },
     "updatedBy": {
       "description": "User who made the update.",
@@ -192,7 +169,7 @@
     },
     "changeDescription": {
       "description": "Change that led to this version of the entity.",
-      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -202,9 +179,9 @@
   },
   "required": [
     "name",
-    "service",
     "pipelineType",
-    "pipelineConfig",
+    "source",
+    "openMetadataServerConnection",
     "airflowConfig"
   ],
   "additionalProperties": false

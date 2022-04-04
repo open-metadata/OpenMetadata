@@ -102,6 +102,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -309,7 +310,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         databaseServiceResourceTest
             .createRequest(test, 1)
             .withServiceType(DatabaseServiceType.Snowflake)
-            .withConfig(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
+            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
@@ -317,21 +318,21 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createDatabaseService
         .withName("redshiftDB")
         .withServiceType(DatabaseServiceType.Redshift)
-        .withConfig(TestUtils.REDSHIFT_DATABASE_CONNECTION);
+        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService
         .withName("bigQueryDB")
         .withServiceType(DatabaseServiceType.BigQuery)
-        .withConfig(TestUtils.BIGQUERY_DATABASE_CONNECTION);
+        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
     createDatabaseService
         .withName("mysqlDB")
         .withServiceType(DatabaseServiceType.MySQL)
-        .withConfig(TestUtils.MYSQL_DATABASE_CONNECTION);
+        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
@@ -1043,7 +1044,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             PipelineService.class,
             StorageService.class,
             DashboardService.class,
-            MessagingService.class);
+            MessagingService.class,
+            IngestionPipeline.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
       assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change

@@ -27,9 +27,9 @@ import org.json.JSONObject;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.AirflowException;
-import org.openmetadata.catalog.exception.AirflowPipelineDeploymentException;
-import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
@@ -78,12 +78,12 @@ public class AirflowRESTClient {
     throw new AirflowException("Failed to get access_token. Please check AirflowConfiguration username, password");
   }
 
-  public String deploy(AirflowPipeline airflowPipeline, CatalogApplicationConfig config, Boolean decrypt) {
+  public String deploy(IngestionPipeline ingestionPipeline) {
     try {
       // TODO USE AIRFLOW PIPELINE DIRECTLY AS THE REST BODY
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
-      String pipelinePayload = JsonUtils.pojoToJson(airflowPipeline);
+      String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
       String deployUrl = String.format(deployEndPoint, url);
       HttpRequest request =
@@ -96,12 +96,12 @@ public class AirflowRESTClient {
       if (response.statusCode() == 200) {
         return response.body();
       }
-      throw AirflowPipelineDeploymentException.byMessage(
-          airflowPipeline.getName(),
-          "Failed to trigger Airflow Pipeline",
+      throw IngestionPipelineDeploymentException.byMessage(
+          ingestionPipeline.getName(),
+          "Failed to deploy Ingestion Pipeline",
           Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
-      throw AirflowPipelineDeploymentException.byMessage(airflowPipeline.getName(), e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
   }
 
@@ -146,10 +146,10 @@ public class AirflowRESTClient {
         return response.body();
       }
 
-      throw AirflowPipelineDeploymentException.byMessage(
+      throw IngestionPipelineDeploymentException.byMessage(
           pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
-      throw AirflowPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
   }
 }

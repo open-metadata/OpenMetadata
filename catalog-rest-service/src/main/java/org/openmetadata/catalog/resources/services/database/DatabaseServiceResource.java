@@ -355,7 +355,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConfig())
+        .withConnection(create.getConnection())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

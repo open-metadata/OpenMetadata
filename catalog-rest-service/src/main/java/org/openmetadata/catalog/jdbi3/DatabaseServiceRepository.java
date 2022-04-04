@@ -24,7 +24,6 @@ import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -35,7 +34,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   private static final String UPDATE_FIELDS = "owner";
-  private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -46,29 +44,30 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao,
         "",
         UPDATE_FIELDS);
-    fernet = Fernet.getInstance();
     this.allowEdits = true;
   }
 
   @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
-    entity.setPipelines(fields.contains("pipelines") ? getAirflowPipelines(entity) : null);
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
-  private List<EntityReference> getAirflowPipelines(DatabaseService service) throws IOException {
+  private List<EntityReference> getIngestionPipelines(DatabaseService service) throws IOException {
     if (service == null) {
       return null;
     }
-    List<String> airflowPipelineIds =
-        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.AIRFLOW_PIPELINE);
-    List<EntityReference> airflowPipelines = new ArrayList<>();
-    for (String airflowPipelineId : airflowPipelineIds) {
-      airflowPipelines.add(
-          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId), Include.ALL));
+    List<String> ingestionPipelineIds =
+        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (String ingestionPipelineId : ingestionPipelineIds) {
+      ingestionPipelines.add(
+          daoCollection
+              .ingestionPipelineDAO()
+              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
     }
-    return airflowPipelines;
+    return ingestionPipelines;
   }
 
   @Override

@@ -20,7 +20,7 @@
     }
   },
   "properties": {
-    "type": {
+    "serviceType": {
       "description": "Service Type",
       "$ref": "#/definitions/athenaType",
       "default": "Athena"

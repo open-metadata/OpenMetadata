@@ -48,10 +48,10 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository.AirflowPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
@@ -62,6 +62,7 @@ import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
+import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository.IngestionPipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
@@ -77,7 +78,6 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
-import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
@@ -151,7 +151,7 @@ public interface CollectionDAO {
   PolicyDAO policyDAO();
 
   @CreateSqlObject
-  AirflowPipelineDAO airflowPipelineDAO();
+  IngestionPipelineDAO ingestionPipelineDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -939,15 +939,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface AirflowPipelineDAO extends EntityDAO<AirflowPipeline> {
+  interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
     @Override
     default String getTableName() {
-      return "airflow_pipeline_entity";
+      return "ingestion_pipeline_entity";
     }
 
     @Override
-    default Class<AirflowPipeline> getEntityClass() {
-      return AirflowPipeline.class;
+    default Class<IngestionPipeline> getEntityClass() {
+      return IngestionPipeline.class;
     }
 
     @Override
@@ -956,8 +956,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(AirflowPipeline entity) {
-      return new AirflowPipelineEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(IngestionPipeline entity) {
+      return new IngestionPipelineEntityInterface(entity).getEntityReference();
     }
   }
 

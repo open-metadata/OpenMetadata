@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.operations;
+package org.openmetadata.catalog.resources.services.ingestionPipelines;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
@@ -54,11 +54,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
-import org.openmetadata.catalog.api.operations.pipelines.CreateAirflowPipeline;
-import org.openmetadata.catalog.jdbi3.AirflowPipelineRepository;
+import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
-import org.openmetadata.catalog.operations.pipelines.AirflowPipeline;
+import org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig;
+import org.openmetadata.catalog.metadataingestion.Source;
+import org.openmetadata.catalog.metadataingestion.SourceConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
@@ -68,39 +74,43 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-@Path("/operations/v1/airflowPipeline/")
+@Path("/v1/services/ingestionPipelines/")
 @Api(value = "Ingestion collection", tags = "Ingestion collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "airflowPipelines")
-public class AirflowPipelineResource extends EntityResource<AirflowPipeline, AirflowPipelineRepository> {
-  public static final String COLLECTION_PATH = "operations/v1/airflowPipeline/";
+@Collection(name = "IngestionPipelines")
+public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+  public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private AirflowRESTClient airflowRESTClient;
-  private CatalogApplicationConfig config;
+  private OpenMetadataServerConfig serverConfig;
 
   @Override
-  public AirflowPipeline addHref(UriInfo uriInfo, AirflowPipeline airflowPipeline) {
-    Entity.withHref(uriInfo, airflowPipeline.getOwner());
-    Entity.withHref(uriInfo, airflowPipeline.getService());
-    return airflowPipeline;
+  public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline IngestionPipeline) {
+    Entity.withHref(uriInfo, IngestionPipeline.getOwner());
+    Entity.withHref(uriInfo, IngestionPipeline.getService());
+    return IngestionPipeline;
   }
 
-  public AirflowPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(AirflowPipeline.class, new AirflowPipelineRepository(dao), authorizer);
+  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
+    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
   }
 
   public void initialize(CatalogApplicationConfig config) {
     this.airflowRESTClient = new AirflowRESTClient(config);
-    this.config = config;
+    this.serverConfig =
+        new OpenMetadataServerConfig()
+            .withHostPort(config.getAirflowConfiguration().getApiEndpoint())
+            .withAuthProvider(
+                OpenMetadataServerConfig.AuthProvider.valueOf(config.getAirflowConfiguration().getAuthProvider()));
   }
 
-  public static class AirflowPipelineList extends ResultList<AirflowPipeline> {
+  public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
     @SuppressWarnings("unused")
-    public AirflowPipelineList() {
+    public IngestionPipelineList() {
       // Empty constructor needed for deserialization
     }
 
-    public AirflowPipelineList(List<AirflowPipeline> data, String beforeCursor, String afterCursor, int total) {
+    public IngestionPipelineList(List<IngestionPipeline> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -111,7 +121,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @Valid
   @Operation(
       summary = "List Airflow Pipelines for Metadata Operations",
-      tags = "airflowPipelines",
+      tags = "IngestionPipelines",
       description =
           "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -121,9 +131,9 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
             responseCode = "200",
             description = "List of ingestion workflows",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
-  public ResultList<AirflowPipeline> list(
+  public ResultList<IngestionPipeline> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -163,18 +173,18 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @Path("/{id}/versions")
   @Operation(
       summary = "List ingestion workflow versions",
-      tags = "airflowPipelines",
-      description = "Get a list of all the versions of a AirflowPipeline identified by `id`",
+      tags = "IngestionPipelines",
+      description = "Get a list of all the versions of a IngestionPipeline identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of AirflowPipeline versions",
+            description = "List of IngestionPipeline versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "AirflowPipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "IngestionPipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return dao.listVersions(id);
   }
@@ -182,18 +192,18 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a AirflowPipeline",
-      tags = "airflowPipelines",
-      description = "Get a AirflowPipeline by `id`.",
+      summary = "Get a IngestionPipeline",
+      tags = "IngestionPipelines",
+      description = "Get a IngestionPipeline by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "AirflowPipeline for instance {id} is not found")
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "IngestionPipeline for instance {id} is not found")
       })
-  public AirflowPipeline get(
+  public IngestionPipeline get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -215,20 +225,20 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      summary = "Get a version of the AirflowPipeline",
-      tags = "airflowPipelines",
-      description = "Get a version of the AirflowPipeline by given `id`",
+      summary = "Get a version of the IngestionPipeline",
+      tags = "IngestionPipelines",
+      description = "Get a version of the IngestionPipeline by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "airflowPipelines",
+            description = "IngestionPipelines",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "AirflowPipeline for instance {id} and version  " + "{version} is not found")
+            description = "IngestionPipeline for instance {id} and version  " + "{version} is not found")
       })
-  public AirflowPipeline getVersion(
+  public IngestionPipeline getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Ingestion Id", schema = @Schema(type = "string")) @PathParam("id") String id,
@@ -244,18 +254,18 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      summary = "Get a AirflowPipeline by name",
-      tags = "airflowPipelines",
+      summary = "Get a IngestionPipeline by name",
+      tags = "IngestionPipelines",
       description = "Get a ingestion by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "AirflowPipeline",
+            description = "IngestionPipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
-  public AirflowPipeline getByName(
+  public IngestionPipeline getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -277,7 +287,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @POST
   @Operation(
       summary = "Create a Airflow Pipeline",
-      tags = "airflowPipelines",
+      tags = "IngestionPipelines",
       description = "Create a new Airflow Pipeline.",
       responses = {
         @ApiResponse(
@@ -286,24 +296,24 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CreateAirflowPipeline.class))),
+                    schema = @Schema(implementation = CreateIngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
-    AirflowPipeline airflowPipeline = getAirflowPipeline(securityContext, create);
-    Response response = create(uriInfo, securityContext, airflowPipeline, ADMIN | BOT);
-    deploy(airflowPipeline, true);
+    IngestionPipeline IngestionPipeline = getIngestionPipeline(securityContext, create);
+    Response response = create(uriInfo, securityContext, IngestionPipeline, ADMIN | BOT);
+    deploy(IngestionPipeline);
     return response;
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      summary = "Update a AirflowPipeline",
-      tags = "airflowPipelines",
-      description = "Update an existing AirflowPipeline using JsonPatch.",
+      summary = "Update a IngestionPipeline",
+      tags = "IngestionPipelines",
+      description = "Update an existing IngestionPipeline using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
@@ -325,23 +335,23 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
 
   @PUT
   @Operation(
-      summary = "Create or update a AirflowPipeline",
-      tags = "airflowPipelines",
-      description = "Create a new AirflowPipeline, if it does not exist or update an existing AirflowPipeline.",
+      summary = "Create or update a IngestionPipeline",
+      tags = "IngestionPipelines",
+      description = "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The AirflowPipeline",
+            description = "The IngestionPipeline",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateAirflowPipeline update)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
-    AirflowPipeline pipeline = getAirflowPipeline(securityContext, update);
+    IngestionPipeline pipeline = getIngestionPipeline(securityContext, update);
     Response response = createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
-    deploy(pipeline, true); // TODO cleanup
+    deploy(pipeline); // TODO cleanup
     return response;
   }
 
@@ -349,21 +359,21 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @Path("/trigger/{id}")
   @Operation(
       summary = "Trigger a airflow pipeline run",
-      tags = "airflowPipelines",
+      tags = "IngestionPipelines",
       description = "Trigger a airflow pipeline run by id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = AirflowPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
       })
-  public AirflowPipeline triggerIngestion(
+  public IngestionPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
       throws IOException {
     Fields fields = getFields(FIELD_OWNER);
-    AirflowPipeline pipeline = dao.get(uriInfo, id, fields);
+    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
     airflowRESTClient.runPipeline(pipeline.getName());
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
@@ -372,7 +382,7 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
   @Path("/{id}")
   @Operation(
       summary = "Delete a Ingestion",
-      tags = "airflowPipelines",
+      tags = "IngestionPipelines",
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -387,30 +397,72 @@ public class AirflowPipelineResource extends EntityResource<AirflowPipeline, Air
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
-    AirflowPipeline pipeline = (AirflowPipeline) response.getEntity();
+    Response response = delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    IngestionPipeline pipeline = (IngestionPipeline) response.getEntity();
     airflowRESTClient.deletePipeline(pipeline.getName());
     return response;
   }
 
-  private AirflowPipeline getAirflowPipeline(SecurityContext securityContext, CreateAirflowPipeline create) {
-    return new AirflowPipeline()
+  private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
+      throws IOException {
+    Source source = buildIngestionSource(create);
+
+    return new IngestionPipeline()
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
-        .withPipelineConfig(create.getPipelineConfig())
+        .withOpenMetadataServerConnection(serverConfig)
+        .withSource(source)
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private void deploy(AirflowPipeline airflowPipeline, Boolean decrypt) {
-    if (Boolean.TRUE.equals(airflowPipeline.getAirflowConfig().getForceDeploy())) {
-      airflowRESTClient.deploy(airflowPipeline, config, decrypt);
+  private void deploy(IngestionPipeline ingestionPipeline) {
+    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
+      airflowRESTClient.deploy(ingestionPipeline);
     }
+  }
+
+  private Source buildIngestionSource(CreateIngestionPipeline create) throws IOException {
+    Source source;
+    String serviceType = create.getService().getType();
+    Fields serviceFields = new Fields(List.of("connection"));
+    SourceConfig sourceConfig = create.getSourceConfig();
+    switch (serviceType) {
+      case Entity.DATABASE_SERVICE:
+        DatabaseService databaseService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
+        source =
+            new Source()
+                .withServiceConnection(databaseService.getConnection())
+                .withServiceName(databaseService.getName())
+                .withType(databaseService.getServiceType().value());
+        break;
+      case Entity.DASHBOARD_SERVICE:
+        DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
+        source =
+            new Source()
+                .withServiceName(dashboardService.getName())
+                .withServiceConnection(dashboardService.getConnection())
+                .withType(dashboardService.getServiceType().value());
+        break;
+      case Entity.MESSAGING_SERVICE:
+        MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
+        source =
+            new Source()
+                .withServiceName(messagingService.getName())
+                .withServiceConnection(messagingService.getConnection())
+                .withType(messagingService.getServiceType().value());
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Ingestion Pipeline is not supported for service %s", serviceType));
+    }
+    source.setSourceConfig(create.getSourceConfig());
+    return source;
   }
 }

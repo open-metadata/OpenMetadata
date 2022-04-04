@@ -1,34 +1,8 @@
 {
-  "$id": "https://open-metadata.org/schema/operations/pipelines/databaseServiceMetadataPipeline.json",
+  "$id": "https://open-metadata.org//schema/entity/services/ingestionPipelines/databaseServiceMetadataPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
-  "definitions": {
-    "filterPattern": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.operations.pipelines.FilterPattern",
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "properties": {
-        "includes": {
-          "description": "List of strings/regex patterns to match and include only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        },
-        "excludes": {
-          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": null
-        }
-      },
-      "additionalProperties": false
-    }
-  },
   "properties": {
     "markDeletedTables": {
       "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
@@ -57,11 +31,11 @@
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "#/definitions/filterPattern"
+      "$ref": "workflow.json#/definitions/filterPattern"
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "#/definitions/filterPattern"
+      "$ref": "workflow.json#/definitions/filterPattern"
     },
     "dbtCatalogFilePath": {
       "description": "DBT catalog file to extract dbt models with their column schemas.",

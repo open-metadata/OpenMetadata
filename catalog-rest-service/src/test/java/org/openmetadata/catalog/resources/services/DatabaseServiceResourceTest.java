@@ -73,7 +73,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Test
   void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
     // No jdbc connection set
-    CreateDatabaseService create = createRequest(test).withConfig(null);
+    CreateDatabaseService create = createRequest(test).withConnection(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
   }
 
@@ -100,7 +100,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     ConnectionOptions connectionOptions =
         new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
     snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
-    update.withConfig(databaseConnection);
+    update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     // Get the recently updated entity and verify the changes
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
@@ -173,7 +173,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return new CreateDatabaseService()
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withConfig(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
+        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
         .withOwner(owner)
         .withDescription(description);
   }
@@ -188,7 +188,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
-    validateDatabaseConnection(createRequest.getConfig(), service.getConnection(), service.getServiceType());
+    validateDatabaseConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
   }
 
   @Override
@@ -282,7 +282,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     }
   }
 
-  private void validateMysqlConnection(MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection) {
+  public static void validateMysqlConnection(
+      MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection) {
     assertEquals(expectedMysqlConnection.getDatabase(), actualMysqlConnection.getDatabase());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
@@ -291,7 +292,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedMysqlConnection.getConnectionArguments(), actualMysqlConnection.getConnectionArguments());
   }
 
-  private void validateBigQueryConnection(
+  public static void validateBigQueryConnection(
       BigQueryConnection expectedBigQueryConnection, BigQueryConnection actualBigQueryConnection) {
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
     assertEquals(expectedBigQueryConnection.getProjectID(), actualBigQueryConnection.getProjectID());
@@ -303,7 +304,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedBigQueryConnection.getConnectionOptions(), actualBigQueryConnection.getConnectionOptions());
   }
 
-  private void validateRedshiftConnection(
+  public static void validateRedshiftConnection(
       RedshiftConnection expectedRedshiftConnection, RedshiftConnection actualRedshiftConnection) {
     assertEquals(expectedRedshiftConnection.getHostPort(), actualRedshiftConnection.getHostPort());
     assertEquals(expectedRedshiftConnection.getUsername(), actualRedshiftConnection.getUsername());
@@ -314,7 +315,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedRedshiftConnection.getConnectionOptions(), actualRedshiftConnection.getConnectionOptions());
   }
 
-  private void validateSnowflakeConnection(
+  public static void validateSnowflakeConnection(
       SnowflakeConnection expectedSnowflakeConnection, SnowflakeConnection actualSnowflakeConnection) {
     assertEquals(expectedSnowflakeConnection.getHostPort(), actualSnowflakeConnection.getHostPort());
     assertEquals(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
