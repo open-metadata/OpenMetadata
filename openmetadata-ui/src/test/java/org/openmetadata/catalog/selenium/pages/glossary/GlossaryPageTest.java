@@ -218,7 +218,7 @@ public class GlossaryPageTest {
   void addTermReviewer() throws InterruptedException {
     openGlossaryPage();
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, common.serviceDetailsTabs("reviewers"));
+    Events.click(webDriver, glossary.reviewers());
     Events.click(webDriver, common.addGlossaryReviewer());
     Events.click(webDriver, glossary.checkboxAddUser(3));
     Events.click(webDriver, glossary.saveTermReviewer());
@@ -232,7 +232,7 @@ public class GlossaryPageTest {
   void deleteTermReviewer() throws InterruptedException {
     openGlossaryPage();
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, common.serviceDetailsTabs("reviewers"));
+    Events.click(webDriver, glossary.reviewers());
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
     Events.click(webDriver, common.removeAssociatedTag());
@@ -246,7 +246,7 @@ public class GlossaryPageTest {
   void removeAddedReviewersToTerm() throws InterruptedException {
     openGlossaryPage();
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, common.serviceDetailsTabs("reviewers"));
+    Events.click(webDriver, glossary.reviewers());
     Events.click(webDriver, common.addGlossaryReviewer());
     for (int i = 1; i <= 2; i++) {
       Events.click(webDriver, glossary.checkboxAddUser(i));
