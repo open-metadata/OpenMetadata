@@ -12,12 +12,11 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, Fragment, HTMLAttributes, useRef, useState } from 'react';
+import React, { FC, HTMLAttributes, useRef, useState } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
 import { FeedEditor } from '../../FeedEditor/FeedEditor';
+import { KeyHelp } from './KeyHelp';
+import { SendButton } from './SendButton';
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
@@ -55,51 +54,6 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
     }
   };
 
-  const KeyHelp = () => {
-    return editorValue.length > 2 ? (
-      <div className="tw-absolute tw-right-8">
-        <p className="tw-text-xs" data-testid="key-help">
-          <kbd>Shift</kbd>+ <kbd>Enter</kbd> to add a new line
-        </p>
-      </div>
-    ) : null;
-  };
-
-  const SendButton = () => {
-    const getIcon = () => {
-      return editorValue.length > 0
-        ? Icons.PAPER_PLANE_PRIMARY
-        : Icons.PAPER_PLANE;
-    };
-
-    return (
-      <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
-        <PopOver
-          html={
-            <Fragment>
-              <strong>Send now</strong>
-            </Fragment>
-          }
-          position="top"
-          size="small"
-          trigger="mouseenter">
-          <Button
-            className={classNames(
-              'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
-              buttonClass
-            )}
-            data-testid="send-button"
-            disabled={editorValue.length === 0}
-            size="custom"
-            variant="text"
-            onClick={onSaveHandler}>
-            <SVGIcons alt="paper-plane" icon={getIcon()} width="18px" />
-          </Button>
-        </PopOver>
-      </div>
-    );
-  };
-
   return (
     <div className={classNames('tw-relative', className)}>
       <FeedEditor
@@ -110,9 +64,13 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
         onSave={onSaveHandler}
       />
 
-      <SendButton />
+      <SendButton
+        buttonClass={buttonClass}
+        editorValue={editorValue}
+        onSaveHandler={onSaveHandler}
+      />
 
-      <KeyHelp />
+      <KeyHelp editorValue={editorValue} />
     </div>
   );
 };
