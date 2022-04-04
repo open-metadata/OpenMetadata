@@ -24,7 +24,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -57,6 +56,7 @@ from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -200,9 +200,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 
-    def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
-
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
         for inspector in inspectors:
@@ -247,7 +244,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = self.get_table_fqn(self.config.service_name, schema, table_name)
+                fqn = get_fqdn(self.config.service_name, schema, table_name)
                 self.database_source_state.add(fqn)
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
@@ -330,7 +327,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = self.get_table_fqn(self.config.service_name, schema, view_name)
+                fqn = get_fqdn(self.config.service_name, schema, view_name)
                 self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
@@ -431,7 +428,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table_fqn = self.get_table_fqn(
+                    table_fqn = get_fqdn(
                         self.config.service_name, database, table
                     ).lower()
                     upstream_nodes.append(table_fqn)
@@ -443,7 +440,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}{FQDN_SEPARATOR}{table_name}".lower()
+        table_fqn = get_fqdn(schema, table_name).lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
@@ -661,7 +658,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             if column["policy_tags"] and self.config.enable_policy_tags:
                                 col_dict.tags = [
                                     TagLabel(
-                                        tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
+                                        tagFQN=get_fqdn(
+                                            self.config.tag_category_name,
+                                            column["policy_tags"],
+                                        ),
                                         labelType="Automated",
                                         state="Suggested",
                                         source=TagSource.Tag.name,

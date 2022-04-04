@@ -24,6 +24,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
+from metadata.utils.fqdn_separator import get_fqdn
 
 logger = logging.getLogger(__name__)
 
@@ -100,5 +101,5 @@ class TrinoSource(SQLSource):
             if self.config.include_views:
                 yield from self.fetch_views(self.inspector, schema)
             if self.config.mark_deleted_tables_as_deleted:
-                schema_fqdn = f"{self.config.service_name}.{schema}"
+                schema_fqdn = get_fqdn(self.config.service_name, schema)
                 yield from self.delete_tables(schema_fqdn)

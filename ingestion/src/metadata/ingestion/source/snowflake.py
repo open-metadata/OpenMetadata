@@ -22,7 +22,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.databaseService import (
@@ -34,6 +33,7 @@ from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.engines import get_engine
+from metadata.utils.fqdn_separator import get_fqdn
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -99,7 +99,7 @@ class SnowflakeSource(SQLSource):
                 yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
+        return get_fqdn(service_name, self.config.database, schema, table_name)
 
     def _get_database(self, schema: str) -> Database:
         return Database(

@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -23,6 +22,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_messaging_service_or_create,
@@ -147,7 +147,9 @@ class AtlasSource(Source):
                     ]
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = get_fqdn(
+                        self.config.service_name, db.name.__root__, table_name
+                    )
                     tbl_description = tbl_attrs["description"]
 
                     om_table_entity = Table(
@@ -217,7 +219,7 @@ class AtlasSource(Source):
                 "table"
             ]["displayText"]
 
-            fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+            fqn = get_fqdn(self.config.service_name, db.name.__root__, table_name)
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -238,7 +240,9 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = get_fqdn(
+                        self.config.service_name, db.name.__root__, table_name
+                    )
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )

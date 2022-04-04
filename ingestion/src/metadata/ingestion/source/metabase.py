@@ -40,6 +40,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create, ingest_lineage
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -221,10 +222,11 @@ class MetabaseSource(Source[Entity]):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqdn = f"{self.config.db_service_name}.\
-                                    {table['schema']}.{table['name']}"
-                    dashboard_fqdn = (
-                        f"{self.dashboard_service.name}.{quote(dashboard_name)}"
+                    table_fqdn = get_fqdn(
+                        self.config.db_service_name, table["schema"], table["name"]
+                    )
+                    dashboard_fqdn = get_fqdn(
+                        self.dashboard_service.name, quote(dashboard_name)
                     )
                     table_entity = metadata.get_by_name(entity=Table, fqdn=table_fqdn)
                     chart_entity = metadata.get_by_name(

@@ -36,6 +36,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.superset_rest import SupersetAPIClient, SupersetConfig
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -273,11 +274,11 @@ class SupersetSource(Source[Entity]):
                 try:
                     from_entity = self.metadata_client.get_by_name(
                         entity=Table,
-                        fqdn=f"{self.config.db_service_name}.{datasource_text}",
+                        fqdn=get_fqdn(self.config.db_service_name, datasource_text),
                     )
                     to_entity = self.metadata_client.get_by_name(
                         entity=Lineage_Dashboard,
-                        fqdn=f"{self.config.service_name}.{dashboard['id']}",
+                        fqdn=get_fqdn(self.config.service_name, dashboard["id"]),
                     )
                     if from_entity and to_entity:
                         lineage = AddLineageRequest(

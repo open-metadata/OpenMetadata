@@ -8,7 +8,7 @@ from pyspark.sql.catalog import Table
 from pyspark.sql.types import ArrayType, MapType, StructField, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
-from metadata.config.common import FQDN_SEPARATOR, ConfigModel
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -20,6 +20,7 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -89,7 +90,9 @@ class DeltaLakeSource(Source):
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
                 table_columns = self._fetch_columns(schema, table_name)
-                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
+                fqn = get_fqdn(
+                    self.config.service_name, self.config.database, schema, table_name
+                )
                 if table.tableType and table.tableType.lower() != "view":
                     table_description = self._fetch_table_description(table_name)
                     table_entity = Table(

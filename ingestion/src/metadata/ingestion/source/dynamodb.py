@@ -3,7 +3,6 @@ import traceback
 import uuid
 from typing import Iterable
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -18,6 +17,7 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class DynamodbSource(Source[Entity]):
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
-                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{database_entity.name}{FQDN_SEPARATOR}{table}"
+                fqn = get_fqdn(self.config.service_name, database_entity.name, table)
                 self.dataset_name = fqn
                 table_columns = self.get_columns(table.attribute_definitions)
                 table_entity = Table(

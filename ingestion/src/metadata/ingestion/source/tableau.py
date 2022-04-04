@@ -46,6 +46,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.fqdn_separator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
@@ -190,8 +191,8 @@ class TableauSource(Source[Entity]):
         for datasource in datasource_list:
             try:
                 table_fqdn = datasource.split("(")[1].split(")")[0]
-                dashboard_fqdn = f"{self.config.service_name}.{dashboard_name}"
-                table_fqdn = f"{self.config.db_service_name}.{table_fqdn}"
+                dashboard_fqdn = get_fqdn(self.config.service_name, dashboard_name)
+                table_fqdn = get_fqdn(self.config.db_service_name, table_fqdn)
                 table_entity = self.metadata_client.get_by_name(
                     entity=Table, fqdn=table_fqdn
                 )
