@@ -67,7 +67,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
     // Create dashboard with mandatory dashboardUrl field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withConfig(null), ADMIN_AUTH_HEADERS),
+        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[connection must not be null]");
   }
@@ -84,7 +84,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(
-        createRequest(test, 3).withConfig(new DashboardConnection().withConnection(supersetConnection)), authHeaders);
+        createRequest(test, 3).withConnection(new DashboardConnection().withConnection(supersetConnection)),
+        authHeaders);
   }
 
   @Test
@@ -98,7 +99,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withPassword("password"));
     DashboardService service =
         createAndCheckEntity(
-            createRequest(test).withDescription(null).withConfig(dashboardConnection), ADMIN_AUTH_HEADERS);
+            createRequest(test).withDescription(null).withConnection(dashboardConnection), ADMIN_AUTH_HEADERS);
 
     // Update dashboard description and ingestion service that are null
     DashboardConnection dashboardConnection1 =
@@ -110,7 +111,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withPassword("password1"));
 
     CreateDashboardService update =
-        createRequest(test).withDescription("description1").withConfig(dashboardConnection1);
+        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
 
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
@@ -131,7 +132,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
       return new CreateDashboardService()
           .withName(name)
           .withServiceType(CreateDashboardService.DashboardServiceType.Superset)
-          .withConfig(
+          .withConnection(
               new DashboardConnection()
                   .withConnection(
                       new SupersetConnection()
@@ -155,7 +156,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         getPrincipal(authHeaders),
         createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
-    DashboardConnection expectedConnection = createRequest.getConfig();
+    DashboardConnection expectedConnection = createRequest.getConnection();
     DashboardConnection actualConnection = service.getConnection();
     validateConnection(expectedConnection, actualConnection, service.getServiceType());
   }

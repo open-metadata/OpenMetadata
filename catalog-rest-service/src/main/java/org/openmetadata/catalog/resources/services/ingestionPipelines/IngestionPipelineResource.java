@@ -397,7 +397,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
     IngestionPipeline pipeline = (IngestionPipeline) response.getEntity();
     airflowRESTClient.deletePipeline(pipeline.getName());
     return response;

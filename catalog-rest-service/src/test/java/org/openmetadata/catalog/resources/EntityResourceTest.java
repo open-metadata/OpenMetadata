@@ -342,7 +342,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         new CreateMessagingService()
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
-            .withConfig(TestUtils.KAFKA_CONNECTION);
+            .withConnection(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
@@ -350,7 +350,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createMessaging
         .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
-        .withConfig(new MessagingConnection().withConnection(new PulsarConnection()));
+        .withConnection(new MessagingConnection().withConnection(new PulsarConnection()));
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
