@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
@@ -24,7 +24,10 @@ import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { getUserTeams } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
@@ -56,6 +59,7 @@ const ManageTab: FunctionComponent<Props> = ({
   allowTeamOwner = true,
   isJoinable,
 }: Props) => {
+  const showToast = useToastContext();
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const getOwnerList = () => {
@@ -124,6 +128,13 @@ const ManageTab: FunctionComponent<Props> = ({
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
+
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
   };
@@ -190,29 +201,38 @@ const ManageTab: FunctionComponent<Props> = ({
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getCategory('Tier').then((res: AxiosResponse) => {
-      if (res.data) {
-        const tierData = res.data.children.map(
-          (tier: { name: string; description: string }) => ({
-            id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-            title: tier.name,
-            description: tier.description.substring(
-              0,
-              tier.description.indexOf('\n\n')
-            ),
-            data: tier.description.substring(
-              tier.description.indexOf('\n\n') + 1
-            ),
-          })
+    getCategory('Tier')
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const tierData = res.data.children.map(
+            (tier: { name: string; description: string }) => ({
+              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+              title: tier.name,
+              description: tier.description.substring(
+                0,
+                tier.description.indexOf('\n\n')
+              ),
+              data: tier.description.substring(
+                tier.description.indexOf('\n\n') + 1
+              ),
+            })
+          );
+
+          setTierData(tierData);
+          setIsLoadingTierData(false);
+        } else {
+          setTierData([]);
+          setIsLoadingTierData(false);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-tiers-error']
         );
 
-        setTierData(tierData);
-        setIsLoadingTierData(false);
-      } else {
-        setTierData([]);
-        setIsLoadingTierData(false);
-      }
-    });
+        handleShowErrorToast(errMsg);
+      });
   };
 
   const ownerName = getOwnerById();

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -30,10 +30,13 @@ import {
 } from '../../constants/constants';
 import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   addToRecentSearched,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
@@ -43,6 +46,7 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
+  const showToast = useToastContext();
   const { isFirstTimeUser } = useAuth(location.pathname);
   const {
     isAuthDisabled,
@@ -60,6 +64,13 @@ const Appbar: React.FC = (): JSX.Element => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
 
   const [version, setVersion] = useState<string>('');
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -227,6 +238,21 @@ const Appbar: React.FC = (): JSX.Element => {
     searchHandler(searchValue ?? '');
   };
 
+  const fetchOMVersion = () => {
+    getVersion()
+      .then((res: AxiosResponse) => {
+        setVersion(res.data.version);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-version-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      });
+  };
+
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
@@ -240,14 +266,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
   useEffect(() => {
     if (isAuthDisabled) {
-      getVersion().then((res: AxiosResponse) => {
-        setVersion(res.data.version);
-      });
+      fetchOMVersion();
     } else {
       if (!isEmpty(appState.userDetails)) {
-        getVersion().then((res: AxiosResponse) => {
-          setVersion(res.data.version);
-        });
+        fetchOMVersion();
       }
     }
   }, [appState.userDetails, isAuthDisabled]);
