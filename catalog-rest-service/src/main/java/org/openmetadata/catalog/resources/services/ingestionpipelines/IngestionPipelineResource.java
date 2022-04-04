@@ -119,7 +119,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Valid
   @Operation(
-      summary = "List Airflow Pipelines for Metadata Operations",
+      summary = "List Ingestion Pipelines for Metadata Operations",
       tags = "IngestionPipelines",
       description =
           "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
@@ -291,7 +291,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Airflow Pipeline",
+            description = "The Ingestion Pipeline",
             content =
                 @Content(
                     mediaType = "application/json",
