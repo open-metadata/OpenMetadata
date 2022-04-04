@@ -145,6 +145,10 @@ export interface FieldChange {
  */
 export interface EntityReference {
   /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Optional description of entity.
    */
   description?: string;
@@ -184,6 +188,7 @@ export enum DatabaseServiceType {
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
