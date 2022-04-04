@@ -570,6 +570,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     List<TagLabel> tags = new ArrayList<>();
     tags.add(USER_ADDRESS_TAG_LABEL);
+    tags.add(USER_ADDRESS_TAG_LABEL); // Duplicated tags should be handled
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", BIGINT, null).withTags(tags));
 
@@ -588,6 +589,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Ensure description and previous tag is carried forward during update
     //
     tags.add(GLOSSARY1_TERM1_LABEL);
+    tags.add(GLOSSARY1_TERM1_LABEL); // Duplicated tags should be handled
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
     ChangeDescription change = getChangeDescription(table.getVersion());

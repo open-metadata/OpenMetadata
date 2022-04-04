@@ -23,6 +23,7 @@ import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
+import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -566,11 +567,17 @@ public abstract class EntityRepository<T> {
       return tagLabels;
     }
 
-    List<TagLabel> updatedTagLabels = new ArrayList<>(tagLabels);
+    List<TagLabel> updatedTagLabels = new ArrayList<>();
     for (TagLabel tagLabel : tagLabels) {
+      TagLabel existingTag =
+          updatedTagLabels.stream().filter(c -> tagLabelMatch.test(c, tagLabel)).findAny().orElse(null);
+      if (existingTag != null) {
+        continue; // tag label is already seen. Don't add duplicate tags.
+      }
+
+      updatedTagLabels.add(tagLabel);
       if (tagLabel.getSource() != Source.TAG) {
-        // Related tags are not supported for Glossary yet
-        continue;
+        continue; // Related tags are not supported for Glossary yet
       }
       String json = daoCollection.tagDAO().findTag(tagLabel.getTagFQN());
       if (json == null) {
@@ -997,7 +1004,7 @@ public abstract class EntityRepository<T> {
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, EntityUtil.tagLabelMatch);
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
       applyTags(updatedTags, fqn);
     }
