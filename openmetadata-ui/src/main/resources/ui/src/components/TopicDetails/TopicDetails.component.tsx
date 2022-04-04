@@ -368,7 +368,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   </div>
                 </div>
                 {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
+                <div
+                  className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
+                  data-testid="schema">
                   <SchemaEditor value={schemaText} />
                 </div>
               </>
@@ -392,7 +394,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </div>
             )}
             {activeTab === 3 && (
-              <div>
+              <div data-testid="config">
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
