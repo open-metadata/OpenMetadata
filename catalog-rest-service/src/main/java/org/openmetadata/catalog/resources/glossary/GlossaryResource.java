@@ -330,9 +330,16 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "glossary for instance {id} is not found")
       })
-  public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
   private Glossary getGlossary(SecurityContext securityContext, CreateGlossary create) {

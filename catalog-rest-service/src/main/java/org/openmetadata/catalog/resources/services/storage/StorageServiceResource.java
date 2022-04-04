@@ -306,10 +306,14 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
   private StorageService getService(CreateStorageService create, SecurityContext securityContext) {

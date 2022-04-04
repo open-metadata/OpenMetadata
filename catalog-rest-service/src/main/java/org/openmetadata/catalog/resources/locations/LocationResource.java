@@ -390,9 +390,13 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the location", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Location Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
   @PUT

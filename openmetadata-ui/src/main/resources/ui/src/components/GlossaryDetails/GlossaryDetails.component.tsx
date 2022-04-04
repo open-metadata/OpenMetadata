@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
@@ -22,7 +23,10 @@ import {
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -46,6 +50,7 @@ type props = {
 };
 
 const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
+  const showToast = useToastContext();
   const [activeTab, setActiveTab] = useState(1);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -54,6 +59,12 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const tabs = [
     {
@@ -135,6 +146,14 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     getTagCategories()
       .then((res) => {
         setTagList(getTaglist(res.data));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-tags-error']
+        );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsTagLoading(false);
