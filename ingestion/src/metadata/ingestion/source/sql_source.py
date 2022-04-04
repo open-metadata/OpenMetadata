@@ -280,7 +280,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
-                database = self._get_database(schema)
+                database = self._get_database(self.config.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
@@ -358,7 +358,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
                 table.dataModel = self._get_data_model(schema, view_name)
-                database = self._get_database(schema)
+                database = self._get_database(self.config.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
                     database=database,
