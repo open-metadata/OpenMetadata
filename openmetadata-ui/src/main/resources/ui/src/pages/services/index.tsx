@@ -596,6 +596,15 @@ const ServicesPage = () => {
     ) : null;
   };
 
+  const noServicesText = (searchText: string) => {
+    let text = 'No services found';
+    if (searchText) {
+      text = `${text} for ${searchText}`;
+    }
+
+    return text;
+  };
+
   const getServiceList = () => {
     return serviceList.length ? (
       <Fragment>
@@ -698,7 +707,7 @@ const ServicesPage = () => {
         </div>
         <div className="tw-mt-11">
           <p className="tw-text-lg tw-text-center">
-            {`No services found ${searchText ? `for "${searchText}"` : ''}`}
+            {noServicesText(searchText)}
           </p>
           <p className="tw-text-lg tw-text-center">
             <NonAdminAction
