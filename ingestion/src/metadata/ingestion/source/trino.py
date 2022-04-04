@@ -33,6 +33,10 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 
 class TrinoConfig(TrinoConnection, SQLConnectionConfig):
     params: Optional[dict] = None
+<<<<<<< HEAD
+=======
+    proxies: dict = {}
+>>>>>>> make proxies optional
 
     def get_connection_url(self):
         url = f"{self.scheme}://"
