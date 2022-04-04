@@ -64,10 +64,8 @@ class SalesforceConfig(SalesforceConnection, SQLConnectionConfig):
 
 
 class SalesforceSource(Source[OMetaDatabaseAndTable]):
-    def __init__(
-        self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx
-    ):
-        super().__init__(ctx)
+    def __init__(self, config: SalesforceConfig, metadata_config: MetadataServerConfig):
+        super().__init__()
         self.config = config
         self.service = get_database_service_or_create(
             config=config, metadata_config=metadata_config
@@ -80,10 +78,10 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         )
 
     @classmethod
-    def create(cls, config: dict, metadata_config: dict, ctx: WorkflowContext):
+    def create(cls, config: dict, metadata_config: dict):
         config = SalesforceConfig.parse_obj(config)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def column_type(self, column_type: str):
         if column_type in {"ID", "PHONE", "CURRENCY"}:

@@ -43,8 +43,8 @@ class RedshiftUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Redshift.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
@@ -54,17 +54,17 @@ class RedshiftUsageSource(Source[TableQuery]):
         )
         self.analysis_date = start
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, ctx, "Redshift", self.sql_stmt
+            config, metadata_config, "Redshift", self.sql_stmt
         )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "redshift"
         self.status = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = RedshiftConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

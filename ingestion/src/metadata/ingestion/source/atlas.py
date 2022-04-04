@@ -55,9 +55,8 @@ class AtlasSource(Source):
         self,
         config: AtlasSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
@@ -84,10 +83,10 @@ class AtlasSource(Source):
         self.topics: Dict[str, Any] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = AtlasSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         for key in self.config.entity_types["Table"].keys():

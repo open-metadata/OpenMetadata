@@ -52,7 +52,7 @@ class TrinoConfig(TrinoConnection, SQLConnectionConfig):
 
 
 class TrinoSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
+    def __init__(self, config, metadata_config):
         self.schema_names = None
         self.inspector = None
         try:
@@ -68,13 +68,13 @@ class TrinoSource(SQLSource):
             if logger.isEnabledFor(logging.DEBUG):
                 raise
             sys.exit(1)
-        super().__init__(config, metadata_config, ctx)
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = TrinoConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         self.inspector = inspect(self.engine)

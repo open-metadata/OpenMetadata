@@ -31,11 +31,11 @@
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "workflow.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "workflow.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "dbtCatalogFilePath": {
       "description": "DBT catalog file to extract dbt models with their column schemas.",

@@ -27,7 +27,6 @@ class SQLAlchemyHelper:
         self,
         config: SQLConnectionConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
         platform: str,
         query: str,
     ):

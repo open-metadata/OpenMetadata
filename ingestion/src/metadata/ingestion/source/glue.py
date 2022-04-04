@@ -55,10 +55,8 @@ class GlueSourceConfig(AWSClientConfigModel):
 
 
 class GlueSource(Source[Entity]):
-    def __init__(
-        self, config: GlueSourceConfig, metadata_config: MetadataServerConfig, ctx
-    ):
-        super().__init__(ctx)
+    def __init__(self, config: GlueSourceConfig, metadata_config: MetadataServerConfig):
+        super().__init__()
         self.status = SQLSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
@@ -88,10 +86,10 @@ class GlueSource(Source[Entity]):
         self.next_db_token = None
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config_dict):
         config = GlueSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass

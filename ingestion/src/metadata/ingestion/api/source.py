@@ -37,8 +37,6 @@ class SourceStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
     def create(

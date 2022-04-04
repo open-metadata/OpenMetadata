@@ -44,9 +44,8 @@ class DeltaLakeSource(Source):
         self,
         config: DeltaLakeSourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(
@@ -59,12 +58,10 @@ class DeltaLakeSource(Source):
         self.spark = ctx.spark
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = DeltaLakeSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         schemas = self.spark.catalog.listDatabases()

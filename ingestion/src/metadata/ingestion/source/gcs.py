@@ -61,10 +61,8 @@ class GcsSource(Source[Entity]):
     config: GcsSourceConfig
     status: SourceStatus
 
-    def __init__(
-        self, config: GcsSourceConfig, metadata_config: MetadataServerConfig, ctx
-    ):
-        super().__init__(ctx)
+    def __init__(self, config: GcsSourceConfig, metadata_config: MetadataServerConfig):
+        super().__init__()
         self.config = config
         self.status = SourceStatus()
         self.service = get_storage_service_or_create(
@@ -77,12 +75,10 @@ class GcsSource(Source[Entity]):
         self.gcs = storage.Client()
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = GcsSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass
