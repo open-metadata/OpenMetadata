@@ -21,9 +21,9 @@ jest.mock('../../../utils/FeedUtils', () => ({
   HTMLToMarkdown: jest.fn().mockReturnValue({ turndown: jest.fn() }),
 }));
 
-jest.mock('../../FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
-});
+jest.mock('../../FeedEditor/FeedEditor', () => ({
+  FeedEditor: jest.fn().mockReturnValue(<p>FeedEditor</p>),
+}));
 
 describe('Test Activity Feed Editor Component', () => {
   it('Check if FeedEditor has all child elements', async () => {
