@@ -44,6 +44,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   const onChangeHandler = (value: string) => {
     setEditorValue(HTMLToMarkdown.turndown(value));
   };
+
   const onSaveHandler = () => {
     if (editorRef.current) {
       if (editorRef.current?.getEditorValue()) {
@@ -65,6 +66,12 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   };
 
   const SendButton = () => {
+    const getIcon = () => {
+      return editorValue.length > 0
+        ? Icons.PAPER_PLANE_PRIMARY
+        : Icons.PAPER_PLANE;
+    };
+
     return (
       <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
         <PopOver
@@ -86,15 +93,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
             size="custom"
             variant="text"
             onClick={onSaveHandler}>
-            <SVGIcons
-              alt="paper-plane"
-              icon={
-                editorValue.length > 0
-                  ? Icons.PAPER_PLANE_PRIMARY
-                  : Icons.PAPER_PLANE
-              }
-              width="18px"
-            />
+            <SVGIcons alt="paper-plane" icon={getIcon()} width="18px" />
           </Button>
         </PopOver>
       </div>
