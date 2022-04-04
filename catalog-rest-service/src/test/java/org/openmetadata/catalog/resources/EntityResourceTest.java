@@ -350,7 +350,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createMessaging
         .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConnection(new PulsarConnection()));
+        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
