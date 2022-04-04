@@ -41,18 +41,28 @@ jest.mock('../../FeedEditor/FeedEditor', () => ({
 }));
 
 jest.mock('./SendButton', () => ({
-  SendButton: jest.fn().mockImplementation(() => {
+  SendButton: jest.fn().mockImplementation(({ buttonClass }) => {
     return (
-      <button data-testid="send-button" onClick={onSaveHandler}>
+      <button
+        className={buttonClass}
+        data-testid="send-button"
+        onClick={onSaveHandler}>
         send button
       </button>
     );
   }),
 }));
 
+const mockProp = {
+  buttonClass: '',
+  onSave,
+  placeHolder: '',
+  defaultValue: '',
+};
+
 describe('Test Activity Feed Editor Component', () => {
   it('Check if FeedEditor has all child elements', async () => {
-    const { container } = render(<ActivityFeedEditor />, {
+    const { container } = render(<ActivityFeedEditor {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
@@ -64,9 +74,12 @@ describe('Test Activity Feed Editor Component', () => {
   });
 
   it('should call onSave method', async () => {
-    const { container } = render(<ActivityFeedEditor onSave={onSave} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <ActivityFeedEditor {...mockProp} onSave={onSave} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const editor = await findByTestId(container, 'feed-editor');
     const sendButton = await findByTestId(container, 'send-button');
@@ -77,5 +90,22 @@ describe('Test Activity Feed Editor Component', () => {
     fireEvent.click(sendButton);
 
     expect(onSave).toBeCalled();
+  });
+
+  it('should have passed button classes', async () => {
+    const { container } = render(
+      <ActivityFeedEditor {...mockProp} buttonClass="xyz" />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editor = await findByTestId(container, 'feed-editor');
+    const sendButton = await findByTestId(container, 'send-button');
+
+    expect(editor).toBeInTheDocument();
+    expect(sendButton).toBeInTheDocument();
+
+    expect(sendButton).toHaveClass('xyz');
   });
 });
