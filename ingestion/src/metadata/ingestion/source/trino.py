@@ -15,6 +15,7 @@ from typing import Iterable, Optional
 from urllib.parse import quote_plus
 
 import click
+from requests import Session
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.metadataIngestion.workflow import (

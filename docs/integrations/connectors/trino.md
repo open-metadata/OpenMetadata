@@ -415,9 +415,9 @@ Then re-run the install command in [Step 2](trino.md#2.-install-the-python-modul
 If you encounter the following error when attempting to run the ingestion workflow in Step 12, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
 ```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/local_trino 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585):
+Max retries exceeded with url: /api/v1/services/databaseServices/name/local_trino
+(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>:
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
