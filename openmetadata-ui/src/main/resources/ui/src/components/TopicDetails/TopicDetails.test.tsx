@@ -34,19 +34,17 @@ jest.mock('../../auth-provider/AuthProvider', () => {
 const mockUserTeam = [
   {
     description: 'description',
-    displayName: 'displayName',
-    href: 'href',
-    id: 'id',
-    name: 'name',
-    type: 'type',
+    displayName: 'Cloud_Infra',
+    id: 'id1',
+    name: 'Cloud_infra',
+    type: 'team',
   },
   {
     description: 'description',
-    displayName: 'displayName',
-    href: 'href',
-    id: 'id',
-    name: 'name',
-    type: 'type',
+    displayName: 'Finance',
+    id: 'id2',
+    name: 'Finance',
+    type: 'team',
   },
 ];
 
