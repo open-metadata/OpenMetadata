@@ -16,7 +16,7 @@ import importlib
 import logging
 from typing import Type, TypeVar
 
-from metadata.ingestion.api.common import DynamicTypedConfig, WorkflowContext
+from metadata.ingestion.api.common import DynamicTypedConfig
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
@@ -52,7 +52,6 @@ def get_class(key: str) -> Type[T]:
 
 def get_ingestion_source(
     source_type: str,
-    context: WorkflowContext,
     source_config: DynamicTypedConfig,
     metadata_config: MetadataServerConfig,
 ) -> Source:
@@ -60,7 +59,6 @@ def get_ingestion_source(
     Import the required source class and configure it.
 
     :param source_type: Type specified in the config, e.g., redshift
-    :param context: Workflow related information
     :param source_config: Specific source configurations, such as the host
     :param metadata_config: Metadata server configurations
     """
@@ -72,7 +70,7 @@ def get_ingestion_source(
         )
     )
     source: Source = source_class.create(
-        source_config.dict().get("config", {}), metadata_config, context
+        source_config.dict().get("config", {}), metadata_config
     )
     logger.debug(f"Source type:{source_type},{source_class} configured")
 
@@ -84,7 +82,6 @@ def get_ingestion_source(
 
 def get_sink(
     sink_type: str,
-    context: WorkflowContext,
     sink_config: DynamicTypedConfig,
     metadata_config: MetadataServerConfig,
     _from: str = "ingestion",
@@ -95,7 +92,6 @@ def get_sink(
     By default, we will pick it up from `ingestion`.
 
     :param sink_type: Type specified in the config, e.g., metadata-rest
-    :param context: Workflow related information
     :param sink_config: Specific sink configurations, such as the host
     :param metadata_config: Metadata server configurations
     :param _from: From where do we load the sink class. Ingestion by default.
@@ -109,7 +105,7 @@ def get_sink(
     )
 
     sink: Sink = sink_class.create(
-        sink_config.dict().get("config", {}), metadata_config, context
+        sink_config.dict().get("config", {}), metadata_config
     )
 
     logger.debug(f"Sink type: {sink_type}, {sink_class} configured")
@@ -119,7 +115,6 @@ def get_sink(
 
 def get_processor(
     processor_type: str,
-    context: WorkflowContext,
     processor_config: DynamicTypedConfig,
     metadata_config: MetadataServerConfig,
     _from: str = "ingestion",
@@ -135,7 +130,6 @@ def get_processor(
     the source tables.
 
     :param processor_type: Type specified in the config, e.g., metadata-rest
-    :param context: Workflow related information
     :param processor_config: Specific Processor configurations, such as the profiler and tests
     :param metadata_config: Metadata server configurations
     :param _from: From where do we load the sink class. Ingestion by default.
@@ -149,7 +143,7 @@ def get_processor(
     )
 
     processor: Processor = processor_class.create(
-        processor_config.dict().get("config", {}), metadata_config, context, **kwargs
+        processor_config.dict().get("config", {}), metadata_config, **kwargs
     )
 
     logger.debug(f"Sink type: {processor_type}, {processor_class} configured")

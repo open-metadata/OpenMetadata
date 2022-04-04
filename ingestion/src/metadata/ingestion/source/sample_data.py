@@ -22,7 +22,6 @@ from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,9 +38,6 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )

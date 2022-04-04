@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRu
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import GcsStorageClass, StorageServiceType
-from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -50,7 +50,6 @@ class GcsSource(Source[Entity]):
         config:
         GcsSourceConfig:
         metadata_config:
-        ctx:
     Attributes:
         config:
         status:

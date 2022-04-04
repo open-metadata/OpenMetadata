@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -70,12 +69,11 @@ class OrmProfilerProcessor(Processor[Table]):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: ProfilerProcessorConfig,
         metadata_config: MetadataServerConfig,
         session: Session,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = OrmProfilerStatus()
@@ -93,7 +91,6 @@ class OrmProfilerProcessor(Processor[Table]):
         cls,
         config_dict: dict,
         metadata_config_dict: dict,
-        ctx: WorkflowContext,
         **kwargs,
     ):
         """
@@ -109,7 +106,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 "Cannot initialise the ProfilerProcessor without an SQLAlchemy Session"
             )
 
-        return cls(ctx, config, metadata_config, session=session)
+        return cls(config, metadata_config, session=session)
 
     def get_table_profile_sample(self, table: Table) -> Optional[float]:
         """

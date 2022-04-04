@@ -14,7 +14,7 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

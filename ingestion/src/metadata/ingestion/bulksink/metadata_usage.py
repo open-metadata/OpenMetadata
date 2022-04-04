@@ -17,7 +17,6 @@ from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.models.table_queries import (
     ColumnJoinedWith,
     TableColumn,

@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -131,7 +131,6 @@ class MetadataSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:

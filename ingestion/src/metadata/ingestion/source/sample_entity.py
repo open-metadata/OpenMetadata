@@ -79,7 +79,6 @@ class SampleEntitySource(Source[Entity]):
         self,
         config: SampleEntitySourceConfig,
         metadata_config: MetadataServerConfig,
-        ctx,
     ):
         super().__init__()
         self.faker = Faker()

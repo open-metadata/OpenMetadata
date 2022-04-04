@@ -22,12 +22,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import (
-    ConfigModel,
-    Entity,
-    IncludeFilterPattern,
-    WorkflowContext,
-)
+from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -56,7 +51,6 @@ class PowerbiSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
     Attributes:
         config:
         metadata_config:
@@ -101,7 +95,6 @@ class PowerbiSource(Source[Entity]):
         Args:
             config_dict:
             metadata_config_dict:
-            ctx:
         Returns:
             PowerBiSource
         """

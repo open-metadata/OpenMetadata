@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.ingestion.api.common import ConfigModel, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
 
 logger: logging.Logger = logging.getLogger(__name__)

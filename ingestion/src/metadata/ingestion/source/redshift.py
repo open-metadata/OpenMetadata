@@ -472,7 +472,6 @@ class RedshiftSource(SQLSource):
     Args:
         confi:
         metadata_config:
-        ctx:
     """
 
     def __init__(self, config, metadata_config):
@@ -486,7 +485,6 @@ class RedshiftSource(SQLSource):
         Args:
             config_dict:
             metadata_config_dict:
-            ctx:
         Returns:
         """
         config = RedshiftConfig.parse_obj(config_dict)

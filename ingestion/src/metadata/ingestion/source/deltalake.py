@@ -15,7 +15,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, WorkflowContext
+from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig

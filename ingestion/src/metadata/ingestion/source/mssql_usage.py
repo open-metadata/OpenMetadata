@@ -38,7 +38,6 @@ class MssqlUsageSource(Source[TableQuery]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:

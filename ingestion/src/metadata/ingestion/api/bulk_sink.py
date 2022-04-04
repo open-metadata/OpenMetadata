@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from typing import Any, List
 
 from .closeable import Closeable
-from .common import WorkflowContext
 from .status import Status
 
 

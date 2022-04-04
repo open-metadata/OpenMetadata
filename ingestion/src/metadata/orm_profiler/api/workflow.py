@@ -31,7 +31,6 @@ from metadata.config.common import (
 from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
@@ -68,7 +67,6 @@ class ProfilerWorkflow:
     """
 
     config: ProfilerWorkflowConfig
-    ctx: WorkflowContext
     source: Source
     processor: Processor
     sink: Sink
@@ -76,7 +74,6 @@ class ProfilerWorkflow:
 
     def __init__(self, config: ProfilerWorkflowConfig):
         self.config = config
-        self.ctx = WorkflowContext(workflow_id=self.config.run_id)
 
         self.metadata_config = MetadataServerConfig.parse_obj(
             self.config.metadata_server.dict().get("config", {})
@@ -85,7 +82,6 @@ class ProfilerWorkflow:
         # We will use the existing sources to build the Engine
         self.source = get_ingestion_source(
             source_type=self.config.source.type,
-            context=self.ctx,
             source_config=self.config.source,
             metadata_config=self.metadata_config,
         )
@@ -101,7 +97,6 @@ class ProfilerWorkflow:
 
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
-            context=self.ctx,
             processor_config=self.config.processor or ProfilerProcessorConfig(),
             metadata_config=self.metadata_config,
             _from="orm_profiler",
@@ -112,7 +107,6 @@ class ProfilerWorkflow:
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
-                context=self.ctx,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",

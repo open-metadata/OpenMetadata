@@ -30,7 +30,6 @@ class AzuresqlSource(SQLSource):
     Args:
         config:
         metadata_config:
-        ctx
     """
 
     @classmethod

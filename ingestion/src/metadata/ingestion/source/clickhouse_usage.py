@@ -59,7 +59,6 @@ class ClickhouseUsageSource(Source[TableQuery]):
         self.alchemy_helper = SQLAlchemyHelper(
             config,
             metadata_config,
-            ctx,
             DatabaseServiceType.ClickHouse.value,
             self.sql_stmt,
         )

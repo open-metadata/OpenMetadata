@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Generic, List
 
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 

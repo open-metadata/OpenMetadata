@@ -16,7 +16,6 @@ from metadata.generated.schema.entity.services.messagingService import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

@@ -16,7 +16,6 @@ from ldap3 import ALL, LEVEL, Connection, Server
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig

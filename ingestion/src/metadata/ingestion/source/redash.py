@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Entity, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard

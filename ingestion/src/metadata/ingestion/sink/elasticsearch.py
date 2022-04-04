@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import entityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     DashboardESDocument,
