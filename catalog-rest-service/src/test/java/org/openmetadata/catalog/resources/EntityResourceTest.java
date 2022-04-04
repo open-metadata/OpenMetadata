@@ -1208,8 +1208,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (supportsTags) {
       entityInterface.setTags(new ArrayList<>());
       entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
       entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
-      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
+      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      change
+          .getFieldsAdded()
+          .add(new FieldChange().withName("tags").withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
     }
     change
         .getFieldsAdded()
