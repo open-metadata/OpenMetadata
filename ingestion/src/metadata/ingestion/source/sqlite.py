@@ -14,21 +14,15 @@ Sqlite source implementation.
 Useful for testing!
 """
 
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
 )
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class SQLiteConfig(MysqlConnection, SQLConnectionConfig):
-    scheme = "sqlite+pysqlite"
-    service_type = DatabaseServiceType.SQLite.value
-
+class SQLiteConfig(SQLiteConnection, SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 

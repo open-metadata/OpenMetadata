@@ -148,6 +148,9 @@
               "$ref": "./connections/database/mysqlConnection.json"
             },
             {
+              "$ref": "./connections/database/sqliteConnection.json"
+            },
+            {
               "$ref": "./connections/database/oracleConnection.json"
             },
             {
