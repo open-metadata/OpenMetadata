@@ -130,3 +130,18 @@ DROP INDEX updatedBy;
 ALTER TABLE glossary_term_entity
 DROP INDEX updatedAt,
 DROP INDEX updatedBy;
+
+
+CREATE TABLE IF NOT EXISTS database_schema_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
+);
+

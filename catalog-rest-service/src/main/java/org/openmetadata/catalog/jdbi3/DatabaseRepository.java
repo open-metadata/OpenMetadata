@@ -33,6 +33,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -53,7 +54,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database != null && database.getService() != null)
-        ? EntityUtil.getFQN(database.getService().getName(), database.getName())
+        ? EntityNameUtil.getFQN(database.getService().getName(), database.getName())
         : null;
   }
 
@@ -102,7 +103,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getService(database));
     database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
-    database.setTables(fields.contains("tables") ? getTables(database) : null);
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getTables(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
     database.setLocation(fields.contains("location") ? getLocation(database) : null);

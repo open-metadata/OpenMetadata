@@ -66,7 +66,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -147,7 +147,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
-    assertService(expected.getService(), updated.getService());
+    assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSource().getSourceConfig(), updated.getSource().getSourceConfig());
   }
 
@@ -231,7 +231,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = EntityNameUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -269,7 +269,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = EntityNameUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validateSourceConfig(queryUsageConfig, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -302,7 +302,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = EntityNameUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -364,7 +364,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             OK,
             ADMIN_AUTH_HEADERS);
 
-    String expectedFQN = EntityUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = EntityNameUtil.getFQN(BIGQUERY_REFERENCE.getName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestionPipeline);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());

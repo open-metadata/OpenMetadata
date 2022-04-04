@@ -39,7 +39,6 @@ import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -53,18 +52,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-  }
-
-  @Test
-  void post_validCharts_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateChart create = createRequest(test).withService(SUPERSET_REFERENCE);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    Chart chart = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(SUPERSET_REFERENCE.getName(), chart.getName());
-    assertEquals(expectedFQN, chart.getFullyQualifiedName());
   }
 
   @Test
@@ -148,7 +135,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertNotNull(chart.getServiceType());
-    assertService(createRequest.getService(), chart.getService());
+    assertReference(createRequest.getService(), chart.getService());
   }
 
   @Override
@@ -158,7 +145,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         expected.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
-    assertService(expected.getService(), patched.getService());
+    assertReference(expected.getService(), patched.getService());
   }
 
   @Override

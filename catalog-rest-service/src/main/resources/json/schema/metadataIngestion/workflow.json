@@ -107,7 +107,7 @@
     "sourceConfig": {
       "description": "Additional connection configuration.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.SourceConfig",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
       "properties": {
         "config": {
           "oneOf": [

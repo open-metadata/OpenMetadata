@@ -44,7 +44,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -143,22 +143,12 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     LocationList allLocations =
         listPrefixes(
             null,
-            EntityUtil.getFQN(AWS_STORAGE_SERVICE_REFERENCE.getName(), locationName),
+            EntityNameUtil.getFQN(AWS_STORAGE_SERVICE_REFERENCE.getName(), locationName),
             1000000,
             null,
             null,
             ADMIN_AUTH_HEADERS);
     assertEquals(5, allLocations.getData().size(), "Wrong number of prefix locations");
-  }
-
-  @Test
-  void post_validLocations_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateLocation create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test

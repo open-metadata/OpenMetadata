@@ -29,7 +29,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
@@ -50,7 +50,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public static String getFQN(IngestionPipeline ingestionPipeline) {
     return (ingestionPipeline != null && ingestionPipeline.getService() != null)
-        ? EntityUtil.getFQN(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
+        ? EntityNameUtil.getFQN(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
         : null;
   }
 

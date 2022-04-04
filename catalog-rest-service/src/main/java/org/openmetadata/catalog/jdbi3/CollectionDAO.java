@@ -33,6 +33,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Location;
@@ -59,6 +60,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
@@ -89,6 +91,9 @@ import org.openmetadata.catalog.util.EntityUtil;
 public interface CollectionDAO {
   @CreateSqlObject
   DatabaseDAO databaseDAO();
+
+  @CreateSqlObject
+  DatabaseSchemaDAO databaseSchemaDAO();
 
   @CreateSqlObject
   EntityRelationshipDAO relationshipDAO();
@@ -243,6 +248,28 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Database entity) {
       return new DatabaseEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface DatabaseSchemaDAO extends EntityDAO<DatabaseSchema> {
+    @Override
+    default String getTableName() {
+      return "database_schema_entity";
+    }
+
+    @Override
+    default Class<DatabaseSchema> getEntityClass() {
+      return DatabaseSchema.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(DatabaseSchema entity) {
+      return new DatabaseSchemaEntityInterface(entity).getEntityReference();
     }
   }
 

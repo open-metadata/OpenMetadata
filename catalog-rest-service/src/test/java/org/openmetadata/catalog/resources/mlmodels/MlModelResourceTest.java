@@ -117,7 +117,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     DASHBOARD_REFERENCE = new DashboardEntityInterface(DASHBOARD).getEntityReference();
 
     CreateTable createTable =
-        new CreateTable().withName("myTable").withDatabase(DATABASE_REFERENCE).withColumns(COLUMNS);
+        new CreateTable().withName("myTable").withDatabaseSchema(DATABASE_SCHEMA_REFERENCE).withColumns(COLUMNS);
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);

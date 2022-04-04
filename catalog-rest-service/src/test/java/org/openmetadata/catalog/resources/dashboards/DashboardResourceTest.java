@@ -50,7 +50,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -72,16 +72,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
             .withName("invalid_superset_service")
             .withId(SUPERSET_REFERENCE.getId())
             .withType("DashboardService1");
-  }
-
-  @Test
-  void post_validDashboards_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateDashboard create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -123,7 +113,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
-        String expectedFQN = EntityUtil.getFQN(service.getName(), db.getName());
+        String expectedFQN = EntityNameUtil.getFQN(service.getName(), db.getName());
         assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }
@@ -246,7 +236,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
     assertNotNull(dashboard.getServiceType());
-    assertService(createRequest.getService(), dashboard.getService());
+    assertReference(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());
     TestUtils.validateTags(createRequest.getTags(), dashboard.getTags());
   }

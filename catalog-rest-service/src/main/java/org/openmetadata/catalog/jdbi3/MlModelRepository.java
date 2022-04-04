@@ -38,6 +38,7 @@ import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -90,7 +91,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(EntityUtil.getFQN(s.getDataSource().getName(), s.getName()));
+            s.setFullyQualifiedName(EntityNameUtil.getFQN(s.getDataSource().getName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }
@@ -100,7 +101,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
-          String featureFqn = EntityUtil.getFQN(parentFQN, f.getName());
+          String featureFqn = EntityNameUtil.getFQN(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
             setMlFeatureSourcesFQN(f.getFeatureSources());

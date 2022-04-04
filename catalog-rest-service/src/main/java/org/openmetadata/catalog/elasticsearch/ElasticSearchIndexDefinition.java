@@ -40,7 +40,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
@@ -349,7 +349,8 @@ class TableESIndex extends ElasticSearchIndex {
 
     if (table.getDatabase() != null) {
       String databaseFQN = table.getDatabase().getName();
-      String[] databaseFQNSplit = EntityUtil.splitFQN(databaseFQN);
+      // TODO fix this code
+      String[] databaseFQNSplit = EntityNameUtil.splitFQN(databaseFQN);
       if (databaseFQNSplit.length == 2) {
         tableESIndexBuilder.database(databaseFQNSplit[1]);
       } else {
@@ -392,7 +393,7 @@ class TableESIndex extends ElasticSearchIndex {
     for (Column col : columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
-        columnName = EntityUtil.getFQN(optParentColumn.get(), columnName);
+        columnName = EntityNameUtil.getFQN(optParentColumn.get(), columnName);
       }
       if (col.getTags() != null) {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
