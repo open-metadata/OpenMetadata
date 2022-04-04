@@ -132,7 +132,7 @@ public class TableDetailsUIErrorHandling {
   void exceptionCheckForCreateConversation() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.explore());
-    Events.click(webDriver, common.selectTableLink(2));
+    Events.click(webDriver, common.selectTableLink(1));
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.openTagConversationThread());
     Events.click(webDriver, tableDetails.addConversation());
@@ -155,7 +155,7 @@ public class TableDetailsUIErrorHandling {
   void exceptionCheckForFetchConversationThreads() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.explore());
-    Events.click(webDriver, common.selectTableLink(2));
+    Events.click(webDriver, common.selectTableLink(1));
     interceptor.interceptor("/feed", "/test");
     Events.click(webDriver, tableDetails.openTagConversationThread());
     Thread.sleep(2000);
@@ -172,7 +172,7 @@ public class TableDetailsUIErrorHandling {
   void exceptionCheckForAddFeed() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.explore());
-    Events.click(webDriver, common.selectTableLink(2));
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.openTagConversationThread());
     Events.click(webDriver, tableDetails.mainMessageReply());
     Events.click(webDriver, tableDetails.conversationBox());
@@ -182,27 +182,6 @@ public class TableDetailsUIErrorHandling {
     Thread.sleep(2000);
     String errorMessage = webDriver.findElement(toastMessage).getText();
     Assert.assertEquals(errorMessage, "Error while adding feed!");
-    checkTabs = tableDetails.checkTabs();
-    for (WebElement e : checkTabs) {
-      Assert.assertTrue(e.isDisplayed());
-    }
-  }
-
-  @Test
-  @Order(7)
-  void exceptionCheckForFetchEntityFeeds() throws InterruptedException {
-    Events.click(webDriver, common.closeWhatsNew());
-    Events.click(webDriver, common.explore());
-    Events.click(webDriver, common.selectTableLink(2));
-    Events.click(webDriver, tableDetails.dataQuality());
-    Events.click(webDriver, tableDetails.addTest());
-    Events.click(webDriver, tableDetails.tableTest());
-    Events.sendKeys(webDriver, tableDetails.value(), "10");
-    interceptor.interceptor("/feed", "/test");
-    Events.click(webDriver, tableDetails.saveTest());
-    Thread.sleep(2000);
-    String errorMessage = webDriver.findElement(toastMessage).getText();
-    Assert.assertEquals(errorMessage, "Error while fetching entity feeds!");
     checkTabs = tableDetails.checkTabs();
     for (WebElement e : checkTabs) {
       Assert.assertTrue(e.isDisplayed());
@@ -245,7 +224,7 @@ public class TableDetailsUIErrorHandling {
     selectColumn.selectByIndex(1);
     Select selectTest = new Select(webDriver.findElement(tableDetails.selectColumnTest()));
     selectTest.selectByIndex(3);
-    Events.sendKeys(webDriver, tableDetails.valueNotToBeSetIn(), "10");
+    Events.sendKeys(webDriver, tableDetails.regex(), "10");
     interceptor.interceptor("/api/v1/tables", "/api/v1/test");
     Events.click(webDriver, tableDetails.saveTest());
     Thread.sleep(2000);

@@ -65,7 +65,7 @@ public class TableDetails {
   By mainMessageReply = By.cssSelector("[data-testid=\"main-message-reply-button\"]");
   By quickReply = By.cssSelector("[data-testid=\"quick-reply-button\"]");
   By threadHeader = By.cssSelector("[data-testid='thread0']");
-  By dataQuality = By.cssSelector("[data-testid='Data Quality']]");
+  By dataQuality = By.cssSelector("[data-testid='Data Quality']");
   By addTest = By.cssSelector("[data-testid=\"add-new-test-button\"]");
   By tableTest = By.xpath("//div[@data-testid=\"list-item\"][@id=\"menu-item-0\"]");
   By columnTest = By.xpath("//div[@data-testid=\"list-item\"][@id=\"menu-item-1\"]");
@@ -74,7 +74,7 @@ public class TableDetails {
   By selectTableTest = By.cssSelector("[data-testid='tableTestType']");
   By selectColumn = By.cssSelector("[data-testid=\"columnName\"]");
   By selectColumnTest = By.cssSelector("[data-testid=\"columTestType\"]");
-  By valueNotToBeSetIn = By.id("option-key-0");
+  By regex = By.cssSelector("[data-testid='regex']");
   By deleteTests = By.cssSelector("[data-testid='delete']");
   By deleteSave = By.cssSelector("[data-testid='save-button']");
   By dismissToast = By.cssSelector("[data-testid='dismiss']");
@@ -83,6 +83,7 @@ public class TableDetails {
   By addTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
   By addDescriptionConversationThread = By.cssSelector("[data-testid='start-description-thread']");
   By openTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
+  By startTagConversation = By.cssSelector("[data-testid='start-tag-thread']");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);
