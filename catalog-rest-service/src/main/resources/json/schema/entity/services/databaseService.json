@@ -30,7 +30,8 @@
         "DynamoDB",
         "AzureSQL",
         "SingleStore",
-        "SQLite"
+        "SQLite",
+        "DeltaLake"
       ],
       "javaEnums": [
         {
@@ -98,6 +99,9 @@
         },
         {
           "name": "SQLite"
+        },
+        {
+          "name": "DeltaLake"
         }
       ]
     },
@@ -195,12 +199,6 @@
       "default": false
     }
   },
-  "required": [
-    "id",
-    "name",
-    "serviceType",
-    "href",
-    "databaseConnection"
-  ],
+  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
   "additionalProperties": false
 }
