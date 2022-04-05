@@ -34,9 +34,7 @@ const RichTextEditorPreviewer = ({
   const [displayMoreText, setDisplayMoreText] = useState(false);
 
   const setModifiedContent = (markdown: string) => {
-    const modifiedContent = markdown
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>');
+    const modifiedContent = markdown.replace(/&lt;/g, '<').replace(/&gt/g, '>');
     setContent(modifiedContent);
   };
 
@@ -94,17 +92,6 @@ const RichTextEditorPreviewer = ({
               <code {...rest} className="tw-my">
                 {children}
               </code>
-            );
-          },
-
-          a: ({ children, ...props }) => {
-            return (
-              <span
-                dangerouslySetInnerHTML={{
-                  // refer https://github.com/facebook/react/issues/16382
-                  __html: `<a href=${props.href} link="_blank">${children}</a>`,
-                }}
-              />
             );
           },
         }}
