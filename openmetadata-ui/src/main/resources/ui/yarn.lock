@@ -8530,11 +8530,6 @@ markdown-table@^3.0.0:
   resolved "https://registry.yarnpkg.com/markdown-table/-/markdown-table-3.0.2.tgz#9b59eb2c1b22fe71954a65ff512887065a7bb57c"
   integrity sha512-y8j3a5/DkJCmS5x4dMCQL+OR0+2EAq3DOtio1COSHsmW2BGXnNCK3v12hJt1LrUz5iZH5g0LmuYOjDdI+czghA==
 
-markdown-to-jsx@^7.1.6:
-  version "7.1.6"
-  resolved "https://registry.yarnpkg.com/markdown-to-jsx/-/markdown-to-jsx-7.1.6.tgz#421487df2a66fe4231d94db653a34da033691e62"
-  integrity sha512-1wrIGZYwIG2gR3yfRmbr4FlQmhaAKoKTpRo4wur4fp9p0njU1Hi7vR8fj0AUKKIcPduiJmPprzmCB5B/GvlC7g==
-
 marked@^0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/marked/-/marked-0.7.0.tgz#b64201f051d271b1edc10a04d1ae9b74bb8e5c0e"
