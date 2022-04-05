@@ -97,7 +97,6 @@ class DeltalakeSource(Source):
     def set_spark(self, spark):
         self.spark = spark
 
-
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = DeltalakeSourceConfig.parse_obj(config_dict)
@@ -209,7 +208,7 @@ class DeltalakeSource(Source):
     def _get_display_data_type(self, row):
         display_data_type = repr(row["data_type"]).lower()
         for original, new in self.array_datatype_replace_map.items():
-            display_data_type.replace(original, new)
+            display_data_type = display_data_type.replace(original, new)
         return display_data_type
 
     def _get_col_info(self, row):
