@@ -13,7 +13,7 @@
  */
 
 /**
- * This scheam defines the test TableColumnCountToEqual. Test the number of columns equal to
+ * This schema defines the test TableColumnCountToEqual. Test the number of columns equal to
  * a value.
  */
 export interface TableColumnCountToEqual {

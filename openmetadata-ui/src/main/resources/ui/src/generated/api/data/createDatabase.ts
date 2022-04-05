@@ -17,6 +17,12 @@
  */
 export interface CreateDatabase {
   /**
+   * Some databases don't support a database/catalog in the hierarchy and use default
+   * database. For example, `MySql`. For such databases, set this flag to true to indicate
+   * that this is a default database.
+   */
+  default?: boolean;
+  /**
    * Description of the database instance. What it has and how to use it.
    */
   description?: string;
@@ -45,6 +51,10 @@ export interface CreateDatabase {
  * Link to the database service where this database is hosted in
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
