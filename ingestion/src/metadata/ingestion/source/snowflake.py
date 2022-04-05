@@ -23,12 +23,10 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
 from metadata.config.common import FQDN_SEPARATOR
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
