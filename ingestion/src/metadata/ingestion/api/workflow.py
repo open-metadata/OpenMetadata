@@ -17,6 +17,7 @@ import click
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink
@@ -48,9 +49,10 @@ class Workflow:
                 self.typeClassFetch(source_type, False),
             )
         )
-        metadata_config = self.config.workflowConfig.dict().get(
-            "openMetadataServerConfig", {}
+        metadata_config: OpenMetadataServerConfig = (
+            self.config.workflowConfig.openMetadataServerConfig
         )
+
         self.source: Source = source_class.create(
             self.config.source.dict(), metadata_config
         )

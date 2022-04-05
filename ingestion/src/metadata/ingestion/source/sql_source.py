@@ -16,6 +16,7 @@ import json
 import logging
 import re
 import traceback
+import uuid
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -24,7 +25,6 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
 from metadata.config.common import FQDN_SEPARATOR
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -40,7 +40,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -112,9 +111,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         super().__init__()
 
         self.config = config
-        self.service_connection: DatabaseConnection = (
-            self.config.serviceConnection.__root__
-        )
+
+        # It will be one of the Unions. We don't know the specific type here.
+        self.service_connection = self.config.serviceConnection.__root__.config
+
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -275,7 +275,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.database_source_state.add(fqn)
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
-                table_entity = CreateTableRequest(
+                table_entity = Table(
+                    id=uuid.uuid4(),
                     name=table_name,
                     tableType="Regular",
                     description=description if description is not None else " ",
@@ -286,9 +287,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 try:
                     if self.source_config.generateSampleData:
                         table_data = self.fetch_sample_data(schema, table_name)
-                        # if table_data:
-                        # TODO  "CreateTableRequest" object has no field "sampleData"
-                        # table_entity.sampleData = table_data
+                        if table_data:
+                            table_entity.sampleData = table_data
                 # Catch any errors during the ingestion and continue
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(repr(err))
@@ -303,9 +303,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(err)
 
                 # check if we have any model to associate with
-                # TODO ValueError: "CreateTableRequest" object has no field "dataModel"
-                # table_entity.dataModel = self._get_data_model(schema, table_name)
-                database = self._get_database(self.service_connection.config.database)
+                table_entity.dataModel = self._get_data_model(schema, table_name)
+                database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
@@ -330,7 +329,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         for view_name in inspector.get_view_names(schema):
             try:
-                if self.service_connection.config.scheme == "bigquery":
+                if self.service_connection.scheme == "bigquery":
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
@@ -344,9 +343,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 try:
-                    if self.service_connection.config.scheme == "bigquery":
+                    if self.service_connection.scheme == "bigquery":
                         view_definition = inspector.get_view_definition(
-                            f"{self.service_connection.config.projectId}.{schema}.{view_name}"
+                            f"{self.service_connection.projectId}.{schema}.{view_name}"
                         )
                     else:
                         view_definition = inspector.get_view_definition(
@@ -359,7 +358,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     view_definition = ""
                 fqn = self.get_table_fqn(self.config.serviceName, schema, view_name)
                 self.database_source_state.add(fqn)
-                table = CreateTableRequest(
+                table = Table(
+                    id=uuid.uuid4(),
                     name=view_name,
                     tableType="View",
                     description=_get_table_description(schema, view_name, inspector)
@@ -380,10 +380,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
-                    # TODO  "CreateTableRequest" object has no field "sampleData"
-                    # table.sampleData = table_data
+                    table.sampleData = table_data
                 # table.dataModel = self._get_data_model(schema, view_name)
-                database = self._get_database(self.service_connection.config.database)
+                database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
                     database=database,
@@ -515,7 +514,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return Database(
             name=database,
             service=EntityReference(
-                id=self.service.id, type=self.service_connection.config.type.value
+                id=self.service.id, type=self.service_connection.type.value
             ),
         )
 
@@ -524,7 +523,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             name=schema,
             database=database.service,
             service=EntityReference(
-                id=self.service.id, type=self.service_connection.config.type.value
+                id=self.service.id, type=self.service_connection.type.value
             ),
         )
 

@@ -34,7 +34,7 @@ class MysqlSource(SQLSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection = config.serviceConnection.__root__.config
+        connection: MysqlConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(
                 f"Expected SQLiteConnection, but got {connection}"
@@ -56,6 +56,10 @@ class MysqlSource(SQLSource):
             ):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
+
+            # Fetch tables by default
+            yield from self.fetch_tables(self.inspector, schema)
+
             if self.source_config.includeViews:
                 yield from self.fetch_views(self.inspector, schema)
             if self.source_config.markDeletedTables:
