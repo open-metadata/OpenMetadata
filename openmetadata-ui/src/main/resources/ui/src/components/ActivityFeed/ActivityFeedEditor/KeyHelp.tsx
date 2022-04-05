@@ -20,7 +20,7 @@ export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
         className="tw-text-grey-muted tw--mt-1"
         data-testid="key-help"
         style={{ fontSize: '10px' }}>
-        <kbd>Shift</kbd>+ <kbd>Enter</kbd> to add a new line
+        <kbd>Shift</kbd> + <kbd>Return</kbd> to add a new line
       </p>
     </div>
   ) : null;

@@ -38,6 +38,12 @@ export const SendButton: FC<SendButtonProp> = ({
         html={
           <Fragment>
             <strong>Send now</strong>
+            <p>
+              Press{' '}
+              <kbd className="tw-bg-white tw-text-grey-body tw-rounded-sm tw-px-1 tw-py-0.5">
+                Return
+              </kbd>
+            </p>
           </Fragment>
         }
         position="top"
