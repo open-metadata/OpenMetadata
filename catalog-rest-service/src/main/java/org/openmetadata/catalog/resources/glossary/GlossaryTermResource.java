@@ -196,13 +196,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a glossary",
+      summary = "Get a glossary term",
       tags = "glossaries",
-      description = "Get a glossary by `id`.",
+      description = "Get a glossary term by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
+            description = "The glossary term",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
       })
@@ -228,13 +228,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/name/{name}")
   @Operation(
-      summary = "Get a glossary by name",
+      summary = "Get a glossary term by name",
       tags = "glossaries",
-      description = "Get a glossary by name.",
+      description = "Get a glossary term by name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
+            description = "The glossary term",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
       })
@@ -260,13 +260,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}/versions")
   @Operation(
-      summary = "List glossary versions",
+      summary = "List glossary term versions",
       tags = "glossaries",
-      description = "Get a list of all the versions of a glossary identified by `id`",
+      description = "Get a list of all the versions of a glossary terms identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of glossary versions",
+            description = "List of glossary term versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
@@ -280,9 +280,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      summary = "Get a version of the glossaries",
+      summary = "Get a version of the glossary term",
       tags = "glossaries",
-      description = "Get a version of the glossary by given `id`",
+      description = "Get a version of the glossary term by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -297,7 +297,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context SecurityContext securityContext,
       @Parameter(description = "glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
-              description = "glossary version number in the form `major`.`minor`",
+              description = "glossary term version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -307,13 +307,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @POST
   @Operation(
-      summary = "Create a glossary",
+      summary = "Create a glossary term",
       tags = "glossaries",
-      description = "Create a new glossary.",
+      description = "Create a new glossary term.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary",
+            description = "The glossary term",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
@@ -327,9 +327,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @PATCH
   @Path("/{id}")
   @Operation(
-      summary = "Update a glossary",
+      summary = "Update a glossary term",
       tags = "glossaries",
-      description = "Update an existing glossary using JsonPatch.",
+      description = "Update an existing glossary term using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
@@ -351,9 +351,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Operation(
-      summary = "Create or update a glossary",
+      summary = "Create or update a glossary term",
       tags = "glossaries",
-      description = "Create a new glossary, if it does not exist or update an existing glossary.",
+      description = "Create a new glossary term, if it does not exist or update an existing glossary term.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -371,12 +371,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Delete a Glossary",
+      summary = "Delete a glossary term",
       tags = "glossaries",
-      description = "Delete a glossary by `id`.",
+      description = "Delete a glossary term by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "glossary for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "glossaryTerm for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
