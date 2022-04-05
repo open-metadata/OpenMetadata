@@ -29,9 +29,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Tag;
+import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -40,75 +40,49 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
-public class TagRepository extends EntityRepository<Tag> {
-  public TagRepository(CollectionDAO dao) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO1(), dao, "", "");
+public class TagCategoryRepository extends EntityRepository<TagCategory> {
+  public TagCategoryRepository(CollectionDAO dao) {
+    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG_CATEGORY, TagCategory.class, dao.tagCategoryDAO(), dao, "", "");
+    allowEdits = true;
   }
 
+  /** Initialize a category one time when the service comes up for the first time */
   @Transaction
-  public Tag createPrimaryTag(String category, Tag tag) throws IOException {
-    // Validate category
-    Entity.getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.ALL);
-    return createTagInternal(category, tag);
-  }
+  public void initCategory(TagCategory category) throws IOException {
+    String json = dao.findJsonByFqn(category.getName(), Include.ALL);
+    if (json == null) {
+      LOG.info("Tag category {} is not initialized", category.getName());
+      createCategoryInternal(category);
 
-  @Transaction
-  public Tag createSecondaryTag(String category, String primaryTag, Tag tag) throws IOException {
-    // Validate category TODO fix this
-    Entity.getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.ALL);
-
-    String primaryTagFQN = FullyQualifiedName.add(category, primaryTag);
-    // TODO fix this.
-    dao.findEntityByName(primaryTagFQN);
-
-    return createTagInternal(primaryTagFQN, tag);
-  }
-
-  @Transaction
-  public Tag getTag(String category, String fqn, Fields fields) throws IOException {
-    // Validate category TODO fix this
-    Entity.getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.ALL);
-
-    // Get tags that match <category>.<tagName>
-    Tag tag = setFields(dao.findEntityByName(fqn), fields);
-    return populateChildrenTags(tag, fields);
-  }
-
-  @Transaction
-  public Tag updatePrimaryTag(String category, String primaryTag, Tag updated) throws IOException {
-    // Validate categoryName
-    Entity.getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.ALL);
-    return updateTag(category, primaryTag, updated);
-  }
-
-  @Transaction
-  public Tag updateSecondaryTag(String category, String primaryTag, String secondaryTag, Tag updated)
-      throws IOException {
-    // Validate categoryName
-    Entity.getEntityReferenceByName(Entity.TAG_CATEGORY, category, Include.ALL);
-    String fqnPrefix = FullyQualifiedName.add(category, primaryTag);
-    return updateTag(fqnPrefix, secondaryTag, updated);
-  }
-
-  private Tag updateTag(String fqnPrefix, String tagName, Tag updated) throws IOException {
-    // Validate tag that needs to be updated exists
-    String originalFQN = FullyQualifiedName.add(fqnPrefix, tagName);
-    Tag original = dao.findEntityByName(originalFQN);
-
-    if (!original.getName().equals(updated.getName())) {
-      // Tag name changed
-      LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-      String updatedFQN = FullyQualifiedName.add(fqnPrefix, updated.getName());
-      updateChildrenTagNames(originalFQN, updatedFQN);
-      original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
+      // Only two levels of tag allowed under a category
+      for (Tag primaryTag : category.getChildren()) {
+        createTagInternal(category.getName(), primaryTag);
+      }
+    } else {
+      LOG.info("Tag category {} is already initialized", category.getName());
     }
-    original.withDescription(updated.getDescription()).withAssociatedTags(updated.getAssociatedTags());
-    daoCollection.tagDAO().updateTag(originalFQN, JsonUtils.pojoToJson(original));
-
-    // Populate children
-    return populateChildrenTags(original, null);
   }
 
+  // TODO delete
+  @Transaction
+  public TagCategory updateCategory(String category, TagCategory updated) throws IOException {
+    // Validate category
+    TagCategory original = dao.findEntityByName(category);
+    if (!original.getName().equals(updated.getName())) {
+      // Category name changed - update tag names starting from category and all the children tags
+      LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
+      updateChildrenTagNames(original.getName(), updated.getName());
+      original.setName(updated.getName());
+    }
+    original.setDescription(updated.getDescription());
+    original.setCategoryType(updated.getCategoryType());
+    dao.update(original.getId(), JsonUtils.pojoToJson(original));
+
+    // Populate response fields
+    return populateCategoryTags(original, null);
+  }
+
+  // TODO delete
   /**
    * Replace category name: prefix = cat1 and newPrefix = cat2 replaces the FQN of all the children tags of a category
    * from cat1.primaryTag1.secondaryTag1 to cat2.primaryTag1.secondaryTag1
@@ -131,12 +105,17 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
+  private TagCategory createCategoryInternal(TagCategory category) throws IOException {
+    storeEntity(category, false);
+    return category;
+  }
+
   private Tag createTagInternal(String parentFQN, Tag tag) throws JsonProcessingException {
     // First add the tag
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
     tag.setFullyQualifiedName(FullyQualifiedName.add(parentFQN, tag.getName()));
-    dao.insert(tag);
+    daoCollection.tagDAO1().insert(tag);
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
@@ -145,9 +124,24 @@ public class TagRepository extends EntityRepository<Tag> {
       children.setChildren(null); // No children allowed for the leaf tag
       children.setFullyQualifiedName(FullyQualifiedName.add(children.getFullyQualifiedName(), children.getName()));
       LOG.info("Added tag {}", children.getFullyQualifiedName());
-      dao.insert(children);
+      daoCollection.tagDAO1().insert(children);
     }
     return tag;
+  }
+
+  // Populate TagCategory with children details
+  private TagCategory populateCategoryTags(TagCategory category, Fields fields) throws IOException {
+    // Get tags under that match category prefix
+    List<String> groupJsons = daoCollection.tagDAO().listChildrenTags(category.getName());
+
+    List<Tag> tagList = new ArrayList<>();
+    for (String json : groupJsons) {
+      // TODO clean this up
+      EntityRepository<Tag> tagRepository = Entity.getEntityRepository(Entity.TAG);
+      Tag tag = tagRepository.setFields(JsonUtils.readValue(json, Tag.class), fields);
+      tagList.add(populateChildrenTags(tag, fields));
+    }
+    return category.withChildren(tagList.isEmpty() ? null : tagList);
   }
 
   // Populate the children tags for a given tag
@@ -157,36 +151,50 @@ public class TagRepository extends EntityRepository<Tag> {
     // Get tags under the given tag
     List<Tag> tagList = new ArrayList<>();
     for (String json : listOrEmpty(tagJsons)) {
-      Tag childTag = setFields(JsonUtils.readValue(json, Tag.class), fields);
+      // TODO clean this up
+      EntityRepository<Tag> tagRepository = Entity.getEntityRepository(Entity.TAG);
+      Tag childTag = tagRepository.setFields(JsonUtils.readValue(json, Tag.class), fields);
       tagList.add(populateChildrenTags(childTag, fields));
     }
     return tag.withChildren(!tagList.isEmpty() ? tagList : null);
   }
 
   @Override
-  public EntityInterface<Tag> getEntityInterface(Tag entity) {
-    return new TagEntityInterface(entity);
+  public EntityRepository<TagCategory>.EntityUpdater getUpdater(
+      TagCategory original, TagCategory updated, Operation operation) {
+    return new TagCategoryUpdater(original, updated, operation);
   }
 
   @Override
-  public void prepare(Tag entity) throws IOException {}
-
-  @Override
-  public void storeEntity(Tag entity, boolean update) throws IOException {}
-
-  @Override
-  public void storeRelationships(Tag entity) {}
-
-  @Override
-  public Tag setFields(Tag tag, Fields fields) {
-    if (fields == null) {
-      return tag;
-    }
-    return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
+  public EntityInterface<TagCategory> getEntityInterface(TagCategory entity) {
+    return new TagCategoryEntityInterface(entity);
   }
 
-  private Integer getUsageCount(Tag tag) {
-    return daoCollection.tagDAO().getTagCount(Source.TAG.ordinal(), tag.getFullyQualifiedName());
+  @Override
+  public TagCategory setFields(TagCategory category, Fields fields) throws IOException {
+    populateCategoryTags(category, fields);
+    return category.withUsageCount(fields.contains("usageCount") ? getUsageCount(category) : null);
+  }
+
+  @Override
+  public void prepare(TagCategory entity) throws IOException {
+    // Nothing to do
+  }
+
+  @Override
+  public void storeEntity(TagCategory category, boolean update) throws IOException {
+    List<Tag> primaryTags = category.getChildren();
+    category.setChildren(null); // Children are not stored as json and are constructed on the fly
+    store(category.getId(), category, update);
+    category.withChildren(primaryTags);
+    System.out.println("XXX " + JsonUtils.pojoToJson(category, true));
+  }
+
+  @Override
+  public void storeRelationships(TagCategory entity) {}
+
+  private Integer getUsageCount(TagCategory category) {
+    return daoCollection.tagDAO().getTagCount(Source.TAG.ordinal(), category.getName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
@@ -199,9 +207,10 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  public static class TagEntityInterface extends EntityInterface<Tag> {
-    public TagEntityInterface(Tag entity) {
-      super(Entity.TAG, entity);
+  public class TagCategoryEntityInterface extends EntityInterface<TagCategory> {
+
+    TagCategoryEntityInterface(TagCategory entity) {
+      super(Entity.TAG_CATEGORY, entity);
     }
 
     @Override
@@ -216,7 +225,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public String getDisplayName() {
-      return null;
+      return entity.getDisplayName();
     }
 
     @Override
@@ -230,18 +239,8 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
     public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
+      return entity.getName();
     }
 
     @Override
@@ -266,17 +265,12 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public ChangeDescription getChangeDescription() {
-      return null;
+      return entity.getChangeDescription();
     }
 
     @Override
-    public Tag getEntity() {
+    public TagCategory getEntity() {
       return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
     }
 
     @Override
@@ -291,7 +285,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void setDisplayName(String displayName) {
-      return;
+      entity.setDisplayName(displayName);
     }
 
     @Override
@@ -308,7 +302,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Override
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
-      // TODO entity.setChangeDescription(changeDescription);
+      entity.setChangeDescription(changeDescription);
     }
 
     @Override
@@ -317,13 +311,33 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
-    public Tag withHref(URI href) {
+    public TagCategory withHref(URI href) {
       return entity.withHref(href);
+    }
+  }
+
+  public class TagCategoryUpdater extends EntityUpdater {
+    public TagCategoryUpdater(TagCategory original, TagCategory updated, Operation operation) {
+      super(original, updated, operation);
     }
 
     @Override
-    public void setTags(List<TagLabel> tags) {
-      return;
+    public void entitySpecificUpdate() throws IOException {
+      // TODO handle name change
+      recordChange("categoryType", original.getEntity().getCategoryType(), updated.getEntity().getCategoryType());
+      updateName(original.getEntity(), updated.getEntity());
+    }
+
+    public void updateName(TagCategory original, TagCategory updated) throws IOException {
+      if (!original.getName().equals(updated.getName())) {
+        // Category name changed - update tag names starting from category and all the children tags
+        LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
+        updateChildrenTagNames(original.getName(), updated.getName());
+        recordChange("name", original.getName(), updated.getName());
+      }
+
+      // Populate response fields
+      populateCategoryTags(updated, null);
     }
   }
 }

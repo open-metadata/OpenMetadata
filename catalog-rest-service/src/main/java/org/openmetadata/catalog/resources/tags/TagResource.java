@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import javax.validation.Valid;
 import javax.ws.rs.GET;
@@ -47,12 +48,15 @@ import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.ListFilter;
+import org.openmetadata.catalog.jdbi3.TagCategoryRepository;
 import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -70,6 +74,7 @@ import org.openmetadata.common.utils.CommonUtil;
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   private final TagRepository dao;
+  private final TagCategoryRepository daoCategory;
   private final Authorizer authorizer;
 
   static class CategoryList extends ResultList<TagCategory> {
@@ -84,6 +89,7 @@ public class TagResource {
   public TagResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "TagRepository must not be null");
     this.dao = new TagRepository(dao);
+    this.daoCategory = new TagCategoryRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -99,17 +105,16 @@ public class TagResource {
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(tagFile)));
             tagJson = tagJson.replace("<separator>", Entity.SEPARATOR);
             TagCategory tagCategory = JsonUtils.readValue(tagJson, TagCategory.class);
-            // TODO hack for now
             long now = System.currentTimeMillis();
-            tagCategory.withUpdatedBy("admin").withUpdatedAt(now);
+            tagCategory.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
             tagCategory
                 .getChildren()
                 .forEach(
                     t -> {
-                      t.withUpdatedBy("admin").withUpdatedAt(now);
+                      t.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
                       t.getChildren().forEach(c -> c.withUpdatedBy("admin").withUpdatedAt(now));
                     });
-            dao.initCategory(tagCategory);
+            daoCategory.initCategory(tagCategory);
           } catch (Exception e) {
             LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
           }
@@ -135,7 +140,7 @@ public class TagResource {
             description = "The user ",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryList.class)))
       })
-  public CategoryList getCategories(
+  public ResultList<TagCategory> getCategories(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -145,9 +150,10 @@ public class TagResource {
           String fieldsParam)
       throws IOException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    List<TagCategory> list = dao.listCategories(fields);
-    list.forEach(category -> addHref(uriInfo, category));
-    return new CategoryList(list);
+    ListFilter filter = new ListFilter(Include.ALL);
+    ResultList<TagCategory> list = daoCategory.listAfter(uriInfo, fields, filter, 10000, null);
+    list.getData().forEach(category -> addHref(uriInfo, category));
+    return list;
   }
 
   @GET
@@ -177,7 +183,7 @@ public class TagResource {
           String fieldsParam)
       throws IOException {
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, dao.getCategory(category, fields));
+    return addHref(uriInfo, daoCategory.getByName(uriInfo, category, fields, Include.ALL));
   }
 
   @GET
@@ -287,14 +293,8 @@ public class TagResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    TagCategory category =
-        new TagCategory()
-            .withName(create.getName())
-            .withCategoryType(create.getCategoryType())
-            .withDescription(create.getDescription())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(System.currentTimeMillis());
-    category = addHref(uriInfo, dao.createCategory(category));
+    TagCategory category = getTagCategory(securityContext, create);
+    category = addHref(uriInfo, daoCategory.create(uriInfo, category));
     return Response.created(category.getHref()).entity(category).build();
   }
 
@@ -319,13 +319,7 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag =
-        new Tag()
-            .withName(create.getName())
-            .withDescription(create.getDescription())
-            .withAssociatedTags(create.getAssociatedTags())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(System.currentTimeMillis());
+    Tag tag = getTag(securityContext, create);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     tag = addHref(categoryHref, dao.createPrimaryTag(category, tag));
     return Response.created(tag.getHref()).entity(tag).build();
@@ -360,13 +354,7 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag =
-        new Tag()
-            .withName(create.getName())
-            .withDescription(create.getDescription())
-            .withAssociatedTags(create.getAssociatedTags())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(System.currentTimeMillis());
+    Tag tag = getTag(securityContext, create);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     tag = addHref(parentHRef, dao.createSecondaryTag(category, primaryTag, tag));
@@ -387,13 +375,14 @@ public class TagResource {
       @Valid CreateTagCategory create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    TagCategory category =
-        new TagCategory()
-            .withName(create.getName())
-            .withCategoryType(create.getCategoryType())
-            .withDescription(create.getDescription());
-    category = addHref(uriInfo, dao.updateCategory(categoryName, category));
-    // TODO also create
+    TagCategory category = getTagCategory(securityContext, create);
+    // TODO clean this up
+    if (categoryName.equals(create.getName())) { // Not changing the name
+      category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, category).getEntity());
+    } else {
+      TagCategory origCategory = getTagCategory(securityContext, create).withName(categoryName);
+      category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, origCategory, category).getEntity());
+    }
     return Response.ok(category).build();
   }
 
@@ -419,11 +408,7 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag =
-        new Tag()
-            .withName(create.getName())
-            .withDescription(create.getDescription())
-            .withAssociatedTags(create.getAssociatedTags());
+    Tag tag = getTag(securityContext, create);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     tag = addHref(categoryHref, dao.updatePrimaryTag(categoryName, primaryTag, tag));
     return Response.ok(tag).build();
@@ -459,11 +444,7 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag =
-        new Tag()
-            .withName(create.getName())
-            .withDescription(create.getDescription())
-            .withAssociatedTags(create.getAssociatedTags());
+    Tag tag = getTag(securityContext, create);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     tag = addHref(parentHRef, dao.updateSecondaryTag(categoryName, primaryTag, secondaryTag, tag));
@@ -486,5 +467,25 @@ public class TagResource {
     tag.setHref(RestUtil.getHref(parentHref, tag.getName()));
     addHref(tag.getHref(), tag.getChildren());
     return tag;
+  }
+
+  private TagCategory getTagCategory(SecurityContext securityContext, CreateTagCategory create) {
+    return new TagCategory()
+        .withId(UUID.randomUUID())
+        .withName(create.getName())
+        .withCategoryType(create.getCategoryType())
+        .withDescription(create.getDescription())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  private Tag getTag(SecurityContext securityContext, CreateTag create) {
+    return new Tag()
+        .withId(UUID.randomUUID())
+        .withName(create.getName())
+        .withDescription(create.getDescription())
+        .withAssociatedTags(create.getAssociatedTags())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(System.currentTimeMillis());
   }
 }

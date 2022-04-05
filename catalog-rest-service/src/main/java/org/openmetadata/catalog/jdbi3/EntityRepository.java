@@ -369,20 +369,36 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T original, T updated) throws IOException {
+    prepare(updated);
+    // Check if there is any original, deleted or not
+    original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(original), ALL), entityClass);
+    if (original == null) {
+      return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
+    }
+    return update(uriInfo, original, updated);
+  }
+
+  @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException {
     prepare(updated);
-    EntityInterface<T> updatedInterface = getEntityInterface(updated);
-
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), ALL), entityClass);
     if (original == null) {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
+    return update(uriInfo, original, updated);
+  }
+
+  @Transaction
+  public PutResponse<T> update(UriInfo uriInfo, T original, T updated) throws IOException {
     // Get all the fields in the original entity that can be updated during PUT operation
+    EntityInterface<T> updatedInterface = getEntityInterface(updated);
     setFields(original, putFields);
 
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     EntityInterface<T> origInterface = getEntityInterface(original);
+    System.out.println("XXX updating original entity " + origInterface.getId());
     if (origInterface.isDeleted()) {
       restoreEntity(updatedInterface.getUpdatedBy(), entityType, origInterface.getId());
     }
@@ -579,13 +595,7 @@ public abstract class EntityRepository<T> {
       if (tagLabel.getSource() != Source.TAG) {
         continue; // Related tags are not supported for Glossary yet
       }
-      String json = daoCollection.tagDAO().findTag(tagLabel.getTagFQN());
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
-      }
-      Tag tag = JsonUtils.readValue(json, Tag.class);
+      Tag tag = daoCollection.tagDAO1().findEntityByName(tagLabel.getTagFQN());
 
       // Apply derived tags
       List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
@@ -599,12 +609,7 @@ public abstract class EntityRepository<T> {
   private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) throws IOException {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
-      String json = daoCollection.tagDAO().findTag(fqn);
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), fqn));
-      }
-      Tag tempTag = JsonUtils.readValue(json, Tag.class);
+      Tag tempTag = daoCollection.tagDAO1().findEntityByName(fqn);
       derivedTags.add(
           new TagLabel()
               .withTagFQN(fqn)
@@ -628,17 +633,10 @@ public abstract class EntityRepository<T> {
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      String json = null;
       if (tagLabel.getSource() == Source.TAG) {
-        json = daoCollection.tagDAO().findTag(tagLabel.getTagFQN());
+        daoCollection.tagDAO1().findEntityByName(tagLabel.getTagFQN());
       } else if (tagLabel.getSource() == Source.GLOSSARY) {
-        json = daoCollection.glossaryTermDAO().findJsonByFqn(tagLabel.getTagFQN(), Include.NON_DELETED);
-      }
-
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(), tagLabel.getTagFQN()));
+        daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), Include.NON_DELETED);
       }
 
       // Apply tagLabel to targetFQN that identifies an entity or field
@@ -1176,7 +1174,9 @@ public abstract class EntityRepository<T> {
     }
 
     public final void storeUpdate() throws IOException {
+      System.out.println("XXX storing update");
       if (updateVersion(original.getVersion())) { // Update changed the entity version
+        System.out.println("XXX storing update");
         storeOldVersion(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
       } else { // Update did not change the entity version

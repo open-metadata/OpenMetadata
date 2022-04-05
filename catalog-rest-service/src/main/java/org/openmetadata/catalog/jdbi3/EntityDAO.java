@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -128,11 +129,12 @@ public interface EntityDAO<T> {
     return findEntityById(id, Include.NON_DELETED);
   }
 
-  default T findEntityByName(String fqn) throws IOException {
+  default T findEntityByName(String fqn) {
     return findEntityByName(fqn, Include.NON_DELETED);
   }
 
-  default T findEntityByName(String fqn, Include include) throws IOException {
+  @SneakyThrows
+  default T findEntityByName(String fqn, Include include) {
     Class<T> clz = getEntityClass();
     String json = findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
     T entity = null;

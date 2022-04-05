@@ -82,6 +82,8 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.Tag;
+import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -115,6 +117,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TagDAO tagDAO();
+
+  @CreateSqlObject
+  TagDAO1 tagDAO1();
+
+  @CreateSqlObject
+  TagCategoryDAO tagCategoryDAO();
 
   @CreateSqlObject
   TableDAO tableDAO();
@@ -1202,22 +1210,54 @@ public interface CollectionDAO {
     }
   }
 
+  interface TagCategoryDAO extends EntityDAO<TagCategory> {
+    @Override
+    default String getTableName() {
+      return "tag_category";
+    }
+
+    @Override
+    default Class<TagCategory> getEntityClass() {
+      return TagCategory.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default EntityReference getEntityReference(TagCategory entity) {
+      return null; // TODO fix
+    }
+  }
+
+  interface TagDAO1 extends EntityDAO<Tag> {
+    @Override
+    default String getTableName() {
+      return "tag";
+    }
+
+    @Override
+    default Class<Tag> getEntityClass() {
+      return Tag.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Tag entity) {
+      return null; // TODO fix
+    }
+  }
+
   @RegisterRowMapper(TagLabelMapper.class)
   interface TagDAO {
-    @SqlUpdate("INSERT INTO tag_category (json) VALUES (:json)")
-    void insertCategory(@Bind("json") String json);
-
-    @SqlUpdate("INSERT INTO tag(json) VALUES (:json)")
-    void insertTag(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE tag_category SET  json = :json where name = :name")
-    void updateCategory(@Bind("name") String name, @Bind("json") String json);
-
     @SqlUpdate("UPDATE tag SET  json = :json where fullyQualifiedName = :fqn")
     void updateTag(@Bind("fqn") String fqn, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM tag_category ORDER BY name")
-    List<String> listCategories();
 
     default List<String> listChildrenTags(String fqnPrefix) {
       return listChildrenTagsInternal(String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR));
@@ -1226,14 +1266,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
     List<String> listChildrenTagsInternal(@Bind("fqnPrefix") String fqnPrefix);
 
-    @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
-    String findCategory(@Bind("name") String name);
-
     @SqlQuery("SELECT EXISTS (SELECT * FROM tag WHERE fullyQualifiedName = :fqn)")
     boolean tagExists(@Bind("fqn") String fqn);
-
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName = :fqn")
-    String findTag(@Bind("fqn") String fqn);
 
     @SqlUpdate(
         "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) "
