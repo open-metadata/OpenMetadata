@@ -21,9 +21,16 @@ from metadata.generated.schema.api.services.createMessagingService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
+)
 from metadata.generated.schema.entity.services.messagingService import (
+    MessagingConnection,
     MessagingService,
     MessagingServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -37,7 +44,7 @@ class OMetaTopicTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -50,7 +57,7 @@ class OMetaTopicTest(TestCase):
     service = CreateMessagingServiceRequest(
         name="test-service-topic",
         serviceType=MessagingServiceType.Kafka,
-        brokers=["https://localhost:1000"],
+        connection=MessagingConnection(config=KafkaConnection()),
     )
     service_type = "messagingService"
 
@@ -65,7 +72,7 @@ class OMetaTopicTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-topic:test",
+            fullyQualifiedName="test-service-topic.test",
             partitions=2,
         )
 
@@ -80,11 +87,6 @@ class OMetaTopicTest(TestCase):
         """
         Clean up
         """
-        _id = str(
-            cls.metadata.get_by_name(
-                entity=Topic, fqdn="test-service-topic:test"
-            ).id.__root__
-        )
 
         service_id = str(
             cls.metadata.get_by_name(
@@ -92,9 +94,11 @@ class OMetaTopicTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Topic, entity_id=_id)
         cls.metadata.delete(
-            entity=MessagingService, entity_id=service_id, recursive=True
+            entity=MessagingService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

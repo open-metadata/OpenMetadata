@@ -11,6 +11,9 @@ from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 CATEGORY_NAME = "TestTag"
@@ -23,7 +26,7 @@ class OMetaTagMixinPost(TestCase):
 
     unittest.TestLoader.sortTestMethodsUsing = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     def test_a_create_tag_categories(self):
@@ -65,7 +68,7 @@ class OMetaTagMixinGet(TestCase):
     """test GET methods"""
 
     def setUp(self) -> None:
-        server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+        server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
         self.metadata = OpenMetadata(server_config)
 
     def test_get_tag_category(self):
@@ -112,7 +115,7 @@ class OMetaTagMixinPut(TestCase):
     """Test OMeta Tag PUT methods"""
 
     def setUp(self) -> None:
-        server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+        server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
         self.metadata = OpenMetadata(server_config)
 
     def test_c_update_tag_category(self):

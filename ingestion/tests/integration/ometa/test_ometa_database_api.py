@@ -21,10 +21,16 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -38,7 +44,7 @@ class OMetaDatabaseTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -51,7 +57,13 @@ class OMetaDatabaseTest(TestCase):
     service = CreateDatabaseServiceRequest(
         name="test-service-db",
         serviceType=DatabaseServiceType.MySQL,
-        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                password="password",
+                hostPort="http://localhost:1234",
+            )
+        ),
     )
 
     @classmethod
@@ -65,7 +77,7 @@ class OMetaDatabaseTest(TestCase):
             id=uuid.uuid4(),
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
-            fullyQualifiedName="test-service-db:test-db",
+            fullyQualifiedName="test-service-db.test-db",
         )
 
         cls.create = CreateDatabaseRequest(
@@ -78,21 +90,17 @@ class OMetaDatabaseTest(TestCase):
         """
         Clean up
         """
-        db_id = str(
-            cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-db:test-db"
-            ).id.__root__
-        )
-
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqdn="test-service-db"
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Database, entity_id=db_id, recursive=True)
         cls.metadata.delete(
-            entity=DatabaseService, entity_id=service_id, recursive=True
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

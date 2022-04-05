@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -61,7 +62,7 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(
-    config, metadata_config, service_name=None
+    config: SourceConfig, metadata_config, service_name=None
 ) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
     if not service_name:

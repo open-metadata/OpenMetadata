@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -33,7 +34,6 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiler.default import DefaultProfiler
@@ -44,7 +44,9 @@ config = {
     "source": {
         "type": "sqlite",
         "serviceName": "my_service",
-        "serviceConnection": {},
+        "serviceConnection": {
+            "config": {"type": "SQLite", "hostPort": "", "database": ":memory:"}
+        },
         "sourceConfig": {},
     },
     "processor": {"type": "orm-profiler", "config": {}},
@@ -64,7 +66,7 @@ def test_init_workflow():
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, SQLiteConfig)
+    assert isinstance(workflow.source_config, SourceConfig)
     assert isinstance(workflow.metadata_config, OpenMetadataServerConfig)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)

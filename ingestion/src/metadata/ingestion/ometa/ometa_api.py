@@ -348,6 +348,19 @@ class OpenMetadata(
         )
         return create_class
 
+    @staticmethod
+    def update_file_name(create: Type[C], file_name: str) -> str:
+        """
+        Update the filename for services and schemas
+        """
+        if "service" in create.__name__.lower():
+            return file_name.replace("service", "Service")
+
+        if "schema" in create.__name__.lower():
+            return file_name.replace("schema", "Schema")
+
+        return file_name
+
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
@@ -355,14 +368,13 @@ class OpenMetadata(
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
         file_name = class_name.lower()
+
         class_path = ".".join(
             [
                 self.class_root,
                 self.entity_path,
                 self.get_module_path(create),
-                file_name.replace("service", "Service")
-                if "service" in create.__name__.lower()
-                else file_name.replace("databaseschema", "databaseSchema"),
+                self.update_file_name(create, file_name),
             ]
         )
 

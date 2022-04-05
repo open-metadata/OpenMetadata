@@ -11,7 +11,6 @@
 """
 Generic source to build SQL connectors.
 """
-import copy
 import json
 import logging
 import re
@@ -43,6 +42,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
@@ -51,10 +51,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source_common import (
-    SQLConnectionConfig,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -76,16 +73,6 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     return description
 
 
-def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
-    new_config = copy.deepcopy(config)
-    if new_config.connect_args.get("private_key"):
-        new_config.connect_args["private_key"] = str(
-            new_config.connect_args["private_key"]
-        )
-        return new_config
-    return config
-
-
 class SQLSource(Source[OMetaDatabaseAndTable]):
     """
     Source Connector implementation to extract
@@ -95,15 +82,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def __init__(
         self,
-        config: SQLConnectionConfig,
+        config: SourceConfig,
         metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(
-            _get_private_key_config(config), metadata_config
-        )
+        self.service = get_database_service_or_create(config, metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
@@ -166,7 +151,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self._parse_data_model()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         pass
 
     @staticmethod

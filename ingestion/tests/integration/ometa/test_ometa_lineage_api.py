@@ -15,6 +15,9 @@ OpenMetadata high-level API Lineage test
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -24,9 +27,10 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -35,6 +39,9 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -49,7 +56,7 @@ class OMetaLineageTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -57,7 +64,13 @@ class OMetaLineageTest(TestCase):
     db_service = CreateDatabaseServiceRequest(
         name="test-service-db-lineage",
         serviceType=DatabaseServiceType.MySQL,
-        databaseConnection=DatabaseConnection(hostPort="localhost:1000"),
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                password="password",
+                hostPort="http://localhost:1234",
+            )
+        ),
     )
 
     pipeline_service = CreatePipelineServiceRequest(
@@ -77,22 +90,32 @@ class OMetaLineageTest(TestCase):
             data=cls.pipeline_service
         )
 
-        cls.create_db = CreateDatabaseRequest(
+        create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(
                 id=cls.db_service_entity.id, type="databaseService"
             ),
         )
 
-        cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
+        create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        cls.db_reference = EntityReference(
-            id=cls.create_db_entity.id, name="test-db", type="database"
+        db_reference = EntityReference(
+            id=create_db_entity.id, name="test-db", type="database"
+        )
+
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema", database=db_reference
+        )
+
+        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+
+        schema_reference = EntityReference(
+            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
         )
 
         cls.table = CreateTableRequest(
             name="test",
-            database=cls.db_reference,
+            databaseSchema=schema_reference,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -120,33 +143,10 @@ class OMetaLineageTest(TestCase):
         """
         Clean up
         """
-        table_id = str(
-            cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service-db-lineage:test-db:test"
-            ).id.__root__
-        )
-
-        database_id = str(
-            cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-db-lineage:test-db"
-            ).id.__root__
-        )
 
         db_service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqdn="test-service-db-lineage"
-            ).id.__root__
-        )
-
-        cls.metadata.delete(entity=Table, entity_id=table_id)
-        cls.metadata.delete(entity=Database, entity_id=database_id, recursive=True)
-        cls.metadata.delete(
-            entity=DatabaseService, entity_id=db_service_id, recursive=True
-        )
-
-        pipeline_id = str(
-            cls.metadata.get_by_name(
-                entity=Pipeline, fqdn="test-service-pipeline-lineage:test"
             ).id.__root__
         )
 
@@ -156,9 +156,17 @@ class OMetaLineageTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Pipeline, entity_id=pipeline_id)
         cls.metadata.delete(
-            entity=PipelineService, entity_id=pipeline_service_id, recursive=True
+            entity=PipelineService,
+            entity_id=pipeline_service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=db_service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

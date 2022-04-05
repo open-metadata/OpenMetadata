@@ -16,13 +16,15 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     FeatureSourceDataType,
@@ -32,10 +34,16 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -47,7 +55,7 @@ class OMetaModelTest(TestCase):
     Install the ingestion package before running the tests
     """
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -192,7 +200,13 @@ class OMetaModelTest(TestCase):
         service = CreateDatabaseServiceRequest(
             name="test-service-table-ml",
             serviceType=DatabaseServiceType.MySQL,
-            databaseConnection=DatabaseConnection(hostPort="localhost:8000"),
+            connection=DatabaseConnection(
+                config=MysqlConnection(
+                    username="username",
+                    password="password",
+                    hostPort="http://localhost:1234",
+                )
+            ),
         )
         service_entity = self.metadata.create_or_update(data=service)
 
@@ -206,16 +220,26 @@ class OMetaModelTest(TestCase):
             id=create_db_entity.id, name="test-db-ml", type="database"
         )
 
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema-ml",
+            database=db_reference,
+        )
+        create_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        schema_reference = EntityReference(
+            id=create_schema_entity.id, name="test-schema-ml", type="databaseSchema"
+        )
+
         create_table1 = CreateTableRequest(
             name="test-ml",
-            database=db_reference,
+            databaseSchema=schema_reference,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableRequest(
             name="another_test-ml",
-            database=db_reference,
+            databaseSchema=schema_reference,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
         table2_entity = self.metadata.create_or_update(data=create_table2)
@@ -279,13 +303,11 @@ class OMetaModelTest(TestCase):
         nodes = {node["id"] for node in lineage["nodes"]}
         assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
 
-        self.metadata.delete(entity=Table, entity_id=table1_entity.id)
-        self.metadata.delete(entity=Table, entity_id=table2_entity.id)
         self.metadata.delete(
-            entity=Database, entity_id=create_db_entity.id, recursive=True
-        )
-        self.metadata.delete(
-            entity=DatabaseService, entity_id=service_entity.id, recursive=True
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_list_versions(self):
