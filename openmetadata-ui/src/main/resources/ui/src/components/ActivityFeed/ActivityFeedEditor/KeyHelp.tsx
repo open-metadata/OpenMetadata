@@ -11,21 +11,17 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'react-js-pagination';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-codemirror2';
-declare module 'react-slick';
-declare module 'slick-carousel';
-declare module 'react-table';
-declare module 'recharts';
-declare module 'diff';
-declare module '@deuex-solutions/react-tour';
-declare module 'dagre';
-declare module 'turndown';
-declare module 'quilljs-markdown';
-declare module 'quill-mention';
+import React from 'react';
+
+export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
+  return editorValue.length > 2 ? (
+    <div className="tw-absolute tw-right-8">
+      <p
+        className="tw-text-grey-muted tw--mt-1"
+        data-testid="key-help"
+        style={{ fontSize: '10px' }}>
+        <kbd>Shift</kbd> + <kbd>Return</kbd> to add a new line
+      </p>
+    </div>
+  ) : null;
+};
