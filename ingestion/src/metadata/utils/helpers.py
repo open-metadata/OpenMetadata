@@ -9,7 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 import logging
+import os
+import tempfile
+import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
@@ -37,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 logger = logging.getLogger(__name__)
 
@@ -212,3 +217,31 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
+
+
+def create_credential_temp_file(credentials: dict) -> str:
+    with tempfile.NamedTemporaryFile(delete=False) as fp:
+        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
+        fp.write(cred_json.encode())
+        return fp.name
+
+
+def store_gcs_credentials(config: SQLConnectionConfig) -> bool:
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        if config.gcs_options.get("credentials_path"):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.gcs_options[
+                "credentials_path"
+            ]
+        elif config.gcs_options.get("credentials"):
+            temp_credentials = create_credential_temp_file(
+                credentials=config.gcs_options.get("credentials")
+            )
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_credentials
+            del config.gcs_options["credentials"]
+        else:
+            logger.warning(
+                "Please refer to the Google Cloud Storage documentation, especially the credentials part"
+                "https://cloud.google.com/storage/docs/authentication"
+            )
+            return False
+    return True

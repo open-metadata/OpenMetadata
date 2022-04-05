@@ -62,11 +62,16 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiles.default import DefaultProfiler
-from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.helpers import (
+    get_database_service_or_create,
+    ingest_lineage,
+    store_gcs_credentials,
+)
 
 logger = ometa_logger()
 
@@ -114,13 +119,12 @@ def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
 
 
 def get_dbt_details(config: SQLConnectionConfig):
+    dbt_catalog = ""
+    dbt_manifest = ""
     if config.dbt_method == "s3":
-        aws_config = AWSClientConfigModel(
-            aws_access_key_id=config.aws_access_key_id,
-            aws_secret_access_key=config.aws_secret_access_key,
-            region_name="us-east-2",
-        )
-        aws_client = AWSClient(aws_config).get_resource("s3")
+        from metadata.utils.aws_client import AWSClient
+
+        aws_client = AWSClient(config).get_resource("s3")
         buckets = aws_client.buckets.all()
         for bucket in buckets:
             for bucket_object in bucket.objects.all():
@@ -132,10 +136,20 @@ def get_dbt_details(config: SQLConnectionConfig):
                     dbt_catalog = json.loads(
                         bucket_object.get()["Body"].read().decode()
                     )
-
     elif config.dbt_method == "gcs":
-        pass
-    elif config.dbt_method == "url":
+        if store_gcs_credentials(config):
+            from google.cloud import storage
+
+            client = storage.Client()
+            for bucket in client.list_buckets():
+                for blob in client.list_blobs(bucket.name):
+                    if "manifest_1.0" in blob.name:
+                        dbt_manifest = blob.download_as_string()
+                    if "catalog_1.0" in blob.name:
+                        dbt_catalog = blob.download_as_string()
+        else:
+            exit()
+    elif config.dbt_method == "http":
         pass
     else:
         if config.dbt_catalog_file is not None:
@@ -144,7 +158,6 @@ def get_dbt_details(config: SQLConnectionConfig):
         if config.dbt_manifest_file is not None:
             with open(config.dbt_manifest_file, "r", encoding="utf-8") as manifest:
                 dbt_manifest = json.load(manifest)
-
     return dbt_catalog, dbt_manifest
 
 
@@ -189,7 +202,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        (self.dbt_catalog, self.dbt_manifest) = get_dbt_details(self.config)
+        self.dbt_catalog, self.dbt_manifest = get_dbt_details(self.config)
         self.profile_date = datetime.now()
 
     def test_connection(self) -> None:
