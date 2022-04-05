@@ -21,12 +21,17 @@ from metadata.generated.schema.api.services.createDashboardService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import LookerConnection
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardService,
-    DashboardServiceType, DashboardConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -53,10 +58,8 @@ class OMetaDashboardTest(TestCase):
         name="test-service-dashboard",
         serviceType=DashboardServiceType.Superset,
         connection=DashboardConnection(
-            config=LookerConnection(
-                url="https://localhost:1000"
-            )
-        )
+            config=LookerConnection(url="https://localhost:1000")
+        ),
     )
     service_type = "dashboardService"
 
@@ -92,7 +95,10 @@ class OMetaDashboardTest(TestCase):
         )
 
         cls.metadata.delete(
-            entity=DashboardService, entity_id=service_id, recursive=True, hard_delete=True
+            entity=DashboardService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

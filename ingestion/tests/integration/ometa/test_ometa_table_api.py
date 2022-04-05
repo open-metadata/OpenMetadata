@@ -19,7 +19,9 @@ from unittest import TestCase
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -27,7 +29,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
@@ -39,13 +40,17 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
@@ -86,7 +91,7 @@ class OMetaTableTest(TestCase):
             config=MysqlConnection(
                 username="username",
                 password="password",
-                hostPort="http://localhost:1234"
+                hostPort="http://localhost:1234",
             )
         ),
     )
@@ -112,8 +117,7 @@ class OMetaTableTest(TestCase):
         )
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema",
-            database=cls.db_reference
+            name="test-schema", database=cls.db_reference
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
@@ -149,7 +153,10 @@ class OMetaTableTest(TestCase):
         )
 
         cls.metadata.delete(
-            entity=DatabaseService, entity_id=service_id, recursive=True, hard_delete=True
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

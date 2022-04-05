@@ -21,13 +21,17 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -57,7 +61,7 @@ class OMetaDatabaseTest(TestCase):
             config=MysqlConnection(
                 username="username",
                 password="password",
-                hostPort="http://localhost:1234"
+                hostPort="http://localhost:1234",
             )
         ),
     )
@@ -93,7 +97,10 @@ class OMetaDatabaseTest(TestCase):
         )
 
         cls.metadata.delete(
-            entity=DatabaseService, entity_id=service_id, recursive=True, hard_delete=True
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

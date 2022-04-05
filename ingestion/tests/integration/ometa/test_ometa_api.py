@@ -12,10 +12,11 @@
 """
 OpenMetadata API initialization
 """
-from unittest import TestCase
 
 
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

@@ -16,14 +16,15 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     FeatureSourceDataType,
@@ -33,13 +34,17 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -199,7 +204,7 @@ class OMetaModelTest(TestCase):
                 config=MysqlConnection(
                     username="username",
                     password="password",
-                    hostPort="http://localhost:1234"
+                    hostPort="http://localhost:1234",
                 )
             ),
         )
@@ -298,13 +303,11 @@ class OMetaModelTest(TestCase):
         nodes = {node["id"] for node in lineage["nodes"]}
         assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
 
-        self.metadata.delete(entity=Table, entity_id=table1_entity.id)
-        self.metadata.delete(entity=Table, entity_id=table2_entity.id)
         self.metadata.delete(
-            entity=Database, entity_id=create_db_entity.id, recursive=True
-        )
-        self.metadata.delete(
-            entity=DatabaseService, entity_id=service_entity.id, recursive=True
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_list_versions(self):

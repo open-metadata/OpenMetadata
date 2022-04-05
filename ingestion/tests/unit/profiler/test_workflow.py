@@ -45,11 +45,7 @@ config = {
         "type": "sqlite",
         "serviceName": "my_service",
         "serviceConnection": {
-            "config": {
-                "type": "SQLite",
-                "hostPort": "",
-                "database": ":memory:"
-            }
+            "config": {"type": "SQLite", "hostPort": "", "database": ":memory:"}
         },
         "sourceConfig": {},
     },

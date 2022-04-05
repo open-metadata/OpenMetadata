@@ -204,7 +204,10 @@ class OpenMetadata(
             return "/databases"
 
         if issubclass(
-            entity, get_args(Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)])
+            entity,
+            get_args(
+                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
+            ),
         ):
             return "/databaseSchemas"
 
