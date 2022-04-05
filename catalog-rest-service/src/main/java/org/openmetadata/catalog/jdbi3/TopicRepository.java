@@ -33,8 +33,8 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
@@ -42,7 +42,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? EntityNameUtil.getFQN(topic.getService().getName(), topic.getName())
+        ? FullyQualifiedName.add(topic.getService().getName(), topic.getName())
         : null;
   }
 

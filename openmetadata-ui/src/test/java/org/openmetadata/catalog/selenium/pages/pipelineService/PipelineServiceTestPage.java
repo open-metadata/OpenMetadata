@@ -122,7 +122,7 @@ public class PipelineServiceTestPage {
     openPipelineServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
   }

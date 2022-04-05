@@ -33,9 +33,9 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final String DATABASE_UPDATE_FIELDS = "owner";
@@ -54,7 +54,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database != null && database.getService() != null)
-        ? EntityNameUtil.getFQN(database.getService().getName(), database.getName())
+        ? FullyQualifiedName.add(database.getService().getName(), database.getName())
         : null;
   }
 

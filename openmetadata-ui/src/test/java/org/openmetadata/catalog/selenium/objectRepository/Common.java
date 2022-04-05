@@ -90,6 +90,8 @@ public class Common {
   By reviewCount = By.cssSelector("[data-testid='user-card-container']");
   By tagsCount = By.xpath("(//div[@data-testid='tags']/div)");
   By addGlossaryReviewer = By.cssSelector("[data-testid='add-new-reviewer']");
+  By connectionConfig = By.cssSelector("[data-testid='Connection Config']");
+  By ingestion = By.cssSelector("[data-testid='Ingestions']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

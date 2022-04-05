@@ -72,9 +72,9 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
@@ -144,7 +144,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static String getFQN(Table table) {
     return (table != null && table.getDatabaseSchema() != null)
-        ? EntityNameUtil.getFQN(table.getDatabaseSchema().getName(), table.getName())
+        ? FullyQualifiedName.add(table.getDatabaseSchema().getName(), table.getName())
         : null;
   }
 
@@ -164,7 +164,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
-      String columnFQN = EntityNameUtil.getFQN(table.getFullyQualifiedName(), join.getColumnName());
+      String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), join.getColumnName());
       addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
     }
     return table.withJoins(getJoins(table));
@@ -513,7 +513,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
-          String columnFqn = EntityNameUtil.getFQN(parentFQN, c.getName());
+          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
             setColumnFQN(columnFqn, c.getChildren());
@@ -674,7 +674,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) throws IOException {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
-      String tableFQN = EntityNameUtil.getTableFQN(joinedWith.getFullyQualifiedName());
+      String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());
       Table joinedWithTable = daoCollection.tableDAO().findEntityByName(tableFQN);
 
       // Validate column
@@ -800,7 +800,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // list [ [fromFQN, toFQN, json], ...] contains inner list [fromFQN, toFQN, json]
     for (List<String> innerList : list) {
-      String columnName = EntityNameUtil.getColumnName(innerList.get(0));
+      String columnName = FullyQualifiedName.getColumnName(innerList.get(0));
       List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
 
       // Parse JSON to get daily counts and aggregate it

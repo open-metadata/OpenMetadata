@@ -58,11 +58,10 @@ public class PostIngestionTests {
   public void setOwner() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
-    Events.click(webDriver, common.entityTabIndex(3));
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
-    Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
-    Events.click(webDriver, common.entityTabIndex(4));
+    Events.click(webDriver, common.selectSuggestionSearch("sample_superset:34"));
+    Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.sendKeys(webDriver, common.ownerSearchBox(), "Cloud");
     Events.click(webDriver, common.tagListItem());
@@ -77,8 +76,8 @@ public class PostIngestionTests {
     Events.click(webDriver, common.headerItem("explore"));
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
-    Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
-    Events.click(webDriver, common.entityTabIndex(4));
+    Events.click(webDriver, common.selectSuggestionSearch("sample_superset:34"));
+    Events.click(webDriver, common.manage());
     Events.click(webDriver, common.containsText("Cloud_Infra"));
   }
 }
