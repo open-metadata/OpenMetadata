@@ -33,8 +33,10 @@ const RichTextEditorPreviewer = ({
   const [content, setContent] = useState<string>('');
   const [displayMoreText, setDisplayMoreText] = useState(false);
 
-  const setModifiedContent = (markdown: string) => {
-    const modifiedContent = markdown.replace(/&lt;/g, '<').replace(/&gt/g, '>');
+  const setModifiedContent = (markdownValue: string) => {
+    const modifiedContent = markdownValue
+      .replace(/&lt;/g, '<')
+      .replace(/&gt/g, '>');
     setContent(modifiedContent);
   };
 

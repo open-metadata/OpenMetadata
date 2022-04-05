@@ -31,11 +31,15 @@ export const BlurLayout: FC<BlurLayoutProp> = ({
   blurClasses,
   displayMoreHandler,
 }: BlurLayoutProp) => {
+  const getBlurClass = () => {
+    return !displayMoreText ? blurClasses : '';
+  };
+
   return enableSeeMoreVariant && markdown.length > MAX_LENGTH ? (
     <div
       className={classNames(
         'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0 tw-pointer-events-none',
-        !displayMoreText ? blurClasses : null,
+        getBlurClass(),
         {
           'tw-top-0 tw-bottom-0': !displayMoreText,
           ' tw--bottom-4': displayMoreText,
