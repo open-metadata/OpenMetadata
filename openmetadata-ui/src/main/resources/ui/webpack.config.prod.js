@@ -52,6 +52,15 @@ module.exports = {
           },
         },
       },
+      // .mjs files to be handled
+      {
+        test: /\.m?js/,
+        include: path.resolve(__dirname, 'node_modules/kleur'),
+        resolve: {
+          fullySpecified: false,
+        },
+      },
+
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
