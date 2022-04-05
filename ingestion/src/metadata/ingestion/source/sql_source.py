@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
@@ -279,11 +280,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
-
-                table_and_db = OMetaDatabaseAndTable(
-                    table=table_entity, database=self._get_database(schema)
+                database = self._get_database(self.config.database)
+                table_schema_and_db = OMetaDatabaseAndTable(
+                    table=table_entity,
+                    database=database,
+                    database_schema=self._get_schema(schema, database),
                 )
-                yield table_and_db
+                yield table_schema_and_db
                 self.status.scanned(
                     "{}.{}".format(self.config.get_service_name(), table_name)
                 )
@@ -355,10 +358,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
                 table.dataModel = self._get_data_model(schema, view_name)
-                table_and_db = OMetaDatabaseAndTable(
-                    table=table, database=self._get_database(schema)
+                database = self._get_database(self.config.database)
+                table_schema_and_db = OMetaDatabaseAndTable(
+                    table=table,
+                    database=database,
+                    database_schema=self._get_schema(schema, database),
                 )
-                yield table_and_db
+                yield table_schema_and_db
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(err)
@@ -477,9 +483,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return columns
 
-    def _get_database(self, schema: str) -> Database:
+    def _get_database(self, database: str) -> Database:
         return Database(
+            name=database,
+            service=EntityReference(id=self.service.id, type=self.config.service_type),
+        )
+
+    def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:
+        return DatabaseSchema(
             name=schema,
+            database=database.service,
             service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
