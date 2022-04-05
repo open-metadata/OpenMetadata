@@ -21,6 +21,13 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
+class InvalidSourceException(Exception):
+    """
+    The source config is not getting the expected
+    service connection
+    """
+
+
 @dataclass
 class SourceStatus(Status):
     records = 0
