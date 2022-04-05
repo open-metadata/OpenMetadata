@@ -26,7 +26,6 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -53,8 +52,10 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceQueryUsagePipeline;
+import org.openmetadata.catalog.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataingestion.FilterPattern;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
@@ -75,6 +76,8 @@ import org.openmetadata.catalog.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionPipeline, CreateIngestionPipeline> {
   public static SourceConfig DATABASE_METADATA_CONFIG;
+  public static SourceConfig DASHBOARD_METADATA_CONFIG;
+  public static SourceConfig MESSAGING_METADATA_CONFIG;
   public static AirflowConfiguration AIRFLOW_CONFIG;
   public static DatabaseServiceResourceTest DATABASE_SERVICE_RESOURCE_TEST;
 
@@ -94,9 +97,17 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         new DatabaseServiceMetadataPipeline()
             .withMarkDeletedTables(true)
             .withIncludeViews(true)
-            .withSchemaFilterPattern(new FilterPattern().withExcludes(Arrays.asList("information_schema.*", "test.*")))
-            .withTableFilterPattern(new FilterPattern().withIncludes(Arrays.asList("sales.*", "users.*")));
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
+    DashboardServiceMetadataPipeline dashboardServiceMetadataPipeline =
+        new DashboardServiceMetadataPipeline()
+            .withDashboardFilterPattern(new FilterPattern().withIncludes(List.of("dashboard.*", "users.*")));
+    MessagingServiceMetadataPipeline messagingServiceMetadataPipeline =
+        new MessagingServiceMetadataPipeline()
+            .withTopicFilterPattern(new FilterPattern().withExcludes(List.of("orders.*")));
     DATABASE_METADATA_CONFIG = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
+    DASHBOARD_METADATA_CONFIG = new SourceConfig().withConfig(dashboardServiceMetadataPipeline);
+    MESSAGING_METADATA_CONFIG = new SourceConfig().withConfig(messagingServiceMetadataPipeline);
     AIRFLOW_CONFIG = new AirflowConfiguration();
     AIRFLOW_CONFIG.setApiEndpoint("http://localhost:8080");
     AIRFLOW_CONFIG.setUsername("admin");
@@ -336,6 +347,113 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Test
+  void put_IngestionPipelineForDashboardSourceUpdate_200(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withService(new EntityReference().withId(SUPERSET_REFERENCE.getId()).withType("dashboardService"))
+            .withDescription("description")
+            .withSourceConfig(DASHBOARD_METADATA_CONFIG)
+            .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate("2021-11-21"));
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Integer pipelineConcurrency = 110;
+    Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+    String expectedScheduleInterval = "7 * * * *";
+    // Updating description is ignored when backend already has description
+    IngestionPipeline ingestion =
+        updateIngestionPipeline(
+            request
+                .withSourceConfig(DASHBOARD_METADATA_CONFIG)
+                .withAirflowConfig(
+                    new AirflowConfig()
+                        .withConcurrency(pipelineConcurrency)
+                        .withScheduleInterval(expectedScheduleInterval)
+                        .withStartDate(startDate.toString())),
+            OK,
+            ADMIN_AUTH_HEADERS);
+    String expectedFQN = EntityUtil.getFQN(SUPERSET_REFERENCE.getName(), ingestion.getName());
+    assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
+    assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
+    assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    DashboardServiceMetadataPipeline dashboardServiceMetadataPipeline =
+        new DashboardServiceMetadataPipeline()
+            .withDashboardFilterPattern(new FilterPattern().withIncludes(List.of("test1.*", "test2.*")));
+
+    SourceConfig updatedSourceConfig = new SourceConfig().withConfig(dashboardServiceMetadataPipeline);
+    IngestionPipeline updatedIngestion =
+        updateIngestionPipeline(
+            request
+                .withSourceConfig(updatedSourceConfig)
+                .withAirflowConfig(
+                    new AirflowConfig()
+                        .withConcurrency(pipelineConcurrency)
+                        .withScheduleInterval(expectedScheduleInterval)
+                        .withStartDate(startDate.toString())),
+            OK,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
+    assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
+    assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
+  }
+
+  @Test
+  void put_IngestionPipelineForMessagingSourceUpdate_200(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withService(new EntityReference().withId(KAFKA_REFERENCE.getId()).withType("messagingService"))
+            .withDescription("description")
+            .withSourceConfig(MESSAGING_METADATA_CONFIG)
+            .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate("2021-11-21"));
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Integer pipelineConcurrency = 110;
+    Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+    String expectedScheduleInterval = "7 * * * *";
+    // Updating description is ignored when backend already has description
+    IngestionPipeline ingestion =
+        updateIngestionPipeline(
+            request
+                .withSourceConfig(MESSAGING_METADATA_CONFIG)
+                .withAirflowConfig(
+                    new AirflowConfig()
+                        .withConcurrency(pipelineConcurrency)
+                        .withScheduleInterval(expectedScheduleInterval)
+                        .withStartDate(startDate.toString())),
+            OK,
+            ADMIN_AUTH_HEADERS);
+    String expectedFQN = EntityUtil.getFQN(KAFKA_REFERENCE.getName(), ingestion.getName());
+    assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
+    assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
+    assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    MessagingServiceMetadataPipeline messagingServiceMetadataPipeline =
+        new MessagingServiceMetadataPipeline()
+            .withTopicFilterPattern(new FilterPattern().withIncludes(List.of("topic1.*", "topic2.*")));
+    SourceConfig updatedSourceConfig = new SourceConfig().withConfig(messagingServiceMetadataPipeline);
+    IngestionPipeline updatedIngestion =
+        updateIngestionPipeline(
+            request
+                .withSourceConfig(updatedSourceConfig)
+                .withAirflowConfig(
+                    new AirflowConfig()
+                        .withConcurrency(pipelineConcurrency)
+                        .withScheduleInterval(expectedScheduleInterval)
+                        .withStartDate(startDate.toString())),
+            OK,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
+    assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
+    assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
+    assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
+  }
+
+  @Test
   void post_AirflowWithDatabaseServiceMetadata_GeneratedIngestionPipelineConfig_200_ok(TestInfo test)
       throws IOException {
     CreateIngestionPipeline request =
@@ -531,6 +649,16 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
       DatabaseServiceQueryUsagePipeline origConfig = (DatabaseServiceQueryUsagePipeline) orig.getConfig();
       DatabaseServiceQueryUsagePipeline updatedConfig =
           JsonUtils.convertValue(updated.getConfig(), DatabaseServiceQueryUsagePipeline.class);
+      assertEquals(origConfig, updatedConfig);
+    } else if (serviceType.equals(Entity.DASHBOARD_SERVICE)) {
+      DashboardServiceMetadataPipeline origConfig = (DashboardServiceMetadataPipeline) orig.getConfig();
+      DashboardServiceMetadataPipeline updatedConfig =
+          JsonUtils.convertValue(updated.getConfig(), DashboardServiceMetadataPipeline.class);
+      assertEquals(origConfig, updatedConfig);
+    } else if (serviceType.equals(Entity.MESSAGING_SERVICE)) {
+      MessagingServiceMetadataPipeline origConfig = (MessagingServiceMetadataPipeline) orig.getConfig();
+      MessagingServiceMetadataPipeline updatedConfig =
+          JsonUtils.convertValue(updated.getConfig(), MessagingServiceMetadataPipeline.class);
       assertEquals(origConfig, updatedConfig);
     }
   }
