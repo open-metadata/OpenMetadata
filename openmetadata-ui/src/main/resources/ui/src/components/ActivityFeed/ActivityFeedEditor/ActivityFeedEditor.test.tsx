@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, fireEvent, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityFeedEditor from './ActivityFeedEditor';
@@ -71,25 +71,6 @@ describe('Test Activity Feed Editor Component', () => {
 
     expect(editor).toBeInTheDocument();
     expect(sendButton).toBeInTheDocument();
-  });
-
-  it('should call onSave method', async () => {
-    const { container } = render(
-      <ActivityFeedEditor {...mockProp} onSave={onSave} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const editor = await findByTestId(container, 'feed-editor');
-    const sendButton = await findByTestId(container, 'send-button');
-
-    expect(editor).toBeInTheDocument();
-    expect(sendButton).toBeInTheDocument();
-
-    fireEvent.click(sendButton);
-
-    expect(onSave).toBeCalled();
   });
 
   it('should have passed button classes', async () => {
