@@ -41,7 +41,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 @Slf4j
 public final class Entity {
   // Fully qualified name separator
-  public static final String SEPARATOR = ":";
+  public static final String SEPARATOR = ".";
 
   // Lower case entity name to canonical entity name map
   private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();

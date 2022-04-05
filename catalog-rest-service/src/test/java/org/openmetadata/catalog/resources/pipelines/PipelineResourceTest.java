@@ -60,7 +60,7 @@ import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.StatusType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -228,7 +228,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withPipelineUrl(pipelineURI).withConcurrency(pipelineConcurrency).withStartDate(startDate),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityNameUtil.getFQN(AIRFLOW_REFERENCE.getName(), pipeline.getName());
+    String expectedFQN = FullyQualifiedName.add(AIRFLOW_REFERENCE.getName(), pipeline.getName());
     assertEquals(pipelineURI, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());

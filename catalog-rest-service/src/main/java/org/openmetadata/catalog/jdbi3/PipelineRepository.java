@@ -42,8 +42,8 @@ import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
@@ -63,7 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline != null && pipeline.getService() != null)
-        ? EntityNameUtil.getFQN(pipeline.getService().getName(), pipeline.getName())
+        ? FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName())
         : null;
   }
 

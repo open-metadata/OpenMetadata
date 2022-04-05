@@ -184,7 +184,7 @@ public final class ChangeEventParser {
     String arrayFieldValue = null;
 
     if (fieldName.contains(".")) {
-      String[] fieldNameParts = EntityNameUtil.splitFQN(fieldName);
+      String[] fieldNameParts = FullyQualifiedName.split(fieldName);
       // For array type, it should have 3 parts. ex: columns.comment.description
       fieldName = fieldNameParts[0];
       if (fieldNameParts.length == 3) {

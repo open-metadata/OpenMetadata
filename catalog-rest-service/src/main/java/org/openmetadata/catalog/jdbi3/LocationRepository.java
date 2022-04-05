@@ -32,8 +32,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -77,7 +77,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
       throws IOException {
-    String service = EntityNameUtil.getServiceName(fqn);
+    String service = FullyQualifiedName.getServiceName(fqn);
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
         daoCollection
@@ -113,7 +113,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
       throws IOException {
-    String service = EntityNameUtil.getServiceName(fqn);
+    String service = FullyQualifiedName.getServiceName(fqn);
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
         daoCollection
@@ -153,7 +153,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public static String getFQN(Location location) {
     return (location != null && location.getService() != null)
-        ? EntityNameUtil.getFQN(location.getService().getName(), location.getName())
+        ? FullyQualifiedName.add(location.getService().getName(), location.getName())
         : null;
   }
 

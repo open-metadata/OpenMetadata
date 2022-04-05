@@ -295,8 +295,8 @@ public final class EntityUtil {
     String localColumnName =
         EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
     return columnField == null
-        ? EntityNameUtil.getFQN("columns", localColumnName)
-        : EntityNameUtil.getFQN("columns", localColumnName, columnField);
+        ? FullyQualifiedName.build("columns", localColumnName)
+        : FullyQualifiedName.build("columns", localColumnName, columnField);
   }
 
   public static Double nextVersion(Double version) {
