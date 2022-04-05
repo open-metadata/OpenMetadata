@@ -7,11 +7,10 @@
         "type": "MySQL",
         "username": "openmetadata_user",
         "password": "openmetadata_password",
-        "hostPort": "http://localhost:3306"
+        "hostPort": "localhost:3306"
       }
     },
-    "sourceConfig": {
-    }
+    "sourceConfig": {"config": {}}
   },
   "sink": {
     "type": "metadata-rest",

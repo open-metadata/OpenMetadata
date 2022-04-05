@@ -12,7 +12,9 @@
 import logging
 import traceback
 from datetime import datetime, timedelta
+from functools import singledispatch
 from typing import Any, Dict, Iterable
+from urllib.parse import quote_plus
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -31,6 +33,9 @@ from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -42,6 +47,39 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)
+
+
+@singledispatch
+def get_connection_url(serviceConnectionConfig):
+    raise ValueError(f"Hola {serviceConnectionConfig}")
+
+
+@get_connection_url.register(MysqlConnection)
+def _(serviceConnectionConfig):
+    config_dict = serviceConnectionConfig.dict()
+    username = config_dict.get("username")
+    password = config_dict.get("password")
+    scheme = config_dict.get("scheme").value
+    host_port = config_dict.get("hostPort")
+    database = config_dict.get("database")
+    options = config_dict.get("connectionOptions")
+    url = f"{scheme}://"
+    if username:
+        url += f"{username}"
+        if password:
+            url += f":{quote_plus(password.get_secret_value())}"
+        url += "@"
+    url += f"{host_port}"
+    if database:
+        url += f"/{database}"
+    if options:
+        if not database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+    return url
 
 
 def get_start_and_end(duration):
@@ -70,12 +108,12 @@ def get_database_service_or_create(
     service: DatabaseService = metadata.get_by_name(
         entity=DatabaseService, fqdn=service_name
     )
-    if service:
-        return service
-    else:
+    if not service:
+        config_dict = config.dict()
+        service_connection_config = config_dict.get("serviceConnection").get("config")
         password = (
-            config.password.get_secret_value()
-            if hasattr(config, "password") and config.password
+            service_connection_config.get("password").get_secret_value()
+            if service_connection_config and service_connection_config.get("password")
             else None
         )
 
@@ -84,33 +122,29 @@ def get_database_service_or_create(
         service_json = {
             "connection": {
                 "config": {
-                    "hostPort": config.host_port
-                    if hasattr(config, "host_port")
-                    else None,
-                    "username": config.username
-                    if hasattr(config, "username")
-                    else None,
+                    "hostPort": service_connection_config.get("hostPort"),
+                    "username": service_connection_config.get("username"),
                     "password": password,
-                    "database": config.database
-                    if hasattr(config, "database")
-                    else None,
-                    "connectionOptions": config.options
-                    if hasattr(config, "options")
-                    else None,
-                    "connectionArguments": config.connect_args
-                    if hasattr(config, "connect_args")
-                    else None,
+                    "database": service_connection_config.get("database"),
+                    "connectionOptions": service_connection_config.get(
+                        "connectionOptions"
+                    ),
+                    "connectionArguments": service_connection_config.get(
+                        "connectionArguments"
+                    ),
                 }
             },
             "name": service_name,
             "description": "",
-            "serviceType": config.service_type,
+            "serviceType": service_connection_config.get("type").value,
         }
+
         created_service: DatabaseService = metadata.create_or_update(
             CreateDatabaseServiceRequest(**service_json)
         )
         logger.info(f"Creating DatabaseService instance for {service_name}")
         return created_service
+    return service
 
 
 def get_messaging_service_or_create(
