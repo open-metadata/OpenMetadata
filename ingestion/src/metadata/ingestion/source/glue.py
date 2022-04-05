@@ -22,12 +22,14 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -55,7 +57,9 @@ class GlueSourceConfig(AWSClientConfigModel):
 
 
 class GlueSource(Source[Entity]):
-    def __init__(self, config: GlueSourceConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self, config: GlueSourceConfig, metadata_config: OpenMetadataServerConfig
+    ):
         super().__init__()
         self.status = SQLSourceStatus()
         self.config = config
@@ -86,9 +90,8 @@ class GlueSource(Source[Entity]):
         self.next_db_token = None
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = GlueSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

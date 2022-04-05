@@ -32,7 +32,7 @@ from metadata.generated.schema.api.services.createStorageService import (
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseConnection
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
@@ -66,7 +66,9 @@ def get_database_service_or_create(
     metadata = OpenMetadata(metadata_config)
     if not service_name:
         service_name = config.serviceName
-    service: DatabaseService = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqdn=service_name
+    )
     if service:
         return service
     else:
@@ -117,7 +119,9 @@ def get_messaging_service_or_create(
     metadata_config,
 ) -> MessagingService:
     metadata = OpenMetadata(metadata_config)
-    service: MessagingService = metadata.get_by_name(entity=MessagingService, fqdn=service_name)
+    service: MessagingService = metadata.get_by_name(
+        entity=MessagingService, fqdn=service_name
+    )
     if service is not None:
         return service
     else:
@@ -136,7 +140,9 @@ def get_dashboard_service_or_create(
     metadata_config,
 ) -> DashboardService:
     metadata = OpenMetadata(metadata_config)
-    service: DashboardService = metadata.get_by_name(entity=DashboardService, fqdn=service_name)
+    service: DashboardService = metadata.get_by_name(
+        entity=DashboardService, fqdn=service_name
+    )
     if service is not None:
         return service
     else:
@@ -150,7 +156,9 @@ def get_dashboard_service_or_create(
 
 def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
     metadata = OpenMetadata(metadata_config)
-    service: PipelineService = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
+    service: PipelineService = metadata.get_by_name(
+        entity=PipelineService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:
@@ -162,7 +170,9 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
 
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=StorageService, fqdn=service_json["name"])
+    service: StorageService = metadata.get_by_name(
+        entity=StorageService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:
@@ -174,7 +184,9 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
 
 def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
-    service: DatabaseService = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:

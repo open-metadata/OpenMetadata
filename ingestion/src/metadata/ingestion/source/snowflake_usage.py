@@ -19,11 +19,13 @@ from typing import Any, Dict, Iterable, Iterator, Union
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.snowflake import SnowflakeConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
@@ -91,9 +93,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = SnowflakeConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

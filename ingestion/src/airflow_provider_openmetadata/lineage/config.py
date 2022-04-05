@@ -18,9 +18,8 @@ from typing import Optional
 
 from airflow.configuration import conf
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
-
+# TODO refactor https://github.com/open-metadata/OpenMetadata/issues/3844
 class OpenMetadataLineageConfig(MetadataServerConfig):
     """
     Base class for OpenMetada lineage config

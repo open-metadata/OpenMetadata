@@ -20,12 +20,14 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 
@@ -51,7 +53,7 @@ class RedashSourceStatus(SourceStatus):
 
 class RedashSource(Source[Entity]):
     config: RedashSourceConfig
-    metadata_config: MetadataServerConfig
+    metadata_config: OpenMetadataServerConfig
     status: RedashSourceStatus
     platform = "redash"
     dashboards_to_charts: Dict[str, List[str]]
@@ -59,7 +61,7 @@ class RedashSource(Source[Entity]):
     def __init__(
         self,
         config: RedashSourceConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -77,9 +79,8 @@ class RedashSource(Source[Entity]):
         self.dashboards_to_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = RedashSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

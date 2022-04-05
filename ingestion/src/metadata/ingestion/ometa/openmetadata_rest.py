@@ -16,14 +16,11 @@ import http.client
 import json
 import logging
 import sys
-import time
 import traceback
-import uuid
 from typing import List
 
 from pydantic import BaseModel
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -31,6 +28,12 @@ from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Auth0SSOConfig,
+    GoogleSSOConfig,
+    OktaSSOConfig,
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import APIError
 
@@ -82,28 +85,6 @@ class PipelineEntities(BaseModel):
     after: str = None
 
 
-class MetadataServerConfig(ConfigModel):
-    """
-    Metadata Server pydantic config model
-    """
-
-    api_endpoint: str
-    api_version: str = "v1"
-    retry: int = 3
-    retry_wait: int = 3
-    auth_provider_type: str = None
-    secret_key: str = None
-    org_url: str = None
-    client_id: str = None
-    private_key: str = None
-    domain: str = None
-    email: str = None
-    audience: str = "https://www.googleapis.com/oauth2/v4/token"
-    auth_header: str = "Authorization"
-    authority: str = ""
-    scopes: List = []
-
-
 class NoOpAuthenticationProvider(AuthenticationProvider):
     """
     Extends AuthenticationProvider class
@@ -115,11 +96,11 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: MetadataServerConfig):
+    def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
 
     @classmethod
-    def create(cls, config: MetadataServerConfig):
+    def create(cls, config: OpenMetadataServerConfig):
         return cls(config)
 
     def auth_token(self):
@@ -140,20 +121,25 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: MetadataServerConfig):
+    def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
+        self.security_config: GoogleSSOConfig = self.config.securityConfig
+
+        self.generated_auth_token = None
+        self.expiry = None
 
     @classmethod
-    def create(cls, config: MetadataServerConfig):
+    def create(cls, config: OpenMetadataServerConfig):
         return cls(config)
 
-    def auth_token(self) -> str:
+    def auth_token(self) -> None:
         import google.auth
         import google.auth.transport.requests
         from google.oauth2 import service_account
 
         credentials = service_account.IDTokenCredentials.from_service_account_file(
-            self.config.secret_key, target_audience=self.config.audience
+            self.security_config.secretKey,
+            target_audience=self.security_config.audience,
         )
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
@@ -162,7 +148,7 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
 
     def get_access_token(self):
         self.auth_token()
-        return (self.generated_auth_token, self.expiry)
+        return self.generated_auth_token, self.expiry
 
 
 class OktaAuthenticationProvider(AuthenticationProvider):
@@ -170,14 +156,18 @@ class OktaAuthenticationProvider(AuthenticationProvider):
     Prepare the Json Web Token for Okta auth
     """
 
-    def __init__(self, config: MetadataServerConfig):
+    def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
+        self.security_config: OktaSSOConfig = self.config.securityConfig
+
+        self.generated_auth_token = None
+        self.expiry = None
 
     @classmethod
-    def create(cls, config: MetadataServerConfig):
+    def create(cls, config: OpenMetadataServerConfig):
         return cls(config)
 
-    async def auth_token(self) -> str:
+    async def auth_token(self) -> None:
         import time
         import uuid
         from urllib.parse import quote, urlencode
@@ -187,28 +177,28 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.request_executor import RequestExecutor
 
         try:
-            my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
+            my_pem, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
             claims = {
-                "sub": self.config.client_id,
+                "sub": self.security_config.clientId,
                 "iat": issued_time,
                 "exp": expiry_time,
-                "iss": self.config.client_id,
-                "aud": self.config.org_url,
+                "iss": self.security_config.clientId,
+                "aud": self.security_config.orgURL,
                 "jti": generated_jwt_id,
             }
             token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
             config = {
                 "client": {
-                    "orgUrl": self.config.org_url,
+                    "orgUrl": self.security_config.orgURL,
                     "authorizationMode": "BEARER",
                     "rateLimit": {},
-                    "privateKey": self.config.private_key,
-                    "clientId": self.config.client_id,
+                    "privateKey": self.security_config.privateKey,
+                    "clientId": self.security_config.clientId,
                     "token": token,
-                    "scopes": self.config.scopes,
+                    "scopes": self.security_config.scopes,
                 }
             }
             request_exec = RequestExecutor(
@@ -221,7 +211,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "client_assertion": token,
             }
             encoded_parameters = urlencode(parameters, quote_via=quote)
-            url = f"{self.config.org_url}?" + encoded_parameters
+            url = f"{self.security_config.orgURL}?" + encoded_parameters
             token_request_object = await request_exec.create_request(
                 "POST",
                 url,
@@ -249,7 +239,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         import asyncio
 
         asyncio.run(self.auth_token())
-        return (self.generated_auth_token, self.expiry)
+        return self.generated_auth_token, self.expiry
 
 
 class Auth0AuthenticationProvider(AuthenticationProvider):
@@ -261,21 +251,27 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: MetadataServerConfig):
+    def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
+        self.security_config: Auth0SSOConfig = self.config.securityConfig
+
+        self.generated_auth_token = None
+        self.expiry = None
 
     @classmethod
-    def create(cls, config: MetadataServerConfig):
+    def create(cls, config: OpenMetadataServerConfig):
         return cls(config)
 
-    def auth_token(self) -> str:
-        conn = http.client.HTTPSConnection(self.config.domain)
+    def auth_token(self) -> None:
+        conn = http.client.HTTPSConnection(self.security_config.domain)
         payload = (
-            f"grant_type=client_credentials&client_id={self.config.client_id}"
-            f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
+            f"grant_type=client_credentials&client_id={self.security_config.clientId}"
+            f"&client_secret={self.security_config.secretKey}&audience=https://{self.security_config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
-        conn.request("POST", f"/{self.config.domain}/oauth/token", payload, headers)
+        conn.request(
+            "POST", f"/{self.security_config.domain}/oauth/token", payload, headers
+        )
         res = conn.getresponse()
         data = res.read()
         token = json.loads(data.decode("utf-8"))
@@ -284,7 +280,7 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
 
     def get_access_token(self):
         self.auth_token()
-        return (self.generated_auth_token, self.expiry)
+        return self.generated_auth_token, self.expiry
 
 
 class AzureAuthenticationProvider(AuthenticationProvider):
@@ -292,14 +288,18 @@ class AzureAuthenticationProvider(AuthenticationProvider):
     Prepare the Json Web Token for Azure auth
     """
 
-    def __init__(self, config: MetadataServerConfig):
+    # TODO: Prepare JSON for Azure Auth
+    def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
 
+        self.generated_auth_token = None
+        self.expiry = None
+
     @classmethod
-    def create(cls, config: MetadataServerConfig):
+    def create(cls, config: OpenMetadataServerConfig):
         return cls(config)
 
-    def auth_token(self) -> str:
+    def auth_token(self) -> None:
         from msal import (
             ConfidentialClientApplication,  # pylint: disable=import-outside-toplevel
         )
@@ -322,4 +322,4 @@ class AzureAuthenticationProvider(AuthenticationProvider):
 
     def get_access_token(self):
         self.auth_token()
-        return (self.generated_auth_token, self.expiry)
+        return self.generated_auth_token, self.expiry

@@ -14,9 +14,11 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +34,7 @@ class FileStage(Stage[Entity]):
     def __init__(
         self,
         config: FileStageConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
 
         self.config = config
@@ -43,9 +45,8 @@ class FileStage(Stage[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = FileStageConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def stage_record(self, record: Entity) -> None:

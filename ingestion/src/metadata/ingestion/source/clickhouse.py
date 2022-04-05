@@ -19,7 +19,9 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
@@ -152,7 +154,6 @@ class ClickhouseSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = ClickhouseConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)

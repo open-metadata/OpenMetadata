@@ -17,9 +17,11 @@ from typing import Iterable
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sample_data import (
     SampleDataSourceConfig,
     SampleDataSourceStatus,
@@ -32,7 +34,7 @@ class SampleUsageSource(Source[TableQuery]):
     service_type = DatabaseServiceType.BigQuery.value
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig
+        self, config: SampleDataSourceConfig, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SampleDataSourceStatus()
@@ -49,9 +51,8 @@ class SampleUsageSource(Source[TableQuery]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = SampleDataSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):
