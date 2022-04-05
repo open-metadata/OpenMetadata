@@ -48,10 +48,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "audience": {
-          "type": "string",
-          "default": "https://www.googleapis.com/oauth2/v4/token"
         }
       },
       "additionalProperties": false,
