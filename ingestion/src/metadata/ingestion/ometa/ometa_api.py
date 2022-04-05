@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
@@ -140,19 +141,19 @@ class OpenMetadata(
 
     def __init__(self, config: OpenMetadataServerConfig, raw_data: bool = False):
         self.config = config
-        if self.config.authProvider.value == "google":
+        if self.config.authProvider == "google":
             self._auth_provider: AuthenticationProvider = (
                 GoogleAuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider.value == "okta":
+        elif self.config.authProvider == "okta":
             self._auth_provider: AuthenticationProvider = (
                 OktaAuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider.value == "auth0":
+        elif self.config.authProvider == "auth0":
             self._auth_provider: AuthenticationProvider = (
                 Auth0AuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider.value == "azure":
+        elif self.config.authProvider == "azure":
             self._auth_provider: AuthenticationProvider = (
                 AzureAuthenticationProvider.create(self.config)
             )
@@ -201,6 +202,11 @@ class OpenMetadata(
             entity, get_args(Union[Database, self.get_create_entity_type(Database)])
         ):
             return "/databases"
+
+        if issubclass(
+            entity, get_args(Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)])
+        ):
+            return "/databaseSchemas"
 
         if issubclass(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
@@ -339,6 +345,19 @@ class OpenMetadata(
         )
         return create_class
 
+    @staticmethod
+    def update_file_name(create: Type[C], file_name: str) -> str:
+        """
+        Update the filename for services and schemas
+        """
+        if "service" in create.__name__.lower():
+            return file_name.replace("service", "Service")
+
+        if "schema" in create.__name__.lower():
+            return file_name.replace("schema", "Schema")
+
+        return file_name
+
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
@@ -352,9 +371,7 @@ class OpenMetadata(
                 self.class_root,
                 self.entity_path,
                 self.get_module_path(create),
-                file_name.replace("service", "Service")
-                if "service" in create.__name__.lower()
-                else file_name,
+                self.update_file_name(create, file_name),
             ]
         )
 
@@ -534,6 +551,7 @@ class OpenMetadata(
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         recursive: bool = False,
+        hard_delete: bool = False,
     ) -> None:
         """
         API call to delete an entity from entity ID
@@ -545,7 +563,8 @@ class OpenMetadata(
             None
         """
         url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
-        url += f"?recursive=true" if recursive else ""
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
