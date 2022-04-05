@@ -34,4 +34,5 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
+  renewIdToken: () => Promise<string>;
 }

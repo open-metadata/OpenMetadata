@@ -22,12 +22,20 @@ import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
-import { isDev } from '../utils/EnvironmentUtils';
+import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
 export const getOidcExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 24 * 1000);
+};
+
+export const getRedirectUri = (callbackUrl: string) => {
+  return isDev()
+    ? 'http://localhost:3000/callback'
+    : !isNil(callbackUrl)
+    ? callbackUrl
+    : `${window.location.origin}/callback`;
 };
 
 export const getUserManagerConfig = (
@@ -43,13 +51,8 @@ export const getUserManagerConfig = (
     // eslint-disable-next-line @typescript-eslint/camelcase
     response_type: 'id_token',
     // eslint-disable-next-line @typescript-eslint/camelcase
-    redirect_uri: isDev()
-      ? 'http://localhost:3000/callback'
-      : !isNil(callbackUrl)
-      ? callbackUrl
-      : `${window.location.origin}/callback`,
+    redirect_uri: getRedirectUri(callbackUrl),
     scope: 'openid email profile',
-    // userStore: new WebStorageStateStore({ store: cookieStorage }),
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
@@ -59,18 +62,14 @@ export const getAuthConfig = (
 ): Record<string, string | boolean> => {
   const { authority, clientId, callbackUrl, provider } = authClient;
   let config = {};
-
+  const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
     case AuthTypes.OKTA:
       {
         config = {
           clientId,
           issuer: authority,
-          redirectUri: isDev()
-            ? 'http://localhost:3000/callback'
-            : !isNil(callbackUrl)
-            ? callbackUrl
-            : `${window.location.origin}/callback`,
+          redirectUri,
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
           provider,
@@ -80,30 +79,32 @@ export const getAuthConfig = (
       break;
     case AuthTypes.GOOGLE:
       {
-        // config = {
-        //   clientId,
-        //   provider,
-        // };
         config = {
           authority,
           clientId,
-          callbackUrl,
+          callbackUrl: redirectUri,
           provider,
         };
       }
 
       break;
+    case AuthTypes.AUTH0: {
+      config = {
+        authority,
+        clientId,
+        callbackUrl: redirectUri,
+        provider,
+      };
+
+      break;
+    }
     case AuthTypes.AZURE:
       {
         config = {
           auth: {
             authority,
             clientId,
-            redirectUri: isDev()
-              ? 'http://localhost:3000/callback'
-              : !isNil(callbackUrl)
-              ? callbackUrl
-              : `${window.location.origin}/callback`,
+            redirectUri,
             postLogoutRedirectUri: '/',
           },
           cache: {
