@@ -16,6 +16,7 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -32,6 +33,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -193,7 +195,13 @@ class OMetaModelTest(TestCase):
         service = CreateDatabaseServiceRequest(
             name="test-service-table-ml",
             serviceType=DatabaseServiceType.MySQL,
-            databaseConnection=DatabaseConnection(hostPort="localhost:8000"),
+            connection=DatabaseConnection(
+                config=MysqlConnection(
+                    username="username",
+                    password="password",
+                    hostPort="http://localhost:1234"
+                )
+            ),
         )
         service_entity = self.metadata.create_or_update(data=service)
 
@@ -207,16 +215,26 @@ class OMetaModelTest(TestCase):
             id=create_db_entity.id, name="test-db-ml", type="database"
         )
 
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema-ml",
+            database=db_reference,
+        )
+        create_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        schema_reference = EntityReference(
+            id=create_schema_entity.id, name="test-schema-ml", type="databaseSchema"
+        )
+
         create_table1 = CreateTableRequest(
             name="test-ml",
-            database=db_reference,
+            databaseSchema=schema_reference,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
         table1_entity = self.metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableRequest(
             name="another_test-ml",
-            database=db_reference,
+            databaseSchema=schema_reference,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
         table2_entity = self.metadata.create_or_update(data=create_table2)
