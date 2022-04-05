@@ -14,8 +14,10 @@ from collections import namedtuple
 import psycopg2
 
 # This import verifies that the dependencies are available.
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
@@ -37,9 +39,8 @@ class PostgresSource(SQLSource):
         self.pgconn = self.engine.raw_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = PostgresConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def get_status(self) -> SourceStatus:

@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.pipelineService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import datetime_to_ts
 
 

@@ -12,7 +12,6 @@ from metadata.generated.schema.api.tags.createTagCategory import (
 )
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 CATEGORY_NAME = "TestTag"
 PRIMARY_TAG_NAME = "TestPrimaryTag"

@@ -9,12 +9,14 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -37,7 +39,7 @@ class DynamoDBSourceConfig(AWSClientConfigModel):
 
 class DynamodbSource(Source[Entity]):
     def __init__(
-        self, config: DynamoDBSourceConfig, metadata_config: MetadataServerConfig
+        self, config: DynamoDBSourceConfig, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SQLSourceStatus()
@@ -53,9 +55,8 @@ class DynamodbSource(Source[Entity]):
         self.dynamodb = AWSClient(self.config).get_resource("dynamodb")
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = DynamoDBSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

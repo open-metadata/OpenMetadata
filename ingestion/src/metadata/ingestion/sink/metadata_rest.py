@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -45,7 +48,6 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +83,7 @@ class MetadataRestSink(Sink[Entity]):
     def __init__(
         self,
         config: MetadataRestSinkConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
 
         self.config = config
@@ -94,9 +96,8 @@ class MetadataRestSink(Sink[Entity]):
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:

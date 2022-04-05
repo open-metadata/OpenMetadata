@@ -13,6 +13,9 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
 
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
@@ -39,7 +42,9 @@ class SourceStatus(Status):
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Source":
+    def create(
+        cls, config_dict: dict, metadata_config: OpenMetadataServerConfig
+    ) -> "Source":
         pass
 
     @abstractmethod

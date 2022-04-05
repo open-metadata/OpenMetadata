@@ -16,11 +16,14 @@ import importlib
 import logging
 from typing import Type, TypeVar
 
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
 from metadata.ingestion.api.common import DynamicTypedConfig
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger("Config")
 
@@ -52,8 +55,8 @@ def get_class(key: str) -> Type[T]:
 
 def get_ingestion_source(
     source_type: str,
-    source_config: DynamicTypedConfig,
-    metadata_config: MetadataServerConfig,
+    source_config: SourceConfig,
+    metadata_config: OpenMetadataServerConfig,
 ) -> Source:
     """
     Import the required source class and configure it.
@@ -69,9 +72,7 @@ def get_ingestion_source(
             fetch_type_class(source_type, is_file=False),
         )
     )
-    source: Source = source_class.create(
-        source_config.dict().get("config", {}), metadata_config
-    )
+    source: Source = source_class.create(source_config.dict(), metadata_config)
     logger.debug(f"Source type:{source_type},{source_class} configured")
 
     source.prepare()
@@ -83,7 +84,7 @@ def get_ingestion_source(
 def get_sink(
     sink_type: str,
     sink_config: DynamicTypedConfig,
-    metadata_config: MetadataServerConfig,
+    metadata_config: OpenMetadataServerConfig,
     _from: str = "ingestion",
 ) -> Sink:
     """
@@ -116,7 +117,7 @@ def get_sink(
 def get_processor(
     processor_type: str,
     processor_config: DynamicTypedConfig,
-    metadata_config: MetadataServerConfig,
+    metadata_config: OpenMetadataServerConfig,
     _from: str = "ingestion",
     **kwargs,
 ) -> Processor:

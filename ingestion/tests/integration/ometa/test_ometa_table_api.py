@@ -56,7 +56,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaTableTest(TestCase):

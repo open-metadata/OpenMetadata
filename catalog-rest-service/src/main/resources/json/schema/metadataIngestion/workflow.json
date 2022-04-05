@@ -12,6 +12,11 @@
         "secretKey": {
           "description": "Google SSO client secret key path or contents.",
           "type": "string"
+        },
+        "audience": {
+          "description": "Google SSO audience URL",
+          "type": "string",
+          "default": "https://www.googleapis.com/oauth2/v4/token"
         }
       },
       "additionalProperties": false,
@@ -95,6 +100,11 @@
               "$ref": "#/definitions/auth0SSOConfig"
             }
           ]
+        },
+        "apiVersion": {
+          "description": "OpenMetadata server API version to use.",
+          "type": "string",
+          "default": "v1"
         }
       },
       "additionalProperties": false,
@@ -218,7 +228,7 @@
       "type": "object",
       "properties": {
         "openMetadataServerConfig": {
-          "ref": "#/definitions/openMetadataServerConfig"
+          "$ref": "#/definitions/openMetadataServerConfig"
         },
         "config": {
           "$ref": "#/definitions/componentConfig"

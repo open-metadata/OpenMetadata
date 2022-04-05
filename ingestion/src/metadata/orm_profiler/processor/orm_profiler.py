@@ -26,12 +26,14 @@ from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTes
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
@@ -70,7 +72,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def __init__(
         self,
         config: ProfilerProcessorConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
         session: Session,
     ):
         super().__init__()
@@ -90,7 +92,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def create(
         cls,
         config_dict: dict,
-        metadata_config_dict: dict,
+        metadata_config: OpenMetadataServerConfig,
         **kwargs,
     ):
         """
@@ -98,7 +100,6 @@ class OrmProfilerProcessor(Processor[Table]):
         """
 
         config = ProfilerProcessorConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
 
         session = kwargs.get("session")
         if not session:

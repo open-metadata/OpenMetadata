@@ -13,7 +13,9 @@
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
@@ -33,8 +35,7 @@ class AzuresqlSource(SQLSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         """Create class instance"""
         config = AzuresqlConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
