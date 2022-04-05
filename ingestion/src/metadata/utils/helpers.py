@@ -12,7 +12,6 @@
 import logging
 import traceback
 from datetime import datetime, timedelta
-from functools import singledispatch
 from typing import Any, Dict, Iterable
 from urllib.parse import quote_plus
 
@@ -33,9 +32,6 @@ from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -49,39 +45,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)
-
-
-@singledispatch
-def get_connection_url(serviceConnectionConfig):
-    raise ValueError(f"Hola {serviceConnectionConfig}")
-
-
-@get_connection_url.register(MysqlConnection)
-def _(serviceConnectionConfig):
-    config_dict = serviceConnectionConfig.dict()
-    username = config_dict.get("username")
-    password = config_dict.get("password")
-    scheme = config_dict.get("scheme").value
-    host_port = config_dict.get("hostPort")
-    database = config_dict.get("database")
-    options = config_dict.get("connectionOptions")
-    url = f"{scheme}://"
-    if username:
-        url += f"{username}"
-        if password:
-            url += f":{quote_plus(password.get_secret_value())}"
-        url += "@"
-    url += f"{host_port}"
-    if database:
-        url += f"/{database}"
-    if options:
-        if not database:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
-        url = f"{url}?{params}"
-    return url
 
 
 def get_start_and_end(duration):

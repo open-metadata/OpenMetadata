@@ -22,13 +22,11 @@ from sqlalchemy.orm.session import Session
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-
-from .helpers import get_connection_url
+from metadata.utils.source_connections import get_connection_url
 
 logger = logging.getLogger("Utils")
 
 
-# TODO: fix this and use the singledispatch to build the URL instead of get_connection_url
 def get_engine(config: WorkflowSource, verbose: bool = False) -> Engine:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
