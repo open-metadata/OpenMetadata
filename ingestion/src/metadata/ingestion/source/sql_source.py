@@ -61,7 +61,8 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -100,6 +101,51 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     else:
         description = table_info["text"]
     return description
+
+
+def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
+    new_config = copy.deepcopy(config)
+    if new_config.connect_args.get("private_key"):
+        new_config.connect_args["private_key"] = str(
+            new_config.connect_args["private_key"]
+        )
+        return new_config
+    return config
+
+
+def get_dbt_details(config: SQLConnectionConfig):
+    if config.dbt_method == "s3":
+        aws_config = AWSClientConfigModel(
+            aws_access_key_id=config.aws_access_key_id,
+            aws_secret_access_key=config.aws_secret_access_key,
+            region_name="us-east-2",
+        )
+        aws_client = AWSClient(aws_config).get_resource("s3")
+        buckets = aws_client.buckets.all()
+        for bucket in buckets:
+            for bucket_object in bucket.objects.all():
+                if "manifest_1.0" in bucket_object.key:
+                    dbt_manifest = json.loads(
+                        bucket_object.get()["Body"].read().decode()
+                    )
+                if "catalog_1.0" in bucket_object.key:
+                    dbt_catalog = json.loads(
+                        bucket_object.get()["Body"].read().decode()
+                    )
+
+    elif config.dbt_method == "gcs":
+        pass
+    elif config.dbt_method == "url":
+        pass
+    else:
+        if config.dbt_catalog_file is not None:
+            with open(config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
+                dbt_catalog = json.load(catalog)
+        if config.dbt_manifest_file is not None:
+            with open(config.dbt_manifest_file, "r", encoding="utf-8") as manifest:
+                dbt_manifest = json.load(manifest)
+
+    return dbt_catalog, dbt_manifest
 
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
@@ -143,16 +189,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        if self.source_config.dbtCatalogFilePath:
-            with open(
-                self.source_config.dbtCatalogFilePath, "r", encoding="utf-8"
-            ) as catalog:
-                self.dbt_catalog = json.load(catalog)
-        if self.source_config.dbtManifestFilePath:
-            with open(
-                self.source_config.dbtManifestFilePath, "r", encoding="utf-8"
-            ) as manifest:
-                self.dbt_manifest = json.load(manifest)
+        (self.dbt_catalog, self.dbt_manifest) = get_dbt_details(self.config)
         self.profile_date = datetime.now()
 
     def test_connection(self) -> None:
