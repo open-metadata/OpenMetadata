@@ -101,6 +101,7 @@ class MetadataRestSink(Sink[Entity]):
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
+        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config)
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:

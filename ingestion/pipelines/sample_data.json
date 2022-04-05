@@ -11,10 +11,8 @@
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    },
-    "config": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

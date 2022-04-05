@@ -73,6 +73,25 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     return description
 
 
+def _get_private_key_config(config):
+    print(config, type(config))
+    if (
+        config.serviceConnection.get("config")
+        .get("connectionArguments")
+        .get("private_key")
+    ):
+        deepcopied_config = copy.deepcopy(config)
+        deepcopied_config.serviceConnection.config.connectionArguments[
+            "private_key"
+        ] = str(
+            deepcopied_config.serviceConnection.config.connectionArguments[
+                "private_key"
+            ]
+        )
+        return deepcopied_config
+    return config
+
+
 class SQLSource(Source[OMetaDatabaseAndTable]):
     """
     Source Connector implementation to extract

@@ -19,14 +19,12 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as MetadataIngestionSourceConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-
-class MySQLConfig(MysqlConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
 
 
 class MysqlSource(SQLSource):
@@ -34,8 +32,13 @@ class MysqlSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = MySQLConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config_dict):
+        config = MetadataIngestionSourceConfig.parse_obj(config_dict)
+        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config_dict)
+        # Added parsing of MysqlConnection in order to validate config with pydantic models
+        # Missing / Extra fields will throw errors
+        MysqlConnection.parse_obj(config_dict.get("serviceConnection").get("config"))
+        SourceConfig.parse_obj(config_dict.get("sourceConfig"))
         return cls(config, metadata_config)
 
     def prepare(self):
