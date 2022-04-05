@@ -16,7 +16,10 @@ import React from 'react';
 export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
   return editorValue.length > 2 ? (
     <div className="tw-absolute tw-right-8">
-      <p className="tw-text-xs" data-testid="key-help">
+      <p
+        className="tw-text-grey-muted tw--mt-1"
+        data-testid="key-help"
+        style={{ fontSize: '10px' }}>
         <kbd>Shift</kbd>+ <kbd>Enter</kbd> to add a new line
       </p>
     </div>
