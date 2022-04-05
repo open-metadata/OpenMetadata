@@ -214,10 +214,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         inspectors = self.get_databases()
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
+            print(schema_names)
             for schema in schema_names:
                 # clear any previous source database state
                 self.database_source_state.clear()
-                if not self.sql_config.schema_filter_pattern.included(schema):
+                if self.source_config.get(
+                    "schemaFilterPattern"
+                ) and not self.source_config["schemaFilterPattern"].included(schema):
                     self.status.filter(schema, "Schema pattern not allowed")
                     continue
                 if self.source_config.get("includeTables", True):
@@ -290,16 +293,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 # check if we have any model to associate with
                 # TODO ValueError: "CreateTableRequest" object has no field "dataModel"
                 # table_entity.dataModel = self._get_data_model(schema, table_name)
-                database = self._get_database(self.config.database)
+                database = self._get_database(self.service_connection.get("database"))
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
                 yield table_schema_and_db
-                self.status.scanned(
-                    "{}.{}".format(self.config.serviceName, table_name)
-                )
+                self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
@@ -317,20 +318,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         for view_name in inspector.get_view_names(schema):
             try:
-                if self.config.scheme == "bigquery":
+                if self.service_connection["scheme"] == "bigquery":
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
-                if not self.sql_config.table_filter_pattern.included(view_name):
+                if self.source_config.get(
+                    "tableFilterPattern"
+                ) and not self.source_config["tableFilterPattern"].included(view_name):
                     self.status.filter(
                         f"{self.config.serviceName}.{view_name}",
                         "View pattern not allowed",
                     )
                     continue
                 try:
-                    if self.config.scheme == "bigquery":
+                    if self.service_connection["scheme"] == "bigquery":
                         view_definition = inspector.get_view_definition(
-                            f"{self.config.project_id}.{schema}.{view_name}"
+                            f"{self.service_connection['projectId']}.{schema}.{view_name}"
                         )
                     else:
                         view_definition = inspector.get_view_definition(
@@ -349,7 +352,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     description=_get_table_description(schema, view_name, inspector)
                     or "",
                     # This will be generated in the backend!! #1673
-                    fullyQualifiedName=view_name,
                     columns=self._get_columns(schema, view_name, inspector),
                     viewDefinition=view_definition,
                 )
@@ -367,8 +369,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_data = self.fetch_sample_data(schema, view_name)
                     # TODO  "CreateTableRequest" object has no field "sampleData"
                     # table.sampleData = table_data
-                table.dataModel = self._get_data_model(schema, view_name)
-                database = self._get_database(self.config.database)
+                # table.dataModel = self._get_data_model(schema, view_name)
+                database = self._get_database(self.service_connection.get("database"))
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
                     database=database,
@@ -499,7 +501,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def _get_database(self, database: str) -> Database:
         return Database(
             name=database,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection["type"].value
+            ),
         )
 
     def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:

@@ -43,15 +43,11 @@ class MysqlSource(SQLSource):
 
     def prepare(self):
         self.inspector = inspect(self.engine)
-        self.schema_names = (
-            self.inspector.get_schema_names()
-            if not self.sql_config["serviceConnection"]["config"].get("database")
-            else [self.sql_config["serviceConnection"]["config"]["database"]]
-        )
+        self.service_connection["database"] = "default"
         return super().prepare()
 
     def next_record(self) -> Iterable[Entity]:
-        for schema in self.schema_names:
+        for schema in self.inspector.get_schema_names():
             self.database_source_state.clear()
             if self.source_config.get("schemaFilterPattern") and not self.source_config[
                 "schemaFilterPattern"
