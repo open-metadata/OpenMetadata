@@ -85,7 +85,8 @@
         "authProvider": {
           "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
           "type": "string",
-          "enum": ["no-auth", "google", "okta", "auth0"]
+          "enum": ["no-auth", "google", "okta", "auth0"],
+          "default": "no-auth"
         },
         "securityConfig": {
           "description": "OpenMetadata Client security configuration.",
@@ -108,7 +109,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["hostPort", "authProvider"]
+      "required": ["hostPort"]
     },
     "sourceConfig": {
       "description": "Additional connection configuration.",

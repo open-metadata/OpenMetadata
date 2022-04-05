@@ -44,7 +44,13 @@ config = {
     "source": {
         "type": "sqlite",
         "serviceName": "my_service",
-        "serviceConnection": {},
+        "serviceConnection": {
+            "config": {
+                "type": "SQLite",
+                "hostPort": "",
+                "database": ":memory:"
+            }
+        },
         "sourceConfig": {},
     },
     "processor": {"type": "orm-profiler", "config": {}},
