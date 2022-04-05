@@ -38,7 +38,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
-  const [selctedThreadId, setSelctedThreadId] = useState<string>('');
+  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
   const [confirmationState, setConfirmationState] = useState<ConfirmState>(
@@ -61,12 +61,12 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   };
 
   const onThreadIdSelect = (id: string) => {
-    setSelctedThreadId(id);
+    setSelectedThreadId(id);
     setSelectedThread(undefined);
   };
 
   const onThreadIdDeselect = () => {
-    setSelctedThreadId('');
+    setSelectedThreadId('');
   };
 
   const onThreadSelect = (id: string) => {
@@ -86,11 +86,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   };
 
   const postFeed = (value: string) => {
-    postFeedHandler?.(value, selectedThread?.id ?? selctedThreadId);
+    postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
   };
 
   useEffect(() => {
-    onThreadSelect(selectedThread?.id ?? selctedThreadId);
+    onThreadSelect(selectedThread?.id ?? selectedThreadId);
   }, [feedList]);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   isEntityFeed={isEntityFeed}
                   postFeed={postFeed}
                   relativeDay={d}
-                  selectedThreadId={selctedThreadId}
+                  selectedThreadId={selectedThreadId}
                   updatedFeedList={updatedFeedList}
                   withSidePanel={withSidePanel}
                   onConfirmation={onConfirmation}
