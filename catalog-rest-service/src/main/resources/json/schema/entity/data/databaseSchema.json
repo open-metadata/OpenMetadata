@@ -1,28 +1,35 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/database.json",
+  "$id": "https://open-metadata.org/schema/entity/data/databaseSchema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Database",
-  "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
+  "title": "Database Schema",
+  "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
+
+  "definitions": {
+    "schemaName": {
+      "description": "Name that identifies the schema.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    }
+  },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies this database instance.",
+      "description": "Unique identifier that identifies this schema instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the database.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "description": "Name that identifies the schema.",
+      "$ref": "#/definitions/schemaName"
     },
     "fullyQualifiedName": {
-      "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
+      "type": "string"
     },
     "displayName": {
-      "description": "Display Name that identifies this database.",
+      "description": "Display Name that identifies this schema.",
       "type": "string"
     },
     "description": {
-      "description": "Description of the database instance.",
+      "description": "Description of the schema instance.",
       "type": "string"
     },
     "version": {
@@ -42,38 +49,33 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this database.",
+      "description": "Owner of this schema.",
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the database cluster/service where this database is hosted in.",
+      "description": "Link to the database cluster/service where this schema is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "serviceType": {
-      "description": "Service type where this database is hosted in.",
+      "description": "Service type where this schema is hosted in.",
       "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
     },
-    "location": {
-      "description": "Reference to the Location that contains this database.",
+    "database": {
+      "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"
+    },
+    "tables": {
+      "description": "References to tables in the schema.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
-    "databaseSchemas": {
-      "description": "References to schemas in the database.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
-    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
-    },
-    "default": {
-      "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
-      "type": "boolean",
-      "default": false
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -81,6 +83,6 @@
       "default": false
     }
   },
-  "required": ["name", "service"],
+  "required": ["name", "database", "service"],
   "additionalProperties": false
 }

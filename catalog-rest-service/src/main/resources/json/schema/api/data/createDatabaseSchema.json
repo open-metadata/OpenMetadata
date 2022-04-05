@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDatabaseSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDatabaseSchema",
+  "description": "Create Database Schema entity request",
+  "type": "object",
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this database schema instance uniquely.",
+      "$ref": "../../entity/data/databaseSchema.json#/definitions/schemaName"
+    },
+    "description": {
+      "description": "Description of the schema instance. What it has and how to use it.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this schema",
+      "$ref": "../../type/entityReference.json"
+    },
+    "database": {
+      "description": "Link to the database where this schema is hosted in",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "database"],
+  "additionalProperties": false
+}

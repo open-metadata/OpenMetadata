@@ -8,7 +8,6 @@
     "googleSSOConfig": {
       "description": "Google SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.GoogleSSOConfig",
       "properties": {
         "secretKey": {
           "description": "Google SSO client secret key path or contents.",
@@ -21,7 +20,6 @@
     "oktaSSOConfig": {
       "description": "Okta SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.OktaSSOConfig",
       "properties": {
         "clientId": {
           "description": "Okta Client ID.",
@@ -53,7 +51,6 @@
     "auth0SSOConfig": {
       "description": "Auth0 SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.Auth0SSOConfig",
       "properties": {
         "clientId": {
           "description": "Auth0 Client ID.",
@@ -74,7 +71,6 @@
     "openMetadataServerConfig": {
       "description": "OpenMetadata Server Connection Details.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig",
       "properties": {
         "hostPort": {
           "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
@@ -107,7 +103,6 @@
     "sourceConfig": {
       "description": "Additional connection configuration.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.SourceConfig",
       "properties": {
         "config": {
           "oneOf": [
@@ -131,7 +126,6 @@
     "componentConfig": {
       "description": "key/value pairs to pass to sink component.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.ComponentConfig",
       "additionalProperties": {
         "type": "string"
       }
@@ -139,7 +133,6 @@
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Source",
       "properties": {
         "type": {
           "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
@@ -163,7 +156,6 @@
     "processor": {
       "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Processor",
       "properties": {
         "type": {
           "description": "Type of processor component ex: pii-processor",
@@ -179,7 +171,6 @@
     "stage": {
       "description": "Configuration for Stage Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Stage",
       "properties": {
         "type": {
           "description": "Type of stage component ex: table-usage",
@@ -210,7 +201,6 @@
     "bulkSink": {
       "description": "Configuration for BulkSink Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.BulkSink",
       "properties": {
         "type": {
           "description": "Type of BulkSink component ex: metadata-usage",
@@ -226,7 +216,6 @@
     "workflowConfig": {
       "description": "Configuration for the entire Ingestion Workflow.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.WorkflowConfig",
       "properties": {
         "openMetadataServerConfig": {
           "ref": "#/definitions/openMetadataServerConfig"

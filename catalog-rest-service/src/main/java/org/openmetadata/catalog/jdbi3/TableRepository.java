@@ -13,7 +13,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.DATABASE;
+import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
@@ -45,11 +45,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
@@ -72,6 +72,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -120,9 +121,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) throws IOException {
-    EntityReference databaseRef = getContainer(table.getId(), TABLE);
-    Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
-    table.withDatabase(databaseRef).withService(database.getService());
+    EntityReference schemaRef = getContainer(table.getId(), TABLE);
+    DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
+    table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
 
   @Override
@@ -142,8 +143,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public static String getFQN(Table table) {
-    return (table != null && table.getDatabase() != null)
-        ? EntityUtil.getFQN(table.getDatabase().getName(), table.getName())
+    return (table != null && table.getDatabaseSchema() != null)
+        ? EntityNameUtil.getFQN(table.getDatabaseSchema().getName(), table.getName())
         : null;
   }
 
@@ -163,7 +164,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
-      String columnFQN = EntityUtil.getFQN(table.getFullyQualifiedName(), join.getColumnName());
+      String columnFQN = EntityNameUtil.getFQN(table.getFullyQualifiedName(), join.getColumnName());
       addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
     }
     return table.withJoins(getJoins(table));
@@ -512,7 +513,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
-          String columnFqn = EntityUtil.getFQN(parentFQN, c.getName());
+          String columnFqn = EntityNameUtil.getFQN(parentFQN, c.getName());
           c.setFullyQualifiedName(columnFqn);
           if (c.getChildren() != null) {
             setColumnFQN(columnFqn, c.getChildren());
@@ -535,10 +536,11 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table) throws IOException {
-    Database database = Entity.getEntity(table.getDatabase(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabase(new DatabaseEntityInterface(database).getEntityReference());
-    table.setService(database.getService());
-    table.setServiceType(database.getServiceType());
+    DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
+    table.setDatabaseSchema(new DatabaseSchemaEntityInterface(schema).getEntityReference());
+    table.setDatabase(schema.getDatabase());
+    table.setService(schema.getService());
+    table.setServiceType(schema.getServiceType());
 
     // Set data in table entity based on database relationship
     table.setFullyQualifiedName(getFQN(table));
@@ -564,12 +566,11 @@ public class TableRepository extends EntityRepository<Table> {
   public void storeEntity(Table table, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = table.getOwner();
-    EntityReference database = table.getDatabase();
     List<TagLabel> tags = table.getTags();
     EntityReference service = table.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    table.withOwner(null).withDatabase(null).withHref(null).withTags(null).withService(null);
+    table.withOwner(null).withHref(null).withTags(null).withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -579,13 +580,13 @@ public class TableRepository extends EntityRepository<Table> {
     store(table.getId(), table, update);
 
     // Restore the relationships
-    table.withOwner(owner).withDatabase(database).withTags(tags).withColumns(columnWithTags).withService(service);
+    table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);
   }
 
   @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
-    addRelationship(table.getDatabase().getId(), table.getId(), DATABASE, TABLE, Relationship.CONTAINS);
+    addRelationship(table.getDatabaseSchema().getId(), table.getId(), DATABASE_SCHEMA, TABLE, Relationship.CONTAINS);
 
     // Add table owner relationship
     storeOwner(table, table.getOwner());
@@ -673,22 +674,12 @@ public class TableRepository extends EntityRepository<Table> {
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) throws IOException {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
-      String tableFQN = getTableFQN(joinedWith.getFullyQualifiedName());
+      String tableFQN = EntityNameUtil.getTableFQN(joinedWith.getFullyQualifiedName());
       Table joinedWithTable = daoCollection.tableDAO().findEntityByName(tableFQN);
 
       // Validate column
       validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
     }
-  }
-
-  private String getTableFQN(String columnFQN) {
-    // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
-    String[] split = EntityUtil.splitFQN(columnFQN);
-    if (split.length != 4) {
-      throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
-    }
-    // Return table FQN of format databaseService.tableName
-    return EntityUtil.getFQN(split[0], split[1], split[2]);
   }
 
   private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList) throws IOException {
@@ -809,7 +800,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // list [ [fromFQN, toFQN, json], ...] contains inner list [fromFQN, toFQN, json]
     for (List<String> innerList : list) {
-      String columnName = EntityUtil.splitFQN(innerList.get(0))[3]; // Get from column name from FQN
+      String columnName = EntityNameUtil.getColumnName(innerList.get(0));
       List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
 
       // Parse JSON to get daily counts and aggregate it

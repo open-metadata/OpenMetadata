@@ -29,6 +29,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -48,7 +49,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   public static String getFQN(Metrics metrics) {
     return (metrics != null && metrics.getService() != null)
-        ? EntityUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        ? EntityNameUtil.getFQN(metrics.getService().getName(), metrics.getName())
         : null;
   }
 

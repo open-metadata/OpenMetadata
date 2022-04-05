@@ -41,7 +41,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -70,22 +70,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Test
-  void post_validDatabases_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateDatabase create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
+    // Create database with different optional fields
     CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(SNOWFLAKE_REFERENCE.getName(), create.getName());
+    String expectedFQN = EntityNameUtil.getFQN(SNOWFLAKE_REFERENCE.getName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
@@ -133,17 +123,19 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
-    assertListNull(database.getOwner(), database.getTables(), database.getUsageSummary(), database.getLocation());
+    assertListNull(
+        database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
 
-    fields = "owner,tables,usageSummary,location";
+    fields = "owner,databaseSchemas,usageSummary,location";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
-    assertListNotNull(database.getOwner(), database.getTables() /*database.getUsageSummary(), database.getLocation()*/);
-    TestUtils.validateEntityReferences(database.getTables());
+    assertListNotNull(
+        database.getOwner(), database.getDatabaseSchemas() /*database.getUsageSummary(), database.getLocation()*/);
+    TestUtils.validateEntityReferences(database.getDatabaseSchemas());
   }
 
   @Override
@@ -170,7 +162,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Validate service
     assertNotNull(database.getServiceType());
-    assertService(createRequest.getService(), database.getService());
+    assertReference(createRequest.getService(), database.getService());
+    assertEquals(
+        EntityNameUtil.getFQN(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
   }
 
   @Override
@@ -181,7 +175,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
     // Validate service
-    assertService(expected.getService(), updated.getService());
+    assertReference(expected.getService(), updated.getService());
+    assertEquals(
+        EntityNameUtil.getFQN(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override

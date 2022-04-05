@@ -32,7 +32,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
@@ -53,7 +53,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? EntityUtil.getFQN(chart.getService().getName(), chart.getName())
+        ? EntityNameUtil.getFQN(chart.getService().getName(), chart.getName())
         : null;
   }
 

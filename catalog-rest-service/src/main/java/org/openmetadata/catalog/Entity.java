@@ -73,6 +73,7 @@ public final class Entity {
   //
   public static final String TABLE = "table";
   public static final String DATABASE = "database";
+  public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
   public static final String PIPELINE = "pipeline";

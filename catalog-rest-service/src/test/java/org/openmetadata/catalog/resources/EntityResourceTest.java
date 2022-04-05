@@ -80,6 +80,7 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.api.data.TermReference;
@@ -95,6 +96,7 @@ import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -109,6 +111,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
@@ -120,6 +123,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
+import org.openmetadata.catalog.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
@@ -150,6 +154,7 @@ import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -228,6 +233,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static Database DATABASE;
   public static EntityReference DATABASE_REFERENCE;
+
+  public static DatabaseSchema DATABASE_SCHEMA;
+  public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
   public static List<Column> COLUMNS;
 
@@ -385,11 +393,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
-    USER_ADDRESS_TAG_LABEL = getTagLabel(EntityUtil.getFQN("User", "Address"));
-    PERSONAL_DATA_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PersonalData", "Personal"));
-    PII_SENSITIVE_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PII", "Sensitive"));
-    TIER1_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier1"));
-    TIER2_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier2"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("User", "Address"));
+    PERSONAL_DATA_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("PersonalData", "Personal"));
+    PII_SENSITIVE_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("PII", "Sensitive"));
+    TIER1_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("Tier", "Tier1"));
+    TIER2_TAG_LABEL = getTagLabel(EntityNameUtil.getFQN("Tier", "Tier2"));
 
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
@@ -414,6 +422,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+
+    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
 
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
@@ -1899,12 +1912,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     } else {
       assertNull(actual);
     }
-  }
-
-  protected static void assertService(EntityReference expected, EntityReference actual) {
-    TestUtils.validateEntityReference(actual);
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getType(), actual.getType());
   }
 
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)

@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
@@ -286,14 +285,6 @@ public final class EntityUtil {
     return columnFqn.replace(tableFqn + Entity.SEPARATOR, "");
   }
 
-  public static String getFQN(String... strings) {
-    return String.join(Entity.SEPARATOR, strings);
-  }
-
-  public static String[] splitFQN(String string) {
-    return string.split(Pattern.quote(Entity.SEPARATOR));
-  }
-
   public static String getFieldName(String... strings) {
     return String.join(Entity.SEPARATOR, strings);
   }
@@ -303,7 +294,9 @@ public final class EntityUtil {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =
         EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
-    return columnField == null ? getFQN("columns", localColumnName) : getFQN("columns", localColumnName, columnField);
+    return columnField == null
+        ? EntityNameUtil.getFQN("columns", localColumnName)
+        : EntityNameUtil.getFQN("columns", localColumnName, columnField);
   }
 
   public static Double nextVersion(Double version) {

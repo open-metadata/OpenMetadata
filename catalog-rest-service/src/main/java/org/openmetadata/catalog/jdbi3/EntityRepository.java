@@ -696,6 +696,7 @@ public abstract class EntityRepository<T> {
     }
 
     // Finally set entity deleted flag to false
+    LOG.info("Restoring the {} {}", entityType, id);
     T entity = dao.findEntityById(id, DELETED);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     entityInterface.setDeleted(false);

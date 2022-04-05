@@ -34,7 +34,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
-import static org.openmetadata.catalog.util.EntityUtil.getFQN;
+import static org.openmetadata.catalog.util.EntityNameUtil.getFQN;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -48,6 +48,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
@@ -128,7 +129,7 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -206,12 +207,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Optional fields tableType
     create.withName(getEntityName(test, 1)).withTableType(TableType.View);
-    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    // check the FQN
-    Database db = new DatabaseResourceTest().getEntity(table.getDatabase().getId(), null, ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(db.getFullyQualifiedName(), table.getName());
-    assertEquals(expectedFQN, table.getFullyQualifiedName());
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -466,12 +462,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void post_tableWithInvalidDatabase_404(TestInfo test) {
-    EntityReference database = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE);
-    CreateTable create = createRequest(test).withDatabase(database);
+    EntityReference schema = new EntityReference().withId(NON_EXISTENT_ENTITY).withType(Entity.DATABASE_SCHEMA);
+    CreateTable create = createRequest(test).withDatabaseSchema(schema);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(Entity.DATABASE, NON_EXISTENT_ENTITY));
+        entityNotFound(Entity.DATABASE_SCHEMA, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -661,15 +657,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table3 = createAndCheckEntity(createRequest(test, 3), ADMIN_AUTH_HEADERS);
 
     // Fully qualified names for table1, table2, table3 columns
-    String t1c1 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c1");
-    String t1c2 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c2");
-    String t1c3 = EntityUtil.getFQN(table1.getFullyQualifiedName(), "c3");
-    String t2c1 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c1");
-    String t2c2 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c2");
-    String t2c3 = EntityUtil.getFQN(table2.getFullyQualifiedName(), "c3");
-    String t3c1 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c1");
-    String t3c2 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c2");
-    String t3c3 = EntityUtil.getFQN(table3.getFullyQualifiedName(), "c3");
+    String t1c1 = EntityNameUtil.getFQN(table1.getFullyQualifiedName(), "c1");
+    String t1c2 = EntityNameUtil.getFQN(table1.getFullyQualifiedName(), "c2");
+    String t1c3 = EntityNameUtil.getFQN(table1.getFullyQualifiedName(), "c3");
+    String t2c1 = EntityNameUtil.getFQN(table2.getFullyQualifiedName(), "c1");
+    String t2c2 = EntityNameUtil.getFQN(table2.getFullyQualifiedName(), "c2");
+    String t2c3 = EntityNameUtil.getFQN(table2.getFullyQualifiedName(), "c3");
+    String t3c1 = EntityNameUtil.getFQN(table3.getFullyQualifiedName(), "c1");
+    String t3c2 = EntityNameUtil.getFQN(table3.getFullyQualifiedName(), "c2");
+    String t3c3 = EntityNameUtil.getFQN(table3.getFullyQualifiedName(), "c3");
 
     List<ColumnJoin> reportedJoins =
         Arrays.asList(
@@ -1135,7 +1131,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyCustomMetrics(table, c1, List.of(updatedMetric, createMetric2));
 
     // Delete Custom Metric
-    putResponse = deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), ADMIN_AUTH_HEADERS);
+    deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), ADMIN_AUTH_HEADERS);
     table = getEntity(table.getId(), "customMetrics", ADMIN_AUTH_HEADERS);
     verifyCustomMetrics(table, c1, List.of(createMetric2));
   }
@@ -1975,7 +1971,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
-        .withDatabase(getContainer())
+        .withDatabaseSchema(getContainer())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint))
         .withDescription(description)
@@ -1994,7 +1990,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Override
   public EntityReference getContainer() {
-    return DATABASE_REFERENCE;
+    return DATABASE_SCHEMA_REFERENCE;
   }
 
   @Override
@@ -2009,11 +2005,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
-    validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
+    assertReference(createRequest.getDatabaseSchema(), createdEntity.getDatabaseSchema());
+    validateEntityReference(createdEntity.getDatabase());
+    validateEntityReference(createdEntity.getService());
     validateTableConstraints(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
+    assertEquals(
+        getFQN(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
+        createdEntity.getFullyQualifiedName());
   }
 
   private void validateTableConstraints(List<TableConstraint> expected, List<TableConstraint> actual) {
@@ -2049,6 +2050,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
+    assertEquals(
+        EntityNameUtil.getFQN(patched.getDatabaseSchema().getName(), patched.getName()),
+        patched.getFullyQualifiedName());
   }
 
   private void validateDatabase(EntityReference expectedDatabase, EntityReference database) {

@@ -50,66 +50,66 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateDatabase;
-import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
-@Path("/v1/databases")
-@Api(value = "Databases collection", tags = "Databases collection")
+@Path("/v1/databaseSchemas")
+@Api(value = "Database schemas collection", tags = "Database schemas collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databases")
-public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
-  public static final String COLLECTION_PATH = "v1/databases/";
+@Collection(name = "databaseSchemas")
+public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
+  public static final String COLLECTION_PATH = "v1/databaseSchemas/";
 
   @Override
-  public Database addHref(UriInfo uriInfo, Database db) {
-    Entity.withHref(uriInfo, db.getDatabaseSchemas());
-    Entity.withHref(uriInfo, db.getLocation());
-    Entity.withHref(uriInfo, db.getOwner());
-    Entity.withHref(uriInfo, db.getService());
-    return db;
+  public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
+    Entity.withHref(uriInfo, schema.getTables());
+    Entity.withHref(uriInfo, schema.getOwner());
+    Entity.withHref(uriInfo, schema.getService());
+    Entity.withHref(uriInfo, schema.getDatabase());
+    return schema;
   }
 
-  public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Database.class, new DatabaseRepository(dao), authorizer);
+  public DatabaseSchemaResource(CollectionDAO dao, Authorizer authorizer) {
+    super(DatabaseSchema.class, new DatabaseSchemaRepository(dao), authorizer);
   }
 
-  public static class DatabaseList extends ResultList<Database> {
+  public static class DatabaseSchemaList extends ResultList<DatabaseSchema> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    DatabaseList() {}
+    DatabaseSchemaList() {}
 
-    public DatabaseList(List<Database> data, String beforeCursor, String afterCursor, int total) {
+    public DatabaseSchemaList(List<DatabaseSchema> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
 
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location";
+  static final String FIELDS = "owner,tables,usageSummary";
 
   @GET
   @Operation(
-      summary = "List databases",
-      tags = "databases",
+      summary = "List database schemas",
+      tags = "databaseSchemas",
       description =
-          "Get a list of databases, optionally filtered by `service` it belongs to. Use `fields` "
+          "Get a list of database schemas, optionally filtered by `database` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of databases",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseList.class)))
+            description = "List of database schema",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchemaList.class)))
       })
-  public ResultList<Database> list(
+  public ResultList<DatabaseSchema> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -118,20 +118,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Filter databases by service name",
-              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
-          @QueryParam("service")
+              description = "Filter schemas by database name",
+              schema = @Schema(type = "string", example = "customerDatabase"))
+          @QueryParam("database")
           String serviceParam,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of schemas before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
+      @Parameter(description = "Returns list of schemas after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
       @Parameter(
@@ -142,25 +142,25 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
-      summary = "List database versions",
-      tags = "databases",
-      description = "Get a list of all the versions of a database identified by `id`",
+      summary = "List schema versions",
+      tags = "databaseSchemas",
+      description = "Get a list of all the versions of a schema identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of database versions",
+            description = "List of schema versions",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
       })
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return dao.listVersions(id);
   }
@@ -168,17 +168,18 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a database",
-      tags = "databases",
-      description = "Get a database by `id`.",
+      summary = "Get a schema",
+      tags = "databaseSchemas",
+      description = "Get a database schema by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
-        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
+            description = "The schema",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
+        @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
       })
-  public Database get(
+  public DatabaseSchema get(
       @Context UriInfo uriInfo,
       @PathParam("id") String id,
       @Context SecurityContext securityContext,
@@ -200,17 +201,18 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      summary = "Get a database by name",
-      tags = "databases",
-      description = "Get a database by fully qualified name.",
+      summary = "Get a schema by name",
+      tags = "databaseSchemas",
+      description = "Get a database schema by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
-        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
+            description = "The schema",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
+        @ApiResponse(responseCode = "404", description = "Database schema for instance {id} is not found")
       })
-  public Database getByName(
+  public DatabaseSchema getByName(
       @Context UriInfo uriInfo,
       @PathParam("fqn") String fqn,
       @Context SecurityContext securityContext,
@@ -232,24 +234,25 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      summary = "Get a version of the database",
-      tags = "databases",
-      description = "Get a version of the database by given `id`",
+      summary = "Get a version of the schema",
+      tags = "databaseSchemas",
+      description = "Get a version of the database schema by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "database",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
+            description = "database schema",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database for instance {id} and version {version} is " + "not found")
+            description = "Database schema for instance {id} and version {version} is " + "not found")
       })
-  public Database getVersion(
+  public DatabaseSchema getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Database Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(
-              description = "Database version number in the form `major`.`minor`",
+              description = "Database schema version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version)
@@ -259,30 +262,32 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @POST
   @Operation(
-      summary = "Create a database",
-      tags = "databases",
-      description = "Create a database under an existing `service`.",
+      summary = "Create a schema",
+      tags = "databaseSchemas",
+      description = "Create a schema under an existing `service`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The database",
+            description = "The database schema",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CreateDatabaseSchema.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
-    return create(uriInfo, securityContext, database, ADMIN | BOT);
+    DatabaseSchema schema = getDatabaseSchema(securityContext, create);
+    return create(uriInfo, securityContext, schema, ADMIN | BOT);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      summary = "Update a database",
-      tags = "databases",
-      description = "Update an existing database using JsonPatch.",
+      summary = "Update a database schema",
+      tags = "databaseSchemas",
+      description = "Update an existing database schema using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
@@ -304,44 +309,32 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @PUT
   @Operation(
-      summary = "Create or update database",
-      tags = "databases",
-      description = "Create a database, if it does not exist or update an existing database.",
+      summary = "Create or update schema",
+      tags = "databaseSchemas",
+      description = "Create a database schema, if it does not exist or update an existing database schema.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The updated database ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class)))
+            description = "The updated schema ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabaseSchema.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
-    return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
-  }
-
-  @DELETE
-  @Path("/{id}/location")
-  @Operation(summary = "Remove the location", tags = "databases", description = "Remove the location")
-  public Database deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "string")) @PathParam("id") String id)
-      throws IOException {
-    dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, database);
+    DatabaseSchema schema = getDatabaseSchema(securityContext, create);
+    return createOrUpdate(uriInfo, securityContext, schema, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      summary = "Delete a database",
-      tags = "databases",
-      description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
+      summary = "Delete a schema",
+      tags = "databaseSchemas",
+      description = "Delete a schema by `id`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -359,12 +352,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
-    return new Database()
+  private DatabaseSchema getDatabaseSchema(SecurityContext securityContext, CreateDatabaseSchema create) {
+    return new DatabaseSchema()
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDescription(create.getDescription())
-        .withService(create.getService())
+        .withDatabase(create.getDatabase())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
