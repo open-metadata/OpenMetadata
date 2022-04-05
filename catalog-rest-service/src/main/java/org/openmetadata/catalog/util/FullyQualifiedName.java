@@ -11,7 +11,7 @@ public class FullyQualifiedName {
   private static final Pattern partsPattern = Pattern.compile("(\")([^\"]+)(\")|([^.]+)([.$])?");
 
   // Quoted name of format "sss" or sss
-  private static final Pattern namePattern = Pattern.compile("(\")([^\"]+)(\")|(.*)$");
+  private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
   /** Add to an existing valid FQN the given string */
   public static String add(String fqn, String part) {
@@ -43,21 +43,22 @@ public class FullyQualifiedName {
   /** Adds quotes to name as required */
   public static String quoteName(String name) {
     Matcher matcher = namePattern.matcher(name);
-    if (matcher.find()) {
-      if (matcher.end() != name.length()) {
-        throw new IllegalArgumentException("Invalid name " + name); // Partial match
-      }
-      // Name is already quoted. Return unquoted name if "." does not exist in the name
-      if (matcher.group(1) != null) {
-        String unquotedName = matcher.group(2);
-        return unquotedName.contains(".") ? name : unquotedName;
-        // Name is not quoted. Return quoted name if "." does not exist in the name
-      } else {
-        String unquotedName = matcher.group(4);
-        if (!unquotedName.contains("\"")) {
-          return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
-        }
-      }
+    if (!matcher.find() || matcher.end() != name.length()) {
+      throw new IllegalArgumentException("Invalid name " + name);
+    }
+
+    // Name matches quoted string "sss".
+    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if (matcher.group(1) != null) {
+      String unquotedName = matcher.group(2);
+      return unquotedName.contains(".") ? name : unquotedName;
+    }
+
+    // Name matches unquoted string sss
+    // If unquoted string contains ".", return quoted "sss", else unquoted sss
+    String unquotedName = matcher.group(4);
+    if (!unquotedName.contains("\"")) {
+      return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
     throw new IllegalArgumentException("Invalid name " + name);
   }

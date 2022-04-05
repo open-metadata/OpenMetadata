@@ -8,7 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
-  private class FQNTest {
+  private static class FQNTest {
     private final String[] parts;
     private final String fqn;
 
@@ -19,7 +19,7 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  public void test_build_split() {
+  void test_build_split() {
     List<FQNTest> list =
         List.of(
             new FQNTest(new String[] {"a", "b", "c", "d"}, "a.b.c.d"),
@@ -37,7 +37,7 @@ class FullyQualifiedNameTest {
   }
 
   @Test
-  public void test_quoteName() {
+  void test_quoteName() {
     assertEquals("a", FullyQualifiedName.quoteName("a")); // Unquoted name remains unquoted
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("a.b")); // Add quotes when "." exists in the name
     assertEquals("\"a.b\"", FullyQualifiedName.quoteName("\"a.b\"")); // Leave existing valid quotes
@@ -45,12 +45,14 @@ class FullyQualifiedNameTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> assertEquals("a", FullyQualifiedName.quoteName("\"a"))); // Error when ending quote is missing
+        () -> FullyQualifiedName.quoteName("\"a")); // Error when ending quote is missing
+
     assertThrows(
         IllegalArgumentException.class,
-        () -> assertEquals("a", FullyQualifiedName.quoteName("a\""))); // Error when beginning quote is missing
+        () -> FullyQualifiedName.quoteName("a\"")); // Error when beginning quote is missing
+
     assertThrows(
         IllegalArgumentException.class,
-        () -> assertEquals("a", FullyQualifiedName.quoteName("a\"b"))); // Error quote in the middle of the string
+        () -> FullyQualifiedName.quoteName("a\"b")); // Error when invalid quote is present in the middle of the string
   }
 }
