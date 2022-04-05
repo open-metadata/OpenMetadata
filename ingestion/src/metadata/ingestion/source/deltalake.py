@@ -206,6 +206,12 @@ class DeltalakeSource(Source):
             except AttributeError:
                 return 1
 
+    def _get_display_data_type(self, row):
+        display_data_type = repr(row["data_type"]).lower()
+        for original, new in self.array_datatype_replace_map.items():
+            display_data_type.replace(original, new)
+        return display_data_type
+
     def _get_col_info(self, row):
         parsed_string = ColumnTypeParser._parse_datatype_string(row["data_type"])
         column = None
@@ -214,9 +220,7 @@ class DeltalakeSource(Source):
                 parsed_string["dataType"], row["data_type"]
             )
             if row["data_type"] == "array":
-                array_data_type_display = repr(row["data_type"]).lower()
-                for original, new in self.array_datatype_replace_map.items():
-                    array_data_type_display.replace(original, new)
+                array_data_type_display = self._get_display_data_type(row)
                 parsed_string["dataTypeDisplay"] = array_data_type_display
                 # Parse Primitive Datatype string
                 # if Datatype is Arrya(int) -> Parse int
