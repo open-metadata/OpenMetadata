@@ -40,7 +40,7 @@ jest.mock('./RichTextEditorPreviewer', () => ({
 }));
 
 describe('Test BlurLayout Component', () => {
-  it('Should redner the Layout Component', async () => {
+  it('Should render the Layout Component', async () => {
     const { container } = render(<BlurLayout {...mockProp} />, {
       wrapper: MemoryRouter,
     });
@@ -54,7 +54,7 @@ describe('Test BlurLayout Component', () => {
     expect(displayButton).toBeInTheDocument();
   });
 
-  it('Should not redner the Layout Component if markdown length is less that MAX_LENGTH', async () => {
+  it('Should not render the Layout Component if markdown length is less that MAX_LENGTH', async () => {
     const { container } = render(<BlurLayout {...mockProp} markdown="" />, {
       wrapper: MemoryRouter,
     });
@@ -68,7 +68,7 @@ describe('Test BlurLayout Component', () => {
     expect(displayButton).not.toBeInTheDocument();
   });
 
-  it('Should not redner the Layout Component if enableSeeMoreVariant is false', async () => {
+  it('Should not render the Layout Component if enableSeeMoreVariant is false', async () => {
     const { container } = render(
       <BlurLayout {...mockProp} enableSeeMoreVariant={false} />,
       {
