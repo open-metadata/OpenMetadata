@@ -98,12 +98,6 @@ class SnowflakeSource(SQLSource):
     def get_table_fqn(self, service_name, schema, table_name) -> str:
         return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
-    def _get_database(self, schema: str) -> Database:
-        return Database(
-            name=self.config.database + "_" + schema,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
-        )
-
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
         if not resp_sample_data:

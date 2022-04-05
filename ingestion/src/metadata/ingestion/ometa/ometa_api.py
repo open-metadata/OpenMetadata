@@ -141,19 +141,19 @@ class OpenMetadata(
 
     def __init__(self, config: OpenMetadataServerConfig, raw_data: bool = False):
         self.config = config
-        if self.config.authProvider == "google":
+        if self.config.authProvider.value == "google":
             self._auth_provider: AuthenticationProvider = (
                 GoogleAuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider == "okta":
+        elif self.config.authProvider.value == "okta":
             self._auth_provider: AuthenticationProvider = (
                 OktaAuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider == "auth0":
+        elif self.config.authProvider.value == "auth0":
             self._auth_provider: AuthenticationProvider = (
                 Auth0AuthenticationProvider.create(self.config)
             )
-        elif self.config.authProvider == "azure":
+        elif self.config.authProvider.value == "azure":
             self._auth_provider: AuthenticationProvider = (
                 AzureAuthenticationProvider.create(self.config)
             )
@@ -554,7 +554,6 @@ class OpenMetadata(
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         recursive: bool = False,
-        hard_delete: bool = False,
     ) -> None:
         """
         API call to delete an entity from entity ID
@@ -566,8 +565,7 @@ class OpenMetadata(
             None
         """
         url = f"{self.get_suffix(entity)}/{model_str(entity_id)}"
-        url += f"?recursive={str(recursive).lower()}"
-        url += f"&hardDelete={str(hard_delete).lower()}"
+        url += f"?recursive=true" if recursive else ""
         self.client.delete(url)
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
