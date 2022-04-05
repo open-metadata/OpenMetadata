@@ -84,6 +84,7 @@ def get_database_service_or_create(
 
         # Use a JSON to dynamically parse the pydantic model
         # based on the serviceType
+        # TODO revisit me
         service_json = {
             "connection": {
                 "config": {
