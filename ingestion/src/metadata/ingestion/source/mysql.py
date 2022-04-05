@@ -20,10 +20,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as MetadataIngestionSourceConfig,
+    Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 
 
@@ -32,32 +32,32 @@ class MysqlSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
-        config = MetadataIngestionSourceConfig.parse_obj(config_dict)
-        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config_dict)
-        # Added parsing of MysqlConnection in order to validate config with pydantic models
-        # Missing / Extra fields will throw errors
-        MysqlConnection.parse_obj(config_dict.get("serviceConnection").get("config"))
-        SourceConfig.parse_obj(config_dict.get("sourceConfig"))
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection = config.serviceConnection.__root__.config
+        if not isinstance(connection, MysqlConnection):
+            raise InvalidSourceException(
+                f"Expected SQLiteConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
 
     def prepare(self):
         self.inspector = inspect(self.engine)
-        self.service_connection["database"] = "default"
+        self.service_connection.database = "default"
         return super().prepare()
 
     def next_record(self) -> Iterable[Entity]:
         for schema in self.inspector.get_schema_names():
             self.database_source_state.clear()
-            if self.source_config.get("schemaFilterPattern") and not self.source_config[
-                "schemaFilterPattern"
-            ].included(schema):
+            if (
+                self.source_config.schemaFilterPattern
+                and schema not in self.source_config.schemaFilterPattern.includes
+            ):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
-            if self.source_config.get("includeTables", True):
-                yield from self.fetch_tables(self.inspector, schema)
-            if self.source_config.get("includeViews", True):
+            if self.source_config.includeViews:
                 yield from self.fetch_views(self.inspector, schema)
-            if self.source_config.get("markDeletedTables", True):
+            if self.source_config.markDeletedTables:
                 schema_fqdn = f"{self.config.serviceName}.{schema}"
                 yield from self.delete_tables(schema_fqdn)

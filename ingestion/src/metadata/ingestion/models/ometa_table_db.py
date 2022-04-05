@@ -12,14 +12,14 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
+from metadata.generated.schema.entity.data.table import Table
 
 
 class OMetaDatabaseAndTable(BaseModel):
     database_schema: DatabaseSchema
     database: Database
-    table: CreateTableRequest
+    table: Table
     location: Optional[Location]

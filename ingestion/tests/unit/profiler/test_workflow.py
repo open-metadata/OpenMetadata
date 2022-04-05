@@ -24,7 +24,9 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -66,7 +68,7 @@ def test_init_workflow():
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, SourceConfig)
+    assert isinstance(workflow.source_config, WorkflowSource)
     assert isinstance(workflow.metadata_config, OpenMetadataServerConfig)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)

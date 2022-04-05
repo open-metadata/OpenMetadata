@@ -101,7 +101,6 @@ class MetadataRestSink(Sink[Entity]):
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config)
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
@@ -195,29 +194,29 @@ class MetadataRestSink(Sink[Entity]):
                 )
                 location = self.metadata.create_or_update(location_request)
                 self.metadata.add_location(table=created_table, location=location)
-            if db_schema_and_table.table.dict().get("sampleData"):
+            if db_schema_and_table.table.sampleData is not None:
                 try:
                     self.metadata.ingest_table_sample_data(
                         table=created_table,
-                        sample_data=db_schema_and_table.table.dict().get("sampleData"),
+                        sample_data=db_schema_and_table.table.sampleData,
                     )
                 except Exception as e:
                     logging.error(
                         f"Failed to ingest sample data for table {db_schema_and_table.table.name}"
                     )
 
-            if db_schema_and_table.table.dict().get("tableProfile") is not None:
+            if db_schema_and_table.table.tableProfile is not None:
                 self.metadata.ingest_table_profile_data(
                     table=created_table,
-                    table_profile=db_schema_and_table.dict().get("tableProfile"),
+                    table_profile=db_schema_and_table.table.tableProfile,
                 )
 
-            if db_schema_and_table.table.dict().get("dataModel") is not None:
+            if db_schema_and_table.table.dataModel is not None:
                 self.metadata.ingest_table_data_model(
                     table=created_table, data_model=db_schema_and_table.table.dataModel
                 )
 
-            if db_schema_and_table.table.dict().get("tableQueries") is not None:
+            if db_schema_and_table.table.tableQueries is not None:
                 self.metadata.ingest_table_queries_data(
                     table=created_table,
                     table_queries=db_schema_and_table.table.dict().get("tableQueries"),

@@ -19,7 +19,9 @@ from typing import Type, TypeVar
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.ingestion.api.common import DynamicTypedConfig
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
@@ -55,7 +57,7 @@ def get_class(key: str) -> Type[T]:
 
 def get_ingestion_source(
     source_type: str,
-    source_config: SourceConfig,
+    source_config: WorkflowSource,
     metadata_config: OpenMetadataServerConfig,
 ) -> Source:
     """
