@@ -13,13 +13,16 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import React, { VFC } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../../auth-provider/AuthProvider';
 import { OidcUser } from '../../../auth-provider/AuthProvider.interface';
-import { oidcTokenKey } from '../../../constants/constants';
+import { oidcTokenKey, ROUTES } from '../../../constants/constants';
+import jsonData from '../../../jsons/en';
 
 const Auth0Callback: VFC = () => {
-  const { isAuthenticated, user, getIdTokenClaims } = useAuth0();
+  const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
   const { setIsAuthenticated, handleSuccessfulLogin } = useAuthContext();
+  const history = useHistory();
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
@@ -41,6 +44,18 @@ const Auth0Callback: VFC = () => {
       .catch((err) => {
         return <div>Error while fetching access token. {err}</div>;
       });
+  } else {
+    // user is not authenticated
+    if (error) {
+      return (
+        <div data-testid="auth0-error">
+          {jsonData['api-error-messages']['unexpected-error']} {error.message}
+        </div>
+      );
+    } else {
+      // redirect the user to signin page
+      history.push(ROUTES.SIGNIN);
+    }
   }
 
   return <div>Redirecting to the home page... </div>;
