@@ -464,8 +464,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">{header}</h6>
-      <div className="tw-pb-3">
+      <h6 className="tw-heading tw-text-base" data-testid="header">
+        {header}
+      </h6>
+      <div className="tw-pb-3" data-testid="formContainer">
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
             {requiredField('Name:')}
