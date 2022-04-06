@@ -3,7 +3,6 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import logging
 from typing import List, Optional, Union
 
@@ -102,7 +101,7 @@ class OMetaTableMixin:
         for query in table_queries:
             self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                data=json.dumps(query),
+                data=query.json(),
             )
         return None
 

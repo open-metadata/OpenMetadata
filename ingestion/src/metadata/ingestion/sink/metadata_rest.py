@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 import logging
 import traceback
 from typing import TypeVar
@@ -220,9 +219,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_schema_and_table.table.tableQueries is not None:
                 self.metadata.ingest_table_queries_data(
                     table=created_table,
-                    table_queries=json.loads(db_schema_and_table.table.json()).get(
-                        "tableQueries"
-                    ),
+                    table_queries=db_schema_and_table.table.tableQueries,
                 )
 
             logger.info(
