@@ -130,6 +130,10 @@ export interface PurpleFieldChange {
  */
 export interface LocationClass {
   /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Optional description of entity.
    */
   description?: string;
@@ -393,6 +397,10 @@ export interface FluffyFieldChange {
  * Owner of this storage service.
  */
 export interface OwnerElement {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */

@@ -28,9 +28,9 @@ import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 @Slf4j
 public class UsageRepository {
@@ -77,14 +77,16 @@ public class UsageRepository {
     // Insert usage record
     dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
 
-    // If table usage was reported, add the usage count to database
+    // If table usage was reported, add the usage count to schema and database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       // we accept usage for deleted entities
-      Table table = dao.tableDAO().findEntityById(UUID.fromString(entityId), Include.ALL);
-      Include include = table.getDeleted() ? Include.DELETED : Include.NON_DELETED;
-      List<String> databaseIds =
-          dao.relationshipDAO().findFrom(entityId, entityType, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
-      dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
+      Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), Fields.EMPTY_FIELDS, Include.ALL);
+      dao.usageDAO()
+          .insertOrUpdateCount(
+              usage.getDate(), table.getDatabaseSchema().getId().toString(), Entity.DATABASE_SCHEMA, usage.getCount());
+      dao.usageDAO()
+          .insertOrUpdateCount(
+              usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
     }
   }
 

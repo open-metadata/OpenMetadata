@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from airflow.configuration import conf
 
-from airflow_provider_openmetadata.lineage.config import OpenMetadataLineageConfig
+from airflow_provider_openmetadata.lineage.config.loader import AirflowLineageConfig
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createPipelineService import (
@@ -308,7 +308,7 @@ def add_status(
 
 # pylint: disable=too-many-arguments,too-many-locals
 def parse_lineage(
-    config: OpenMetadataLineageConfig,
+    config: AirflowLineageConfig,
     context: Dict,
     operator: "BaseOperator",
     inlets: List,
@@ -382,7 +382,7 @@ def parse_lineage(
 
 
 def get_or_create_pipeline_service(
-    operator: "BaseOperator", client: OpenMetadata, config: OpenMetadataLineageConfig
+    operator: "BaseOperator", client: OpenMetadata, config: AirflowLineageConfig
 ) -> PipelineService:
     """
     Check if we already have the airflow instance as a PipelineService,

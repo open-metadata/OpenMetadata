@@ -13,7 +13,7 @@
  */
 
 /**
- * This scheam defines the test TableRowCountToBeBetween. Test the number of rows to between
+ * This schema defines the test TableRowCountToBeBetween. Test the number of rows to between
  * to two values.
  */
 export interface TableRowCountToBeBetween {

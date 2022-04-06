@@ -13,9 +13,11 @@ import requests as requests
 from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 calc_gb = 1024 * 1024 * 1024
@@ -34,11 +36,8 @@ def start_docker(docker, start_time, file_path, skip_sample_data):
     if not skip_sample_data:
         logger.info("Waiting for ingestion to complete..")
         ingest_sample_data(docker)
-        metadata_config = MetadataServerConfig.parse_obj(
-            {
-                "api_endpoint": "http://localhost:8585/api",
-                "auth_provider_type": "no-auth",
-            }
+        metadata_config = OpenMetadataServerConfig(
+            hostPort="http://localhost:8585/api", authProvider="no-auth"
         )
         logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = True
         ometa_client = OpenMetadata(metadata_config)

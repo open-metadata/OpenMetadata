@@ -109,7 +109,7 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.selectOverview("tables"));
-    Events.click(webDriver, common.selectFilterExplore("Tier.Tier3"));
+    Events.click(webDriver, common.selectFilterExplore("Tier:Tier3"));
     try {
       WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(common.searchResults()));
       if (dataFound.isDisplayed()) {
@@ -184,9 +184,9 @@ public class PaginationAndFilterTest {
       if (viewMore.isDisplayed()) {
         Events.click(webDriver, common.viewMore());
       }
-      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
+      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
     } catch (TimeoutException | NoSuchElementException e) {
-      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
+      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
     }
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);

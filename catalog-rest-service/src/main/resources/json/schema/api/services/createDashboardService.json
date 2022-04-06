@@ -16,28 +16,14 @@
     "serviceType": {
       "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardServiceType"
     },
-    "dashboardUrl": {
-      "description": "Dashboard Service URL",
-      "type": "string",
-      "format": "uri"
-    },
-    "username": {
-      "description": "Username to log-into Dashboard Service",
-      "type": "string"
-    },
-    "password": {
-      "description": "Password to log-into Dashboard Service",
-      "type": "string"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs",
-      "$ref": "../../type/schedule.json"
+    "connection": {
+      "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardConnection"
     },
     "owner": {
       "description": "Owner of this dashboard service.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "dashboardUrl"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

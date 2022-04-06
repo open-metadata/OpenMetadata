@@ -277,7 +277,7 @@ class Explore {
 
   @Test
   @Order(10)
-  void checkRandomDashboardCount() {
+  void checkRandomDashboardCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());

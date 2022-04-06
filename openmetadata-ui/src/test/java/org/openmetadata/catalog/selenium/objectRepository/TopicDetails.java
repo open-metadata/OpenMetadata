@@ -17,8 +17,8 @@ public class TopicDetails {
       By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1\"]");
   By breadCrumbTags = By.xpath("//div[@data-testid='breadcrumb-tags']/div");
   By editDescriptionButton = By.xpath("//button[@data-testid=\"edit-description\"]");
-  By config = By.xpath("(//button[@data-testid = \"tab\"])[2]");
-  By manage = By.xpath("(//button[@data-testid = \"tab\"])[3]");
+  By config = By.cssSelector("[data-testid = 'Config']");
+  By manage = By.cssSelector("[data-testid ='Manage']");
   By topicName = By.linkText("orders");
   By ownerName = By.xpath("//div[@data-testid='list-item']");
 

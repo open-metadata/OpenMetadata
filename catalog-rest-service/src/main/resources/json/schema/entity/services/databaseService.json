@@ -107,32 +107,77 @@
     },
     "databaseConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.DatabaseConnection",
       "description": "Database Connection.",
       "properties": {
-        "username": {
-          "description": "username to connect  to the data source.",
-          "type": "string"
-        },
-        "password": {
-          "description": "password to connect  to the data source.",
-          "type": "string"
-        },
-        "hostPort": {
-          "description": "Host and port of the data source.",
-          "type": "string"
-        },
-        "database": {
-          "description": "Database of the data source.",
-          "type": "string"
-        },
-        "connectionOptions": {
-          "description": "Additional connection options that can be sent to service during the connection.",
-          "type": "object"
-        },
-        "connectionArguments": {
-          "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
-          "type": "object"
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/database/athenaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/azureSQLConnection.json"
+            },
+            {
+              "$ref": "./connections/database/clickhouseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/databricksConnection.json"
+            },
+            {
+              "$ref": "./connections/database/db2Connection.json"
+            },
+            {
+              "$ref": "./connections/database/druidConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dynamoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/glueConnection.json"
+            },
+            {
+              "$ref": "./connections/database/hiveConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mariaDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mssqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mysqlConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sqliteConnection.json"
+            },
+            {
+              "$ref": "./connections/database/oracleConnection.json"
+            },
+            {
+              "$ref": "./connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "./connections/database/prestoConnection.json"
+            },
+            {
+              "$ref": "./connections/database/redshiftConnection.json"
+            },
+            {
+              "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/singleStoreConnection.json"
+            },
+            {
+              "$ref": "./connections/database/snowflakeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/trinoConnection.json"
+            },
+            {
+              "$ref": "./connections/database/verticaConnection.json"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -159,11 +204,11 @@
       "description": "Description of a database service instance.",
       "type": "string"
     },
-    "databaseConnection": {
+    "connection": {
       "$ref": "#/definitions/databaseConnection"
     },
-    "airflowPipelines": {
-      "description": "References to airflow pipelines deployed for this database service.",
+    "pipelines": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "version": {
@@ -196,6 +241,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href", "databaseConnection"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }

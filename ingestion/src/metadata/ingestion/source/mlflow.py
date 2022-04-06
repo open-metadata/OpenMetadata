@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.ingestion.api.common import ConfigModel, WorkflowContext
+from metadata.ingestion.api.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -81,8 +81,8 @@ class MlflowSource(Source[CreateMlModelRequest]):
     and prepare an iterator of CreateMlModelRequest
     """
 
-    def __init__(self, config: MlFlowConnectionConfig, ctx: WorkflowContext):
-        super().__init__(ctx)
+    def __init__(self, config: MlFlowConnectionConfig):
+        super().__init__()
         self.client = MlflowClient(
             tracking_uri=config.tracking_uri,
             registry_uri=config.registry_uri if config.registry_uri else None,
@@ -93,11 +93,9 @@ class MlflowSource(Source[CreateMlModelRequest]):
         pass
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config_dict: dict):
         config = MlFlowConnectionConfig.parse_obj(config_dict)
-        return cls(config, ctx)
+        return cls(config)
 
     def next_record(self) -> Iterable[CreateMlModelRequest]:
         """

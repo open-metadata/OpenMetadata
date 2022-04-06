@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaEndpointTest(TestCase):

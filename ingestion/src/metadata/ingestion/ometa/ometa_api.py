@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
@@ -44,6 +45,9 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
@@ -60,7 +64,6 @@ from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     AzureAuthenticationProvider,
     GoogleAuthenticationProvider,
-    MetadataServerConfig,
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
 )
@@ -136,21 +139,21 @@ class OpenMetadata(
     services_path = "services"
     teams_path = "teams"
 
-    def __init__(self, config: MetadataServerConfig, raw_data: bool = False):
+    def __init__(self, config: OpenMetadataServerConfig, raw_data: bool = False):
         self.config = config
-        if self.config.auth_provider_type == "google":
+        if self.config.authProvider.value == "google":
             self._auth_provider: AuthenticationProvider = (
                 GoogleAuthenticationProvider.create(self.config)
             )
-        elif self.config.auth_provider_type == "okta":
+        elif self.config.authProvider.value == "okta":
             self._auth_provider: AuthenticationProvider = (
                 OktaAuthenticationProvider.create(self.config)
             )
-        elif self.config.auth_provider_type == "auth0":
+        elif self.config.authProvider.value == "auth0":
             self._auth_provider: AuthenticationProvider = (
                 Auth0AuthenticationProvider.create(self.config)
             )
-        elif self.config.auth_provider_type == "azure":
+        elif self.config.authProvider.value == "azure":
             self._auth_provider: AuthenticationProvider = (
                 AzureAuthenticationProvider.create(self.config)
             )
@@ -159,8 +162,8 @@ class OpenMetadata(
                 NoOpAuthenticationProvider.create(self.config)
             )
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.api_endpoint,
-            api_version=self.config.api_version,
+            base_url=self.config.hostPort,
+            api_version=self.config.apiVersion,
             auth_header="Authorization",
             auth_token=lambda: self._auth_provider.get_access_token(),
         )
@@ -199,6 +202,14 @@ class OpenMetadata(
             entity, get_args(Union[Database, self.get_create_entity_type(Database)])
         ):
             return "/databases"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[DatabaseSchema, self.get_create_entity_type(DatabaseSchema)]
+            ),
+        ):
+            return "/databaseSchemas"
 
         if issubclass(
             entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
@@ -337,6 +348,19 @@ class OpenMetadata(
         )
         return create_class
 
+    @staticmethod
+    def update_file_name(create: Type[C], file_name: str) -> str:
+        """
+        Update the filename for services and schemas
+        """
+        if "service" in create.__name__.lower():
+            return file_name.replace("service", "Service")
+
+        if "schema" in create.__name__.lower():
+            return file_name.replace("schema", "Schema")
+
+        return file_name
+
     def get_entity_from_create(self, create: Type[C]) -> Type[T]:
         """
         Inversely, import the Entity type based on the create Entity class
@@ -350,9 +374,7 @@ class OpenMetadata(
                 self.class_root,
                 self.entity_path,
                 self.get_module_path(create),
-                file_name.replace("service", "Service")
-                if "service" in create.__name__.lower()
-                else file_name,
+                self.update_file_name(create, file_name),
             ]
         )
 

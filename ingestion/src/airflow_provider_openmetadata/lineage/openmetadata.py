@@ -18,9 +18,9 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from airflow.lineage.backend import LineageBackend
 
-from airflow_provider_openmetadata.lineage.config import (
+from airflow_provider_openmetadata.lineage.config.loader import (
+    AirflowLineageConfig,
     get_lineage_config,
-    get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import get_xlets, parse_lineage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -78,9 +78,8 @@ class OpenMetadataLineageBackend(LineageBackend):
         """
 
         try:
-            config = get_lineage_config()
-            metadata_config = get_metadata_config(config)
-            client = OpenMetadata(metadata_config)
+            config: AirflowLineageConfig = get_lineage_config()
+            client = OpenMetadata(config.metadata_config)
 
             op_inlets = get_xlets(operator, "_inlets")
             op_outlets = get_xlets(operator, "_outlets")

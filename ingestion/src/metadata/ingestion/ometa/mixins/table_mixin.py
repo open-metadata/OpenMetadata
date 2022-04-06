@@ -198,7 +198,7 @@ class OMetaTableMixin:
                 tableConstraints=table.tableConstraints,
                 profileSample=profile_sample,  # Updated!
                 owner=table.owner,
-                database=table.database,
+                databaseSchema=table.databaseSchema,
                 tags=table.tags,
                 viewDefinition=table.viewDefinition,
             )

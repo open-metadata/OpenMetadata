@@ -8,7 +8,7 @@ on:
       - main
     paths:
       - openmetadata-ui/src/main/resources/ui/**
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
@@ -23,6 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        ref: ${{ github.event.pull_request.head.sha }}
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
     - name: Use Node.js ${{ matrix.node-version }}
@@ -41,7 +42,7 @@ jobs:
       run: npm install -g sonarqube-scanner
       id: npm_install_sonar_scanner
     - name: SonarCloud Scan On PR
-      if: github.event_name == 'pull_request' && steps.npm_install_sonar_scanner.outcome == 'success'
+      if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: |
         sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \

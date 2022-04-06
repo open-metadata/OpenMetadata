@@ -21,6 +21,11 @@
     "service": {
       "description": "Link to the database service where this database is hosted in",
       "$ref": "../../type/entityReference.json"
+    },
+    "default": {
+      "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name", "service"],
