@@ -27,12 +27,12 @@ from metadata.utils.source_connections import get_connection_url
 logger = logging.getLogger("Utils")
 
 
-def get_engine(config: WorkflowSource, verbose: bool = False) -> Engine:
+def get_engine(workflow_source: WorkflowSource, verbose: bool = False) -> Engine:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
-    logger.info(f"Building Engine for {config.serviceName}...")
-    service_connection_config = config.serviceConnection.__root__.config
+    logger.info(f"Building Engine for {workflow_source.serviceName}...")
+    service_connection_config = workflow_source.serviceConnection.__root__.config
     options = service_connection_config.connectionOptions
     if not options:
         options = {}
@@ -40,7 +40,7 @@ def get_engine(config: WorkflowSource, verbose: bool = False) -> Engine:
     if not connect_args:
         connect_args = {}
     engine = create_engine(
-        get_connection_url(config.serviceConnection.__root__.config),
+        get_connection_url(service_connection_config),
         **options,
         connect_args=connect_args,
         echo=verbose,
