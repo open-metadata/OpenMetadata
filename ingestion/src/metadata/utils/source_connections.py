@@ -14,6 +14,9 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -22,16 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 
 
-@singledispatch
-def get_connection_url(connection):
-    raise NotImplemented(
-        f"Connection URL build not implemented for type {type(connection)}: {connection}"
-    )
-
-
-@get_connection_url.register
-def _(connection: MysqlConnection):
-
+def get_connection_url_common(connection):
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -57,6 +51,24 @@ def _(connection: MysqlConnection):
 
     return url
 
+
+@singledispatch
+def get_connection_url(connection):
+    raise NotImplemented(
+        f"Connection URL build not implemented for type {type(connection)}: {connection}"
+    )
+
+
+@get_connection_url.register
+def _(connection: MysqlConnection):
+    return get_connection_url_common(connection)
+
+
+@get_connection_url.register
+def _(connection: MssqlConnection):
+    if connection.scheme.value == connection.scheme.mssql_pyodbc:
+        return f"{connection.scheme.value}://{connection.uriString}"
+    return get_connection_url_common(connection)
 
 @get_connection_url.register
 def _(connection: SQLiteConnection):

@@ -217,6 +217,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 ):
                     self.status.filter(schema, "Schema pattern not allowed")
                     continue
+                # Fetch tables by default
+                yield from self.fetch_tables(inspector, schema)
                 if self.source_config.includeViews:
                     yield from self.fetch_views(inspector, schema)
                 if self.source_config.markDeletedTables:
