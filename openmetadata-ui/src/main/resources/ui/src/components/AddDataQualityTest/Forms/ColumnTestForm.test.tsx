@@ -5,7 +5,7 @@ import ColumnTestForm from './ColumnTestForm';
 
 const mockFunction = jest.fn();
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => {
+jest.mock('../../common/rich-text-editor/MarkdownWithPreview', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 
