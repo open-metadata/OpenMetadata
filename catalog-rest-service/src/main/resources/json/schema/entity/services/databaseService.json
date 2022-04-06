@@ -112,6 +112,9 @@
         "config": {
           "oneOf": [
             {
+              "$ref": "./connections/database/bigQueryConnection.json"
+            },
+            {
               "$ref": "./connections/database/athenaConnection.json"
             },
             {
