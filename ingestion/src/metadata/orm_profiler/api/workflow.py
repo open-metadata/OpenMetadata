@@ -26,6 +26,9 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
     OpenMetadataWorkflowConfig,
@@ -34,14 +37,11 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import (
-    SQLConnectionConfig,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.sql_source import SQLSource, SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.utils.engines import create_and_bind_session
+from metadata.utils.filters import filter_by_schema, filter_by_table
 
 logger = logger()
 
@@ -64,7 +64,7 @@ class ProfilerWorkflow:
         )
 
         # We will use the existing sources to build the Engine
-        self.source = get_ingestion_source(
+        self.source: Source = get_ingestion_source(
             source_type=self.config.source.type,
             source_config=self.config.source,
             metadata_config=self.metadata_config,
@@ -76,7 +76,9 @@ class ProfilerWorkflow:
             )
 
         # Init and type the source config
-        self.source_config: SQLConnectionConfig = self.source.config
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.source.sourceConfig.config
+        )
         self.source_status = SQLSourceStatus()
 
         self.processor = get_processor(
@@ -85,7 +87,7 @@ class ProfilerWorkflow:
             metadata_config=self.metadata_config,
             _from="orm_profiler",
             # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(get_engine(self.source_config)),
+            session=create_and_bind_session(self.source.engine),
         )
 
         if self.config.sink:
@@ -121,20 +123,22 @@ class ProfilerWorkflow:
         for table in tables:
 
             # Validate schema
-            if not self.source_config.schema_filter_pattern.included(
-                table.database.name
+            if filter_by_schema(
+                schema_filter_pattern=self.source_config.schemaFilterPattern,
+                schema_name=table.databaseSchema.name,
             ):
                 self.source_status.filter(
-                    table.database.name, "Schema pattern not allowed"
+                    table.databaseSchema.name, "Schema pattern not allowed"
                 )
                 continue
 
             # Validate database
-            if not self.source_config.table_filter_pattern.included(
-                str(table.name.__root__)
+            if filter_by_table(
+                table_filter_pattern=self.source_config.tableFilterPattern,
+                table_name=str(table.name.__root__),
             ):
                 self.source_status.filter(
-                    table.fullyQualifiedName.__root__, "Table name pattern not allowed"
+                    table.name.__root__, "Table name pattern not allowed"
                 )
                 continue
 
