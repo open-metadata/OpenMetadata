@@ -4,13 +4,13 @@
       "displayName": "ETA Predictions",
       "description": "ETA Predictions Model",
       "algorithm": "Neural Network",
-      "dashboard": "sample_superset:eta_predictions_performance"
+      "dashboard": "sample_superset.eta_predictions_performance"
     },
       {
       "name": "forecast_sales",
       "displayName": "Sales Forecast Predictions",
       "description": "Sales Forecast Predictions Model",
       "algorithm": "Time Series",
-      "dashboard": "sample_superset:forecast_sales_performance"
+      "dashboard": "sample_superset.forecast_sales_performance"
     }
 ]

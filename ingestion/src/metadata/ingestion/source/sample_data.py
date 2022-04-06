@@ -415,7 +415,7 @@ class SampleDataSource(Source[Entity]):
                 for sql_object in table["tableQueries"]:
                     user_entity = self.user_entity[random.choice(range(5))]
                     user_dict = {
-                        "id": user_entity.id,
+                        "id": user_entity.id.__root__,
                         "name": user_entity.name.__root__,
                         "displayName": user_entity.displayName,
                         "href": user_entity.href,
