@@ -16,24 +16,14 @@
     "serviceType": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingServiceType"
     },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref": "../../entity/services/messagingService.json#/definitions/brokers"
-    },
-    "schemaRegistry": {
-      "description": "Schema registry URL",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs",
-      "$ref": "../../type/schedule.json"
+    "connection": {
+      "$ref": "../../entity/services/messagingService.json#/definitions/messagingConnection"
     },
     "owner": {
       "description": "Owner of this messaging service.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "brokers"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

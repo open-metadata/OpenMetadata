@@ -15,7 +15,7 @@ Profiler File Sink
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.orm_profiler.api.models import ProfilerResponse
 from metadata.orm_profiler.utils import logger
@@ -33,10 +33,9 @@ class FileSink(Sink[Entity]):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: FileSinkConfig,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.report = SinkStatus()
 
@@ -49,9 +48,9 @@ class FileSink(Sink[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, _, ctx: WorkflowContext):
+    def create(cls, config_dict: dict, _):
         config = FileSinkConfig.parse_obj(config_dict)
-        return cls(ctx, config)
+        return cls(config)
 
     def write_record(self, record: ProfilerResponse) -> None:
 

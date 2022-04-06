@@ -19,6 +19,8 @@ public class GlossaryPage {
   By saveGlossaryTerm = By.cssSelector("[data-testid='save-glossary-term']");
   By saveTermReviewer = By.cssSelector("[data-testid='saveButton']");
   By saveAssociatedTag = By.xpath("//button[@data-testid='saveAssociatedTag']");
+  By addGlossary = By.cssSelector("[data-testid='add-category']");
+  By reviewers = By.cssSelector("[data-testid='Reviewers']");
 
   public By checkboxAddUser(int index) {
     return By.xpath(

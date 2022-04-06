@@ -59,7 +59,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), ex.getMessage()))
           .build();
-    } else if (ex instanceof AirflowPipelineDeploymentException) {
+    } else if (ex instanceof IngestionPipelineDeploymentException) {
       return Response.status(BAD_REQUEST)
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), ex.getMessage()))

@@ -623,6 +623,10 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
+    "databaseSchema": {
+      "description": "Reference to database schema that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
     "database": {
       "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"

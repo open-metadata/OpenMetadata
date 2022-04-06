@@ -14,9 +14,7 @@ from typing import Any, Iterable
 
 from sqlalchemy import create_engine
 
-from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-
+from ...generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
 from .sql_source import SQLConnectionConfig, SQLSourceStatus
 
 
@@ -26,8 +24,7 @@ class SQLAlchemyHelper:
     def __init__(
         self,
         config: SQLConnectionConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+        metadata_config: OpenMetadataServerConfig,
         platform: str,
         query: str,
     ):

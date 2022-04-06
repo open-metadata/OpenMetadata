@@ -324,11 +324,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
-        .withDashboardUrl(create.getDashboardUrl())
-        .withUsername(create.getUsername())
-        .withPassword(create.getPassword())
+        .withConnection(create.getConnection())
         .withOwner(create.getOwner())
-        .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

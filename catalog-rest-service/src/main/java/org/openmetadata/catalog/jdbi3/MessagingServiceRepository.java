@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -26,12 +25,13 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private static final String UPDATE_FIELDS = "owner";
+  private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository(CollectionDAO dao) {
     super(
@@ -47,6 +47,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Override
   public MessagingService setFields(MessagingService entity, Fields fields) throws IOException {
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -60,7 +61,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public void prepare(MessagingService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
@@ -86,6 +86,19 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public EntityUpdater getUpdater(MessagingService original, MessagingService updated, Operation operation) {
     return new MessagingServiceUpdater(original, updated, operation);
+  }
+
+  private List<EntityReference> getIngestionPipelines(MessagingService service) throws IOException {
+    List<String> ingestionPipelineIds =
+        findTo(service.getId(), Entity.MESSAGING_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (String ingestionPipelineId : ingestionPipelineIds) {
+      ingestionPipelines.add(
+          daoCollection
+              .ingestionPipelineDAO()
+              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
+    }
+    return ingestionPipelines;
   }
 
   public static class MessagingServiceEntityInterface extends EntityInterface<MessagingService> {
@@ -215,19 +228,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void entitySpecificUpdate() throws IOException {
       MessagingService origService = original.getEntity();
       MessagingService updatedService = updated.getEntity();
-      recordChange("schemaRegistry", origService.getSchemaRegistry(), updatedService.getSchemaRegistry());
-      recordChange(
-          "ingestionSchedule", origService.getIngestionSchedule(), updatedService.getIngestionSchedule(), true);
-      updateBrokers();
-    }
-
-    private void updateBrokers() throws JsonProcessingException {
-      List<String> origBrokers = original.getEntity().getBrokers();
-      List<String> updatedBrokers = updated.getEntity().getBrokers();
-
-      List<String> addedBrokers = new ArrayList<>();
-      List<String> deletedBrokers = new ArrayList<>();
-      recordListChange("brokers", origBrokers, updatedBrokers, addedBrokers, deletedBrokers, EntityUtil.stringMatch);
+      recordChange("connection", origService.getConnection(), updatedService.getConnection(), true);
     }
   }
 }

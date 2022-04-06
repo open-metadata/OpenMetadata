@@ -17,11 +17,13 @@ from typing import Any, Dict, Iterable
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.mssql import MssqlConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
@@ -38,7 +40,6 @@ class MssqlUsageSource(Source[TableQuery]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -48,22 +49,21 @@ class MssqlUsageSource(Source[TableQuery]):
         report:
     """
 
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__()
         self.config = config
         start, end = get_start_and_end(config.duration)
         self.analysis_date = start
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, ctx, DatabaseServiceType.MSSQL.value, self.sql_stmt
+            config, metadata_config, DatabaseServiceType.MSSQL.value, self.sql_stmt
         )
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = MssqlConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         return super().prepare()

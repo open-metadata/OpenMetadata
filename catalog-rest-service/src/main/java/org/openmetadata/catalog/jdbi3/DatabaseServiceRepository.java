@@ -14,33 +14,26 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.fernet.Fernet.decryptIfTokenized;
-import static org.openmetadata.catalog.fernet.Fernet.isTokenized;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.DatabaseConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   private static final String UPDATE_FIELDS = "owner";
-  private final Fernet fernet;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
     super(
@@ -51,47 +44,27 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
         dao,
         "",
         UPDATE_FIELDS);
-    fernet = Fernet.getInstance();
     this.allowEdits = true;
-  }
-
-  public void rotate() throws IOException {
-    if (!fernet.isKeyDefined()) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
-    }
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
-    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
-    for (String json : jsons) {
-      DatabaseService databaseService = JsonUtils.readValue(json, DatabaseService.class);
-      DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
-      if (databaseConnection != null && databaseConnection.getPassword() != null) {
-        String password = decryptIfTokenized(databaseConnection.getPassword());
-        String tokenized = fernet.encrypt(password);
-        databaseConnection.setPassword(tokenized);
-        storeEntity(databaseService, true);
-      }
-    }
   }
 
   @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException {
-    entity.setAirflowPipelines(fields.contains("airflowPipelines") ? getAirflowPipelines(entity) : null);
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
 
-  private List<EntityReference> getAirflowPipelines(DatabaseService service) throws IOException {
-    if (service == null) {
-      return null;
+  private List<EntityReference> getIngestionPipelines(DatabaseService service) throws IOException {
+    List<String> ingestionPipelineIds =
+        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (String ingestionPipelineId : ingestionPipelineIds) {
+      ingestionPipelines.add(
+          daoCollection
+              .ingestionPipelineDAO()
+              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
     }
-    List<String> airflowPipelineIds =
-        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.AIRFLOW_PIPELINE);
-    List<EntityReference> airflowPipelines = new ArrayList<>();
-    for (String airflowPipelineId : airflowPipelineIds) {
-      airflowPipelines.add(
-          daoCollection.airflowPipelineDAO().findEntityReferenceById(UUID.fromString(airflowPipelineId), Include.ALL));
-    }
-    return airflowPipelines;
+    return ingestionPipelines;
   }
 
   @Override
@@ -103,14 +76,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public void prepare(DatabaseService databaseService) throws IOException {
     // Check if owner is valid and set the relationship
     databaseService.setOwner(Entity.getEntityReference(databaseService.getOwner()));
-    DatabaseConnection databaseConnection = databaseService.getDatabaseConnection();
-    if (fernet.isKeyDefined()
-        && databaseConnection != null
-        && databaseConnection.getPassword() != null
-        && !isTokenized(databaseConnection.getPassword())) {
-      String tokenized = fernet.encrypt(databaseConnection.getPassword());
-      databaseConnection.setPassword(tokenized);
-    }
   }
 
   @Override
@@ -267,17 +232,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     private void updateDatabaseConnectionConfig() throws JsonProcessingException {
-      DatabaseConnection origConn = original.getEntity().getDatabaseConnection();
-      DatabaseConnection updatedConn = updated.getEntity().getDatabaseConnection();
-      if (origConn != null
-          && updatedConn != null
-          && Objects.equals(
-              Fernet.decryptIfTokenized(origConn.getPassword()),
-              Fernet.decryptIfTokenized(updatedConn.getPassword()))) {
-        // Password in clear didn't change. The tokenized changed because it's time-dependent.
-        updatedConn.setPassword(origConn.getPassword());
-      }
-      recordChange("databaseConnection", origConn, updatedConn, true);
+      DatabaseConnection origConn = original.getEntity().getConnection();
+      DatabaseConnection updatedConn = updated.getEntity().getConnection();
+      recordChange("connection", origConn, updatedConn, true);
     }
   }
 }

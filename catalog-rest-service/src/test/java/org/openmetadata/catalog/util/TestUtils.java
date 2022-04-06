@@ -41,13 +41,21 @@ import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.DatabaseConnection;
+import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
+import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
+import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
+import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
@@ -67,8 +75,14 @@ public final class TestUtils {
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
 
-  public static final DatabaseConnection DATABASE_CONNECTION;
-  public static URI DASHBOARD_URL;
+  public static final DatabaseConnection MYSQL_DATABASE_CONNECTION;
+  public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION;
+  public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION;
+  public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION;
+
+  public static MessagingConnection KAFKA_CONNECTION;
+  public static DashboardConnection SUPERSET_CONNECTION;
+
   public static URI PIPELINE_URL;
 
   public enum UpdateType {
@@ -79,19 +93,50 @@ public final class TestUtils {
   }
 
   static {
-    DATABASE_CONNECTION =
+    MYSQL_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withHostPort("localhost:1000")
-            .withUsername("user_name")
-            .withPassword("password")
-            .withDatabase("test");
+            .withConfig(new MysqlConnection().withHostPort("localhost:3306").withUsername("test").withPassword("test"));
+    REDSHIFT_DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withConfig(
+                new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
+    BIGQUERY_DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
+    SNOWFLAKE_DATABASE_CONNECTION =
+        new DatabaseConnection()
+            .withConfig(
+                new SnowflakeConnection()
+                    .withHostPort("snowflake:1000")
+                    .withUsername("snowflake")
+                    .withPassword("snowflake"));
   }
 
   static {
     try {
-      DASHBOARD_URL = new URI("http://localhost:8088");
+      KAFKA_CONNECTION =
+          new MessagingConnection()
+              .withConfig(
+                  new KafkaConnection()
+                      .withBootstrapServers("localhost:9092")
+                      .withSchemaRegistryURL(new URI("http://localhost:8081")));
     } catch (URISyntaxException e) {
-      DASHBOARD_URL = null;
+      KAFKA_CONNECTION = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      SUPERSET_CONNECTION =
+          new DashboardConnection()
+              .withConfig(
+                  new SupersetConnection()
+                      .withSupersetURL(new URI("http://localhost:8080"))
+                      .withUsername("admin")
+                      .withPassword("admin"));
+    } catch (URISyntaxException e) {
+      SUPERSET_CONNECTION = null;
       e.printStackTrace();
     }
   }

@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entities/services/ingestionPipelines/messagingServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessagingServiceMetadataPipeline",
+  "description": "MessagingService Metadata Pipeline Configuration.",
+  "definitions": {},
+  "properties": {
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    }
+  },
+  "additionalProperties": false
+}
