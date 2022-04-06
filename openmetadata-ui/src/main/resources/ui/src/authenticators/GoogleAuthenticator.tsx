@@ -89,6 +89,9 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         googleClientLogout.signOut();
       },
+      renewIdToken() {
+        return Promise.resolve('');
+      },
     }));
 
     return <Fragment>{children}</Fragment>;
