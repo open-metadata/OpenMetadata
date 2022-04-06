@@ -29,17 +29,17 @@
     "includeViews": {
       "description": "optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeTables": {
       "description": "Optional configuration to turn off fetching metadata for tables.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "generateSampleData": {
       "description": "Turn on/off collecting sample data.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "sampleDataQuery": {
       "description": "query to generate sample data.",
@@ -49,7 +49,7 @@
     "enableDataProfiler": {
       "description": "Run data profiler as part of ingestion to get table profile data.",
       "type": "boolean",
-      "default": "false"
+      "default": false
     },
     "includeFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",

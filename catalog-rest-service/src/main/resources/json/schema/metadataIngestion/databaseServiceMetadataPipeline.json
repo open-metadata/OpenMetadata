@@ -7,17 +7,17 @@
     "markDeletedTables": {
       "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data during metadata extraction.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "sampleDataQuery": {
       "description": "Sample data extraction query.",
@@ -27,7 +27,7 @@
     "enableDataProfiler": {
       "description": "Run data profiler as part of this metadata ingestion to get table profile data.",
       "type": "boolean",
-      "default": "false"
+      "default": false
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
