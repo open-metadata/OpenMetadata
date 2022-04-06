@@ -275,7 +275,7 @@
       "additionalProperties": false
     }
   },
-  "anyOf": [
+  "oneOf": [
     {
       "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
     },
