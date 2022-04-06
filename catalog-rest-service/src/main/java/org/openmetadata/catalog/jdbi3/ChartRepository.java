@@ -32,8 +32,8 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
@@ -53,7 +53,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? EntityNameUtil.getFQN(chart.getService().getName(), chart.getName())
+        ? FullyQualifiedName.add(chart.getService().getName(), chart.getName())
         : null;
   }
 

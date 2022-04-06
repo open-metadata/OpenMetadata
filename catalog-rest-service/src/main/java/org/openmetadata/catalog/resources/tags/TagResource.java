@@ -55,8 +55,8 @@ import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -214,7 +214,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = EntityNameUtil.getFQN(category, primaryTag);
+    String fqn = FullyQualifiedName.add(category, primaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
@@ -261,7 +261,7 @@ public class TagResource {
           @QueryParam("fields")
           String fieldsParam)
       throws IOException {
-    String fqn = EntityNameUtil.getFQN(category, primaryTag, secondaryTag);
+    String fqn = FullyQualifiedName.build(category, primaryTag, secondaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
     Tag tag = dao.getTag(category, fqn, fields);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);

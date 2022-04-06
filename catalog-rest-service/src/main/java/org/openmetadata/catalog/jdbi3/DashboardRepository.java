@@ -33,9 +33,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
@@ -54,7 +54,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? EntityNameUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
+        ? FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 

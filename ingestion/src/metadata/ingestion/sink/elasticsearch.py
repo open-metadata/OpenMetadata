@@ -33,6 +33,9 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -46,7 +49,6 @@ from metadata.ingestion.models.table_metadata import (
     UserESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
     GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
@@ -96,15 +98,14 @@ class ElasticsearchSink(Sink[Entity]):
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = ElasticSearchConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def __init__(
         self,
         config: ElasticSearchConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ) -> None:
 
         self.config = config

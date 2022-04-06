@@ -17,25 +17,23 @@ Workflow definition for the ORM Profiler.
 - How to define metrics & tests
 """
 import itertools
-import uuid
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
 import click
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
-from metadata.config.common import (
-    ConfigModel,
-    DynamicTypedConfig,
-    WorkflowExecutionError,
-)
+from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import (
     SQLConnectionConfig,
@@ -48,35 +46,21 @@ from metadata.utils.engines import create_and_bind_session, get_engine
 logger = logger()
 
 
-class ProfilerWorkflowConfig(ConfigModel):
-    """
-    Configurations we expect to find in the
-    Workflow JSON
-    """
-
-    run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
-    source: DynamicTypedConfig
-    metadata_server: DynamicTypedConfig
-    processor: Optional[DynamicTypedConfig] = None
-    sink: Optional[DynamicTypedConfig] = None
-
-
 class ProfilerWorkflow:
     """
     Configure and run the ORM profiler
     """
 
-    config: ProfilerWorkflowConfig
+    config: OpenMetadataWorkflowConfig
     source: Source
     processor: Processor
     sink: Sink
     metadata: OpenMetadata
 
-    def __init__(self, config: ProfilerWorkflowConfig):
+    def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-
-        self.metadata_config = MetadataServerConfig.parse_obj(
-            self.config.metadata_server.dict().get("config", {})
+        self.metadata_config: OpenMetadataServerConfig = (
+            self.config.workflowConfig.openMetadataServerConfig
         )
 
         # We will use the existing sources to build the Engine
@@ -121,11 +105,11 @@ class ProfilerWorkflow:
         Parse a JSON (dict) and create the workflow
         """
         try:
-            config = ProfilerWorkflowConfig.parse_obj(config_dict)
+            config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
             return cls(config)
         except ValidationError as err:
             logger.error("Error trying to parse the Profiler Workflow configuration")
-            raise ValidationError(f"Error parsing workflow - {err}")
+            raise err
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """

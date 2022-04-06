@@ -29,7 +29,9 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -105,9 +107,8 @@ class BigquerySource(SQLSource, BigQueryConfig):
             logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
             if config.options.get("credentials_path"):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[

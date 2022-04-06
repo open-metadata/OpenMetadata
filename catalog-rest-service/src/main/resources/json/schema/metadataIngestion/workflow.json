@@ -12,6 +12,11 @@
         "secretKey": {
           "description": "Google SSO client secret key path or contents.",
           "type": "string"
+        },
+        "audience": {
+          "description": "Google SSO audience URL",
+          "type": "string",
+          "default": "https://www.googleapis.com/oauth2/v4/token"
         }
       },
       "additionalProperties": false,
@@ -80,7 +85,8 @@
         "authProvider": {
           "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
           "type": "string",
-          "enum": ["no-auth", "google", "okta", "auth0"]
+          "enum": ["no-auth", "google", "okta", "auth0"],
+          "default": "no-auth"
         },
         "securityConfig": {
           "description": "OpenMetadata Client security configuration.",
@@ -95,13 +101,19 @@
               "$ref": "#/definitions/auth0SSOConfig"
             }
           ]
+        },
+        "apiVersion": {
+          "description": "OpenMetadata server API version to use.",
+          "type": "string",
+          "default": "v1"
         }
       },
       "additionalProperties": false,
-      "required": ["hostPort", "authProvider"]
+      "required": ["hostPort"]
     },
     "sourceConfig": {
       "description": "Additional connection configuration.",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
       "type": "object",
       "properties": {
         "config": {
@@ -218,7 +230,7 @@
       "type": "object",
       "properties": {
         "openMetadataServerConfig": {
-          "ref": "#/definitions/openMetadataServerConfig"
+          "$ref": "#/definitions/openMetadataServerConfig"
         },
         "config": {
           "$ref": "#/definitions/componentConfig"
@@ -264,7 +276,7 @@
       "additionalProperties": false
     }
   },
-  "anyOf": [
+  "oneOf": [
     {
       "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
     },

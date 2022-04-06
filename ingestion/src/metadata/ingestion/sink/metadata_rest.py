@@ -19,6 +19,9 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -35,6 +38,9 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -45,7 +51,6 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +86,7 @@ class MetadataRestSink(Sink[Entity]):
     def __init__(
         self,
         config: MetadataRestSinkConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
 
         self.config = config
@@ -94,9 +99,8 @@ class MetadataRestSink(Sink[Entity]):
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
@@ -129,13 +133,13 @@ class MetadataRestSink(Sink[Entity]):
                 f"Ignoring the record due to unknown Record type {type(record)}"
             )
 
-    def write_tables(self, db_and_table: OMetaDatabaseAndTable):
+    def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:
             db_request = CreateDatabaseRequest(
-                name=db_and_table.database.name,
-                description=db_and_table.database.description,
+                name=db_schema_and_table.database.name,
+                description=db_schema_and_table.database.description,
                 service=EntityReference(
-                    id=db_and_table.database.service.id,
+                    id=db_schema_and_table.database.service.id,
                     type="databaseService",
                 ),
             )
@@ -143,86 +147,100 @@ class MetadataRestSink(Sink[Entity]):
             db_ref = EntityReference(
                 id=db.id.__root__, name=db.name.__root__, type="database"
             )
-            if db_and_table.table.description is not None:
-                db_and_table.table.description = db_and_table.table.description.strip()
+            db_schema_request = CreateDatabaseSchemaRequest(
+                name=db_schema_and_table.database_schema.name,
+                description=db_schema_and_table.database_schema.description,
+                database=db_ref,
+            )
+            db_schema = self.metadata.create_or_update(db_schema_request)
+            db_schema_ref = EntityReference(
+                id=db_schema.id.__root__,
+                name=db_schema.name.__root__.__root__,
+                type="databaseSchema",
+            )
+            if db_schema_and_table.table.description is not None:
+                db_schema_and_table.table.description = (
+                    db_schema_and_table.table.description.strip()
+                )
 
             table_request = CreateTableRequest(
-                name=db_and_table.table.name.__root__,
-                tableType=db_and_table.table.tableType,
-                columns=db_and_table.table.columns,
-                description=db_and_table.table.description,
-                database=db_ref,
-                tableConstraints=db_and_table.table.tableConstraints,
+                name=db_schema_and_table.table.name.__root__,
+                tableType=db_schema_and_table.table.tableType,
+                columns=db_schema_and_table.table.columns,
+                description=db_schema_and_table.table.description,
+                databaseSchema=db_schema_ref,
+                tableConstraints=db_schema_and_table.table.tableConstraints,
             )
-            if db_and_table.table.viewDefinition:
+            if db_schema_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
-                    db_and_table.table.viewDefinition.__root__
+                    db_schema_and_table.table.viewDefinition.__root__
                 )
 
             created_table = self.metadata.create_or_update(table_request)
-            if db_and_table.location is not None:
-                if db_and_table.location.description is not None:
-                    db_and_table.location.description = (
-                        db_and_table.location.description.strip()
+            if db_schema_and_table.location is not None:
+                if db_schema_and_table.location.description is not None:
+                    db_schema_and_table.location.description = (
+                        db_schema_and_table.location.description.strip()
                     )
                 location_request = CreateLocationRequest(
-                    name=db_and_table.location.name,
-                    description=db_and_table.location.description,
-                    locationType=db_and_table.location.locationType,
-                    owner=db_and_table.location.owner,
+                    name=db_schema_and_table.location.name,
+                    description=db_schema_and_table.location.description,
+                    locationType=db_schema_and_table.location.locationType,
+                    owner=db_schema_and_table.location.owner,
                     service=EntityReference(
-                        id=db_and_table.location.service.id,
+                        id=db_schema_and_table.location.service.id,
                         type="storageService",
                     ),
                 )
                 location = self.metadata.create_or_update(location_request)
                 self.metadata.add_location(table=created_table, location=location)
-            if db_and_table.table.sampleData is not None:
+            if db_schema_and_table.table.sampleData is not None:
                 try:
                     self.metadata.ingest_table_sample_data(
                         table=created_table,
-                        sample_data=db_and_table.table.sampleData,
+                        sample_data=db_schema_and_table.table.sampleData,
                     )
                 except Exception as e:
                     logging.error(
-                        f"Failed to ingest sample data for table {db_and_table.table.name}"
+                        f"Failed to ingest sample data for table {db_schema_and_table.table.name}"
                     )
 
-            if db_and_table.table.tableProfile is not None:
+            if db_schema_and_table.table.tableProfile is not None:
                 self.metadata.ingest_table_profile_data(
                     table=created_table,
-                    table_profile=db_and_table.table.tableProfile,
+                    table_profile=db_schema_and_table.table.tableProfile,
                 )
 
-            if db_and_table.table.dataModel is not None:
+            if db_schema_and_table.table.dataModel is not None:
                 self.metadata.ingest_table_data_model(
-                    table=created_table, data_model=db_and_table.table.dataModel
+                    table=created_table, data_model=db_schema_and_table.table.dataModel
                 )
 
-            if db_and_table.table.tableQueries is not None:
+            if db_schema_and_table.table.tableQueries is not None:
                 self.metadata.ingest_table_queries_data(
-                    table=created_table, table_queries=db_and_table.table.tableQueries
+                    table=created_table,
+                    table_queries=db_schema_and_table.table.dict().get("tableQueries"),
                 )
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
-                    db_and_table.database.name.__root__,
+                    db_schema_and_table.database.name.__root__,
                     created_table.name.__root__,
                 )
             )
             self.status.records_written(
-                f"Table: {db_and_table.database.name.__root__}.{created_table.name.__root__}"
+                f"Table: {db_schema_and_table.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, ValidationError) as err:
             logger.error(
                 "Failed to ingest table {} in database {} ".format(
-                    db_and_table.table.name.__root__,
-                    db_and_table.database.name.__root__,
+                    db_schema_and_table.table.name.__root__,
+                    db_schema_and_table.database.name.__root__,
                 )
             )
             logger.debug(traceback.print_exc())
             logger.error(err)
-            self.status.failure(f"Table: {db_and_table.table.name.__root__}")
+            self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
     def write_topics(self, topic: CreateTopicRequest) -> None:
         try:

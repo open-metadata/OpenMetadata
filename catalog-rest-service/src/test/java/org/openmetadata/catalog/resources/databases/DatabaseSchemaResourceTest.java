@@ -38,7 +38,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -114,7 +114,7 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
     assertEquals(
-        EntityNameUtil.getFQN(schema.getDatabase().getName(), schema.getName()), schema.getFullyQualifiedName());
+        FullyQualifiedName.add(schema.getDatabase().getName(), schema.getName()), schema.getFullyQualifiedName());
   }
 
   @Override
@@ -127,7 +127,7 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(
-        EntityNameUtil.getFQN(updated.getDatabase().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.add(updated.getDatabase().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override

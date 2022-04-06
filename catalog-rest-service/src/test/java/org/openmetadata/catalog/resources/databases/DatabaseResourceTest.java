@@ -41,7 +41,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -75,7 +75,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityNameUtil.getFQN(SNOWFLAKE_REFERENCE.getName(), create.getName());
+    String expectedFQN = FullyQualifiedName.add(SNOWFLAKE_REFERENCE.getName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
@@ -164,7 +164,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        EntityNameUtil.getFQN(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
+        FullyQualifiedName.add(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
   }
 
   @Override
@@ -177,7 +177,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Validate service
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        EntityNameUtil.getFQN(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.add(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override

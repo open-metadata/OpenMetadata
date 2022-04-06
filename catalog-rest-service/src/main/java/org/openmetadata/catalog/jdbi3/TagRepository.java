@@ -28,9 +28,9 @@ import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
@@ -75,7 +75,7 @@ public class TagRepository {
     // Validate category
     EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
 
-    String primaryTagFQN = EntityNameUtil.getFQN(category, primaryTag);
+    String primaryTagFQN = FullyQualifiedName.add(category, primaryTag);
     EntityUtil.validate(primaryTag, dao.tagDAO().findTag(primaryTagFQN), Tag.class);
 
     return createTagInternal(primaryTagFQN, tag);
@@ -140,19 +140,19 @@ public class TagRepository {
       throws IOException {
     // Validate categoryName
     EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
-    String fqnPrefix = EntityNameUtil.getFQN(categoryName, primaryTag);
+    String fqnPrefix = FullyQualifiedName.add(categoryName, primaryTag);
     return updateTag(fqnPrefix, secondaryTag, updated);
   }
 
   private Tag updateTag(String fqnPrefix, String tagName, Tag updated) throws IOException {
     // Validate tag that needs to be updated exists
-    String originalFQN = EntityNameUtil.getFQN(fqnPrefix, tagName);
+    String originalFQN = FullyQualifiedName.add(fqnPrefix, tagName);
     Tag original = EntityUtil.validate(originalFQN, dao.tagDAO().findTag(originalFQN), Tag.class);
 
     if (!original.getName().equals(updated.getName())) {
       // Tag name changed
       LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-      String updatedFQN = EntityNameUtil.getFQN(fqnPrefix, updated.getName());
+      String updatedFQN = FullyQualifiedName.add(fqnPrefix, updated.getName());
       updateChildrenTagNames(originalFQN, updatedFQN);
       original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
     }
@@ -197,7 +197,7 @@ public class TagRepository {
     // First add the tag
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
-    tag.setFullyQualifiedName(EntityNameUtil.getFQN(parentFQN, tag.getName()));
+    tag.setFullyQualifiedName(FullyQualifiedName.add(parentFQN, tag.getName()));
     dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
     LOG.info("Added tag {}", tag.getFullyQualifiedName());
@@ -205,7 +205,7 @@ public class TagRepository {
     // Then add the children
     for (Tag children : listOrEmpty(tags)) {
       children.setChildren(null); // No children allowed for the leaf tag
-      children.setFullyQualifiedName(EntityNameUtil.getFQN(children.getFullyQualifiedName(), children.getName()));
+      children.setFullyQualifiedName(FullyQualifiedName.add(children.getFullyQualifiedName(), children.getName()));
       LOG.info("Added tag {}", children.getFullyQualifiedName());
       dao.tagDAO().insertTag(JsonUtils.pojoToJson(children));
     }

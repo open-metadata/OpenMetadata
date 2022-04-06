@@ -19,12 +19,12 @@
         "forceDeploy": {
           "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
           "type": "boolean",
-          "default": "false"
+          "default": false
         },
         "pausePipeline": {
           "description": "pause the pipeline from running once the deploy is finished successfully.",
           "type": "boolean",
-          "default": "false"
+          "default": false
         },
         "concurrency": {
           "description": "Concurrency of the Pipeline.",
@@ -61,7 +61,7 @@
         "pipelineCatchup": {
           "description": "Run past executions if the start date is in the past.",
           "type": "boolean",
-          "default": "false"
+          "default": false
         },
         "scheduleInterval": {
           "description": "Scheduler Interval for the pipeline in cron format.",

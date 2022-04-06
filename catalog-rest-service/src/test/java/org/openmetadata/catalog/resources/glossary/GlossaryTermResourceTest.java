@@ -55,8 +55,8 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -271,7 +271,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Validate fully qualified name
     String fqn = entity.getParent() == null ? entity.getGlossary().getName() : entity.getParent().getName();
-    fqn = EntityNameUtil.getFQN(fqn, entity.getName());
+    fqn = FullyQualifiedName.add(fqn, entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
 
     // Validate glossary that holds this term is present

@@ -21,13 +21,19 @@ from metadata.generated.schema.api.services.createDashboardService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
     DashboardService,
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaChartTest(TestCase):
@@ -38,7 +44,7 @@ class OMetaChartTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -51,7 +57,9 @@ class OMetaChartTest(TestCase):
     service = CreateDashboardServiceRequest(
         name="test-service-chart",
         serviceType=DashboardServiceType.Superset,
-        dashboardUrl="https://localhost:1000",
+        connection=DashboardConnection(
+            config=LookerConnection(url="https://localhost:1000")
+        ),
     )
     service_type = "dashboardService"
 
@@ -66,7 +74,7 @@ class OMetaChartTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-chart:test",
+            fullyQualifiedName="test-service-chart.test",
         )
 
         cls.create = CreateChartRequest(
@@ -79,11 +87,6 @@ class OMetaChartTest(TestCase):
         """
         Clean up
         """
-        _id = str(
-            cls.metadata.get_by_name(
-                entity=Chart, fqdn="test-service-chart:test"
-            ).id.__root__
-        )
 
         service_id = str(
             cls.metadata.get_by_name(
@@ -91,9 +94,11 @@ class OMetaChartTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Chart, entity_id=_id)
         cls.metadata.delete(
-            entity=DashboardService, entity_id=service_id, recursive=True
+            entity=DashboardService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

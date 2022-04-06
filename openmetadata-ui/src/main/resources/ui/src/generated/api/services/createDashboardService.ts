@@ -16,18 +16,11 @@
  * Create Dashboard service entity request
  */
 export interface CreateDashboardService {
-  /**
-   * Dashboard Service URL
-   */
-  dashboardUrl: string;
+  connection: DashboardConnection;
   /**
    * Description of dashboard service entity.
    */
   description?: string;
-  /**
-   * Schedule for running metadata ingestion jobs
-   */
-  ingestionSchedule?: Schedule;
   /**
    * Name that identifies the this entity instance uniquely
    */
@@ -36,32 +29,179 @@ export interface CreateDashboardService {
    * Owner of this dashboard service.
    */
   owner?: EntityReference;
-  /**
-   * Password to log-into Dashboard Service
-   */
-  password?: string;
   serviceType: DashboardServiceType;
-  /**
-   * Username to log-into Dashboard Service
-   */
-  username?: string;
 }
 
 /**
- * Schedule for running metadata ingestion jobs
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * Dashboard Connection.
  */
-export interface Schedule {
+export interface DashboardConnection {
+  config?: Connection;
+}
+
+/**
+ * Looker Connection Config
+ *
+ * Metabase Connection Config
+ *
+ * PowerBI Connection Config
+ *
+ * Redash Connection Config
+ *
+ * Superset Connection Config
+ *
+ * Tableau Connection Config
+ */
+export interface Connection {
   /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+   * Looker actor.
    */
-  repeatFrequency?: string;
+  actor?: string;
   /**
-   * Start date and time of the schedule.
+   * password to connect  to the Looker.
+   *
+   * password to connect  to the Metabase.
+   *
+   * password for the Superset
+   *
+   * password for the Tableau
    */
-  startDate?: Date;
+  password?: string;
+  /**
+   * Looker Platform Name
+   */
+  platformName?: string;
+  /**
+   * Supported Metadata Extraction Pipelines.
+   */
+  supportedPipelineTypes?: SupportedPipelineTypes;
+  /**
+   * Service Type
+   */
+  type?: DashboardServiceType;
+  /**
+   * URL to Looker instance.
+   */
+  url?: string;
+  /**
+   * username to connect  to the Looker. This user should have privileges to read all the
+   * metadata in Looker.
+   *
+   * username to connect  to the Metabase. This user should have privileges to read all the
+   * metadata in Metabase.
+   *
+   * username for the Redash
+   *
+   * username for the Superset
+   *
+   * username for the Tableau
+   */
+  username?: string;
+  /**
+   * Host and Port of Metabase instance.
+   */
+  hostPort?: string;
+  /**
+   * client_id for the PowerBI.
+   */
+  clientId?: string;
+  /**
+   * clientSecret for the PowerBI.
+   */
+  clientSecret?: string;
+  /**
+   * Credentials for the PowerBI.
+   */
+  credentials?: string;
+  /**
+   * Dashboard URL for the power BI.
+   */
+  dashboardURL?: string;
+  /**
+   * Dashboard redirect URI for the PowerBI.
+   */
+  redirectURI?: string;
+  /**
+   * PowerBI secrets.
+   */
+  scope?: string[];
+  /**
+   * API key of the redash instance to access.
+   */
+  apiKey?: string;
+  /**
+   * URL for the redash instance
+   */
+  redashURL?: string;
+  /**
+   * Additional connection options that can be sent to service during the connection.
+   */
+  connectionOptions?: { [key: string]: any };
+  /**
+   * authenticaiton provider for the Superset
+   */
+  provider?: string;
+  /**
+   * URL for the superset instance
+   */
+  supersetURL?: string;
+  /**
+   * Tableau API version
+   */
+  apiVersion?: string;
+  /**
+   * Personal Access Token Name
+   */
+  personalAccessTokenName?: string;
+  /**
+   * Personal Access Token Secret
+   */
+  personalAccessTokenSecret?: string;
+  /**
+   * Tableau Server
+   */
+  server?: string;
+  /**
+   * Tableau Site Name
+   */
+  siteName?: string;
+  /**
+   * Tableau Site URL
+   */
+  siteURL?: string;
+}
+
+/**
+ * Supported Metadata Extraction Pipelines.
+ */
+export enum SupportedPipelineTypes {
+  Metadata = 'Metadata',
+}
+
+/**
+ * Service Type
+ *
+ * Looker service type
+ *
+ * Metabase service type
+ *
+ * PowerBI service type
+ *
+ * Redash service type
+ *
+ * Superset service type
+ *
+ * Tableau service type
+ *
+ * Type of Dashboard service - Superset, Looker, Redash or Tableau.
+ */
+export enum DashboardServiceType {
+  Looker = 'Looker',
+  Metabase = 'Metabase',
+  PowerBI = 'PowerBI',
+  Redash = 'Redash',
+  Superset = 'Superset',
+  Tableau = 'Tableau',
 }
 
 /**
@@ -73,6 +213,10 @@ export interface Schedule {
  * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
@@ -99,16 +243,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Type of Dashboard service - Superset, Looker, Redash or Tableau.
- */
-export enum DashboardServiceType {
-  Looker = 'Looker',
-  Metabase = 'Metabase',
-  PowerBI = 'PowerBI',
-  Redash = 'Redash',
-  Superset = 'Superset',
-  Tableau = 'Tableau',
 }

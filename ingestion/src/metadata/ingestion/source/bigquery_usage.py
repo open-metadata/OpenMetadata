@@ -22,9 +22,11 @@ from google.cloud import logging
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end, ingest_lineage
@@ -68,9 +70,8 @@ class BigqueryUsageSource(Source[TableQuery]):
         return f"{self.scheme}://"
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = BigQueryConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

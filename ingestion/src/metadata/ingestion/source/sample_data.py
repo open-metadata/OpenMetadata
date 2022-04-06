@@ -31,6 +31,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
@@ -38,6 +39,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -53,7 +57,6 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import (
     get_dashboard_service_or_create,
     get_database_service_or_create,
@@ -185,7 +188,7 @@ class SampleDataSource(Source[Entity]):
     """
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: MetadataServerConfig
+        self, config: SampleDataSourceConfig, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SampleDataSourceStatus()
@@ -211,6 +214,9 @@ class SampleDataSource(Source[Entity]):
         self.glue_database = json.load(
             open(self.config.sample_data_folder + "/glue/database.json", "r")
         )
+        self.glue_database_schema = json.load(
+            open(self.config.sample_data_folder + "/glue/database_schema.json", "r")
+        )
         self.glue_tables = json.load(
             open(self.config.sample_data_folder + "/glue/tables.json", "r")
         )
@@ -227,6 +233,9 @@ class SampleDataSource(Source[Entity]):
         )
         self.database = json.load(
             open(self.config.sample_data_folder + "/datasets/database.json", "r")
+        )
+        self.database_schema = json.load(
+            open(self.config.sample_data_folder + "/datasets/database_schema.json", "r")
         )
         self.tables = json.load(
             open(self.config.sample_data_folder + "/datasets/tables.json", "r")
@@ -296,9 +305,9 @@ class SampleDataSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config):
         config = SampleDataSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config)
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -341,6 +350,16 @@ class SampleDataSource(Source[Entity]):
                 type=self.glue_database_service.serviceType.value,
             ),
         )
+        db_schema = DatabaseSchema(
+            id=uuid.uuid4(),
+            name=self.glue_database_schema["name"],
+            description=self.glue_database_schema["description"],
+            service=EntityReference(
+                id=self.glue_database_service.id,
+                type=self.glue_database_service.serviceType.value,
+            ),
+            database=EntityReference(id=db.id, type="database"),
+        )
         for table in self.glue_tables["tables"]:
             table["id"] = uuid.uuid4()
             parameters = table.get("Parameters")
@@ -363,7 +382,10 @@ class SampleDataSource(Source[Entity]):
                 ),
             )
             db_table_location = OMetaDatabaseAndTable(
-                database=db, table=table_metadata, location=location_metadata
+                database=db,
+                table=table_metadata,
+                location=location_metadata,
+                database_schema=db_schema,
             )
             self.status.scanned("table", table_metadata.name.__root__)
             yield db_table_location
@@ -376,6 +398,15 @@ class SampleDataSource(Source[Entity]):
             service=EntityReference(
                 id=self.database_service.id, type=self.config.service_type
             ),
+        )
+        schema = DatabaseSchema(
+            id=uuid.uuid4(),
+            name=self.database_schema["name"],
+            description=self.database_schema["description"],
+            service=EntityReference(
+                id=self.database_service.id, type=self.config.service_type
+            ),
+            database=EntityReference(id=db.id, type="database"),
         )
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
@@ -395,7 +426,9 @@ class SampleDataSource(Source[Entity]):
                 logger.debug(traceback.print_exc())
                 logger.debug(err)
             table_metadata = Table(**table)
-            table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
+            table_and_db = OMetaDatabaseAndTable(
+                table=table_metadata, database=db, database_schema=schema
+            )
             self.status.scanned("table", table_metadata.name.__root__)
             yield table_and_db
 
