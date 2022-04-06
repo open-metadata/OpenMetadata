@@ -45,7 +45,6 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.catalog.api.services.ingestionPipelines.SourceConfig;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -55,8 +54,9 @@ import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceQueryUsagePipeline;
+import org.openmetadata.catalog.metadataIngestion.FilterPattern;
 import org.openmetadata.catalog.metadataIngestion.MessagingServiceMetadataPipeline;
-import org.openmetadata.catalog.metadataingestion.FilterPattern;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
@@ -370,7 +370,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(SUPERSET_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.build(SUPERSET_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -424,7 +424,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(KAFKA_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.build(KAFKA_REFERENCE.getName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());

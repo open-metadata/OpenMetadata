@@ -113,6 +113,7 @@
     },
     "sourceConfig": {
       "description": "Additional connection configuration.",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
       "type": "object",
       "properties": {
         "config": {
@@ -275,7 +276,7 @@
       "additionalProperties": false
     }
   },
-  "anyOf": [
+  "oneOf": [
     {
       "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
     },
