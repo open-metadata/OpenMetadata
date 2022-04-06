@@ -10,12 +10,9 @@ const mockInitialData = {
   name: '',
 };
 
-jest.mock(
-  '../../components/common/rich-text-editor/MarkdownWithPreview',
-  () => {
-    return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
-  }
-);
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () => {
+  return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
+});
 
 describe('Test TagsPage form component', () => {
   it('Form component should render properly', async () => {
