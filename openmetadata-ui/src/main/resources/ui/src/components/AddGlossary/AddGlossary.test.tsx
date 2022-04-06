@@ -28,6 +28,10 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

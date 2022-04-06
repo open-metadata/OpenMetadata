@@ -31,6 +31,10 @@ const tagsWithTerm = [
   { tagFQN: `tags:term`, source: 'Glossary' },
 ];
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 describe('Test TagsViewer Component', () => {
   it('Component should render', () => {
     const { container } = render(<TagsViewer sizeCap={-1} tags={tags} />);
