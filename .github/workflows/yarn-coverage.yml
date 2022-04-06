@@ -23,6 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        ref: ${{ github.event.pull_request.head.sha }}
         # Disabling shallow clone is recommended for improving relevancy of reporting
         fetch-depth: 0
     - name: Use Node.js ${{ matrix.node-version }}
