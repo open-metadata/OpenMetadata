@@ -11,8 +11,6 @@
 
 from collections import namedtuple
 
-import psycopg2
-
 # This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -41,7 +39,7 @@ class PostgresConfig(SQLConnectionConfig):
 class PostgresSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
-        self.pgconn = self.engine.raw_connection()
+        self.pgconn = None
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -53,6 +51,8 @@ class PostgresSource(SQLSource):
         return self.status
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):
+        if not self.pgconn:
+            self.pgconn = self.engine.raw_connection()
         cur = self.pgconn.cursor()
         schema_table = table_name.split(".")
         cur.execute(

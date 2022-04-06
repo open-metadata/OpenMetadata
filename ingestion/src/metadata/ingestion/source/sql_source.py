@@ -91,7 +91,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             **self.sql_config.options,
             connect_args=self.sql_config.connect_args,
         )
-        self.connection = self.engine.connect()
+        self.connection = None
         self.data_profiler = None
         self.data_models = {}
         self.database_source_state = set()
@@ -149,6 +149,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         to the Table Entities
         """
         try:
+            if not self.connection:
+                self.connection = self.engine.connect()
             query = self.config.query.format(schema, table)
             logger.info(query)
             results = self.connection.execute(query)
