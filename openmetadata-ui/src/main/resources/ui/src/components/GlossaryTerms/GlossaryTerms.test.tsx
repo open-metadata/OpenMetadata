@@ -54,6 +54,10 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
     ));
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 const mockProps = {
   assetData: mockedAssetData,
   isHasAccess: true,
