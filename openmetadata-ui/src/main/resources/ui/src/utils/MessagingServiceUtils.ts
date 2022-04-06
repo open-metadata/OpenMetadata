@@ -20,7 +20,7 @@ import {
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
 
-  // TODO: Change it to switch case if more than 1 conditions arise
+  // Change it to switch case if more than 1 conditions arise
   if (config?.type === MessagingServiceType.Kafka) {
     retVal = config.bootstrapServers;
   }
