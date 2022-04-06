@@ -470,7 +470,7 @@ public class TagResource {
   @Path("/{id}")
   @Operation(
       summary = "Delete tag category",
-      tags = "tables",
+      tags = "tags",
       description = "Delete a tag category and all the tags under it.")
   public TagCategory deleteCategory(
       @Context UriInfo uriInfo,
@@ -484,7 +484,7 @@ public class TagResource {
 
   @DELETE
   @Path("/{category}/{id}")
-  @Operation(summary = "Delete tag", tags = "tables", description = "Delete a tag and all the tags under it.")
+  @Operation(summary = "Delete tag", tags = "tags", description = "Delete a tag and all the tags under it.")
   public Tag deleteTags(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
