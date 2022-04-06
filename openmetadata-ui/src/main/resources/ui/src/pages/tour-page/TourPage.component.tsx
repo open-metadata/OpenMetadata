@@ -38,6 +38,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
@@ -130,8 +131,11 @@ const TourPage = () => {
             fetchData={() => {
               setMyDataSearchResult(mockFeedData);
             }}
+            fetchFeedHandler={handleOnClick}
             followedData={[]}
+            isFeedLoading={false}
             ownedData={[]}
+            paging={{} as Paging}
             postFeedHandler={handleOnClick}
             userDetails={AppState.userDetails}
           />

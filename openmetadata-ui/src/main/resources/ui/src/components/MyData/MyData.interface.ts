@@ -18,6 +18,7 @@ import {
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 
 export interface MyDataProps {
   error: string;
@@ -31,9 +32,11 @@ export interface MyDataProps {
   followedData: Array<FormatedTableData>;
   feedData: EntityThread[];
   feedFilter: FeedFilter;
+  paging: Paging;
+  isFeedLoading: boolean;
   feedFilterHandler: (v: FeedFilter) => void;
+  fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
-  isFeedLoading?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
 }
