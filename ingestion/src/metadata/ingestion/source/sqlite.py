@@ -20,7 +20,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 
@@ -31,7 +33,7 @@ class SqliteSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config: SourceConfig = SourceConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection = config.serviceConnection.__root__.config
         if not isinstance(connection, SQLiteConnection):
             raise InvalidSourceException(

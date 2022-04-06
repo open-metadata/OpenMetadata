@@ -219,7 +219,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_schema_and_table.table.tableQueries is not None:
                 self.metadata.ingest_table_queries_data(
                     table=created_table,
-                    table_queries=db_schema_and_table.table.tableQueries,
+                    table_queries=db_schema_and_table.table.dict().get("tableQueries"),
                 )
 
             logger.info(

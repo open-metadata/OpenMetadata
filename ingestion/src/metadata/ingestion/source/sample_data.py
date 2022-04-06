@@ -307,6 +307,7 @@ class SampleDataSource(Source[Entity]):
     @classmethod
     def create(cls, config_dict, metadata_config):
         config = SampleDataSourceConfig.parse_obj(config_dict)
+        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config)
         return cls(config, metadata_config)
 
     def prepare(self):

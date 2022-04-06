@@ -11,6 +11,7 @@
 """
 Generic source to build SQL connectors.
 """
+import copy
 import json
 import logging
 import re
@@ -39,10 +40,15 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
@@ -82,28 +88,40 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def __init__(
         self,
-        config: SourceConfig,
+        config: WorkflowSource,
         metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
+
         self.config = config
+
+        # It will be one of the Unions. We don't know the specific type here.
+        self.service_connection = self.config.serviceConnection.__root__.config
+
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
+
         self.metadata_config = metadata_config
         self.service = get_database_service_or_create(config, metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
-        self.sql_config = self.config
-        self.engine = get_engine(config=self.sql_config)
+        self.engine = get_engine(config=self.config)
         self._session = None  # We will instantiate this just if needed
         self.connection = self.engine.connect()
         self.data_profiler = None
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        if self.config.dbt_catalog_file is not None:
-            with open(self.config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
+        if self.source_config.dbtCatalogFilePath:
+            with open(
+                self.source_config.dbtCatalogFilePath, "r", encoding="utf-8"
+            ) as catalog:
                 self.dbt_catalog = json.load(catalog)
-        if self.config.dbt_manifest_file is not None:
-            with open(self.config.dbt_manifest_file, "r", encoding="utf-8") as manifest:
+        if self.source_config.dbtManifestFilePath:
+            with open(
+                self.source_config.dbtManifestFilePath, "r", encoding="utf-8"
+            ) as manifest:
                 self.dbt_manifest = json.load(manifest)
         self.profile_date = datetime.now()
 
@@ -129,7 +147,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.error(
                 f"Profiling not available for this databaseService: {str(err)}"
             )
-            self.config.data_profiler_enabled = False
+            self.source_config.enableDataProfiler = False
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.print_exc())
@@ -164,7 +182,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         to the Table Entities
         """
         try:
-            query = self.config.query.format(schema, table)
+            query = self.source_config.sampleDataQuery.format(schema, table)
             logger.info(query)
             results = self.connection.execute(query)
             cols = []
@@ -191,18 +209,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         inspectors = self.get_databases()
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
+            print(schema_names)
             for schema in schema_names:
                 # clear any previous source database state
                 self.database_source_state.clear()
-                if not self.sql_config.schema_filter_pattern.included(schema):
+                if (
+                    self.source_config.schemaFilterPattern
+                    and schema not in self.source_config.schemaFilterPattern.includes
+                ):
                     self.status.filter(schema, "Schema pattern not allowed")
                     continue
-                if self.config.include_tables:
-                    yield from self.fetch_tables(inspector, schema)
-                if self.config.include_views:
+                if self.source_config.includeViews:
                     yield from self.fetch_views(inspector, schema)
-                if self.config.mark_deleted_tables_as_deleted:
-                    schema_fqdn = f"{self.config.service_name}.{schema}"
+                if self.source_config.markDeletedTables:
+                    schema_fqdn = f"{self.config.serviceName}.{schema}"
                     yield from self.delete_tables(schema_fqdn)
 
     def fetch_tables(
@@ -218,20 +238,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
                 )
-                if not self.sql_config.table_filter_pattern.included(table_name):
+                if (
+                    self.source_config.tableFilterPattern
+                    and table_name not in self.source_config.tableFilterPattern.includes
+                ):
                     self.status.filter(
-                        f"{self.config.get_service_name()}.{table_name}",
+                        f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
                     )
                     continue
                 if self._is_partition(table_name, schema, inspector):
                     self.status.filter(
-                        f"{self.config.get_service_name()}.{table_name}",
+                        f"{self.config.serviceName}.{table_name}",
                         "Table is partition",
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = self.get_table_fqn(self.config.service_name, schema, table_name)
+                fqn = self.get_table_fqn(self.config.serviceName, schema, table_name)
                 self.database_source_state.add(fqn)
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
@@ -240,13 +263,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     name=table_name,
                     tableType="Regular",
                     description=description if description is not None else " ",
-                    fullyQualifiedName=fqn,
                     columns=table_columns,
                 )
                 if self.table_constraints:
                     table_entity.tableConstraints = self.table_constraints
                 try:
-                    if self.sql_config.generate_sample_data:
+                    if self.source_config.generateSampleData:
                         table_data = self.fetch_sample_data(schema, table_name)
                         if table_data:
                             table_entity.sampleData = table_data
@@ -256,7 +278,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(err)
 
                 try:
-                    if self.config.data_profiler_enabled:
+                    if self.source_config.enableDataProfiler:
                         profile = self.run_profiler(table=table_entity, schema=schema)
                         table_entity.tableProfile = [profile] if profile else None
                 # Catch any errors during the profile runner and continue
@@ -265,21 +287,19 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 # check if we have any model to associate with
                 table_entity.dataModel = self._get_data_model(schema, table_name)
-                database = self._get_database(self.config.database)
+                database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
                 yield table_schema_and_db
-                self.status.scanned(
-                    "{}.{}".format(self.config.get_service_name(), table_name)
-                )
+                self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
                 self.status.failures.append(
-                    "{}.{}".format(self.config.service_name, table_name)
+                    "{}.{}".format(self.config.serviceName, table_name)
                 )
                 continue
 
@@ -292,20 +312,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         for view_name in inspector.get_view_names(schema):
             try:
-                if self.config.scheme == "bigquery":
+                if self.service_connection.scheme == "bigquery":
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
-                if not self.sql_config.table_filter_pattern.included(view_name):
+                if (
+                    self.source_config.tableFilterPattern
+                    and view_name not in self.source_config.tableFilterPattern.includes
+                ):
                     self.status.filter(
-                        f"{self.config.get_service_name()}.{view_name}",
+                        f"{self.config.serviceName}.{view_name}",
                         "View pattern not allowed",
                     )
                     continue
                 try:
-                    if self.config.scheme == "bigquery":
+                    if self.service_connection.scheme == "bigquery":
                         view_definition = inspector.get_view_definition(
-                            f"{self.config.project_id}.{schema}.{view_name}"
+                            f"{self.service_connection.projectId}.{schema}.{view_name}"
                         )
                     else:
                         view_definition = inspector.get_view_definition(
@@ -316,7 +339,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = self.get_table_fqn(self.config.service_name, schema, view_name)
+                fqn = self.get_table_fqn(self.config.serviceName, schema, view_name)
                 self.database_source_state.add(fqn)
                 table = Table(
                     id=uuid.uuid4(),
@@ -325,7 +348,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     description=_get_table_description(schema, view_name, inspector)
                     or "",
                     # This will be generated in the backend!! #1673
-                    fullyQualifiedName=view_name,
                     columns=self._get_columns(schema, view_name, inspector),
                     viewDefinition=view_definition,
                 )
@@ -334,16 +356,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         "sql": table.viewDefinition.__root__,
                         "from_type": "table",
                         "to_type": "table",
-                        "service_name": self.config.service_name,
+                        "service_name": self.config.serviceName,
                     }
                     ingest_lineage(
                         query_info=query_info, metadata_config=self.metadata_config
                     )
-                if self.sql_config.generate_sample_data:
+                if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
-                table.dataModel = self._get_data_model(schema, view_name)
-                database = self._get_database(self.config.database)
+                # table.dataModel = self._get_data_model(schema, view_name)
+                database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
                     database=database,
@@ -353,7 +375,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(err)
-                self.status.warnings.append(f"{self.config.service_name}.{view_name}")
+                self.status.warnings.append(f"{self.config.serviceName}.{view_name}")
                 continue
 
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
@@ -370,7 +392,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Get all the DBT information and feed it to the Table Entity
         """
-        if self.config.dbt_manifest_file and self.config.dbt_catalog_file:
+        if (
+            self.source_config.dbtManifestFilePath
+            and self.source_config.dbtCatalogFilePath
+        ):
             logger.info("Parsing Data Models")
             manifest_entities = {
                 **self.dbt_manifest["nodes"],
@@ -421,7 +446,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 try:
                     _, database, table = node.split(".", 2)
                     table_fqn = self.get_table_fqn(
-                        self.config.service_name, database, table
+                        self.config.serviceName, database, table
                     ).lower()
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
@@ -471,14 +496,18 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def _get_database(self, database: str) -> Database:
         return Database(
             name=database,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
         )
 
     def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:
         return DatabaseSchema(
             name=schema,
             database=database.service,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
         )
 
     @staticmethod

@@ -13,6 +13,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
+from urllib.parse import quote_plus
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -36,7 +37,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -62,7 +65,7 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(
-    config: SourceConfig, metadata_config, service_name=None
+    config: WorkflowSource, metadata_config, service_name=None
 ) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
     if not service_name:
@@ -70,47 +73,44 @@ def get_database_service_or_create(
     service: DatabaseService = metadata.get_by_name(
         entity=DatabaseService, fqdn=service_name
     )
-    if service:
-        return service
-    else:
+    if not service:
+        config_dict = config.dict()
+        service_connection_config = config_dict.get("serviceConnection").get("config")
         password = (
-            config.password.get_secret_value()
-            if hasattr(config, "password") and config.password
+            service_connection_config.get("password").get_secret_value()
+            if service_connection_config and service_connection_config.get("password")
             else None
         )
 
         # Use a JSON to dynamically parse the pydantic model
         # based on the serviceType
+        # TODO revisit me
         service_json = {
             "connection": {
                 "config": {
-                    "hostPort": config.host_port
-                    if hasattr(config, "host_port")
-                    else None,
-                    "username": config.username
-                    if hasattr(config, "username")
-                    else None,
+                    "hostPort": service_connection_config.get("hostPort"),
+                    "username": service_connection_config.get("username"),
                     "password": password,
-                    "database": config.database
-                    if hasattr(config, "database")
-                    else None,
-                    "connectionOptions": config.options
-                    if hasattr(config, "options")
-                    else None,
-                    "connectionArguments": config.connect_args
-                    if hasattr(config, "connect_args")
-                    else None,
+                    "database": service_connection_config.get("database"),
+                    "connectionOptions": service_connection_config.get(
+                        "connectionOptions"
+                    ),
+                    "connectionArguments": service_connection_config.get(
+                        "connectionArguments"
+                    ),
                 }
             },
             "name": service_name,
             "description": "",
-            "serviceType": config.service_type,
+            "serviceType": service_connection_config.get("type").value,
         }
+
         created_service: DatabaseService = metadata.create_or_update(
             CreateDatabaseServiceRequest(**service_json)
         )
         logger.info(f"Creating DatabaseService instance for {service_name}")
         return created_service
+    return service
 
 
 def get_messaging_service_or_create(

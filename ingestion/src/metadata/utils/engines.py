@@ -19,22 +19,30 @@ from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
-from metadata.generated.schema.metadataIngestion.workflow import Source as SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.utils.source_connections import get_connection_url
 
 logger = logging.getLogger("Utils")
 
 
-# TODO: fix this and use the singledispatch to build the URL instead of get_connection_url
-def get_engine(config: SourceConfig, verbose: bool = False) -> Engine:
+def get_engine(config: WorkflowSource, verbose: bool = False) -> Engine:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
     logger.info(f"Building Engine for {config.serviceName}...")
-
+    service_connection_config = config.serviceConnection.__root__.config
+    options = service_connection_config.connectionOptions
+    if not options:
+        options = {}
+    connect_args = service_connection_config.connectionArguments
+    if not connect_args:
+        connect_args = {}
     engine = create_engine(
-        config.get_connection_url(),
-        **config.options,
-        connect_args=config.connect_args,
+        get_connection_url(config.serviceConnection.__root__.config),
+        **options,
+        connect_args=connect_args,
         echo=verbose,
     )
 
