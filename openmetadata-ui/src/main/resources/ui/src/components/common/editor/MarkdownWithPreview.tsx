@@ -20,10 +20,9 @@ import React, {
 } from 'react';
 import RichTextEditor from '../rich-text-editor/RichTextEditor';
 import { editorRef } from '../rich-text-editor/RichTextEditor.interface';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type EditorContentRef = {
-  getEditorContent: (value: string) => string;
+  getEditorContent: () => string;
 };
 
 type Props = {
@@ -32,43 +31,14 @@ type Props = {
 };
 
 const MarkdownWithPreview = forwardRef<editorRef, Props>(
-  ({ value, readonly }: Props, ref) => {
-    const [activeTab, setActiveTab] = useState<number>(1);
-    const [preview, setPreview] = useState<string>('');
+  ({ value }: Props, ref) => {
     const [initValue, setInitValue] = useState<string>(value ?? '');
 
     const editorRef = useRef<EditorContentRef>();
-    const getTabClasses = (tab: number, activeTab: number) => {
-      return (
-        'tw-gh-tabs tw-cursor-pointer' + (activeTab === tab ? ' active' : '')
-      );
-    };
-
-    const updateInternalValue = () => {
-      if (editorRef.current) {
-        setInitValue(editorRef.current?.getEditorContent('markdown'));
-        setPreview(editorRef.current?.getEditorContent('markdown'));
-      }
-    };
-
-    const getPreview = () => {
-      if (preview.length < 1) {
-        return 'Nothing to preview';
-      }
-
-      return (
-        <RichTextEditorPreviewer
-          enableSeeMoreVariant={false}
-          markdown={preview}
-        />
-      );
-    };
 
     useImperativeHandle(ref, () => ({
       getEditorContent() {
-        return activeTab === 2
-          ? initValue
-          : editorRef.current?.getEditorContent('markdown');
+        return editorRef.current?.getEditorContent();
       },
     }));
 
@@ -78,43 +48,8 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
 
     return (
       <div>
-        <div className="tw-bg-transparent">
-          <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-6">
-            <p
-              className={getTabClasses(1, activeTab)}
-              data-testid="tab"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab(1);
-              }}>
-              {'Write '}
-            </p>
-            <p
-              className={getTabClasses(2, activeTab)}
-              data-testid="tab"
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab(2);
-                updateInternalValue();
-              }}>
-              {'View '}
-            </p>
-          </nav>
-        </div>
         <div className="tw-my-5 tw-bg-white">
-          {activeTab === 1 && (
-            <RichTextEditor
-              format="markdown"
-              initvalue={initValue}
-              readonly={readonly}
-              ref={editorRef}
-            />
-          )}
-          {activeTab === 2 && (
-            <div className="editor-wrapper tw-flex tw-flex-col tw-flex-1 tw-overflow-y-auto tw-p-3 tw-pl-6 tw-min-h-32 tw-border tw-border-main tw-rounded tw-max-h-none">
-              {getPreview()}
-            </div>
-          )}
+          <RichTextEditor initialValue={initValue} ref={editorRef} />
         </div>
       </div>
     );

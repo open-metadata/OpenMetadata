@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Attributes, HtmlHTMLAttributes, ReactNode } from 'react';
+import {
+  Attributes,
+  HTMLAttributes,
+  HtmlHTMLAttributes,
+  ReactNode,
+} from 'react';
 
 export type editorRef = ReactNode | HTMLElement | string;
 export enum Format {
@@ -31,4 +36,19 @@ export type EditorProp = {
 export interface ElementProp extends HtmlHTMLAttributes<any>, Attributes {
   class: string;
   className: string;
+}
+
+export type PreviewStyle = 'tab' | 'vertical';
+
+export type EditorType = 'markdown' | 'wysiwyg';
+
+export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
+  initialValue: string;
+  placeHolder?: string;
+  previewStyle?: PreviewStyle;
+  editorType?: EditorType;
+  previewHighlight?: boolean;
+  extendedAutolinks?: boolean;
+  hideModeSwitch?: boolean;
+  useCommandShortcut?: boolean;
 }
