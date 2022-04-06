@@ -49,4 +49,5 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   extendedAutolinks?: boolean;
   hideModeSwitch?: boolean;
   useCommandShortcut?: boolean;
+  readonly?: boolean;
 }
