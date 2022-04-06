@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Attributes, HtmlHTMLAttributes, ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 export type editorRef = ReactNode | HTMLElement | string;
 export enum Format {
@@ -27,8 +27,11 @@ export type EditorProp = {
   customOptions?: ReactNode[];
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ElementProp extends HtmlHTMLAttributes<any>, Attributes {
-  class: string;
-  className: string;
+export interface PreviewerProp {
+  markdown: string;
+  className?: string;
+  blurClasses?: string;
+  maxHtClass?: string;
+  maxLen?: number;
+  enableSeeMoreVariant?: boolean;
 }

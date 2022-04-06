@@ -16,6 +16,7 @@ import logging
 import re
 import traceback
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -56,7 +57,6 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source_common import SQLSourceStatus
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -64,6 +64,26 @@ from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SQLSourceStatus(SourceStatus):
+    """
+    Reports the source status after ingestion
+    """
+
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
+
+    def scanned(self, record: str) -> None:
+        self.success.append(record)
+        logger.info(f"Table Scanned: {record}")
+
+    def filter(self, record: str, err: str) -> None:
+        self.filtered.append(record)
+        logger.warning(f"Filtered Table {record} due to {err}")
 
 
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
@@ -105,7 +125,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.service = get_database_service_or_create(config, metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
-        self.engine = get_engine(config=self.config)
+        self.engine = get_engine(workflow_source=self.config)
         self._session = None  # We will instantiate this just if needed
         self.connection = self.engine.connect()
         self.data_profiler = None

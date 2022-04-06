@@ -17,8 +17,9 @@ import json
 import logging
 import sys
 import traceback
-from typing import List
+from typing import List, Tuple
 
+import requests
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -30,6 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Auth0SSOConfig,
+    CustomOidcSSOConfig,
     GoogleSSOConfig,
     OktaSSOConfig,
     OpenMetadataServerConfig,
@@ -321,5 +323,53 @@ class AzureAuthenticationProvider(AuthenticationProvider):
             sys.exit(1)
 
     def get_access_token(self):
+        self.auth_token()
+        return self.generated_auth_token, self.expiry
+
+
+class CustomOIDCAuthenticationProvider(AuthenticationProvider):
+    """
+    Custom OIDC authentication implementation
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
+    def __init__(self, config: OpenMetadataServerConfig) -> None:
+        self.config = config
+        self.security_config: CustomOidcSSOConfig = self.config.securityConfig
+
+        self.generated_auth_token = None
+        self.expiry = None
+
+    @classmethod
+    def create(
+        cls, config: OpenMetadataServerConfig
+    ) -> "CustomOIDCAuthenticationProvider":
+        return cls(config)
+
+    def auth_token(self) -> None:
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": self.security_config.clientId,
+            "client_secret": self.security_config.secretKey,
+        }
+        response = requests.post(
+            url=self.security_config.tokenEndpoint,
+            data=data,
+        )
+        if response.ok:
+            response_json = response.json()
+            self.generated_auth_token = response_json["access_token"]
+            self.expiry = response_json["expires_in"]
+        else:
+            raise APIError(
+                error={"message": response.text}, http_error=response.status_code
+            )
+
+    def get_access_token(self) -> Tuple[str, int]:
         self.auth_token()
         return self.generated_auth_token, self.expiry
