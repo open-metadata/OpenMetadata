@@ -39,6 +39,6 @@ class MssqlSource(SQLSource):
         connection: MssqlConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
-                f"Expected SQLiteConnection, but got {connection}"
+                f"Expected MssqlConnection, but got {connection}"
             )
         return cls(config, metadata_config)
