@@ -228,13 +228,13 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (feedFilter: FeedFilter, after?: string) => {
+  const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
     const currentUserId = AppState.userDetails?.id;
-    getFeedsWithFilter(currentUserId, feedFilter, after)
+    getFeedsWithFilter(currentUserId, filterType, after)
       .then((res: AxiosResponse) => {
-        const { data, paging } = res.data;
-        setPaging(paging);
+        const { data, paging: pagingObj } = res.data;
+        setPaging(pagingObj);
 
         setEntityThread((prevData) => [...prevData, ...data]);
       })

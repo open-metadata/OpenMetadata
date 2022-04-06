@@ -173,6 +173,10 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData]);
 
+  const getLoader = () => {
+    return isFeedLoading ? <Loader /> : null;
+  };
+
   const fetchMoreFeed = (
     isElementInView: boolean,
     pagingObj: Paging,
@@ -220,7 +224,7 @@ const MyData: React.FC<MyDataProps> = ({
             data-testid="observer-element"
             id="observer-element"
             ref={elementRef as RefObject<HTMLDivElement>}>
-            {isFeedLoading ? <Loader /> : null}
+            {getLoader()}
           </div>
         </Fragment>
       )}
