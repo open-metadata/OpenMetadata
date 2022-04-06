@@ -295,14 +295,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/filterBased";
 
     // Create webhook with endpoint api/v1/test/webhook/entityCreated/<entity> to receive entityCreated events
-    String name = EventType.ENTITY_CREATED + ":" + entity;
+    String name = EventType.ENTITY_CREATED + "_" + entity;
     String uri = baseUri + "/" + EventType.ENTITY_CREATED + "/" + entity;
     List<EventFilter> filters =
         List.of(new EventFilter().withEventType(EventType.ENTITY_CREATED).withEntities(List.of(entity)));
     createWebhook(name, uri, filters);
 
     // Create webhook with endpoint api/v1/test/webhook/entityUpdated/<entity> to receive entityUpdated events
-    name = EventType.ENTITY_UPDATED + ":" + entity;
+    name = EventType.ENTITY_UPDATED + "_" + entity;
     uri = baseUri + "/" + EventType.ENTITY_UPDATED + "/" + entity;
     filters = List.of(new EventFilter().withEventType(EventType.ENTITY_UPDATED).withEntities(List.of(entity)));
     createWebhook(name, uri, filters);
