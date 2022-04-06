@@ -383,7 +383,6 @@ public class TagResourceTest extends CatalogApplicationTest {
 
     // Ensure PUT returns the updated tag category
     TagCategory tagCategory = TestUtils.put(target, update, TagCategory.class, Status.OK, authHeaders);
-    System.out.println("XXX " + JsonUtils.pojoToJson(tagCategory, true));
     validate(tagCategory, update.getCategoryType(), update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated tag category

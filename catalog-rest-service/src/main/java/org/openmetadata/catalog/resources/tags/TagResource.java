@@ -86,10 +86,10 @@ public class TagResource {
     }
   }
 
-  public TagResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "TagRepository must not be null");
-    this.dao = new TagRepository(dao);
-    this.daoCategory = new TagCategoryRepository(dao);
+  public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
+    this.dao = new TagRepository(collectionDAO);
+    this.daoCategory = new TagCategoryRepository(collectionDAO, dao);
     this.authorizer = authorizer;
   }
 
@@ -222,7 +222,7 @@ public class TagResource {
       throws IOException {
     String fqn = FullyQualifiedName.add(category, primaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Tag tag = dao.getTag(category, fqn, fields);
+    Tag tag = dao.getByName(uriInfo, fqn, fields, Include.ALL);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     return addHref(categoryHref, tag);
   }
@@ -269,7 +269,7 @@ public class TagResource {
       throws IOException {
     String fqn = FullyQualifiedName.build(category, primaryTag, secondaryTag);
     Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Tag tag = dao.getTag(category, fqn, fields);
+    Tag tag = dao.getByName(uriInfo, fqn, fields, Include.ALL);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);
     return addHref(categoryHref, tag);
   }
@@ -319,9 +319,9 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag = getTag(securityContext, create);
+    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    tag = addHref(categoryHref, dao.createPrimaryTag(category, tag));
+    tag = addHref(categoryHref, dao.create(uriInfo, tag));
     return Response.created(tag.getHref()).entity(tag).build();
   }
 
@@ -354,10 +354,10 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag = getTag(securityContext, create);
+    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    tag = addHref(parentHRef, dao.createSecondaryTag(category, primaryTag, tag));
+    tag = addHref(parentHRef, dao.create(uriInfo, tag));
     return Response.created(tag.getHref()).entity(tag).build();
   }
 
@@ -408,9 +408,15 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag = getTag(securityContext, create);
+    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    tag = addHref(categoryHref, dao.updatePrimaryTag(categoryName, primaryTag, tag));
+
+    if (primaryTag.equals(create.getName())) { // Not changing the name
+      tag = addHref(categoryHref, dao.createOrUpdate(uriInfo, tag).getEntity());
+    } else {
+      Tag origTag = getTag(securityContext, create, FullyQualifiedName.build(categoryName)).withName(primaryTag);
+      tag = addHref(categoryHref, dao.createOrUpdate(uriInfo, origTag, tag).getEntity());
+    }
     return Response.ok(tag).build();
   }
 
@@ -444,10 +450,18 @@ public class TagResource {
       @Valid CreateTag create)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    Tag tag = getTag(securityContext, create);
+    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    tag = addHref(parentHRef, dao.updateSecondaryTag(categoryName, primaryTag, secondaryTag, tag));
+
+    // TODO clean this up
+    if (secondaryTag.equals(create.getName())) { // Not changing the name
+      tag = addHref(parentHRef, dao.createOrUpdate(uriInfo, tag).getEntity());
+    } else {
+      Tag origTag =
+          getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag)).withName(secondaryTag);
+      tag = addHref(parentHRef, dao.createOrUpdate(uriInfo, origTag, tag).getEntity());
+    }
     return Response.ok(tag).build();
   }
 
@@ -479,10 +493,11 @@ public class TagResource {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  private Tag getTag(SecurityContext securityContext, CreateTag create) {
+  private Tag getTag(SecurityContext securityContext, CreateTag create, String parentFQN) {
     return new Tag()
         .withId(UUID.randomUUID())
         .withName(create.getName())
+        .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withDescription(create.getDescription())
         .withAssociatedTags(create.getAssociatedTags())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

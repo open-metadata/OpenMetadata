@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.util;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -15,6 +14,18 @@ class FullyQualifiedNameTest {
     FQNTest(String[] parts, String fqn) {
       this.parts = parts;
       this.fqn = fqn;
+    }
+
+    public void validate(String[] actualParts, String actualFQN) {
+      assertEquals(fqn, actualFQN);
+      assertEquals(parts.length, actualParts.length);
+      for (int i = 0; i < parts.length; i++) {
+        if (parts[i].contains(".")) {
+          assertEquals(FullyQualifiedName.quoteName(parts[i]), actualParts[i]);
+        } else {
+          assertEquals(parts[i], actualParts[i]);
+        }
+      }
     }
   }
 
@@ -31,8 +42,9 @@ class FullyQualifiedNameTest {
             new FQNTest(new String[] {"a.1", "b.2", "c.3", "d"}, "\"a.1\".\"b.2\".\"c.3\".d"),
             new FQNTest(new String[] {"a.1", "b.2", "c.3", "d.4"}, "\"a.1\".\"b.2\".\"c.3\".\"d.4\""));
     for (FQNTest test : list) {
-      assertArrayEquals(test.parts, FullyQualifiedName.split(test.fqn));
-      assertEquals(test.fqn, FullyQualifiedName.build(test.parts));
+      String[] actualParts = FullyQualifiedName.split(test.fqn);
+      String actualFqn = FullyQualifiedName.build(test.parts);
+      test.validate(actualParts, actualFqn);
     }
   }
 

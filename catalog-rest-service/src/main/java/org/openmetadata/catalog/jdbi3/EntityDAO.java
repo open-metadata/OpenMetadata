@@ -89,6 +89,9 @@ public interface EntityDAO<T> {
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumn> = :fqn)")
+  boolean existsByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqn") String fqn);
+
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
 
@@ -185,8 +188,18 @@ public interface EntityDAO<T> {
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 
-  default boolean exists(UUID id) {
-    return exists(getTableName(), id.toString());
+  default void exists(UUID id) {
+    if (!exists(getTableName(), id.toString())) {
+      String entityType = Entity.getEntityTypeFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+  }
+
+  default void existsByName(String fqn) {
+    if (!existsByName(getTableName(), getNameColumn(), fqn)) {
+      String entityType = Entity.getEntityTypeFromClass(getEntityClass());
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    }
   }
 
   default int delete(String id) {

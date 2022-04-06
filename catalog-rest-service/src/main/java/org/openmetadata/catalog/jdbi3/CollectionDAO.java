@@ -55,7 +55,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
@@ -116,10 +116,10 @@ public interface CollectionDAO {
   TeamDAO teamDAO();
 
   @CreateSqlObject
-  TagDAO tagDAO();
+  TagUsageDAO tagUsageDAO();
 
   @CreateSqlObject
-  TagDAO1 tagDAO1();
+  TagDAO tagDAO();
 
   @CreateSqlObject
   TagCategoryDAO tagCategoryDAO();
@@ -1228,11 +1228,11 @@ public interface CollectionDAO {
 
     @Override
     default EntityReference getEntityReference(TagCategory entity) {
-      return null; // TODO fix
+      return null;
     }
   }
 
-  interface TagDAO1 extends EntityDAO<Tag> {
+  interface TagDAO extends EntityDAO<Tag> {
     @Override
     default String getTableName() {
       return "tag";
@@ -1250,25 +1250,12 @@ public interface CollectionDAO {
 
     @Override
     default EntityReference getEntityReference(Tag entity) {
-      return null; // TODO fix
+      return null;
     }
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
-  interface TagDAO {
-    @SqlUpdate("UPDATE tag SET  json = :json where fullyQualifiedName = :fqn")
-    void updateTag(@Bind("fqn") String fqn, @Bind("json") String json);
-
-    default List<String> listChildrenTags(String fqnPrefix) {
-      return listChildrenTagsInternal(String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR));
-    }
-
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
-    List<String> listChildrenTagsInternal(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM tag WHERE fullyQualifiedName = :fqn)")
-    boolean tagExists(@Bind("fqn") String fqn);
-
+  interface TagUsageDAO {
     @SqlUpdate(
         "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) "
             + "VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)")
