@@ -19,7 +19,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../components/common/rich-text-editor/MarkdownWithPreview';
 import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
 import { errorMsg } from '../../utils/CommonUtils';
 

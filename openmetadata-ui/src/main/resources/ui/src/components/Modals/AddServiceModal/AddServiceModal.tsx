@@ -69,7 +69,7 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../common/rich-text-editor/MarkdownWithPreview';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
 

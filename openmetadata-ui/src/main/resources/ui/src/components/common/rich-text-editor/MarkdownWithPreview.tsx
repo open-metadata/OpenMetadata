@@ -18,8 +18,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import RichTextEditor from '../rich-text-editor/RichTextEditor';
-import { editorRef } from '../rich-text-editor/RichTextEditor.interface';
+import RichTextEditor from './RichTextEditor';
+import { editorRef } from './RichTextEditor.interface';
 
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -47,10 +47,8 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
     }, [value]);
 
     return (
-      <div>
-        <div className="tw-my-5 tw-bg-white">
-          <RichTextEditor initialValue={initValue} ref={editorRef} />
-        </div>
+      <div className="tw-my-5 tw-bg-white">
+        <RichTextEditor initialValue={initValue} ref={editorRef} />
       </div>
     );
   }

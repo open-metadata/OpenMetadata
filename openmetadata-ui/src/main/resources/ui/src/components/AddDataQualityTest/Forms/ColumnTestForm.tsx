@@ -35,7 +35,7 @@ import {
 import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../common/rich-text-editor/MarkdownWithPreview';
 
 type Props = {
   data?: ColumnTest;

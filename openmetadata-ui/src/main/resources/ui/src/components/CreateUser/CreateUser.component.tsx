@@ -23,7 +23,7 @@ import { EntityReference as UserTeams } from '../../generated/entity/teams/user'
 import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../common/rich-text-editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';

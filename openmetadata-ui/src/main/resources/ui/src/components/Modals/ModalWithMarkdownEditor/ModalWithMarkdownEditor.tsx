@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  faWindowMaximize,
+  faWindowMinimize,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
-import {
-  faWindowMinimize,
-  faWindowMaximize,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import MarkdownWithPreview from '../../common/rich-text-editor/MarkdownWithPreview';
 
 type EditorContentRef = {
   getEditorContent: () => string;

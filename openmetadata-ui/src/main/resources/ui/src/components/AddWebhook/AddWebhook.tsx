@@ -38,7 +38,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../common/rich-text-editor/MarkdownWithPreview';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
