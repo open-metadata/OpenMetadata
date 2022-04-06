@@ -70,6 +70,7 @@ def _(connection: MssqlConnection):
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
 
+
 @get_connection_url.register
 def _(connection: SQLiteConnection):
     """
