@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
@@ -62,7 +65,6 @@ def get_connection_url_common(connection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-
     return url
 
 
@@ -143,3 +145,31 @@ def _(connection: TrinoConnection):
             return {"http_session": session}
     else:
         return connection.connectionArguments
+        
+def _(connection: SingleStoreConnection):
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
+        url += "@"
+
+    url += connection.hostPort
+    url += f"/{connection.database}" if connection.database else ""
+
+    options = connection.connectionOptions
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+    print("URL")
+    print(url)
+    return url
