@@ -15,7 +15,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { oidcTokenKey, ROUTES } from '../../../constants/constants';
+import { oidcTokenKey } from '../../../constants/constants';
 import jsonData from '../../../jsons/en';
 import Auth0Callback from './Auth0Callback';
 
@@ -42,18 +42,9 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-const mockPush = jest.fn();
 const mockUseAuth0 = useAuth0 as jest.Mock;
 const mockSetIsAuthenticated = jest.fn();
 const mockHandleSuccessfulLogin = jest.fn();
-
-const mockUseHistory = {
-  push: mockPush,
-};
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-}));
 
 jest.mock('@auth0/auth0-react', () => ({
   useAuth0: jest.fn(),
@@ -94,21 +85,6 @@ describe('Test Auth0Callback component', () => {
       jsonData['api-error-messages']['unexpected-error']
     );
     expect(error).toHaveTextContent('unknown error');
-  });
-
-  it('Check if the Auth0Callback redirects user to signin page', async () => {
-    mockUseAuth0.mockReturnValue({
-      isAuthenticated: false,
-      user: {},
-    });
-    render(<Auth0Callback />, {
-      wrapper: MemoryRouter,
-    });
-
-    expect(screen.queryByTestId('auth0-error')).not.toBeInTheDocument();
-
-    expect(mockPush).toBeCalledTimes(1);
-    expect(mockPush).toBeCalledWith(ROUTES.SIGNIN);
   });
 
   it('Should call successful login handler on Success', async () => {
