@@ -32,9 +32,11 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import datetime_to_ts
 
 
@@ -46,7 +48,7 @@ class OMetaPipelineTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -74,7 +76,7 @@ class OMetaPipelineTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-pipeline:test",
+            fullyQualifiedName="test-service-pipeline.test",
         )
 
         cls.create = CreatePipelineRequest(
@@ -87,11 +89,6 @@ class OMetaPipelineTest(TestCase):
         """
         Clean up
         """
-        _id = str(
-            cls.metadata.get_by_name(
-                entity=Pipeline, fqdn="test-service-pipeline:test"
-            ).id.__root__
-        )
 
         service_id = str(
             cls.metadata.get_by_name(
@@ -99,9 +96,11 @@ class OMetaPipelineTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Pipeline, entity_id=_id)
         cls.metadata.delete(
-            entity=PipelineService, entity_id=service_id, recursive=True
+            entity=PipelineService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):

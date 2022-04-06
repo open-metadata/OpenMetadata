@@ -21,11 +21,13 @@ from pydantic.types import SecretStr
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -60,13 +62,13 @@ class PowerbiSource(Source[Entity]):
     """
 
     config: PowerbiSourceConfig
-    metadata_config: MetadataServerConfig
+    metadata_config: OpenMetadataServerConfig
     status: SourceStatus
 
     def __init__(
         self,
         config: PowerbiSourceConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -89,17 +91,16 @@ class PowerbiSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         """Instantiate object
 
         Args:
             config_dict:
-            metadata_config_dict:
+            metadata_config:
         Returns:
             PowerBiSource
         """
         config = PowerbiSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[Entity]:

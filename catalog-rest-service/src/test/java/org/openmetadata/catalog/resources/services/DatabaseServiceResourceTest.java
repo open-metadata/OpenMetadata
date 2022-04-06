@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -30,10 +31,16 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.catalog.metadataIngestion.FilterPattern;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
+import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
 import org.openmetadata.catalog.services.connections.database.ConnectionArguments;
 import org.openmetadata.catalog.services.connections.database.ConnectionOptions;
@@ -145,26 +152,25 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
 
-    /*AirflowPipelineResourceTest airflowPipelineResourceTest = new AirflowPipelineResourceTest();
-    CreateAirflowPipeline createAirflowPipeline =
-        airflowPipelineResourceTest.createRequest(test).withService(serviceRef);
+    IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    CreateIngestionPipeline createIngestionPipeline =
+        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
 
     DatabaseServiceMetadataPipeline databaseServiceMetadataPipeline =
         new DatabaseServiceMetadataPipeline()
             .withMarkDeletedTables(true)
             .withIncludeViews(true)
-            .withSchemaFilterPattern(new FilterPattern().withExcludes(asList("information_schema.*", "test.*")))
-            .withTableFilterPattern(new FilterPattern().withIncludes(asList("sales.*", "users.*")));
-    PipelineConfig pipelineConfig =
-        new PipelineConfig().withSchema(PipelineConfig.Schema.DATABASE_SERVICE_METADATA_PIPELINE);
-    createAirflowPipeline.withPipelineConfig(pipelineConfig);
-    AirflowPipeline airflowPipeline =
-        airflowPipelineResourceTest.createEntity(createAirflowPipeline, ADMIN_AUTH_HEADERS);
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
+    SourceConfig sourceConfig = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
+    createIngestionPipeline.withSourceConfig(sourceConfig);
+    IngestionPipeline ingestionPipeline =
+        ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
     DatabaseService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
     assertEquals(1, updatedService.getPipelines().size());
     EntityReference expectedPipeline = updatedService.getPipelines().get(0);
-    assertEquals(airflowPipeline.getId(), expectedPipeline.getId());
-    assertEquals(airflowPipeline.getFullyQualifiedName(), expectedPipeline.getName());*/
+    assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
+    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getName());
   }
 
   @Override

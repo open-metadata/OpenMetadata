@@ -18,10 +18,16 @@ import React, {
   forwardRef,
   HTMLAttributes,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
-import { EditorPlaceHolder } from '../../constants/feed.constants';
+import {
+  EditorPlaceHolder,
+  MENTION_ALLOWED_CHARS,
+  MENTION_DENOTATION_CHARS,
+  TOOLBAR_ITEMS,
+} from '../../constants/feed.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
@@ -43,45 +49,106 @@ interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: () => void;
 }
 
-const modules = {
-  toolbar: {
-    container: [
-      ['bold', 'italic', 'strike'],
-      ['blockquote', 'code-block'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      ['link'],
-      ['insertMention', 'insertRef'],
-    ],
-    handlers: {
-      insertMention: insertMention,
-      insertRef: insertRef,
-    },
-  },
-  mention: {
-    allowedChars: /^[A-Za-z0-9_]*$/,
-    mentionDenotationChars: ['@', '#'],
-    source: matcher,
-    showDenotationChar: false,
-    renderLoading: () => 'Loading...',
-  },
-  markdownOptions: {},
-  clipboard: {
-    matchers: [['del, strike', strikethrough]],
-  },
-};
-
-const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
+export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
-    { className, editorClass, onChangeHandler, defaultValue }: FeedEditorProp,
+    {
+      className,
+      editorClass,
+      onChangeHandler,
+      defaultValue,
+      onSave,
+    }: FeedEditorProp,
     ref
   ) => {
     const [value, setValue] = useState<string>(defaultValue ?? '');
+    const [isMentionListOpen, toggleMentionList] = useState(false);
+    const [isFocused, toggleFocus] = useState(false);
 
+    /**
+     * Prepare modules for editor
+     */
+    const modules = useMemo(
+      () => ({
+        toolbar: {
+          container: TOOLBAR_ITEMS,
+          handlers: {
+            insertMention: insertMention,
+            insertRef: insertRef,
+          },
+        },
+        mention: {
+          allowedChars: MENTION_ALLOWED_CHARS,
+          mentionDenotationChars: MENTION_DENOTATION_CHARS,
+          onOpen: () => {
+            toggleMentionList(false);
+          },
+          onClose: () => {
+            toggleMentionList(true);
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onSelect: (item: Record<string, any>, insertItem: Function) => {
+            toggleMentionList(true);
+            insertItem(item);
+          },
+          source: matcher,
+          showDenotationChar: false,
+          renderLoading: () => 'Loading...',
+        },
+        markdownOptions: {},
+        clipboard: {
+          matchers: [['del, strike', strikethrough]],
+        },
+      }),
+      []
+    );
+
+    const onSaveHandle = () => {
+      if (onSave) {
+        onSave();
+      }
+    };
+
+    const onFocusHandle = () => {
+      toggleFocus(true);
+    };
+
+    const onBlurHandle = () => {
+      toggleFocus(false);
+    };
+
+    const getEditorStyles = () => {
+      return isFocused ? { border: '1px solid #868687' } : {};
+    };
+
+    /**
+     * handle onKeyDown logic
+     * @param e - keyboard event
+     */
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // This logic will handle Enter key binding
+      if (e.key === 'Enter' && !e.shiftKey && !isMentionListOpen) {
+        e.preventDefault();
+        onSaveHandle();
+      }
+      // handle enter keybinding for mention popup
+      // set mention list state to false when mention item is selected
+      else if (e.key === 'Enter') {
+        toggleMentionList(false);
+      }
+    };
+
+    /**
+     * Handle onChange logic and set updated value to state
+     * @param value - updated value
+     */
     const handleOnChange = (value: string) => {
       setValue(value);
       onChangeHandler?.(value);
     };
 
+    /**
+     * Handle forward ref logic and provide method access to parent component
+     */
     useImperativeHandle(ref, () => ({
       getEditorValue() {
         setValue('');
@@ -94,18 +161,22 @@ const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }));
 
     return (
-      <div className={className}>
+      <div className={className} data-testid="editor-wrapper">
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}
           placeholder={EditorPlaceHolder}
+          style={getEditorStyles()}
           theme="snow"
           value={value}
+          onBlur={onBlurHandle}
           onChange={handleOnChange}
+          onFocus={onFocusHandle}
+          onKeyDown={handleKeyDown}
         />
       </div>
     );
   }
 );
 
-export default FeedEditor;
+FeedEditor.displayName = 'FeedEditor';

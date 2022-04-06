@@ -34,13 +34,15 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
@@ -82,13 +84,13 @@ class TableauSource(Source[Entity]):
     """
 
     config: TableauSourceConfig
-    metadata_config: MetadataServerConfig
+    metadata_config: OpenMetadataServerConfig
     status: SourceStatus
 
     def __init__(
         self,
         config: TableauSourceConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -145,9 +147,8 @@ class TableauSource(Source[Entity]):
         return conn
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = TableauSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def prepare(self):

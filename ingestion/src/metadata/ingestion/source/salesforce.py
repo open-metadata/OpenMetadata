@@ -24,10 +24,12 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.utils.helpers import get_database_service_or_create
 
@@ -63,7 +65,9 @@ class SalesforceConfig(SalesforceConnection, SQLConnectionConfig):
 
 
 class SalesforceSource(Source[OMetaDatabaseAndTable]):
-    def __init__(self, config: SalesforceConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self, config: SalesforceConfig, metadata_config: OpenMetadataServerConfig
+    ):
         super().__init__()
         self.config = config
         self.service = get_database_service_or_create(
@@ -77,9 +81,8 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         )
 
     @classmethod
-    def create(cls, config: dict, metadata_config: dict):
+    def create(cls, config: dict, metadata_config: OpenMetadataServerConfig):
         config = SalesforceConfig.parse_obj(config)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config)
         return cls(config, metadata_config)
 
     def column_type(self, column_type: str):

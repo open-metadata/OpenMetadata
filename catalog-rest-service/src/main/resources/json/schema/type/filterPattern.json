@@ -1,13 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/type/filterPattern.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MetadataWorkflow",
+  "title": "FilterPattern",
   "description": "OpenMetadata Ingestion Framework definition.",
   "type": "object",
   "definitions": {
     "filterPattern": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.FilterPattern",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.FilterPattern",
       "description": "Regex to only fetch dashboards or charts that matches the pattern.",
       "properties": {
         "includes": {

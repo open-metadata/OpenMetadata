@@ -55,6 +55,10 @@ export interface EntitiesEdge {
  */
 export interface EntityReference {
   /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Optional description of entity.
    */
   description?: string;

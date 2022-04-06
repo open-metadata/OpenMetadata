@@ -29,9 +29,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityNameUtil;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
   private static final String METRICS_UPDATE_FIELDS = "owner";
@@ -49,7 +49,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   public static String getFQN(Metrics metrics) {
     return (metrics != null && metrics.getService() != null)
-        ? EntityNameUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        ? FullyQualifiedName.add(metrics.getService().getName(), metrics.getName())
         : null;
   }
 

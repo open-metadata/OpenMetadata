@@ -14,13 +14,23 @@
 
 /**
  * This schema defines the Database entity. A database also referred to as Database Catalog
- * is a collection of tables.
+ * is a collection of schemas.
  */
 export interface Database {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  /**
+   * References to schemas in the database.
+   */
+  databaseSchemas?: EntityReference[];
+  /**
+   * Some databases don't support a database/catalog in the hierarchy and use default
+   * database. For example, `MySql`. For such databases, set this flag to true to indicate
+   * that this is a default database.
+   */
+  default?: boolean;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
@@ -65,10 +75,6 @@ export interface Database {
    * Service type where this database is hosted in.
    */
   serviceType?: DatabaseServiceType;
-  /**
-   * References to tables in the database.
-   */
-  tables?: EntityReference[];
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -130,20 +136,24 @@ export interface FieldChange {
 }
 
 /**
- * Reference to the Location that contains this database.
+ * References to schemas in the database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the Location that contains this database.
+ *
  * Owner of this database.
  *
  * Link to the database cluster/service where this database is hosted in.
- *
- * References to tables in the database.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
@@ -184,6 +194,7 @@ export enum DatabaseServiceType {
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',

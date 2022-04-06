@@ -478,7 +478,7 @@ const ServicesPage = () => {
             <div className="tw-mb-1" data-testid="additional-field">
               <label className="tw-mb-0">Brokers:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {messagingService.brokers.join(', ')}
+                {messagingService.connection.config?.bootstrapServers}
               </span>
             </div>
           </>
@@ -496,7 +496,7 @@ const ServicesPage = () => {
                   : 'URL:'}
               </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {dashboardService.dashboardUrl}
+                {dashboardService.connection.config?.url}
               </span>
             </div>
           </>

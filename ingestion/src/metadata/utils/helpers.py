@@ -13,6 +13,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
+from urllib.parse import quote_plus
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -36,6 +37,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -61,50 +65,52 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(
-    config, metadata_config, service_name=None
+    config: WorkflowSource, metadata_config, service_name=None
 ) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
     if not service_name:
         service_name = config.serviceName
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
-    if service:
-        return service
-    else:
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqdn=service_name
+    )
+    if not service:
+        config_dict = config.dict()
+        service_connection_config = config_dict.get("serviceConnection").get("config")
         password = (
-            config.password.get_secret_value()
-            if hasattr(config, "password") and config.password
+            service_connection_config.get("password").get_secret_value()
+            if service_connection_config and service_connection_config.get("password")
             else None
         )
-        service = {
+
+        # Use a JSON to dynamically parse the pydantic model
+        # based on the serviceType
+        # TODO revisit me
+        service_json = {
             "connection": {
                 "config": {
-                    "hostPort": config.host_port
-                    if hasattr(config, "host_port")
-                    else None,
-                    "username": config.username
-                    if hasattr(config, "username")
-                    else None,
+                    "hostPort": service_connection_config.get("hostPort"),
+                    "username": service_connection_config.get("username"),
                     "password": password,
-                    "database": config.database
-                    if hasattr(config, "database")
-                    else None,
-                    "connectionOptions": config.options
-                    if hasattr(config, "options")
-                    else None,
-                    "connectionArguments": config.connect_args
-                    if hasattr(config, "connect_args")
-                    else None,
+                    "database": service_connection_config.get("database"),
+                    "connectionOptions": service_connection_config.get(
+                        "connectionOptions"
+                    ),
+                    "connectionArguments": service_connection_config.get(
+                        "connectionArguments"
+                    ),
                 }
             },
             "name": service_name,
             "description": "",
-            "serviceType": config.service_type,
+            "serviceType": service_connection_config.get("type").value,
         }
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service)
+
+        created_service: DatabaseService = metadata.create_or_update(
+            CreateDatabaseServiceRequest(**service_json)
         )
         logger.info(f"Creating DatabaseService instance for {service_name}")
         return created_service
+    return service
 
 
 def get_messaging_service_or_create(
@@ -114,7 +120,9 @@ def get_messaging_service_or_create(
     metadata_config,
 ) -> MessagingService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=MessagingService, fqdn=service_name)
+    service: MessagingService = metadata.get_by_name(
+        entity=MessagingService, fqdn=service_name
+    )
     if service is not None:
         return service
     else:
@@ -133,7 +141,9 @@ def get_dashboard_service_or_create(
     metadata_config,
 ) -> DashboardService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DashboardService, fqdn=service_name)
+    service: DashboardService = metadata.get_by_name(
+        entity=DashboardService, fqdn=service_name
+    )
     if service is not None:
         return service
     else:
@@ -147,7 +157,9 @@ def get_dashboard_service_or_create(
 
 def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
+    service: PipelineService = metadata.get_by_name(
+        entity=PipelineService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:
@@ -159,7 +171,9 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
 
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=StorageService, fqdn=service_json["name"])
+    service: StorageService = metadata.get_by_name(
+        entity=StorageService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:
@@ -171,7 +185,9 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
 
 def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
     metadata = OpenMetadata(metadata_config)
-    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
+    service: DatabaseService = metadata.get_by_name(
+        entity=DatabaseService, fqdn=service_json["name"]
+    )
     if service is not None:
         return service
     else:

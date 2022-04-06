@@ -14,11 +14,13 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.helpers import get_database_service_or_create
 
@@ -43,7 +45,7 @@ class DeltaLakeSource(Source):
     def __init__(
         self,
         config: DeltaLakeSourceConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -56,9 +58,8 @@ class DeltaLakeSource(Source):
         self.status = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = DeltaLakeSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:

@@ -21,6 +21,12 @@ from sqlalchemy.orm import declarative_base
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -30,8 +36,6 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
 from metadata.orm_profiler.profiler.default import DefaultProfiler
@@ -39,15 +43,21 @@ from metadata.orm_profiler.profiler.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {
-    "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
+    "source": {
+        "type": "sqlite",
+        "serviceName": "my_service",
+        "serviceConnection": {
+            "config": {"type": "SQLite", "hostPort": "", "database": ":memory:"}
+        },
+        "sourceConfig": {},
+    },
     "processor": {"type": "orm-profiler", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth",
+        }
     },
 }
 
@@ -58,8 +68,8 @@ def test_init_workflow():
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, SQLiteConfig)
-    assert isinstance(workflow.metadata_config, MetadataServerConfig)
+    assert isinstance(workflow.source_config, WorkflowSource)
+    assert isinstance(workflow.metadata_config, OpenMetadataServerConfig)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None
