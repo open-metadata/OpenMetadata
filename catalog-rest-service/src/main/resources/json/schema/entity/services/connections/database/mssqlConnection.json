@@ -28,7 +28,7 @@
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/mssqlScheme",
-      "default": "mssql+pyodbc"
+      "default": "mssql+pytds"
     },
     "username": {
       "description": "username to connect  to the MsSQL. This user should have privileges to read all the metadata in MsSQL.",
@@ -45,6 +45,10 @@
     },
     "database": {
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in MsSQL.",
+      "type": "string"
+    },
+    "uriString": {
+      "description": "Connection URI In case of pyodbc",
       "type": "string"
     },
     "connectionOptions": {

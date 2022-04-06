@@ -1,15 +1,20 @@
 {
   "source": {
     "type": "mssql",
-    "config": {
-      "host_port": "localhost:1433",
-      "service_name": "local_mssql",
-      "database": "catalog_test",
-      "query": "select top 50 * from [{}].[{}]",
-      "username": "sa",
-      "password": "test!Password",
-      "table_filter_pattern": {
-        "excludes": ["catalog_test.*"]
+    "serviceName": "local_mssql",
+    "serviceConnection": {
+      "config": {
+        "type": "MSSQL",
+        "database": "catalog_test",
+        "username": "sa",
+        "password": "test!Password",
+        "hostPort": "localhost:1433"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "enableDataProfiler": false,
+        "sampleDataQuery": "select top 50 * from [{}].[{}]"
       }
     }
   },
@@ -17,11 +22,10 @@
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": { 
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

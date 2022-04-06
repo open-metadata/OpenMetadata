@@ -1,6 +1,6 @@
 [
   {
-      "table": "bigquery_gcp:ecommerce_db:shopify:dim_staff",
+      "table": "bigquery_gcp.ecommerce_db.shopify.dim_staff",
     "tableTests": [
       {
         "description": "Rows should always be 100 because of something",
