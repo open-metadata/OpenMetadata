@@ -11,7 +11,6 @@
 """
 Generic source to build SQL connectors.
 """
-import copy
 import json
 import logging
 import re
@@ -209,7 +208,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         inspectors = self.get_databases()
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
-            print(schema_names)
             for schema in schema_names:
                 # clear any previous source database state
                 self.database_source_state.clear()

@@ -17,6 +17,9 @@ from urllib.parse import quote_plus
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+)
 
 
 @singledispatch
@@ -53,3 +56,12 @@ def _(connection: MysqlConnection):
         url = f"{url}?{params}"
 
     return url
+
+
+@get_connection_url.register
+def _(connection: SQLiteConnection):
+    """
+    SQLite is only used for testing with the in-memory db
+    """
+
+    return f"{connection.scheme.value}:///:memory:"
