@@ -37,7 +37,7 @@ class MysqlSource(SQLSource):
         connection: MysqlConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(
-                f"Expected SQLiteConnection, but got {connection}"
+                f"Expected MysqlConnection, but got {connection}"
             )
 
         return cls(config, metadata_config)
