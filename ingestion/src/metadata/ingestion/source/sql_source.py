@@ -121,7 +121,7 @@ def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
 def get_dbt_details(config: SQLConnectionConfig):
     dbt_catalog = ""
     dbt_manifest = ""
-    if config.dbt_method == "s3":
+    if config.dbtMethod == "s3":
         from metadata.utils.aws_client import AWSClient
 
         aws_client = AWSClient(config).get_resource("s3")
@@ -136,7 +136,7 @@ def get_dbt_details(config: SQLConnectionConfig):
                     dbt_catalog = json.loads(
                         bucket_object.get()["Body"].read().decode()
                     )
-    elif config.dbt_method == "gcs":
+    elif config.dbtMethod == "gcs":
         if store_gcs_credentials(config):
             from google.cloud import storage
 
@@ -149,14 +149,19 @@ def get_dbt_details(config: SQLConnectionConfig):
                         dbt_catalog = blob.download_as_string()
         else:
             exit()
-    elif config.dbt_method == "http":
-        pass
+    elif config.dbtMethod == "http":
+        import urllib.request
+
+        catalog_file = urllib.request.urlopen(config.dbtCatalogFilePath)
+        manifest_file = urllib.request.urlopen(config.dbtManifestFilePath)
+        dbt_catalog = catalog_file.read()
+        dbt_manifest = manifest_file.read()
     else:
-        if config.dbt_catalog_file is not None:
-            with open(config.dbt_catalog_file, "r", encoding="utf-8") as catalog:
+        if config.dbtCatalogFilePath is not None:
+            with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
                 dbt_catalog = json.load(catalog)
-        if config.dbt_manifest_file is not None:
-            with open(config.dbt_manifest_file, "r", encoding="utf-8") as manifest:
+        if config.dbtManifestFilePath is not None:
+            with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
                 dbt_manifest = json.load(manifest)
     return dbt_catalog, dbt_manifest
 
