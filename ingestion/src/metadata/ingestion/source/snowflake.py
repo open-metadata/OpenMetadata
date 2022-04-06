@@ -65,12 +65,12 @@ class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config):
-        config_dict = config.serviceConnection.__root__.config.dict()
-        if config_dict.get("connectionArguments", {}):
-            if config_dict.get("connectionArguments", {}).get("private_key", {}):
-                private_key = config_dict.get("connectionArguments", {}).get(
-                    "private_key"
-                )
+        connection_arguments = (
+            config.serviceConnection.__root__.config.connectionArguments
+        )
+        if connection_arguments:
+            if connection_arguments.private_key:
+                private_key = connection_arguments.private_key
                 p_key = serialization.load_pem_private_key(
                     bytes(private_key, "utf-8"),
                     password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
