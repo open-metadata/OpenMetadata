@@ -33,18 +33,6 @@ logger: logging.Logger = logging.getLogger(__name__)
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 
 
-class DynamoDBSourceConfig(AWSClientConfigModel):
-    serviceType = DatabaseServiceType.DynamoDB.value
-    serviceName: str
-    endpointUrl: str
-    hostPort: str = ""
-    dbName = "DynamoDB"
-    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.serviceType]
-
-
 class DynamodbSource(Source[Entity]):
     def __init__(self, config, metadata_config: OpenMetadataServerConfig):
         super().__init__()
