@@ -1252,6 +1252,9 @@ public interface CollectionDAO {
     default EntityReference getEntityReference(Tag entity) {
       return null;
     }
+
+    @SqlUpdate("DELETE FROM tag where fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%')")
+    void deleteTagsByPrefix(@Bind("fqnPrefix") String fqnPrefix);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -1276,10 +1279,13 @@ public interface CollectionDAO {
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
-    void deleteTags(@Bind("targetFQN") String targetFQN);
+    void deleteTagsByTarget(@Bind("targetFQN") String targetFQN);
 
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:fqnPrefix, '%')")
-    void deleteTagsByPrefix(@Bind("fqnPrefix") String fqnPrefix);
+    @SqlUpdate("DELETE FROM tag_usage where tagFQN = :tagFQN AND source = :source")
+    void deleteTagLabels(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
+
+    @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
+    void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override

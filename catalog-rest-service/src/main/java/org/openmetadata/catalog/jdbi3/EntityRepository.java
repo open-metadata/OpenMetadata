@@ -993,7 +993,7 @@ public abstract class EntityRepository<T> {
       }
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      daoCollection.tagUsageDAO().deleteTags(fqn);
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       if (operation.isPut()) {
         // PUT operation merges tags in the request with what already exists

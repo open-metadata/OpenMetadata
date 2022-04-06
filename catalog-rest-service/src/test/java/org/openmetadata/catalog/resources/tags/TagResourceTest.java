@@ -128,16 +128,91 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  void post_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException {
+  void post_delete_validTagCategory_as_admin_201(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // POST .../tags/{newCategory} returns 201
-    String categoryName = test.getDisplayName().substring(0, 10); // Form a unique category name based on the test name
+    String categoryName = test.getDisplayName().substring(0, 20); // Form a unique category name based on the test name
     CreateTagCategory create =
         new CreateTagCategory()
             .withName(categoryName)
             .withDescription("description")
             .withCategoryType(TagCategoryType.Descriptive);
-    TagCategory newCategory = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
-    assertEquals(0, newCategory.getChildren().size());
+    TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
+    assertEquals(0, category.getChildren().size());
+
+    CreateTag createTag = new CreateTag().withName("PrimaryTag").withDescription("description");
+    Tag primaryTag = createPrimaryTag(category.getName(), createTag, ADMIN_AUTH_HEADERS);
+
+    // POST .../tags/{category}/{primaryTag}/{secondaryTag} to create secondary tag
+    createTag = new CreateTag().withName("SecondaryTag").withDescription("description");
+    Tag secondaryTag = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Now delete Tag category and ensure the tag category and tags under it are all deleted
+    deleteCategory(category, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getTag(primaryTag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, primaryTag.getFullyQualifiedName()));
+    assertResponse(
+        () -> getTag(secondaryTag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, secondaryTag.getFullyQualifiedName()));
+  }
+
+  @Test
+  void post_delete_validTags_as_admin_201(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Create tag category
+    String categoryName = test.getDisplayName().substring(0, 20);
+    CreateTagCategory create =
+        new CreateTagCategory()
+            .withName(categoryName)
+            .withDescription("description")
+            .withCategoryType(TagCategoryType.Descriptive);
+    TagCategory category = createAndCheckCategory(create, ADMIN_AUTH_HEADERS);
+    assertEquals(0, category.getChildren().size());
+
+    // Create primaryTag
+    CreateTag createTag = new CreateTag().withName("PrimaryTag").withDescription("description");
+    Tag primaryTag = createPrimaryTag(category.getName(), createTag, ADMIN_AUTH_HEADERS);
+
+    // Create secondaryTag1
+    createTag = new CreateTag().withName("SecondaryTag1").withDescription("description");
+    Tag secondaryTag1 = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Create secondaryTag2
+    createTag = new CreateTag().withName("SecondaryTag2").withDescription("description");
+    Tag secondaryTag2 = createSecondaryTag(category.getName(), "PrimaryTag", createTag, ADMIN_AUTH_HEADERS);
+
+    // Delete and verify secondaryTag2 is deleted
+    deleteTag(category.getName(), secondaryTag2, ADMIN_AUTH_HEADERS);
+
+    // Delete primaryTag and ensure secondaryTag1 under it is deleted
+    deleteTag(category.getName(), primaryTag, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> getTag(secondaryTag1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, secondaryTag1.getFullyQualifiedName()));
+  }
+
+  public final TagCategory deleteCategory(TagCategory category, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tags/" + category.getId());
+    TagCategory deletedCategory = TestUtils.delete(target, TagCategory.class, authHeaders);
+    assertResponse(
+        () -> getCategory(category.getName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG_CATEGORY, category.getName()));
+    return deletedCategory;
+  }
+
+  public final Tag deleteTag(String categoryName, Tag tag, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tags/" + categoryName + "/" + tag.getId());
+    Tag deletedTag = TestUtils.delete(target, Tag.class, authHeaders);
+    assertResponse(
+        () -> getTag(tag.getFullyQualifiedName(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG, tag.getFullyQualifiedName()));
+    return deletedTag;
   }
 
   @Test
@@ -323,7 +398,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     return category;
   }
 
-  private void createPrimaryTag(String category, CreateTag create, Map<String, String> authHeaders)
+  private Tag createPrimaryTag(String category, CreateTag create, Map<String, String> authHeaders)
       throws HttpResponseException, JsonProcessingException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     WebTarget target = getResource("tags/" + category);
@@ -347,9 +422,10 @@ public class TagResourceTest extends CatalogApplicationTest {
         create.getDescription(),
         create.getAssociatedTags(),
         updatedBy);
+    return returnedTag;
   }
 
-  private void createSecondaryTag(String category, String primaryTag, CreateTag create, Map<String, String> authHeaders)
+  private Tag createSecondaryTag(String category, String primaryTag, CreateTag create, Map<String, String> authHeaders)
       throws HttpResponseException, JsonProcessingException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     WebTarget target = getResource("tags/" + category + "/" + primaryTag);
@@ -373,6 +449,7 @@ public class TagResourceTest extends CatalogApplicationTest {
         create.getDescription(),
         create.getAssociatedTags(),
         updatedBy);
+    return returnedTag;
   }
 
   @SneakyThrows
