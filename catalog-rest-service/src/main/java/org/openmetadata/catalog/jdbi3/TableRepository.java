@@ -798,7 +798,7 @@ public class TableRepository extends EntityRepository<Table> {
     // Map of <ColumnName> to List of <Fully Qualified Column names> it is joined with
     Map<String, List<JoinedWith>> map = new HashMap<>();
 
-    // list [ [fromFQN, toFQN, json], ...] contains inner list [fromFQN, toFQN, json]
+    // list [ [fromFQN, toFQN, json], ...] contains innerList [fromFQN, toFQN, json]
     for (List<String> innerList : list) {
       String columnName = FullyQualifiedName.getColumnName(innerList.get(0));
       List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
@@ -1079,7 +1079,7 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       // Delete tags related to deleted columns
-      deletedColumns.forEach(deleted -> daoCollection.tagDAO().deleteTags(deleted.getFullyQualifiedName()));
+      deletedColumns.forEach(deleted -> daoCollection.tagUsageDAO().deleteTags(deleted.getFullyQualifiedName()));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {

@@ -92,7 +92,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection.tagDAO().getTagCount(Source.GLOSSARY.ordinal(), glossary.getName());
+    return daoCollection.tagUsageDAO().getTagCount(Source.GLOSSARY.ordinal(), glossary.getName());
   }
 
   @Override

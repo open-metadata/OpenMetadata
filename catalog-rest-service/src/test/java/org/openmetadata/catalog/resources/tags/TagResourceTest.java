@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
 import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
@@ -94,7 +96,9 @@ public class TagResourceTest extends CatalogApplicationTest {
     // GET .../tags/{nonExistentCategory} returns 404
     String nonExistent = "nonExistent";
     assertResponse(
-        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("TagCategory", nonExistent));
+        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
   }
 
   @Test
@@ -109,7 +113,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   void get_nonExistentTag_404() {
     // GET .../tags/{category}/{nonExistent} returns 404 Not found
     String tagFQN = FullyQualifiedName.build("User", "NonExistent");
-    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("Tag", tagFQN));
+    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, tagFQN));
   }
 
   @Test
@@ -211,13 +215,13 @@ public class TagResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> createPrimaryTag(nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("TagCategory", nonExistent));
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
     assertResponse(
         () -> createSecondaryTag("User", nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("Tag", nonExistent));
+        entityNotFound(Entity.TAG, "User.nonExistent"));
   }
 
   @Test
@@ -371,6 +375,7 @@ public class TagResourceTest extends CatalogApplicationTest {
         updatedBy);
   }
 
+  @SneakyThrows
   private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders)
       throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
