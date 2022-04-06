@@ -346,7 +346,9 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig) -> "CustomOIDCAuthenticationProvider":
+    def create(
+        cls, config: OpenMetadataServerConfig
+    ) -> "CustomOIDCAuthenticationProvider":
         return cls(config)
 
     def auth_token(self) -> None:
