@@ -13,7 +13,6 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
-from urllib.parse import quote_plus
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
