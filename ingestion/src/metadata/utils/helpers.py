@@ -13,7 +13,6 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
-from urllib.parse import quote_plus
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -88,21 +87,33 @@ def get_database_service_or_create(
         service_json = {
             "connection": {
                 "config": {
-                    "hostPort": service_connection_config.get("hostPort"),
-                    "username": service_connection_config.get("username"),
+                    "hostPort": service_connection_config.get("hostPort")
+                    if service_connection_config
+                    else None,
+                    "username": service_connection_config.get("username")
+                    if service_connection_config
+                    else None,
                     "password": password,
-                    "database": service_connection_config.get("database"),
+                    "database": service_connection_config.get("database")
+                    if service_connection_config
+                    else None,
                     "connectionOptions": service_connection_config.get(
                         "connectionOptions"
-                    ),
+                    )
+                    if service_connection_config
+                    else None,
                     "connectionArguments": service_connection_config.get(
                         "connectionArguments"
-                    ),
+                    )
+                    if service_connection_config
+                    else None,
                 }
             },
             "name": service_name,
             "description": "",
-            "serviceType": service_connection_config.get("type").value,
+            "serviceType": service_connection_config.get("type").value
+            if service_connection_config
+            else None,
         }
 
         created_service: DatabaseService = metadata.create_or_update(

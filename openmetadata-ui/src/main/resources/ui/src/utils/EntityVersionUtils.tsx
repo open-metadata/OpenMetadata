@@ -14,10 +14,13 @@
 import classNames from 'classnames';
 import { diffArrays, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import Markdown from 'markdown-to-jsx';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
+// Markdown Parser and plugin imports
+import MarkdownParser from 'react-markdown';
 import { Link } from 'react-router-dom';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
 import { ChangeType } from '../enums/entity.enum';
@@ -27,7 +30,6 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
-import { Paragraph, Span, UnOrderedList } from './MarkdownUtils';
 import { isValidJSONString } from './StringsUtils';
 import { getEntityLink, getOwnerFromId } from './TableUtils';
 
@@ -38,49 +40,62 @@ const parseMarkdown = (
   _isNewLine: boolean
 ) => {
   return (
-    <Markdown
-      options={{
-        overrides: {
-          h1: {
-            component: Paragraph,
+    <Fragment>
+      <MarkdownParser
+        sourcePos
+        components={{
+          h1: 'p',
+          h2: 'p',
+          ul: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ul className={classNames('tw-ml-3', className)} {...rest}>
+                {children}
+              </ul>
+            );
           },
-          h2: {
-            component: Paragraph,
+          ol: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
+                {children}
+              </ol>
+            );
           },
-          h3: {
-            component: Paragraph,
+          code: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { inline, ...rest } = props;
+
+            return (
+              <code {...rest} className="tw-my">
+                {children}
+              </code>
+            );
           },
-          h4: {
-            component: Paragraph,
+          p: ({ children, ...props }) => {
+            return (
+              <p className={className} {...props}>
+                {children}
+              </p>
+            );
           },
-          h5: {
-            component: Paragraph,
+          span: ({ children, ...props }) => {
+            return (
+              <span className={className} {...props}>
+                {children}
+              </span>
+            );
           },
-          h6: {
-            component: Paragraph,
-          },
-          ul: {
-            component: UnOrderedList,
-            props: {
-              className: `${className} tw-ml-3`,
-            },
-          },
-          p: {
-            component: Paragraph,
-            props: {
-              className: `${className}`,
-            },
-          },
-          span: {
-            component: Span,
-            props: {
-              className: `${className}`,
-            },
-          },
-        },
-      }}>
-      {content}
-    </Markdown>
+        }}
+        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm]}>
+        {content}
+      </MarkdownParser>
+    </Fragment>
   );
 };
 
