@@ -364,7 +364,9 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
             self.generated_auth_token = response_json["access_token"]
             self.expiry = response_json["expires_in"]
         else:
-            raise APIError(error={"message": response.text}, http_error=response.status_code)
+            raise APIError(
+                error={"message": response.text}, http_error=response.status_code
+            )
 
     def get_access_token(self) -> Tuple[str, int]:
         self.auth_token()
