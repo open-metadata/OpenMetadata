@@ -63,6 +63,7 @@ from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     AzureAuthenticationProvider,
+    CustomOIDCAuthenticationProvider,
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
@@ -156,6 +157,10 @@ class OpenMetadata(
         elif self.config.authProvider.value == "azure":
             self._auth_provider: AuthenticationProvider = (
                 AzureAuthenticationProvider.create(self.config)
+            )
+        elif self.config.authProvider.value == "custom-oidc":
+            self._auth_provider: AuthenticationProvider = (
+                CustomOIDCAuthenticationProvider.create(self.config)
             )
         else:
             self._auth_provider: AuthenticationProvider = (

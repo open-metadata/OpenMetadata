@@ -73,6 +73,26 @@
       "additionalProperties": false,
       "required": ["clientId", "secretKey", "domain"]
     },
+    "customOidcSSOConfig": {
+      "description": "Custom OIDC SSO client security configs.",
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "Custom OIDC Client ID.",
+          "type": "string"
+        },
+        "secretKey": {
+          "description": "Custom OIDC Client Secret Key.",
+          "type": "string"
+        },
+        "tokenEndpoint": {
+          "description": "Custom OIDC token endpoint.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientId", "secretKey", "tokenEndpoint"]
+    },
     "openMetadataServerConfig": {
       "description": "OpenMetadata Server Connection Details.",
       "type": "object",
@@ -85,7 +105,7 @@
         "authProvider": {
           "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
           "type": "string",
-          "enum": ["no-auth", "google", "okta", "auth0"],
+          "enum": ["no-auth", "google", "okta", "auth0", "custom-oidc"],
           "default": "no-auth"
         },
         "securityConfig": {
@@ -99,6 +119,9 @@
             },
             {
               "$ref": "#/definitions/auth0SSOConfig"
+            },
+            {
+              "$ref": "#/definitions/customOidcSSOConfig"
             }
           ]
         },
