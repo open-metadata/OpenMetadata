@@ -19,6 +19,9 @@ from unittest import TestCase
 import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -26,7 +29,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
@@ -38,10 +40,16 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
@@ -56,7 +64,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OMetaTableTest(TestCase):
@@ -67,7 +74,7 @@ class OMetaTableTest(TestCase):
 
     service_entity_id = None
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
@@ -80,7 +87,13 @@ class OMetaTableTest(TestCase):
     service = CreateDatabaseServiceRequest(
         name="test-service-table",
         serviceType=DatabaseServiceType.MySQL,
-        databaseConnection=DatabaseConnection(hostPort="localhost:0000"),
+        connection=DatabaseConnection(
+            config=MysqlConnection(
+                username="username",
+                password="password",
+                hostPort="http://localhost:1234",
+            )
+        ),
     )
     service_type = "databaseService"
 
@@ -92,28 +105,38 @@ class OMetaTableTest(TestCase):
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
-        cls.create_db = CreateDatabaseRequest(
+        create_db = CreateDatabaseRequest(
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
-        cls.create_db_entity = cls.metadata.create_or_update(data=cls.create_db)
+        create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         cls.db_reference = EntityReference(
-            id=cls.create_db_entity.id, name="test-db", type="database"
+            id=create_db_entity.id, name="test-db", type="database"
+        )
+
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema", database=cls.db_reference
+        )
+
+        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+
+        cls.schema_reference = EntityReference(
+            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
         )
 
         cls.entity = Table(
             id=uuid.uuid4(),
             name="test",
-            database=cls.db_reference,
-            fullyQualifiedName="test-service-table:test-db:test",
+            databaseSchema=cls.schema_reference,
+            fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.create = CreateTableRequest(
             name="test",
-            database=cls.db_reference,
+            databaseSchema=cls.schema_reference,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -122,17 +145,6 @@ class OMetaTableTest(TestCase):
         """
         Clean up
         """
-        _id = str(
-            cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service-table:test-db:test"
-            ).id.__root__
-        )
-
-        database_id = str(
-            cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service-table:test-db"
-            ).id.__root__
-        )
 
         service_id = str(
             cls.metadata.get_by_name(
@@ -140,10 +152,11 @@ class OMetaTableTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Table, entity_id=_id)
-        cls.metadata.delete(entity=Database, entity_id=database_id, recursive=True)
         cls.metadata.delete(
-            entity=DatabaseService, entity_id=service_id, recursive=True
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
         )
 
     def test_create(self):
@@ -154,7 +167,7 @@ class OMetaTableTest(TestCase):
         res = self.metadata.create_or_update(data=self.create)
 
         self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.database.id, self.entity.database.id)
+        self.assertEqual(res.databaseSchema.id, self.entity.databaseSchema.id)
         self.assertEqual(res.owner, None)
 
     def test_update(self):
@@ -170,8 +183,8 @@ class OMetaTableTest(TestCase):
 
         res = self.metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated algorithm
-        self.assertEqual(res.database.id, updated_entity.database.id)
+        # Same ID, updated owner
+        self.assertEqual(res.databaseSchema.id, updated_entity.databaseSchema.id)
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -328,7 +341,7 @@ class OMetaTableTest(TestCase):
 
         another_table = CreateTableRequest(
             name="another-test",
-            database=self.db_reference,
+            databaseSchema=self.schema_reference,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
         another_res = self.metadata.create_or_update(another_table)
@@ -341,7 +354,7 @@ class OMetaTableTest(TestCase):
                     columnName="id",
                     joinedWith=[
                         JoinedWithItem(
-                            fullyQualifiedName="test-service-table:test-db:another-test:another_id",
+                            fullyQualifiedName="test-service-table.test-db.test-schema.another-test.another_id",
                             joinCount=2,
                         )
                     ],

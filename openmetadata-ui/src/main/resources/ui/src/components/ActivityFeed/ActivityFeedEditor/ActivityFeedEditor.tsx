@@ -14,10 +14,9 @@
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes, useRef, useState } from 'react';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
-import FeedEditor from '../../FeedEditor/FeedEditor';
+import { FeedEditor } from '../../FeedEditor/FeedEditor';
+import { KeyHelp } from './KeyHelp';
+import { SendButton } from './SendButton';
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
@@ -25,7 +24,8 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;
   defaultValue?: string;
 }
-type EditorContentRef = {
+
+export type EditorContentRef = {
   getEditorValue: () => string;
   clearEditorValue: () => string;
 };
@@ -43,6 +43,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   const onChangeHandler = (value: string) => {
     setEditorValue(HTMLToMarkdown.turndown(value));
   };
+
   const onSaveHandler = () => {
     if (editorRef.current) {
       if (editorRef.current?.getEditorValue()) {
@@ -62,38 +63,14 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
         onChangeHandler={onChangeHandler}
         onSave={onSaveHandler}
       />
-      <div className="tw-absolute tw-right-2 tw-bottom-2 tw-flex tw-flex-row tw-items-center tw-justify-end">
-        <PopOver
-          html={
-            <>
-              <strong>Send now</strong>
-            </>
-          }
-          position="top"
-          size="small"
-          trigger="mouseenter">
-          <Button
-            className={classNames(
-              'tw-py-0.5 tw-px-1 tw-rounded tw-bg-none',
-              buttonClass
-            )}
-            data-testid="send-button"
-            disabled={editorValue.length === 0}
-            size="custom"
-            variant="text"
-            onClick={onSaveHandler}>
-            <SVGIcons
-              alt="paper-plane"
-              icon={
-                editorValue.length > 0
-                  ? Icons.PAPER_PLANE_PRIMARY
-                  : Icons.PAPER_PLANE
-              }
-              width="18px"
-            />
-          </Button>
-        </PopOver>
-      </div>
+
+      <SendButton
+        buttonClass={buttonClass}
+        editorValue={editorValue}
+        onSaveHandler={onSaveHandler}
+      />
+
+      <KeyHelp editorValue={editorValue} />
     </div>
   );
 };

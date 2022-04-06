@@ -46,6 +46,10 @@ export interface Team {
    * Can any user join this team during sign up? Value of true indicates yes, and false no.
    */
   isJoinable?: boolean;
+  /**
+   * A unique name of the team typically the team ID from an identity provider. Example -
+   * group Id from LDAP.
+   */
   name: string;
   /**
    * Owner of this team.

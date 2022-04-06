@@ -23,10 +23,10 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
 from metadata.config.common import FQDN_SEPARATOR
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -96,12 +96,6 @@ class SnowflakeSource(SQLSource):
     def get_table_fqn(self, service_name, schema, table_name) -> str:
         return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
-    def _get_database(self, schema: str) -> Database:
-        return Database(
-            name=self.config.database + "_" + schema,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
-        )
-
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
         if not resp_sample_data:
@@ -122,9 +116,8 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = SnowflakeConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
 

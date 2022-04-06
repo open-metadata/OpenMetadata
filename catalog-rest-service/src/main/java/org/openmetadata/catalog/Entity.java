@@ -41,7 +41,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 @Slf4j
 public final class Entity {
   // Fully qualified name separator
-  public static final String SEPARATOR = ":";
+  public static final String SEPARATOR = ".";
 
   // Lower case entity name to canonical entity name map
   private static final Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
@@ -73,6 +73,7 @@ public final class Entity {
   //
   public static final String TABLE = "table";
   public static final String DATABASE = "database";
+  public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
   public static final String PIPELINE = "pipeline";
@@ -88,6 +89,7 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
+  public static final String TAG_CATEGORY = "tagCategory";
 
   //
   // Policies

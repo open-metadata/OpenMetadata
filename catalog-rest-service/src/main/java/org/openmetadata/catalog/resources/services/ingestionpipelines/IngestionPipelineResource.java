@@ -59,11 +59,11 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
-import org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig;
-import org.openmetadata.catalog.metadataingestion.Source;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
@@ -119,7 +119,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Valid
   @Operation(
-      summary = "List Airflow Pipelines for Metadata Operations",
+      summary = "List Ingestion Pipelines for Metadata Operations",
       tags = "IngestionPipelines",
       description =
           "Get a list of Airflow Pipelines for Metadata Operations. Use `fields` parameter to get only necessary fields. "
@@ -291,7 +291,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Airflow Pipeline",
+            description = "The Ingestion Pipeline",
             content =
                 @Content(
                     mediaType = "application/json",

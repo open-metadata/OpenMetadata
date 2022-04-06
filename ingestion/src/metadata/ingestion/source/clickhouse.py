@@ -19,9 +19,14 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 @reflection.cache
@@ -142,17 +147,17 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 )
 
 
-class ClickhouseConfig(ClickhouseConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
-
-
 class ClickhouseSource(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
-        config = ClickhouseConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, ClickhouseConnection):
+            raise InvalidSourceException(
+                f"Expected ClickhouseConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)

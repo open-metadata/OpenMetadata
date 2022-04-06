@@ -46,7 +46,7 @@
     "enablePolicyTagImport": {
       "description": "Enable importing policy tags of BigQuery into OpenMetadata",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "tagCategoryName": {
       "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",

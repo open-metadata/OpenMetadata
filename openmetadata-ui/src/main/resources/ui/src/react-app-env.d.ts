@@ -28,3 +28,4 @@ declare module '@deuex-solutions/react-tour';
 declare module 'dagre';
 declare module 'turndown';
 declare module 'quilljs-markdown';
+declare module 'quill-mention';

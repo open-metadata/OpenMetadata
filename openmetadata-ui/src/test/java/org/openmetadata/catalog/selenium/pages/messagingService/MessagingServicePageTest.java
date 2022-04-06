@@ -112,7 +112,7 @@ public class MessagingServicePageTest {
     openMessagingServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceBrokerUrl(), "1");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "1");
     Events.click(webDriver, common.saveConnectionConfig());
@@ -124,7 +124,7 @@ public class MessagingServicePageTest {
     openMessagingServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceBrokerUrl(), "1");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "1");
     Events.click(webDriver, common.saveConnectionConfig());

@@ -8,11 +8,15 @@
     "googleSSOConfig": {
       "description": "Google SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.GoogleSSOConfig",
       "properties": {
         "secretKey": {
           "description": "Google SSO client secret key path or contents.",
           "type": "string"
+        },
+        "audience": {
+          "description": "Google SSO audience URL",
+          "type": "string",
+          "default": "https://www.googleapis.com/oauth2/v4/token"
         }
       },
       "additionalProperties": false,
@@ -21,7 +25,6 @@
     "oktaSSOConfig": {
       "description": "Okta SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.OktaSSOConfig",
       "properties": {
         "clientId": {
           "description": "Okta Client ID.",
@@ -53,7 +56,6 @@
     "auth0SSOConfig": {
       "description": "Auth0 SSO client security configs.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.security.Auth0SSOConfig",
       "properties": {
         "clientId": {
           "description": "Auth0 Client ID.",
@@ -71,10 +73,29 @@
       "additionalProperties": false,
       "required": ["clientId", "secretKey", "domain"]
     },
+    "customOidcSSOConfig": {
+      "description": "Custom OIDC SSO client security configs.",
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "description": "Custom OIDC Client ID.",
+          "type": "string"
+        },
+        "secretKey": {
+          "description": "Custom OIDC Client Secret Key.",
+          "type": "string"
+        },
+        "tokenEndpoint": {
+          "description": "Custom OIDC token endpoint.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientId", "secretKey", "tokenEndpoint"]
+    },
     "openMetadataServerConfig": {
       "description": "OpenMetadata Server Connection Details.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig",
       "properties": {
         "hostPort": {
           "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
@@ -84,7 +105,8 @@
         "authProvider": {
           "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
           "type": "string",
-          "enum": ["no-auth", "google", "okta", "auth0"]
+          "enum": ["no-auth", "google", "okta", "auth0", "custom-oidc"],
+          "default": "no-auth"
         },
         "securityConfig": {
           "description": "OpenMetadata Client security configuration.",
@@ -97,17 +119,25 @@
             },
             {
               "$ref": "#/definitions/auth0SSOConfig"
+            },
+            {
+              "$ref": "#/definitions/customOidcSSOConfig"
             }
           ]
+        },
+        "apiVersion": {
+          "description": "OpenMetadata server API version to use.",
+          "type": "string",
+          "default": "v1"
         }
       },
       "additionalProperties": false,
-      "required": ["hostPort", "authProvider"]
+      "required": ["hostPort"]
     },
     "sourceConfig": {
       "description": "Additional connection configuration.",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.SourceConfig",
       "properties": {
         "config": {
           "oneOf": [
@@ -131,7 +161,6 @@
     "componentConfig": {
       "description": "key/value pairs to pass to sink component.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.ComponentConfig",
       "additionalProperties": {
         "type": "string"
       }
@@ -139,7 +168,6 @@
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Source",
       "properties": {
         "type": {
           "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
@@ -163,7 +191,6 @@
     "processor": {
       "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Processor",
       "properties": {
         "type": {
           "description": "Type of processor component ex: pii-processor",
@@ -179,7 +206,6 @@
     "stage": {
       "description": "Configuration for Stage Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.Stage",
       "properties": {
         "type": {
           "description": "Type of stage component ex: table-usage",
@@ -210,7 +236,6 @@
     "bulkSink": {
       "description": "Configuration for BulkSink Component in the OpenMetadata Ingestion Framework.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.BulkSink",
       "properties": {
         "type": {
           "description": "Type of BulkSink component ex: metadata-usage",
@@ -226,10 +251,9 @@
     "workflowConfig": {
       "description": "Configuration for the entire Ingestion Workflow.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataingestion.WorkflowConfig",
       "properties": {
         "openMetadataServerConfig": {
-          "ref": "#/definitions/openMetadataServerConfig"
+          "$ref": "#/definitions/openMetadataServerConfig"
         },
         "config": {
           "$ref": "#/definitions/componentConfig"
@@ -275,7 +299,7 @@
       "additionalProperties": false
     }
   },
-  "anyOf": [
+  "oneOf": [
     {
       "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
     },

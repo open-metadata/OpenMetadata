@@ -22,15 +22,15 @@ import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.metadataingestion.OpenMetadataServerConfig;
-import org.openmetadata.catalog.metadataingestion.Source;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig";
@@ -50,7 +50,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public static String getFQN(IngestionPipeline ingestionPipeline) {
     return (ingestionPipeline != null && ingestionPipeline.getService() != null)
-        ? EntityUtil.getFQN(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
+        ? FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
         : null;
   }
 

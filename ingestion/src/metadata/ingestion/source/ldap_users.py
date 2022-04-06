@@ -16,9 +16,11 @@ from ldap3 import ALL, LEVEL, Connection, Server
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ class LdapUsersSource(Source[OMetaUserProfile]):
     def __init__(
         self,
         config: LDAPUserConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -73,9 +75,8 @@ class LdapUsersSource(Source[OMetaUserProfile]):
         return c
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = LDAPUserConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[OMetaUserProfile]:

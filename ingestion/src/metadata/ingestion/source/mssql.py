@@ -9,31 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL source module"""
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-
-class MssqlConfig(MssqlConnection, SQLConnectionConfig):
-    """MSSQL config -- extends SQLConnectionConfig class"""
-
-    use_pymssql: bool = False
-    use_pyodbc: bool = False
-    uri_string: str = ""
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        if self.use_pyodbc:
-            self.scheme = self.scheme.mssql_pymssql
-            return f"{self.scheme}://{self.uri_string}"
-        if self.use_pymssql:
-            self.scheme = "mssql+pymssql"
-        return super().get_connection_url()
 
 
 class MssqlSource(SQLSource):
@@ -46,8 +33,12 @@ class MssqlSource(SQLSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         """Create class instance"""
-        config = MssqlConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: MssqlConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, MssqlConnection):
+            raise InvalidSourceException(
+                f"Expected MssqlConnection, but got {connection}"
+            )
         return cls(config, metadata_config)

@@ -81,11 +81,11 @@ public class UiExceptionHandling {
 
   @Test
   public void exceptionCheckForUserList() {
-    interceptor("users", "testing");
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
+    interceptor("/api/v1/teams", "/api/v1/testing");
     Events.click(webDriver, common.headerSettingsMenu("Users"));
-    Events.click(webDriver, common.containsText("Request failed with status code 400"));
+    Events.click(webDriver, common.containsText("Error while fetching teams!"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(400, 400);
   }
@@ -144,7 +144,7 @@ public class UiExceptionHandling {
     Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Events.click(webDriver, common.containsText("Request failed with status code 500"));
+    Events.click(webDriver, common.containsText("Error while updating description!"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(500, 500);
   }

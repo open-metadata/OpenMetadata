@@ -95,13 +95,17 @@ const mockMessagingService = {
   data: {
     data: [
       {
-        brokers: ['localhost:9092'],
-        description: 'Kafka messaging queue service',
-        href: 'http://localhost:8585/api/v1/services/messagingServices/473e2a9b-7555-42d3-904a-4c773c4dcd33',
-        id: '473e2a9b-7555-42d3-904a-4c773c4dcd33',
-        name: 'sample_kafka',
-        schemaRegistry: 'http://localhost:8081',
-        serviceType: 'Kafka',
+        connection: {
+          config: {
+            bootstrapServers: 'localhost:9092',
+            description: 'Kafka messaging queue service',
+            href: 'http://localhost:8585/api/v1/services/messagingServices/473e2a9b-7555-42d3-904a-4c773c4dcd33',
+            id: '473e2a9b-7555-42d3-904a-4c773c4dcd33',
+            name: 'sample_kafka',
+            schemaRegistryURL: 'http://localhost:8081',
+            serviceType: 'Kafka',
+          },
+        },
       },
     ],
     paging: { total: 1 },

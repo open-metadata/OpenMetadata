@@ -33,6 +33,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Location;
@@ -54,11 +55,12 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
@@ -80,6 +82,8 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.Tag;
+import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -89,6 +93,9 @@ import org.openmetadata.catalog.util.EntityUtil;
 public interface CollectionDAO {
   @CreateSqlObject
   DatabaseDAO databaseDAO();
+
+  @CreateSqlObject
+  DatabaseSchemaDAO databaseSchemaDAO();
 
   @CreateSqlObject
   EntityRelationshipDAO relationshipDAO();
@@ -109,7 +116,13 @@ public interface CollectionDAO {
   TeamDAO teamDAO();
 
   @CreateSqlObject
+  TagUsageDAO tagUsageDAO();
+
+  @CreateSqlObject
   TagDAO tagDAO();
+
+  @CreateSqlObject
+  TagCategoryDAO tagCategoryDAO();
 
   @CreateSqlObject
   TableDAO tableDAO();
@@ -243,6 +256,28 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Database entity) {
       return new DatabaseEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface DatabaseSchemaDAO extends EntityDAO<DatabaseSchema> {
+    @Override
+    default String getTableName() {
+      return "database_schema_entity";
+    }
+
+    @Override
+    default Class<DatabaseSchema> getEntityClass() {
+      return DatabaseSchema.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(DatabaseSchema entity) {
+      return new DatabaseSchemaEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1175,39 +1210,52 @@ public interface CollectionDAO {
     }
   }
 
-  @RegisterRowMapper(TagLabelMapper.class)
-  interface TagDAO {
-    @SqlUpdate("INSERT INTO tag_category (json) VALUES (:json)")
-    void insertCategory(@Bind("json") String json);
-
-    @SqlUpdate("INSERT INTO tag(json) VALUES (:json)")
-    void insertTag(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE tag_category SET  json = :json where name = :name")
-    void updateCategory(@Bind("name") String name, @Bind("json") String json);
-
-    @SqlUpdate("UPDATE tag SET  json = :json where fullyQualifiedName = :fqn")
-    void updateTag(@Bind("fqn") String fqn, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM tag_category ORDER BY name")
-    List<String> listCategories();
-
-    default List<String> listChildrenTags(String fqnPrefix) {
-      return listChildrenTagsInternal(String.format("%s%s%%", fqnPrefix, Entity.SEPARATOR));
+  interface TagCategoryDAO extends EntityDAO<TagCategory> {
+    @Override
+    default String getTableName() {
+      return "tag_category";
     }
 
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE :fqnPrefix " + "ORDER BY fullyQualifiedName")
-    List<String> listChildrenTagsInternal(@Bind("fqnPrefix") String fqnPrefix);
+    @Override
+    default Class<TagCategory> getEntityClass() {
+      return TagCategory.class;
+    }
 
-    @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
-    String findCategory(@Bind("name") String name);
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
 
-    @SqlQuery("SELECT EXISTS (SELECT * FROM tag WHERE fullyQualifiedName = :fqn)")
-    boolean tagExists(@Bind("fqn") String fqn);
+    @Override
+    default EntityReference getEntityReference(TagCategory entity) {
+      return null;
+    }
+  }
 
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName = :fqn")
-    String findTag(@Bind("fqn") String fqn);
+  interface TagDAO extends EntityDAO<Tag> {
+    @Override
+    default String getTableName() {
+      return "tag";
+    }
 
+    @Override
+    default Class<Tag> getEntityClass() {
+      return Tag.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Tag entity) {
+      return null;
+    }
+  }
+
+  @RegisterRowMapper(TagLabelMapper.class)
+  interface TagUsageDAO {
     @SqlUpdate(
         "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) "
             + "VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)")

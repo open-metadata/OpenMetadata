@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,13 +44,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
 import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.CreateTagCategory.TagCategoryType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -94,13 +96,15 @@ public class TagResourceTest extends CatalogApplicationTest {
     // GET .../tags/{nonExistentCategory} returns 404
     String nonExistent = "nonExistent";
     assertResponse(
-        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("TagCategory", nonExistent));
+        () -> getCategory(nonExistent, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
   }
 
   @Test
   void get_validTag_200() throws HttpResponseException {
     // GET .../tags/{category}/{tag} returns requested tag
-    Tag tag = getTag(EntityUtil.getFQN("User", "Address"), ADMIN_AUTH_HEADERS);
+    Tag tag = getTag(FullyQualifiedName.build("User", "Address"), ADMIN_AUTH_HEADERS);
     String parentURI = BASE_URL + "/User";
     validateHRef(parentURI, tag);
   }
@@ -108,8 +112,8 @@ public class TagResourceTest extends CatalogApplicationTest {
   @Test
   void get_nonExistentTag_404() {
     // GET .../tags/{category}/{nonExistent} returns 404 Not found
-    String tagFQN = EntityUtil.getFQN("User", "NonExistent");
-    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound("Tag", tagFQN));
+    String tagFQN = FullyQualifiedName.build("User", "NonExistent");
+    assertResponse(() -> getTag(tagFQN, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, tagFQN));
   }
 
   @Test
@@ -211,13 +215,13 @@ public class TagResourceTest extends CatalogApplicationTest {
     assertResponse(
         () -> createPrimaryTag(nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("TagCategory", nonExistent));
+        entityNotFound(Entity.TAG_CATEGORY, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
     assertResponse(
         () -> createSecondaryTag("User", nonExistent, create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound("Tag", nonExistent));
+        entityNotFound(Entity.TAG, "User.nonExistent"));
   }
 
   @Test
@@ -371,6 +375,7 @@ public class TagResourceTest extends CatalogApplicationTest {
         updatedBy);
   }
 
+  @SneakyThrows
   private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders)
       throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
@@ -447,7 +452,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   public static Tag getTag(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    String[] split = EntityUtil.splitFQN(fqn);
+    String[] split = FullyQualifiedName.split(fqn);
     WebTarget target;
     if (split.length == 1) {
       target = getResource("tags/" + split[0]);

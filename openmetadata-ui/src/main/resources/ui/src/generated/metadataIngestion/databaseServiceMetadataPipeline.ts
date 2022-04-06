@@ -14,10 +14,6 @@
 
 export interface DatabaseServiceMetadataPipelineClass {
   /**
-   * Sample data extraction query.
-   */
-  account?: string;
-  /**
    * DBT catalog file to extract dbt models with their column schemas.
    */
   dbtCatalogFilePath?: string;
@@ -54,14 +50,12 @@ export interface DatabaseServiceMetadataPipelineClass {
    * Regex exclude tables or databases that matches the pattern.
    */
   tableFilterPattern?: FilterPattern;
-  /**
-   * Sample data extraction query.
-   */
-  warehouse?: string;
 }
 
 /**
  * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex to only fetch dashboards or charts that matches the pattern.
  *
  * Regex exclude tables or databases that matches the pattern.
  */

@@ -94,7 +94,7 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
     Events.click(webDriver, tableDetails.profiler());
     Assert.assertTrue(tableDetails.schemaTableIsDisplayed());
     Events.click(webDriver, tableDetails.lineage());

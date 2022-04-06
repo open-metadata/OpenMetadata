@@ -16,18 +16,11 @@
  * Create Messaging service entity request
  */
 export interface CreateMessagingService {
-  /**
-   * Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.
-   */
-  brokers: string[];
+  connection: MessagingConnection;
   /**
    * Description of messaging service entity.
    */
   description?: string;
-  /**
-   * Schedule for running metadata ingestion jobs
-   */
-  ingestionSchedule?: Schedule;
   /**
    * Name that identifies the this entity instance uniquely
    */
@@ -36,28 +29,59 @@ export interface CreateMessagingService {
    * Owner of this messaging service.
    */
   owner?: EntityReference;
-  /**
-   * Schema registry URL
-   */
-  schemaRegistry?: string;
   serviceType: MessagingServiceType;
 }
 
 /**
- * Schedule for running metadata ingestion jobs
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * Dashboard Connection.
  */
-export interface Schedule {
+export interface MessagingConnection {
+  config?: Connection;
+}
+
+/**
+ * Kafka Connection Config
+ *
+ * Pulsar Connection Config
+ */
+export interface Connection {
   /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+   * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
-  repeatFrequency?: string;
+  bootstrapServers?: string;
   /**
-   * Start date and time of the schedule.
+   * Confluent Kafka Schema Registry URL.
    */
-  startDate?: Date;
+  schemaRegistryURL?: string;
+  /**
+   * Supported Metadata Extraction Pipelines.
+   */
+  supportedPipelineTypes?: SupportedPipelineTypes;
+  /**
+   * Service Type
+   */
+  type?: MessagingServiceType;
+}
+
+/**
+ * Supported Metadata Extraction Pipelines.
+ */
+export enum SupportedPipelineTypes {
+  Metadata = 'Metadata',
+}
+
+/**
+ * Service Type
+ *
+ * Kafka service type
+ *
+ * Pulsar service type
+ *
+ * Type of messaging service - Kafka or Pulsar.
+ */
+export enum MessagingServiceType {
+  Kafka = 'Kafka',
+  Pulsar = 'Pulsar',
 }
 
 /**
@@ -69,6 +93,10 @@ export interface Schedule {
  * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
@@ -95,12 +123,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Type of messaging service - Kafka or Pulsar.
- */
-export enum MessagingServiceType {
-  Kafka = 'Kafka',
-  Pulsar = 'Pulsar',
 }
