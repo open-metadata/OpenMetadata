@@ -2,7 +2,11 @@
   "source": {
     "type": "sample-data",
     "serviceName": "bigquery_gcp",
-    "serviceConnection": "",
+    "serviceConnection": {
+      "config": {
+        "type": "BigQuery"
+      }
+    },
     "sourceConfig": {}
   },
   "sink": {
