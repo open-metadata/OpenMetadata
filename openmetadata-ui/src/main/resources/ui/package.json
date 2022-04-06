@@ -47,7 +47,7 @@
     "markdown-to-jsx": "^7.1.6",
     "mobx": "6.0.1",
     "mobx-react": "6.1.4",
-    "moment": "^2.29.1",
+    "moment": "^2.29.2",
     "oidc-client": "^1.11.5",
     "path-browserify": "^1.0.1",
     "popper.js": "1.16.1",
