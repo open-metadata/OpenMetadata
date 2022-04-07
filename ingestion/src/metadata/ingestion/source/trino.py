@@ -19,18 +19,19 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.api.source import InvalidSourceException
 
 logger = logging.getLogger(__name__)
 
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
-    TrinoConnection
-)
+
 
 class TrinoSource(SQLSource):
     def __init__(self, config, metadata_config):

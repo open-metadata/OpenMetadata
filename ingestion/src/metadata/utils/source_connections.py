@@ -95,6 +95,7 @@ def _(connection: SQLiteConnection):
 
     return f"{connection.scheme.value}:///:memory:"
 
+
 @get_connection_url.register
 def get_connection_url(connection: TrinoConnection):
     url = f"{connection.scheme}://"
@@ -113,6 +114,7 @@ def get_connection_url(connection: TrinoConnection):
         )
         url = f"{url}?{params}"
     return url
+
 
 def get_connection_url(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
