@@ -17,6 +17,9 @@ from urllib.parse import quote_plus
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -82,3 +85,10 @@ def _(connection: SQLiteConnection):
     """
 
     return f"{connection.scheme.value}:///:memory:"
+
+
+def get_connection_url(connection: DatabricksConnection):
+    url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
+    if connection.database:
+        url += f"/{connection.database}"
+    return url
