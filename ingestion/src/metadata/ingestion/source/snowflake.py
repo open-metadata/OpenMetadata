@@ -22,7 +22,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -103,9 +102,6 @@ class SnowflakeSource(SQLSource):
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_engine(self.config)
                 yield inspect(self.engine)
-
-    def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{self.config.serviceConnection.__root__.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
