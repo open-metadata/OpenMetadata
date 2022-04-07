@@ -26,7 +26,7 @@ def test_mysql_url():
     connection = MysqlConnection(
         username="username",
         password="password",
-        hostPort="http://localhost:1234",
+        hostPort="localhost:1234",
     )
     url = get_connection_url(connection)
-    assert url == "mysql+pymysql://username:password@http://localhost:1234"
+    assert url == "mysql+pymysql://username:password@localhost:1234"
