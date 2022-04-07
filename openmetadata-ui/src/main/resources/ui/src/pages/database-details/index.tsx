@@ -203,9 +203,9 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
-  const fetchDatabaseTables = (paging?: string) => {
+  const fetchDatabaseTables = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
-      getDatabaseTables(databaseFQN, paging, [
+      getDatabaseTables(databaseFQN, pagingObj, [
         'owner',
         'tags',
         'columns',
@@ -563,9 +563,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const fetchMoreFeed = (
     isElementInView: boolean,
     pagingObj: Paging,
-    isLoading: boolean
+    isFeedLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
+    if (isElementInView && pagingObj?.after && !isFeedLoading) {
       fetchActivityFeed(pagingObj.after);
     }
   };
