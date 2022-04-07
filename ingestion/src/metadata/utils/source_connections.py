@@ -98,7 +98,7 @@ def _(connection: SQLiteConnection):
 
 @get_connection_url.register
 def _(connection: TrinoConnection):
-    url = f"{connection.scheme}://"
+    url = f"{connection.scheme.value}://"
     if connection.username:
         url += f"{quote_plus(connection.username)}"
         if connection.password:
@@ -115,8 +115,8 @@ def _(connection: TrinoConnection):
         url = f"{url}?{params}"
     return url
 
-
-def get_connection_url(connection: DatabricksConnection):
+@get_connection_url.register
+def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
@@ -136,6 +136,9 @@ def _(connection: TrinoConnection):
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
-        return {**connection.connectionArguments, "http_session": session}
+        if connection.connectionArguments:
+            return {**connection.connectionArguments, "http_session": session}
+        else:
+            return {"http_session": session}
     else:
         return connection.connectionArguments
