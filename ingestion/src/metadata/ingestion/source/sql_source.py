@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
@@ -61,6 +62,7 @@ from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -127,7 +129,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status = SQLSourceStatus()
         self.engine = get_engine(workflow_source=self.config)
         self._session = None  # We will instantiate this just if needed
-        self.connection = self.engine.connect()
+        self._connection = None  # Lazy init as well
         self.data_profiler = None
         self.data_models = {}
         self.table_constraints = None
@@ -184,6 +186,16 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return self._session
 
+    @property
+    def connection(self) -> Connection:
+        """
+        Return the SQLAlchemy connection
+        """
+        if not self._connection:
+            self._connection = self.engine.connect()
+
+        return self._connection
+
     def prepare(self):
         self._parse_data_model()
 
@@ -231,15 +243,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for schema in schema_names:
                 # clear any previous source database state
                 self.database_source_state.clear()
-                if (
-                    self.source_config.schemaFilterPattern
-                    and self.source_config.schemaFilterPattern.includes
-                    and schema not in self.source_config.schemaFilterPattern.includes
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema_name=schema
                 ):
                     self.status.filter(schema, "Schema pattern not allowed")
                     continue
-                # Fetch tables by default
-                yield from self.fetch_tables(inspector, schema)
+
+                if self.source_config.includeTables:
+                    yield from self.fetch_tables(inspector, schema)
                 if self.source_config.includeViews:
                     yield from self.fetch_views(inspector, schema)
                 if self.source_config.markDeletedTables:
@@ -259,15 +270,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
                 )
-                if (
-                    self.source_config.tableFilterPattern
-                    and table_name not in self.source_config.tableFilterPattern.includes
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=table_name
                 ):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
                     )
                     continue
+
                 if self._is_partition(table_name, schema, inspector):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
@@ -337,9 +348,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     schema, view_name = self.standardize_schema_table_names(
                         schema, view_name
                     )
-                if (
-                    self.source_config.tableFilterPattern
-                    and view_name not in self.source_config.tableFilterPattern.includes
+
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=view_name
                 ):
                     self.status.filter(
                         f"{self.config.serviceName}.{view_name}",

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  faWindowMaximize,
+  faWindowMinimize,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
-import {
-  faWindowMinimize,
-  faWindowMaximize,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -98,11 +98,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
           )}
         </div>
         <div className="tw-modal-body tw-pt-0 tw-pb-1">
-          <MarkdownWithPreview
-            data-testid="markdown-with-preview"
-            ref={markdownRef}
-            value={value}
-          />
+          <RichTextEditor initialValue={value} ref={markdownRef} />
         </div>
         <div className="tw-modal-footer">
           <Button

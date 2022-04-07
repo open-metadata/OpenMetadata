@@ -35,7 +35,7 @@ import {
 import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
 type Props = {
   data?: ColumnTest;
@@ -657,10 +657,10 @@ const ColumnTestForm = ({
               htmlFor="description">
               Description:
             </label>
-            <MarkdownWithPreview
+            <RichTextEditor
               data-testid="description"
+              initialValue={description}
               ref={markdownRef}
-              value={description}
             />
           </Field>
 

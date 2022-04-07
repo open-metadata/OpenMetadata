@@ -11,122 +11,87 @@
  *  limitations under the License.
  */
 
-import { convertFromRaw, convertToRaw, EditorState } from 'draft-js';
-import { draftjsToMd } from 'draftjs-md-converter';
-import { markdownToDraft } from 'markdown-draft-js';
+/* eslint-disable */
+
+import { Editor, Viewer } from '@toast-ui/react-editor';
 import React, {
+  createRef,
   forwardRef,
   useEffect,
   useImperativeHandle,
   useState,
 } from 'react';
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import ListUl from '../../../assets/svg/list-ul.svg';
-import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Info, Italic, Link } from './ToolBarOptions';
+import './RichTextEditor.css';
+import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
 
-const getIntialContent = (format: string, content?: string) => {
-  /*eslint-disable  */
-
-  if (content) {
-    switch (format) {
-      case Format.MARKDOWN:
-        const rawData = markdownToDraft(content, {
-          remarkablePreset: 'commonmark',
-          remarkableOptions: {
-            html: false,
-            disable: {
-              inline: ['links', 'emphasis'],
-              block: ['heading', 'code', 'list'],
-            },
-            enable: {
-              block: 'table',
-              core: ['abbr'],
-            },
-          },
-          preserveNewlines: true,
-        });
-
-        const state = convertFromRaw({ ...rawData });
-
-        return EditorState.createWithContent(state);
-
-      default:
-        return EditorState.createEmpty();
-    }
-  } else {
-    return EditorState.createEmpty();
-  }
-};
-
-const RichTextEditor = forwardRef<editorRef, EditorProp>(
+const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
   (
     {
-      format = 'markdown',
-      initvalue,
-      readonly = false,
-      customOptions,
-    }: EditorProp,
+      placeHolder = 'Write your description',
+      previewStyle = 'tab',
+      editorType = 'markdown',
+      previewHighlight = false,
+      useCommandShortcut = false,
+      extendedAutolinks = true,
+      hideModeSwitch = true,
+      initialValue = '',
+      readonly,
+    }: RichTextEditorProp,
     ref
   ) => {
-    const [editorState, setEditorState] = useState(
-      getIntialContent(format, initvalue)
-    );
-    const onEditorStateChange = (newState: typeof editorState) => {
-      setEditorState(newState);
+    const richTextEditorRef = createRef<Editor>();
+
+    const [editorValue, setEditorValue] = useState(initialValue);
+
+    const onChangeHandler = () => {
+      const value = richTextEditorRef.current
+        ?.getInstance()
+        .getMarkdown() as string;
+      setEditorValue(value);
     };
 
     useImperativeHandle(ref, () => ({
-      getEditorContent(_format: 'json' | 'markdown') {
-        // use switch case for multiple format support
-        return draftjsToMd(convertToRaw(editorState.getCurrentContent()));
+      getEditorContent() {
+        return editorValue;
       },
     }));
 
     useEffect(() => {
-      setEditorState(getIntialContent(format, initvalue));
-    }, [initvalue, format]);
+      setEditorValue(initialValue);
+    }, [initialValue]);
 
     return (
-      <>
-        <div
-          className="tw-min-h-32 tw-border tw-border-main tw-rounded tw-overflow-y-auto"
-          data-testid="enterDescription">
-          <Editor
-            editorClassName="tw-px-1 tw-min-h-32"
-            editorState={editorState}
-            readOnly={readonly}
-            toolbar={{
-              options: ['list'],
-              list: {
-                className: 'my-list tw-order-4',
-                options: ['unordered'],
-                unordered: {
-                  icon: ListUl,
-                  className: 'list-option ',
-                },
-              },
-            }}
-            toolbarClassName="tw-py-2 tw-border-0 tw-border-b tw-border-main"
-            toolbarCustomButtons={
-              customOptions ?? [
-                <Bold key="bold" />,
-                <Italic key="italic" />,
-                <Link key="link" />,
-                <Info key="info" />,
-              ]
-            }
-            toolbarHidden={readonly}
-            wrapperClassName="editor-wrapper"
-            onEditorStateChange={onEditorStateChange}
-          />
-        </div>
-      </>
+      <div className="tw-my-4">
+        {readonly ? (
+          <div
+            className="tw-border tw-border-main tw-p-2 tw-rounded"
+            data-testid="viewer">
+            <Viewer
+              extendedAutolinks={extendedAutolinks}
+              initialValue={editorValue}
+              ref={richTextEditorRef}
+            />
+          </div>
+        ) : (
+          <div data-testid="editor">
+            <Editor
+              extendedAutolinks={extendedAutolinks}
+              hideModeSwitch={hideModeSwitch}
+              initialEditType={editorType}
+              initialValue={editorValue}
+              placeholder={placeHolder}
+              previewHighlight={previewHighlight}
+              previewStyle={previewStyle}
+              ref={richTextEditorRef}
+              toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
+              useCommandShortcut={useCommandShortcut}
+              onChange={onChangeHandler}
+            />
+          </div>
+        )}
+      </div>
     );
   }
 );
-
-RichTextEditor.displayName = 'RichTextEditor';
 
 export default RichTextEditor;

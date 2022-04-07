@@ -21,6 +21,9 @@ from sklearn.tree import DecisionTreeClassifier
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -29,7 +32,7 @@ class OMetaModelMixinTest(TestCase):
     Test the MlModel integrations from MlModel Mixin
     """
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     iris = datasets.load_iris()

@@ -9,28 +9,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-from typing import Any, Optional, TypeVar
+"""
+Helper that implements custom dispatcher logic
+"""
 
-from pydantic import BaseModel
-
-T = TypeVar("T")
-
-logger: logging.Logger = logging.getLogger(__name__)
-
-# Allow types from the generated pydantic models
-Entity = TypeVar("Entity", bound=BaseModel)
+from collections import namedtuple
 
 
-class ConfigModel(BaseModel):
-    class Config:
-        extra = "forbid"
+def enum_register():
+    """
+    Helps us register custom function for enum values
+    """
+    registry = dict()
 
+    def add(name: str):
+        def inner(fn):
+            registry[name] = fn
+            return fn
 
-class DynamicTypedConfig(ConfigModel):
-    type: str
-    config: Optional[Any]
+        return inner
 
-
-class WorkflowExecutionError(Exception):
-    """An error occurred when executing the workflow"""
+    Register = namedtuple("Register", ["add", "registry"])
+    return Register(add, registry)

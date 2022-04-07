@@ -25,7 +25,7 @@ import {
   requiredField,
 } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -212,11 +212,11 @@ const AddGlossary = ({
             htmlFor="description">
             Description:
           </label>
-          <MarkdownWithPreview
+          <RichTextEditor
             data-testid="description"
+            initialValue={description}
             readonly={!allowAccess}
             ref={markdownRef}
-            value={description}
           />
         </Field>
 
