@@ -1,29 +1,28 @@
 {
-    "source": {
-      "type": "databricks",
+  "source": {
+    "type": "databricks",
+    "serviceName": "local_databricks",
+    "serviceConnection": {
       "config": {
         "token": "<databricks token>",
-        "host_port": "host:port",
+        "hostPort": "localhost:443",
         "database": "default",
-        "service_name": "local_databricks",
-        "connect_args":{
-          "http_path": "http_path"
-        },
-        "table_filter_pattern": {
-          "excludes": []
+        "connectionArguments":{
+          "http_path": "<http path of databricks cluster>"
         }
+        
       }
     },
-    "sink": {
-      "type": "metadata-rest",
-      "config": {}
-    },
-    "metadata_server": {
-      "type": "metadata-server",
-      "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth" 
-      }
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
-  
+}
