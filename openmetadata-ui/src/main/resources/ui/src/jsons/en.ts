@@ -42,11 +42,13 @@ const jsonData = {
     'delete-test-error': 'Error while deleting test!',
     'delete-user-error': 'Error while deleting user!',
 
+    'unexpected-error': 'Oops! An unexpected error occurred.',
+
     'elastic-search-error': 'Error while fetch data from Elasticsearch!',
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
-    'fetch-auth-config-error': 'Error occured while fetching auth configs!',
+    'fetch-auth-config-error': 'Error occurred while fetching auth configs!',
     'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
     'fetch-data-error': 'Error while fetching data!',
