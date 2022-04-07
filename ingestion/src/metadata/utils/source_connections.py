@@ -72,7 +72,6 @@ def get_connection_url(connection):
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
 def _(connection):
-    print(get_connection_url_common(connection))
     return get_connection_url_common(connection)
 
 
