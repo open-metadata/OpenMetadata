@@ -243,7 +243,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for schema in schema_names:
                 # clear any previous source database state
                 self.database_source_state.clear()
-                if filter_by_schema(self.source_config.schemaFilterPattern, schema_name=schema):
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema_name=schema
+                ):
                     self.status.filter(schema, "Schema pattern not allowed")
                     continue
 
@@ -268,7 +270,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
                 )
-                if filter_by_table(self.source_config.tableFilterPattern, table_name=table_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=table_name
+                ):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
@@ -345,7 +349,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         schema, view_name
                     )
 
-                if filter_by_table(self.source_config.tableFilterPattern, table_name=view_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=view_name
+                ):
                     self.status.filter(
                         f"{self.config.serviceName}.{view_name}",
                         "View pattern not allowed",
