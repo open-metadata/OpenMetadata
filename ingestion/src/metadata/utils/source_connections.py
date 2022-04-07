@@ -97,7 +97,7 @@ def _(connection: SQLiteConnection):
 
 
 @get_connection_url.register
-def get_connection_url(connection: TrinoConnection):
+def _(connection: TrinoConnection):
     url = f"{connection.scheme}://"
     if connection.username:
         url += f"{quote_plus(connection.username)}"
@@ -132,7 +132,7 @@ def get_connection_args(connection):
 
 
 @get_connection_args.register
-def get_connection_args(connection: TrinoConnection):
+def _(connection: TrinoConnection):
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
