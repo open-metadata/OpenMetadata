@@ -30,7 +30,6 @@ import {
 } from '../../generated/api/events/createWebhook';
 import {
   errorMsg,
-  getDocButton,
   getSeparator,
   isValidUrl,
   requiredField,
@@ -454,7 +453,6 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           case. Use advanced configuration to set up a shared secret key to
           verify the webhook events using HMAC signature.
         </div>
-        {getDocButton('Read Webhook Doc', '', 'webhook-doc')}
       </>
     );
   };
