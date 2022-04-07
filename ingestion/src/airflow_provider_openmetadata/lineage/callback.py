@@ -15,9 +15,8 @@ OpenMetadata Airflow Lineage Backend
 import logging
 from typing import TYPE_CHECKING, Dict
 
-from airflow_provider_openmetadata.lineage.config import (
+from airflow_provider_openmetadata.lineage.config.loader import (
     get_lineage_config,
-    get_metadata_config,
 )
 from airflow_provider_openmetadata.lineage.utils import (
     add_status,
@@ -42,8 +41,7 @@ def failure_callback(context: Dict[str, str]) -> None:
     """
     try:
         config = get_lineage_config()
-        metadata_config = get_metadata_config(config)
-        client = OpenMetadata(metadata_config)
+        client = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
 
@@ -79,8 +77,7 @@ def success_callback(context: Dict[str, str]) -> None:
     try:
 
         config = get_lineage_config()
-        metadata_config = get_metadata_config(config)
-        client = OpenMetadata(metadata_config)
+        client = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
         dag: "DAG" = context["dag"]
