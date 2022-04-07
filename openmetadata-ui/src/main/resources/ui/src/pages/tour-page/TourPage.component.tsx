@@ -185,6 +185,7 @@ const TourPage = () => {
             entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
+            fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
@@ -203,6 +204,7 @@ const TourPage = () => {
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
+            paging={{} as Paging}
             postFeedHandler={handleCountChange}
             qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}
