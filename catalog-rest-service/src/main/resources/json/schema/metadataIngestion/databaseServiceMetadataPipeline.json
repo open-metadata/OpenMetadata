@@ -9,6 +9,11 @@
       "type": "boolean",
       "default": true
     },
+    "includeTables": {
+      "description": "Optional configuration to turn off fetching metadata for tables.",
+      "type": "boolean",
+      "default": true
+    },
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",

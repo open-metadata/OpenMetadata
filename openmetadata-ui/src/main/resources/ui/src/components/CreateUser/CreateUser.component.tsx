@@ -23,7 +23,7 @@ import { EntityReference as UserTeams } from '../../generated/entity/teams/user'
 import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
@@ -246,7 +246,7 @@ const CreateUser = ({
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
           Description:
         </label>
-        <MarkdownWithPreview ref={markdownRef} value={description} />
+        <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0">Teams:</label>

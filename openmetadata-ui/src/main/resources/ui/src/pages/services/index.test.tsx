@@ -14,7 +14,9 @@
 import {
   findAllByTestId,
   findByTestId,
+  findByText,
   fireEvent,
+  getByTestId,
   render,
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
@@ -26,126 +28,24 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import {
+  mockCustomDashboardService,
+  mockCustomMessagingService,
+  mockDashboardService,
+  mockDatabaseService,
+  mockKafkaService,
+  mockLookerService,
+  mockMessagingService,
+  mockMetabaseService,
+  mockPipelineService,
+  mockPowerBIService,
+  mockPulsarService,
+  mockRedashService,
+  mockServiceDetails,
+  mockSupersetService,
+  mockTableauService,
+} from '../../mocks/Service.mock';
 import ServicesPage from './index';
-
-const mockServiceDetails = {
-  data: [
-    {
-      collection: {
-        documentation: 'Messaging service collection',
-        href: 'http://messagingServices',
-        name: 'messagingServices',
-      },
-    },
-    {
-      collection: {
-        documentation: 'Database service collection',
-        href: 'http://databaseServices',
-        name: 'databaseServices',
-      },
-    },
-    {
-      collection: {
-        documentation: 'Dashboard service collection',
-        href: 'http://dashboardServices',
-        name: 'dashboardServices',
-      },
-    },
-    {
-      collection: {
-        name: 'pipelineServices',
-        documentation: 'Pipeline service collection',
-        href: 'http://pipelineServices',
-      },
-    },
-  ],
-};
-
-const mockDatabaseService = {
-  data: {
-    data: [
-      {
-        id: '847deda6-5342-42ed-b392-f0178a502c13',
-        name: 'bigquery',
-        serviceType: 'BigQuery',
-        description: 'BigQuery service used for shopify data',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
-        jdbc: {
-          driverClass: 'jdbc',
-          connectionUrl: 'jdbc://localhost',
-        },
-      },
-      {
-        id: '847deda6-5342-42ed-b392-f0178a502c13',
-        name: 'mysql',
-        serviceType: 'MySql',
-        description: 'MySql service used for shopify data',
-        href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
-        jdbc: {
-          driverClass: 'jdbc',
-          connectionUrl: 'jdbc://localhost',
-        },
-      },
-    ],
-    paging: { total: 2 },
-  },
-};
-
-const mockMessagingService = {
-  data: {
-    data: [
-      {
-        connection: {
-          config: {
-            bootstrapServers: 'localhost:9092',
-            description: 'Kafka messaging queue service',
-            href: 'http://localhost:8585/api/v1/services/messagingServices/473e2a9b-7555-42d3-904a-4c773c4dcd33',
-            id: '473e2a9b-7555-42d3-904a-4c773c4dcd33',
-            name: 'sample_kafka',
-            schemaRegistryURL: 'http://localhost:8081',
-            serviceType: 'Kafka',
-          },
-        },
-      },
-    ],
-    paging: { total: 1 },
-  },
-};
-
-const mockDashboardService = {
-  data: {
-    data: [
-      {
-        dashboardUrl: 'http://localhost:8088',
-        description: 'Supset Service',
-        href: 'http://localhost:8585/api/v1/services/dashboardServices/627a0545-39bc-47d1-bde8-df8bf19b4616',
-        id: '627a0545-39bc-47d1-bde8-df8bf19b4616',
-        name: 'sample_superset',
-        password: 'admin',
-        serviceType: 'Superset',
-        username: 'admin',
-      },
-    ],
-    paging: { total: 1 },
-  },
-};
-
-const mockPipelineService = {
-  data: {
-    data: [
-      {
-        id: '7576944e-2921-4c15-9edc-b9bada93338a',
-        name: 'sample_airflow',
-        serviceType: 'Airflow',
-        description: 'Airflow service',
-        version: 0.1,
-        pipelineUrl: 'http://localhost:8080',
-        href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
-      },
-    ],
-    paging: { total: 1 },
-  },
-};
 
 jest.mock('../../auth-provider/AuthProvider', () => {
   return {
@@ -289,6 +189,328 @@ describe('Test Service page', () => {
     expect(type.length).toBe(mockDatabaseService.data.data.length);
     expect(deleteIcon.length).toBe(mockDatabaseService.data.data.length);
     expect(icon.length).toBe(mockDatabaseService.data.data.length);
+  });
+});
+
+describe('Test Messaging Service Cards', () => {
+  it('Should render kafka service card with brokers', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[1]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockMessagingService.data.data.length);
+
+    const kafkaServiceName = await findByText(
+      serviceCards[0],
+      mockKafkaService.name
+    );
+    const kafkaServiceBrokers = getByTestId(serviceCards[0], 'brokers');
+    const kafkaServiceType = getByTestId(serviceCards[0], 'service-type');
+
+    expect(kafkaServiceName).toBeInTheDocument();
+    expect(kafkaServiceBrokers).toBeInTheDocument();
+    expect(kafkaServiceBrokers).toHaveTextContent(
+      mockKafkaService.connection.config.bootstrapServers
+    );
+    expect(kafkaServiceType).toBeInTheDocument();
+    expect(kafkaServiceType).toHaveTextContent(
+      `Type:${mockKafkaService.serviceType}`
+    );
+  });
+
+  it('Should render pulsar service card without brokers', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[1]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockMessagingService.data.data.length);
+
+    const pulsarServiceName = await findByText(
+      serviceCards[1],
+      mockPulsarService.name
+    );
+    const pulsarServiceBrokers = getByTestId(serviceCards[1], 'brokers');
+    const pulsarServiceType = getByTestId(serviceCards[1], 'service-type');
+
+    expect(pulsarServiceName).toBeInTheDocument();
+    expect(pulsarServiceBrokers).toBeInTheDocument();
+    expect(pulsarServiceBrokers).toHaveTextContent('--');
+    expect(pulsarServiceType).toBeInTheDocument();
+    expect(pulsarServiceType).toHaveTextContent(
+      `Type:${mockPulsarService.serviceType}`
+    );
+  });
+
+  it('Should render custom service card without brokers', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[1]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockMessagingService.data.data.length);
+
+    const customServiceName = await findByText(
+      serviceCards[2],
+      mockCustomMessagingService.name
+    );
+    const customServiceBrokers = getByTestId(serviceCards[2], 'brokers');
+    const customServiceType = getByTestId(serviceCards[2], 'service-type');
+
+    expect(customServiceName).toBeInTheDocument();
+    expect(customServiceBrokers).toBeInTheDocument();
+    expect(customServiceBrokers).toHaveTextContent('--');
+    expect(customServiceType).toBeInTheDocument();
+    expect(customServiceType).toHaveTextContent(
+      `Type:${mockCustomMessagingService.serviceType}`
+    );
+  });
+});
+
+describe('Test Dashboard Service Cards', () => {
+  it('Should render looker service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const lookerCard = serviceCards[0];
+
+    const lookerServiceName = await findByText(
+      lookerCard,
+      mockLookerService.name
+    );
+    const lookerServiceURL = getByTestId(lookerCard, 'dashboard-url');
+    const lookerServiceType = getByTestId(lookerCard, 'service-type');
+
+    expect(lookerServiceName).toBeInTheDocument();
+    expect(lookerServiceURL).toBeInTheDocument();
+    expect(lookerServiceURL).toHaveTextContent(
+      mockLookerService.connection.config.url
+    );
+    expect(lookerServiceType).toBeInTheDocument();
+    expect(lookerServiceType).toHaveTextContent(
+      `Type:${mockLookerService.serviceType}`
+    );
+  });
+
+  it('Should render metabase service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const metabaseCard = serviceCards[1];
+
+    const metabaseServiceName = await findByText(
+      metabaseCard,
+      mockMetabaseService.name
+    );
+    const metabaseServiceURL = getByTestId(metabaseCard, 'dashboard-url');
+    const metabaseServiceType = getByTestId(metabaseCard, 'service-type');
+
+    expect(metabaseServiceName).toBeInTheDocument();
+    expect(metabaseServiceURL).toBeInTheDocument();
+    expect(metabaseServiceURL).toHaveTextContent(
+      mockMetabaseService.connection.config.hostPort
+    );
+    expect(metabaseServiceType).toBeInTheDocument();
+    expect(metabaseServiceType).toHaveTextContent(
+      `Type:${mockMetabaseService.serviceType}`
+    );
+  });
+
+  it('Should render powerbi service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const powerBICard = serviceCards[2];
+
+    const powerBIServiceName = await findByText(
+      powerBICard,
+      mockPowerBIService.name
+    );
+    const powerBIServiceURL = getByTestId(powerBICard, 'dashboard-url');
+    const powerBIServiceType = getByTestId(powerBICard, 'service-type');
+
+    expect(powerBIServiceName).toBeInTheDocument();
+    expect(powerBIServiceURL).toBeInTheDocument();
+    expect(powerBIServiceURL).toHaveTextContent(
+      mockPowerBIService.connection.config.dashboardURL
+    );
+    expect(powerBIServiceType).toBeInTheDocument();
+    expect(powerBIServiceType).toHaveTextContent(
+      `Type:${mockPowerBIService.serviceType}`
+    );
+  });
+
+  it('Should render redash service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const redashCard = serviceCards[3];
+
+    const redashServiceName = await findByText(
+      redashCard,
+      mockRedashService.name
+    );
+    const redashServiceURL = getByTestId(redashCard, 'dashboard-url');
+    const redashServiceType = getByTestId(redashCard, 'service-type');
+
+    expect(redashServiceName).toBeInTheDocument();
+    expect(redashServiceURL).toBeInTheDocument();
+    expect(redashServiceURL).toHaveTextContent(
+      mockRedashService.connection.config.redashURL
+    );
+    expect(redashServiceType).toBeInTheDocument();
+    expect(redashServiceType).toHaveTextContent(
+      `Type:${mockRedashService.serviceType}`
+    );
+  });
+
+  it('Should render superset service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const supersetCard = serviceCards[4];
+
+    const supersetServiceName = await findByText(
+      supersetCard,
+      mockSupersetService.name
+    );
+    const supersetServiceURL = getByTestId(supersetCard, 'dashboard-url');
+    const supersetServiceType = getByTestId(supersetCard, 'service-type');
+
+    expect(supersetServiceName).toBeInTheDocument();
+    expect(supersetServiceURL).toBeInTheDocument();
+    expect(supersetServiceURL).toHaveTextContent(
+      mockSupersetService.connection.config.supersetURL
+    );
+    expect(supersetServiceType).toBeInTheDocument();
+    expect(supersetServiceType).toHaveTextContent(
+      `Type:${mockSupersetService.serviceType}`
+    );
+  });
+
+  it('Should render tableau service card with URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const tableauCard = serviceCards[5];
+
+    const tableauServiceName = await findByText(
+      tableauCard,
+      mockTableauService.name
+    );
+    const tableauServiceURL = getByTestId(tableauCard, 'dashboard-url');
+    const tableauServiceType = getByTestId(tableauCard, 'service-type');
+
+    expect(tableauServiceName).toBeInTheDocument();
+    expect(tableauServiceURL).toBeInTheDocument();
+    expect(tableauServiceURL).toHaveTextContent(
+      mockTableauService.connection.config.siteURL
+    );
+    expect(tableauServiceType).toBeInTheDocument();
+    expect(tableauServiceType).toHaveTextContent(
+      `Type:${mockTableauService.serviceType}`
+    );
+  });
+
+  it('Should render custom service card without URL', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const tabs = await findAllByTestId(container, 'tab');
+
+    fireEvent.click(tabs[2]);
+    const dataContainer = await findByTestId(container, 'data-container');
+    const serviceCards = await findAllByTestId(dataContainer, 'service-card');
+
+    expect(serviceCards.length).toEqual(mockDashboardService.data.data.length);
+
+    const customCard = serviceCards[6];
+
+    const customServiceName = await findByText(
+      customCard,
+      mockCustomDashboardService.name
+    );
+    const customServiceURL = getByTestId(customCard, 'dashboard-url');
+    const customServiceType = getByTestId(customCard, 'service-type');
+
+    expect(customServiceName).toBeInTheDocument();
+    expect(customServiceURL).toBeInTheDocument();
+    expect(customServiceURL).toHaveTextContent('--');
+    expect(customServiceType).toBeInTheDocument();
+    expect(customServiceType).toHaveTextContent(
+      `Type:${mockCustomDashboardService.serviceType}`
+    );
   });
 });
 
