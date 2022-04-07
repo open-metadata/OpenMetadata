@@ -69,8 +69,8 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
-        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+        ? String.format("fullyQualifiedName LIKE \"%s%s%%\"", fqnPrefix, Entity.SEPARATOR)
+        : String.format("%s.fullyQualifiedName LIKE \"%s%s%%\"", tableName, fqnPrefix, Entity.SEPARATOR);
   }
 
   private String addCondition(String condition1, String condition2) {

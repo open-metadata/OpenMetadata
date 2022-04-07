@@ -33,6 +33,8 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { getErrorText } from '../../utils/StringsUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const GlossaryTermPage: FunctionComponent = () => {
@@ -63,6 +65,13 @@ const GlossaryTermPage: FunctionComponent = () => {
 
   const activeTabHandler = (value: number) => {
     setActiveTab(value);
+  };
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
   };
 
   const fetchGlossaryTermsData = (id?: string) => {
@@ -208,6 +217,14 @@ const GlossaryTermPage: FunctionComponent = () => {
     getTagCategories()
       .then((res) => {
         setTagList(getTaglist(res.data));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-tags-error']
+        );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsTagLoading(false);

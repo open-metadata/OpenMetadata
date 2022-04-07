@@ -13,9 +13,19 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
 
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
+
+
+class InvalidSourceException(Exception):
+    """
+    The source config is not getting the expected
+    service connection
+    """
 
 
 @dataclass
@@ -37,12 +47,10 @@ class SourceStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
     def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+        cls, config_dict: dict, metadata_config: OpenMetadataServerConfig
     ) -> "Source":
         pass
 

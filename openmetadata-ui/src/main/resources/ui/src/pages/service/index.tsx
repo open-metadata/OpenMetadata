@@ -74,10 +74,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
-import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { MessagingService } from '../../generated/entity/services/messagingService';
-import { PipelineService } from '../../generated/entity/services/pipelineService';
 import {
   AirflowPipeline,
   PipelineType,
@@ -86,6 +83,7 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
+import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
@@ -110,10 +108,6 @@ import {
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
 type Data = Database & Topic & Dashboard;
-type ServiceDataObj = { name: string } & Partial<DatabaseService> &
-  Partial<MessagingService> &
-  Partial<DashboardService> &
-  Partial<PipelineService>;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType, serviceCategory, tab } =
@@ -816,13 +810,13 @@ const ServicePage: FunctionComponent = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
         return {
-          databaseConnection: serviceDetails?.databaseConnection ?? {},
+          databaseConnection: serviceDetails?.connection ?? {},
         };
 
       case ServiceCategory.MESSAGING_SERVICES:
         return {
-          brokers: serviceDetails?.brokers,
-          schemaRegistry: serviceDetails?.schemaRegistry,
+          brokers: serviceDetails?.connection?.config?.bootstrapServers,
+          schemaRegistry: serviceDetails?.connection?.config?.schemaRegistryURL,
         };
 
       case ServiceCategory.DASHBOARD_SERVICES:

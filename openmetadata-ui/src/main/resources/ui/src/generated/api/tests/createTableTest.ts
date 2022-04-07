@@ -57,6 +57,10 @@ export enum TestCaseExecutionFrequency {
  */
 export interface EntityReference {
   /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Optional description of entity.
    */
   description?: string;
@@ -127,10 +131,10 @@ export interface TableTestCase {
  * This schema defines the test TableRowCountToEqual. Test the number of rows equal to a
  * value.
  *
- * This scheam defines the test TableRowCountToBeBetween. Test the number of rows to between
+ * This schema defines the test TableRowCountToBeBetween. Test the number of rows to between
  * to two values.
  *
- * This scheam defines the test TableColumnCountToEqual. Test the number of columns equal to
+ * This schema defines the test TableColumnCountToEqual. Test the number of columns equal to
  * a value.
  */
 export interface TableRowCountToBeBetween {

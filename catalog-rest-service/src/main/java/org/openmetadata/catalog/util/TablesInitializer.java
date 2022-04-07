@@ -24,7 +24,6 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -39,14 +38,10 @@ import org.apache.commons.cli.Options;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.catalog.fernet.Fernet;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 
 public final class TablesInitializer {
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
@@ -90,7 +85,6 @@ public final class TablesInitializer {
     OPTIONS.addOption(
         null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
     OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
-    OPTIONS.addOption(null, SchemaMigrationOption.ROTATE.toString(), false, "Rotate the Fernet Key");
   }
 
   private TablesInitializer() {}
@@ -152,7 +146,7 @@ public final class TablesInitializer {
     Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
-      execute(flyway, client, schemaMigrationOptionSpecified, dataSourceFactory);
+      execute(flyway, client, schemaMigrationOptionSpecified);
       System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified);
     } catch (Exception e) {
       System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified, e);
@@ -180,12 +174,8 @@ public final class TablesInitializer {
         .load();
   }
 
-  private static void execute(
-      Flyway flyway,
-      RestHighLevelClient client,
-      SchemaMigrationOption schemaMigrationOption,
-      DataSourceFactory dataSourceFactory)
-      throws SQLException, IOException {
+  private static void execute(Flyway flyway, RestHighLevelClient client, SchemaMigrationOption schemaMigrationOption)
+      throws SQLException {
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
       case CREATE:
@@ -240,9 +230,6 @@ public final class TablesInitializer {
         esIndexDefinition = new ElasticSearchIndexDefinition(client);
         esIndexDefinition.dropIndexes();
         break;
-      case ROTATE:
-        rotate(dataSourceFactory);
-        break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
@@ -251,16 +238,6 @@ public final class TablesInitializer {
   private static void usage() {
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
-  }
-
-  public static void rotate(DataSourceFactory dataSourceFactory) throws IOException {
-    String user = dataSourceFactory.getUser() != null ? dataSourceFactory.getUser() : "";
-    String password = dataSourceFactory.getPassword() != null ? dataSourceFactory.getPassword() : "";
-    Jdbi jdbi = Jdbi.create(dataSourceFactory.getUrl(), user, password);
-    jdbi.installPlugin(new SqlObjectPlugin());
-    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-    DatabaseServiceRepository databaseServiceRepository = new DatabaseServiceRepository(daoObject);
-    databaseServiceRepository.rotate();
   }
 
   enum SchemaMigrationOption {
@@ -273,9 +250,7 @@ public final class TablesInitializer {
     REPAIR("repair"),
     ES_DROP("es-drop"),
     ES_CREATE("es-create"),
-    ES_MIGRATE("es-migrate"),
-    ROTATE("rotate");
-
+    ES_MIGRATE("es-migrate");
     private final String value;
 
     SchemaMigrationOption(String schemaMigrationOption) {

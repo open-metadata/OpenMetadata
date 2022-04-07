@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import {
@@ -27,7 +28,10 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -63,6 +67,7 @@ const GlossaryTermsV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
 }: Props) => {
+  const showToast = useToastContext();
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -80,6 +85,13 @@ const GlossaryTermsV1 = ({
   const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
     []
   );
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const tabs = [
     {
@@ -209,6 +221,14 @@ const GlossaryTermsV1 = ({
     getTagCategories()
       .then((res) => {
         setTagList(getTaglist(res.data));
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-tags-error']
+        );
+
+        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsTagLoading(false);

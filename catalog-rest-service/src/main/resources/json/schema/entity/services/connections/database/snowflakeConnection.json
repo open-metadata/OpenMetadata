@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/snowflakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SnowflakeConnection",
+  "description": "Snowflake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "definitions": {
+    "snowflakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Snowflake"],
+      "default": "Snowflake"
+    },
+    "snowflakeScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["snowflake"],
+      "default": "snowflake"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/snowflakeType",
+      "default": "Snowflake"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/snowflakeScheme",
+      "default": "snowflake"
+    },
+    "username": {
+      "description": "username to connect  to the Snowflake. This user should have privileges to read all the metadata in Snowflake.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Snowflake.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the data source.",
+      "type": "string"
+    },
+    "account": {
+      "description": "Snowflake Account.",
+      "type": "string"
+    },
+    "role": {
+      "description": "Snowflake Role.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Snowflake.",
+      "type": "string"
+    },
+    "warehouse": {
+      "description": "Snowflake warehouse.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}

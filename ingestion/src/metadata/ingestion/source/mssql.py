@@ -9,34 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL source module"""
-from typing import Optional
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-
-class MssqlConfig(SQLConnectionConfig):
-    """MSSQL config -- extends SQLConnectionConfig class"""
-
-    host_port = "localhost:1433"
-    scheme = "mssql+pytds"
-    service_type = DatabaseServiceType.MSSQL.value
-    use_pymssql: bool = False
-    use_pyodbc: bool = False
-    uri_string: str = ""
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        if self.use_pyodbc:
-            self.scheme = "mssql+pyodbc"
-            return f"{self.scheme}://{self.uri_string}"
-        if self.use_pymssql:
-            self.scheme = "mssql+pymssql"
-        return super().get_connection_url()
 
 
 class MssqlSource(SQLSource):
@@ -49,8 +33,12 @@ class MssqlSource(SQLSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         """Create class instance"""
-        config = MssqlConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: MssqlConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, MssqlConnection):
+            raise InvalidSourceException(
+                f"Expected MssqlConnection, but got {connection}"
+            )
+        return cls(config, metadata_config)

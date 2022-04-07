@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/lookerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LookerConnection",
+  "description": "Looker Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.LookerConnection",
+  "definitions": {
+    "lookerType": {
+      "description": "Looker service type",
+      "type": "string",
+      "enum": ["Looker"],
+      "default": "Looker"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/lookerType",
+      "default": "Looker"
+    },
+    "username": {
+      "description": "username to connect  to the Looker. This user should have privileges to read all the metadata in Looker.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Looker.",
+      "type": "string",
+      "format": "password"
+    },
+    "url": {
+      "description": "URL to Looker instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "platformName": {
+      "description": "Looker Platform Name",
+      "type": "string",
+      "default": "looker"
+    },
+    "actor": {
+      "description": "Looker actor.",
+      "type": "string"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "enum": ["Metadata"],
+      "javaEnums": [
+        {
+          "name": "Metadata"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

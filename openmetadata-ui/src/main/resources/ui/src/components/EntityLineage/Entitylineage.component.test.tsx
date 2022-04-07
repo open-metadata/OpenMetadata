@@ -30,6 +30,10 @@ window.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 const mockLineageData = {
   entity: {
     id: 'efcc334a-41c8-483e-b779-464a88a7ece3',

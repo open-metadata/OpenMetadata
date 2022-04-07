@@ -129,7 +129,7 @@ public class DashboardServiceTestPage {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, dashboardServicePage.editDashboardServiceUrl(), "1");
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");

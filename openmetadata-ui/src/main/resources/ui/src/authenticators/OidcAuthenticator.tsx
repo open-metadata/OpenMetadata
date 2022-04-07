@@ -98,6 +98,9 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         logout();
       },
+      renewIdToken() {
+        return Promise.resolve('');
+      },
     }));
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
@@ -143,13 +146,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                 <AppWithAuth />
               )}
             </Switch>
-            {/* TODO: Uncomment below lines to show Welcome modal on Sign-up */}
-            {/* {isAuthenticatedRoute && isFirstTimeUser ? (
-            <FirstTimeUserModal
-              onCancel={() => handleFirstTourModal(true)}
-              onSave={() => handleFirstTourModal(false)}
-            />
-          ) : null} */}
           </>
         ) : (
           <Loader />

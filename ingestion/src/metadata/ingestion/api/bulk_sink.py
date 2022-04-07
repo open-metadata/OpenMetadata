@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from typing import Any, List
 
 from .closeable import Closeable
-from .common import WorkflowContext
 from .status import Status
 
 
@@ -36,13 +35,9 @@ class BulkSinkStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ) -> "BulkSink":
+    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "BulkSink":
         pass
 
     @abstractmethod

@@ -46,8 +46,8 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "database": {
-      "description": "Database corresponding to this table",
+    "databaseSchema": {
+      "description": "Schema corresponding to this table",
       "$ref": "../../type/entityReference.json",
       "default": null
     },

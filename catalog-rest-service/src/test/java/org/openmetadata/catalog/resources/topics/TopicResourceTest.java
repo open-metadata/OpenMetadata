@@ -43,7 +43,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -54,18 +53,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
-  }
-
-  @Test
-  void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create team with different optional fields
-    CreateTopic create = createRequest(test);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-
-    create.withName(getEntityName(test, 1)).withDescription("description");
-    Topic topic = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = EntityUtil.getFQN(KAFKA_REFERENCE.getName(), topic.getName());
-    assertEquals(expectedFQN, topic.getFullyQualifiedName());
   }
 
   @Test
@@ -278,7 +265,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         createRequest.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
-    assertService(createRequest.getService(), topic.getService());
+    assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
   }
@@ -291,7 +278,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         expected.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         expected.getOwner());
-    assertService(expected.getService(), expected.getService());
+    assertReference(expected.getService(), expected.getService());
     // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());
   }

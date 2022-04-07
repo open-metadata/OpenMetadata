@@ -19,10 +19,11 @@ from typing import Optional
 from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import WorkflowContext
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class QueryParserProcessorConfig(ConfigModel):
@@ -41,7 +42,6 @@ class QueryParserProcessor(Processor):
     Extension of the `Processor` class
 
     Args:
-        ctx (WorkflowContext):
         config (QueryParserProcessorConfig):
         metadata_config (MetadataServerConfig):
 
@@ -56,26 +56,20 @@ class QueryParserProcessor(Processor):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: QueryParserProcessorConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
     ):
-        super().__init__(ctx)
+
         self.config = config
         self.metadata_config = metadata_config
         self.status = ProcessorStatus()
 
     @classmethod
     def create(
-        cls,
-        config_dict: dict,
-        metadata_config_dict: dict,
-        ctx: WorkflowContext,
-        **kwargs
+        cls, config_dict: dict, metadata_config: OpenMetadataServerConfig, **kwargs
     ):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
+        return cls(config, metadata_config)
 
     def process(self, record: TableQuery) -> QueryParserData:
         try:

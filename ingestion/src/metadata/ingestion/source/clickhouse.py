@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import enum
-from typing import Optional
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
@@ -20,12 +19,14 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 @reflection.cache
@@ -141,23 +142,22 @@ ClickHouseDialect._get_column_type = _get_column_type
 ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
 
-
-class ClickhouseConfig(SQLConnectionConfig):
-    host_port = "localhost:8123"
-    scheme = "clickhouse+http"
-    service_type = DatabaseServiceType.ClickHouse.value
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        return super().get_connection_url()
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
+)
 
 
 class ClickhouseSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
-        config = ClickhouseConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, ClickhouseConnection):
+            raise InvalidSourceException(
+                f"Expected ClickhouseConnection, but got {connection}"
+            )
+
+        return cls(config, metadata_config)

@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/pulsarConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PulsarConnection",
+  "description": "Pulsar Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.messaging.PulsarConnection",
+  "definitions": {
+    "pulsarType": {
+      "description": "Pulsar service type",
+      "type": "string",
+      "enum": [
+        "Pulsar"
+      ],
+      "default": "Pulsar"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/pulsarType",
+      "default": "Pulsar"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "enum": ["Metadata"],
+      "javaEnums": [
+        {
+          "name": "Metadata"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

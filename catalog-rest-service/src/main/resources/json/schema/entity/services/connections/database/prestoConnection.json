@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/prestoConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrestoConnection",
+  "description": "Presto Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.PrestoConnection",
+  "definitions": {
+    "prestoType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Presto"],
+      "default": "Presto"
+    },
+    "prestoScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["presto"],
+      "default": "presto"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/prestoType",
+      "default": "Presto"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/prestoScheme",
+      "default": "presto"
+    },
+    "username": {
+      "description": "username to connect  to the Postgres. This user should have privileges to read all the metadata in Postgres.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Postgres.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Postgres.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Postgres.",
+      "type": "string"
+    },
+    "catalog": {
+      "description": "Presto catalog",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}

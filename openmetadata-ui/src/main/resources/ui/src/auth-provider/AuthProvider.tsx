@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { UserPermissions } from 'Models';
@@ -30,6 +32,8 @@ import React, {
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import appState from '../AppState';
+import Auth0Callback from '../authentication/callbacks/Auth0Callback/Auth0Callback';
+import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
@@ -50,6 +54,7 @@ import { ClientErrors } from '../enums/axios.enum';
 import { AuthTypes } from '../enums/signin.enum';
 import { User } from '../generated/entity/teams/user';
 import useToastContext from '../hooks/useToastContext';
+import jsonData from '../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -60,6 +65,7 @@ import {
   setMsalInstance,
 } from '../utils/AuthProvider.util';
 import { getImages } from '../utils/CommonUtils';
+import { getErrorText } from '../utils/StringsUtils';
 import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
@@ -84,7 +90,7 @@ export const AuthProvider = ({
 
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken || localStorage.getItem('okta-token-storage'))
   );
   const [isAuthDisabled, setIsAuthDisabled] = useState(false);
@@ -92,6 +98,13 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const onLoginHandler = () => {
     authenticatorRef.current?.invokeLogin();
@@ -101,24 +114,30 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogout();
   };
 
+  const onRenewIdTokenHandler = () => {
+    return authenticatorRef.current?.renewIdToken();
+  };
+
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
       history.push(ROUTES.HOME);
     }
   };
 
+  const setLoadingIndicator = (value: boolean) => {
+    setLoading(value);
+  };
+
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
     appState.updateUserPermissions({} as UserPermissions);
     localStorage.removeItem(oidcTokenKey);
+    setLoadingIndicator(false);
     if (forceLogout) {
       onLogoutHandler();
+    } else {
+      history.push(ROUTES.SIGNIN);
     }
-    window.location.href = ROUTES.SIGNIN;
-  };
-
-  const setLoadingIndicator = (value: boolean) => {
-    setLoading(value);
   };
 
   const getUserPermissions = () => {
@@ -127,12 +146,14 @@ export const AuthProvider = ({
       .then((res: AxiosResponse) => {
         appState.updateUserPermissions(res.data.metadataOperations);
       })
-      .catch(() =>
-        showToast({
-          variant: 'error',
-          body: 'Error while getting user permissions',
-        })
-      )
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-user-permission-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -149,8 +170,8 @@ export const AuthProvider = ({
           setLoading(false);
         }
       })
-      .catch((err) => {
-        if (err.response.data.code === 404) {
+      .catch((err: AxiosError) => {
+        if (err.response?.data.code === 404) {
           resetUserDetails();
         }
       });
@@ -223,18 +244,6 @@ export const AuthProvider = ({
     resetUserDetails();
   };
 
-  const getAuthenticatedUser = (config: Record<string, string | boolean>) => {
-    switch (config?.provider) {
-      case AuthTypes.OKTA:
-      case AuthTypes.AZURE:
-      case AuthTypes.GOOGLE: {
-        getLoggedInUserDetails();
-
-        break;
-      }
-    }
-  };
-
   const updateAuthInstance = (configJson: Record<string, string | boolean>) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
@@ -245,6 +254,89 @@ export const AuthProvider = ({
 
         break;
     }
+  };
+
+  /**
+   * Renew Id Token handler for all the SSOs.
+   * This method will be called when the id token is about to expire.
+   */
+  const renewIdToken = (): Promise<string> => {
+    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+
+    return new Promise((resolve, reject) => {
+      if (onRenewIdTokenHandlerPromise) {
+        onRenewIdTokenHandlerPromise
+          .then(() => {
+            resolve(localStorage.getItem(oidcTokenKey) || '');
+          })
+          .catch((error) => {
+            reject(error);
+          });
+      } else {
+        reject('RenewIdTokenHandler is undefined');
+      }
+    });
+  };
+
+  /**
+   * Initialize Axios interceptors to intercept every request and response
+   * to handle appropriately. This should be called only when security is enabled.
+   */
+  const initializeAxiosInterceptors = () => {
+    // Axios Request interceptor to add Bearer tokens in Header
+    axiosClient.interceptors.request.use(async function (config) {
+      let token: string | void = localStorage.getItem(oidcTokenKey) || '';
+      if (token) {
+        // Before adding token to the Header, check its expiry
+        // If the token will expire within the next time or has already expired
+        // renew the token using silent renewal for a smooth UX
+        const { exp } = jwtDecode<JwtPayload>(token);
+        if (exp) {
+          // Renew token 50 seconds before expiry
+          if (Date.now() >= (exp - 50) * 1000) {
+            // Token expired, renew it before sending request
+            token = await renewIdToken().catch((error) => {
+              showToast({
+                variant: 'error',
+                body: error,
+              });
+            });
+          }
+        } else {
+          // Renew token since expiry is not set
+          token = await renewIdToken().catch((error) => {
+            showToast({
+              variant: 'error',
+              body: error,
+            });
+          });
+        }
+
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      return config;
+    });
+
+    // Axios response interceptor for statusCode 401,403
+    axiosClient.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response) {
+          const { status } = error.response;
+          if (status === ClientErrors.UNAUTHORIZED) {
+            resetUserDetails(true);
+          } else if (status === ClientErrors.FORBIDDEN) {
+            showToast({
+              variant: 'error',
+              body: 'You do not have permission for this action!',
+            });
+          }
+        }
+
+        throw error;
+      }
+    );
   };
 
   const fetchAuthConfig = (): void => {
@@ -260,12 +352,13 @@ export const AuthProvider = ({
             callbackUrl,
             provider,
           });
+          initializeAxiosInterceptors();
           setAuthConfig(configJson);
           updateAuthInstance(configJson);
           if (!oidcUserToken) {
             setLoading(false);
           } else {
-            getAuthenticatedUser(configJson);
+            getLoggedInUserDetails();
           }
         } else {
           setLoading(false);
@@ -286,6 +379,9 @@ export const AuthProvider = ({
       case AuthTypes.OKTA: {
         return LoginCallback;
       }
+      case AuthTypes.AUTH0: {
+        return Auth0Callback;
+      }
       default: {
         return null;
       }
@@ -294,6 +390,22 @@ export const AuthProvider = ({
 
   const getProtectedApp = () => {
     switch (authConfig?.provider) {
+      case AuthTypes.AUTH0: {
+        return (
+          <Auth0Provider
+            useRefreshTokens
+            cacheLocation="localstorage"
+            clientId={authConfig.clientId.toString()}
+            domain={authConfig.authority.toString()}
+            redirectUri={authConfig.callbackUrl.toString()}>
+            <Auth0Authenticator
+              ref={authenticatorRef}
+              onLogoutSuccess={handleSuccessfulLogout}>
+              {children}
+            </Auth0Authenticator>
+          </Auth0Provider>
+        );
+      }
       case AuthTypes.OKTA: {
         return (
           <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
@@ -307,12 +419,6 @@ export const AuthProvider = ({
       }
       case AuthTypes.GOOGLE: {
         return authConfig ? (
-          // <GoogleAuthenticator
-          //   ref={authenticatorRef}
-          //   onLoginSuccess={handleSuccessfulLogin}
-          //   onLogoutSuccess={handleSuccessfulLogout}>
-          //   {children}
-          // </GoogleAuthenticator>
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
@@ -349,26 +455,6 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
-
-    // Axios intercepter for statusCode 401,403
-    axiosClient.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response) {
-          const { status } = error.response;
-          if (status === ClientErrors.UNAUTHORIZED) {
-            resetUserDetails(true);
-          } else if (status === ClientErrors.FORBIDDEN) {
-            showToast({
-              variant: 'error',
-              body: 'You do not have permission for this action!',
-            });
-          }
-        }
-
-        throw error;
-      }
-    );
   }, []);
 
   useEffect(() => {
@@ -396,8 +482,8 @@ export const AuthProvider = ({
     (!authConfig || (authConfig.provider === AuthTypes.AZURE && !msalInstance));
 
   const authContext = {
-    isAuthenticated,
-    setIsAuthenticated,
+    isAuthenticated: isUserAuthenticated,
+    setIsAuthenticated: setIsUserAuthenticated,
     isAuthDisabled,
     setIsAuthDisabled,
     authConfig,
@@ -411,6 +497,7 @@ export const AuthProvider = ({
     isTourRoute,
     loading,
     setLoadingIndicator,
+    handleSuccessfulLogin,
   };
 
   return (

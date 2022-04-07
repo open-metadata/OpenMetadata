@@ -1,10 +1,9 @@
 {
   "source": {
+    "serviceName": "bigquery_gcp",
+    "serviceConnection": "",
     "type": "sample-usage",
-    "config": {
-      "database": "warehouse",
-      "service_name": "bigquery_gcp",
-      "sample_data_folder": "./examples/sample_data"
+    "sourceConfig": {
     }
   },
   "processor": {
@@ -19,17 +18,19 @@
       "filename": "/tmp/sample_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/sample_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
+  "workflowConfig": {
+    "openMetadataServerConfig": {
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
+    },
+    "config": {
     }
   }
 }
+

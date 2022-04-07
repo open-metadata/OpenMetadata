@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/glueConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlueConnection",
+  "description": "Glue Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.GlueConnection",
+  "definitions": {
+    "glueType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Glue"],
+      "default": "Glue"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/glueType",
+      "default": "Glue"
+    },
+    "hostPort": {
+      "description": "Host and port of the DynamoDB",
+      "type": "string"
+    },
+    "endPointURL": {
+      "description": "EndPoint URL for the Dynamo DB",
+      "type": "string"
+    },
+    "awsAccessKeyId": {
+      "description": "AWS Access key ID.",
+      "typ": "string"
+    },
+    "awsSecretAccessKey": {
+      "description": "AWS Secret Access Key.",
+      "type": "string"
+    },
+    "awsSessionToken": {
+      "description": "AWS Session Token.",
+      "type": "string"
+    },
+    "awsRegion": {
+      "description": "AWS Region Name.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Glue.",
+      "type": "string",
+      "default": "DynamoDB"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}
