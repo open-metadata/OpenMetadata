@@ -15,7 +15,6 @@ from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -58,21 +57,26 @@ HiveDialect.get_columns = get_columns
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveSQLConnection,
 )
-
-
-class HiveConfig(HiveSQLConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        url = super().get_connection_url()
-        if self.authOptions:
-            return f"{url};{self.authOptions}"
-        return url
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 
 
 class HiveSource(SQLSource):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    def prepare(self):
+        self.service_connection.database = "default"
+        return super().prepare()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = HiveConfig.parse_obj(config_dict)
+        config: HiveSQLConnection = WorkflowSource.parse_obj(config_dict)
+        connection: HiveSQLConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, HiveSQLConnection):
+            raise InvalidSourceException(
+                f"Expected HiveSQLConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
