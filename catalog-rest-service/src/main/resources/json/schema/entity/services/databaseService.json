@@ -130,6 +130,9 @@
               "$ref": "./connections/database/db2Connection.json"
             },
             {
+              "$ref": "./connections/database/deltaLakeConnection.json"
+            },
+            {
               "$ref": "./connections/database/druidConnection.json"
             },
             {
