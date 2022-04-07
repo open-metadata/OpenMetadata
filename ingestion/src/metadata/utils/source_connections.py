@@ -132,7 +132,7 @@ def get_connection_args(connection):
 
 
 @get_connection_args.register
-def _(connection: TrinoConnection):
+def get_connection_args(connection: TrinoConnection):
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
