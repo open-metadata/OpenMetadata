@@ -17,11 +17,17 @@ from urllib.parse import quote_plus
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -66,6 +72,7 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(VerticaConnection)
@@ -87,3 +94,10 @@ def _(connection: SQLiteConnection):
     """
 
     return f"{connection.scheme.value}:///:memory:"
+
+
+def get_connection_url(connection: DatabricksConnection):
+    url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
+    if connection.database:
+        url += f"/{connection.database}"
+    return url

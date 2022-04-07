@@ -27,7 +27,7 @@ import {
   requiredField,
 } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
 type Props = {
   data?: TableTest;
@@ -319,10 +319,10 @@ const TableTestForm = ({
               htmlFor="description">
               Description:
             </label>
-            <MarkdownWithPreview
+            <RichTextEditor
               data-testid="description"
+              initialValue={description}
               ref={markdownRef}
-              value={description}
             />
           </Field>
 

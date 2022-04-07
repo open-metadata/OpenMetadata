@@ -31,7 +31,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
@@ -325,11 +325,11 @@ const AddGlossaryTerm = ({
             htmlFor="description">
             Description:
           </label>
-          <MarkdownWithPreview
+          <RichTextEditor
             data-testid="description"
+            initialValue={description}
             readonly={!allowAccess}
             ref={markdownRef}
-            value={description}
           />
         </Field>
 
