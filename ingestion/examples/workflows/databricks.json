@@ -4,7 +4,6 @@
     "serviceName": "local_databricks",
     "serviceConnection": {
       "config": {
-        "type": "Databricks",
         "token": "<databricks token>",
         "hostPort": "localhost:443",
         "database": "default",
