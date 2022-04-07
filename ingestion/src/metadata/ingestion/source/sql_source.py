@@ -14,6 +14,7 @@ Generic source to build SQL connectors.
 import json
 import logging
 import re
+import time
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -110,6 +111,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         config: WorkflowSource,
         metadata_config: OpenMetadataServerConfig,
     ):
+        start = time.perf_counter()
         super().__init__()
 
         self.config = config
@@ -143,6 +145,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ) as manifest:
                 self.dbt_manifest = json.load(manifest)
         self.profile_date = datetime.now()
+        end = time.perf_counter()
+        logger.debug(f"sql_source initialization {end - start}")
 
     def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
         """
@@ -153,6 +157,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         :param schema: Table schema
         :return: TableProfile
         """
+        start = time.perf_counter()
         try:
             orm = ometa_to_orm(table=table, database=schema)
             profiler = DefaultProfiler(
@@ -172,6 +177,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             logger.debug(traceback.print_exc())
             logger.debug(f"Error running ingestion profiler {repr(exc)}")
 
+        end = time.perf_counter()
+        logger.debug(f"run_profiler duration {end - start}")
         return None
 
     @property
@@ -200,9 +207,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Get some sample data from the source to be added
         to the Table Entities
         """
+        start = time.perf_counter()
         try:
             query = self.source_config.sampleDataQuery.format(schema, table)
-            logger.info(query)
             results = self.connection.execute(query)
             cols = []
             for col in results.keys():
@@ -211,11 +218,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for res in results:
                 row = list(res)
                 rows.append(row)
+            end = time.perf_counter()
+            logger.debug(f"fetch_sample_data duration {end - start}")
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.print_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
+
         return None
 
     def get_databases(self) -> Iterable[Inspector]:
@@ -229,6 +239,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
+                start = time.perf_counter()
                 # clear any previous source database state
                 self.database_source_state.clear()
                 if (
@@ -245,6 +256,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.source_config.markDeletedTables:
                     schema_fqdn = f"{self.config.serviceName}.{schema}"
                     yield from self.delete_tables(schema_fqdn)
+                end = time.perf_counter()
+                logger.debug(f"next_record duration {end - start}")
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -253,6 +266,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
         """
+        start = time.perf_counter()
         tables = inspector.get_table_names(schema)
         for table_name in tables:
             try:
@@ -314,6 +328,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+                end = time.perf_counter()
+                logger.debug(f"fetch_tables duration {end - start}")
                 yield table_schema_and_db
                 self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
@@ -322,6 +338,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
                 )
+                end = time.perf_counter()
+                logger.debug(f"fetch_tables duration {end - start}")
                 continue
 
     def fetch_views(
@@ -331,6 +349,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Get all views in the SQL schema and prepare
         Database & Table OpenMetadata Entities
         """
+        start = time.perf_counter()
         for view_name in inspector.get_view_names(schema):
             try:
                 if self.service_connection.scheme == "bigquery":
@@ -392,6 +411,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+                end = time.perf_counter()
+                logger.debug(f"fetch_views duration {end - start}")
                 yield table_schema_and_db
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
@@ -455,10 +476,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         upstream=upstream_nodes,
                     )
                     model_fqdn = f"{schema}.{model_name}".lower()
+                    self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
-                self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
@@ -558,7 +579,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Get columns types and constraints information
         """
-
+        start = time.perf_counter()
         # Get inspector information:
         pk_constraints = inspector.get_pk_constraint(table, schema)
         try:
@@ -723,6 +744,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
+            end = time.perf_counter()
+            logger.debug(f"get_columns duration {end - start}")
             return table_columns
         except Exception as err:
             logger.error(f"{repr(err)}: {table} {err}")
