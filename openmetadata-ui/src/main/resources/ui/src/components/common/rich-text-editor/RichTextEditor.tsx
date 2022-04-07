@@ -13,11 +13,10 @@
 
 /* eslint-disable */
 
-import { Editor } from '@toast-ui/react-editor';
+import { Editor, Viewer } from '@toast-ui/react-editor';
 import React, {
   createRef,
   forwardRef,
-  Fragment,
   useEffect,
   useImperativeHandle,
   useState,
@@ -36,15 +35,18 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       extendedAutolinks = true,
       hideModeSwitch = true,
       initialValue = '',
+      readonly,
     }: RichTextEditorProp,
     ref
   ) => {
-    const editorRef = createRef<Editor>();
+    const richTextEditorRef = createRef<Editor>();
 
     const [editorValue, setEditorValue] = useState(initialValue);
 
     const onChangeHandler = () => {
-      const value = editorRef.current?.getInstance().getMarkdown() as string;
+      const value = richTextEditorRef.current
+        ?.getInstance()
+        .getMarkdown() as string;
       setEditorValue(value);
     };
 
@@ -59,21 +61,31 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }, [initialValue]);
 
     return (
-      <Fragment>
-        <Editor
-          extendedAutolinks={extendedAutolinks}
-          hideModeSwitch={hideModeSwitch}
-          initialEditType={editorType}
-          initialValue={editorValue}
-          placeholder={placeHolder}
-          previewHighlight={previewHighlight}
-          previewStyle={previewStyle}
-          ref={editorRef}
-          toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
-          useCommandShortcut={useCommandShortcut}
-          onChange={onChangeHandler}
-        />
-      </Fragment>
+      <div className="tw-my-4">
+        {readonly ? (
+          <div className="tw-border tw-border-main tw-p-2 tw-rounded">
+            <Viewer
+              extendedAutolinks={extendedAutolinks}
+              initialValue={editorValue}
+              ref={richTextEditorRef}
+            />
+          </div>
+        ) : (
+          <Editor
+            extendedAutolinks={extendedAutolinks}
+            hideModeSwitch={hideModeSwitch}
+            initialEditType={editorType}
+            initialValue={editorValue}
+            placeholder={placeHolder}
+            previewHighlight={previewHighlight}
+            previewStyle={previewStyle}
+            ref={richTextEditorRef}
+            toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
+            useCommandShortcut={useCommandShortcut}
+            onChange={onChangeHandler}
+          />
+        )}
+      </div>
     );
   }
 );

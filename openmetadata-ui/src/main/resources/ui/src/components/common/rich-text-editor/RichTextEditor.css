@@ -975,7 +975,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .ProseMirror .placeholder {
-  color: #999;
+  color: #37352f;
 }
 
 .ProseMirror:focus {
@@ -1047,7 +1047,7 @@ table.ProseMirror-selectednode {
 .toastui-editor-contents h1 {
   font-size: 24px;
   line-height: 28px;
-  border-bottom: 3px double #999;
+  border-bottom: 3px double #37352f;
   margin: 52px 0 15px 0;
   padding-bottom: 7px;
 }
@@ -1090,20 +1090,20 @@ table.ProseMirror-selectednode {
 }
 
 .toastui-editor-contents del {
-  color: #999;
+  color: #37352f;
 }
 
 .toastui-editor-contents blockquote {
   margin: 14px 0;
   border-left: 4px solid #e5e5e5;
   padding: 0 16px;
-  color: #999;
+  color: #37352f;
 }
 
 .toastui-editor-contents blockquote p,
 .toastui-editor-contents blockquote ul,
 .toastui-editor-contents blockquote ol {
-  color: #999;
+  color: #37352f;
 }
 
 .toastui-editor-contents blockquote > :first-child {
@@ -1225,7 +1225,7 @@ table.ProseMirror-selectednode {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background-color: #ccc;
+  background-color: #37352f;
 }
 
 .toastui-editor-contents ol > li::before {
@@ -1234,7 +1234,7 @@ table.ProseMirror-selectednode {
   width: 24px;
   text-align: right;
   direction: rtl;
-  color: #aaa;
+  color: #37352f;
 }
 
 .toastui-editor-contents ul ul,
@@ -1262,11 +1262,11 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-contents a {
   text-decoration: underline;
-  color: #4b96e6;
+  color: #7147e8;
 }
 
 .toastui-editor-contents a:hover {
-  color: #1f70de;
+  color: #7147e8;
 }
 
 .toastui-editor-contents .image-link {
@@ -1354,7 +1354,7 @@ table.ProseMirror-selectednode {
   height: 15px;
   margin-left: 8px;
   padding: 3px;
-  border: solid 1px #cccccc;
+  border: solid 1px #37352f;
   background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI1LjIuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IuugiOydtOyWtF8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiCgkgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAgMzAiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDMwIDMwOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzU1NTU1NTt9Cjwvc3R5bGU+CjxnPgoJPGc+CgkJPGc+CgkJCTxnPgoJCQkJPGc+CgkJCQkJPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1LjUsMTIuNWwyLDJMMTIsMjBoLTJ2LTJMMTUuNSwxMi41eiBNMTgsMTBsMiwybC0xLjUsMS41bC0yLTJMMTgsMTB6Ii8+CgkJCQk8L2c+CgkJCTwvZz4KCQk8L2c+Cgk8L2c+CjwvZz4KPC9zdmc+Cg==)
     no-repeat;
   background-position: center;
@@ -1398,7 +1398,7 @@ table.ProseMirror-selectednode {
   width: 100px;
   height: 27px;
   right: 35px;
-  border: 1px solid #ccc;
+  border: 1px solid #37352f;
   border-radius: 2px;
   background-color: #fff;
   z-index: 30;
@@ -1536,17 +1536,17 @@ table.ProseMirror-selectednode {
 .toastui-editor-md-link,
 .toastui-editor-md-table,
 .toastui-editor-md-block-quote {
-  color: #ccc;
+  color: #37352f;
 }
 
 .toastui-editor-md-code.toastui-editor-md-delimiter {
-  color: #aaa;
+  color: #37352f;
 }
 
 .toastui-editor-md-meta,
 .toastui-editor-md-html,
 .toastui-editor-md-link.toastui-editor-md-link-url.toastui-editor-md-marked-text {
-  color: #999;
+  color: #37352f;
 }
 
 .toastui-editor-md-block-quote .toastui-editor-md-marked-text,
@@ -1560,7 +1560,7 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-md-link.toastui-editor-md-link-desc.toastui-editor-md-marked-text,
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-odd {
-  color: #4b96e6;
+  color: #7147e8;
 }
 
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-even {
