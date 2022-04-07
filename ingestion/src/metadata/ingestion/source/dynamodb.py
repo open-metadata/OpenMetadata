@@ -3,14 +3,10 @@ import traceback
 import uuid
 from typing import Iterable
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
@@ -19,13 +15,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, IncludeFilterPattern
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus
-from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -56,7 +53,7 @@ class DynamodbSource(Source[Entity]):
         connection: DynamoDBConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DynamoDBConnection):
             raise InvalidSourceException(
-                f"Expected SQLiteConnection, but got {connection}"
+                f"Expected DynamoDBConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
@@ -78,9 +75,8 @@ class DynamodbSource(Source[Entity]):
         tables = list(self.dynamodb.tables.all())
         for table in tables:
             try:
-                if (
-                    table.name
-                    not in self.config.sourceConfig.config.tableFilterPattern.includes
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern, table.name
                 ):
                     self.status.filter(
                         "{}".format(table.name),
@@ -93,14 +89,11 @@ class DynamodbSource(Source[Entity]):
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
-                fqn = f"{self.config.serviceName}{FQDN_SEPARATOR}{database_entity.name}{FQDN_SEPARATOR}{table}"
-                self.dataset_name = fqn
                 table_columns = self.get_columns(table.attribute_definitions)
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table.name,
                     description="",
-                    fullyQualifiedName=fqn,
                     columns=table_columns,
                 )
                 schema_entity = DatabaseSchema(
