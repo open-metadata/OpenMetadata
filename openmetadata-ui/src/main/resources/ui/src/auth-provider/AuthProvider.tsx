@@ -262,19 +262,31 @@ export const AuthProvider = ({
         const isSecureMode =
           !isNil(authRes.data) && authRes.data.provider !== NO_AUTH;
         if (isSecureMode) {
-          const { provider, authority, clientId, callbackUrl } = authRes.data;
-          const configJson = getAuthConfig({
-            authority,
-            clientId,
-            callbackUrl,
-            provider,
-          });
-          setAuthConfig(configJson);
-          updateAuthInstance(configJson);
-          if (!oidcUserToken) {
-            setLoading(false);
+          const { provider, providerName, authority, clientId, callbackUrl } =
+            authRes.data;
+          // show an error toast if provider is null or not supported
+          if (provider && Object.values(AuthTypes).includes(provider)) {
+            const configJson = getAuthConfig({
+              authority,
+              clientId,
+              callbackUrl,
+              provider,
+              providerName,
+            });
+            setAuthConfig(configJson);
+            updateAuthInstance(configJson);
+            if (!oidcUserToken) {
+              setLoading(false);
+            } else {
+              getLoggedInUserDetails();
+            }
           } else {
-            getLoggedInUserDetails();
+            // provider is either null or not supported
+            setLoading(false);
+            showToast({
+              variant: 'error',
+              body: `The configured SSO Provider "${provider}" is not supported. Please check the authentication configuration in the server.`,
+            });
           }
         } else {
           setLoading(false);
@@ -333,7 +345,8 @@ export const AuthProvider = ({
           </OktaAuthProvider>
         );
       }
-      case AuthTypes.GOOGLE: {
+      case AuthTypes.GOOGLE:
+      case AuthTypes.CUSTOM_OIDC: {
         return authConfig ? (
           <OidcAuthenticator
             childComponentType={childComponentType}
