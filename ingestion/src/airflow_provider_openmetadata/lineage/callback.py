@@ -39,7 +39,7 @@ def failure_callback(context: Dict[str, str]) -> None:
     """
     try:
         config = get_lineage_config()
-        client = OpenMetadata(config.metadata_config)
+        metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
 
@@ -50,13 +50,13 @@ def failure_callback(context: Dict[str, str]) -> None:
 
         # Get the pipeline created or updated during the lineage
         pipeline = parse_lineage(
-            config, context, operator, op_inlets, op_outlets, client
+            config, context, operator, op_inlets, op_outlets, metadata
         )
 
         add_status(
             operator=operator,
             pipeline=pipeline,
-            client=client,
+            metadata=metadata,
             context=context,
         )
 
@@ -75,17 +75,17 @@ def success_callback(context: Dict[str, str]) -> None:
     try:
 
         config = get_lineage_config()
-        client = OpenMetadata(config.metadata_config)
+        metadata = OpenMetadata(config.metadata_config)
 
         operator: "BaseOperator" = context["task"]
         dag: "DAG" = context["dag"]
 
         operator.log.info("Updating pipeline status on success...")
 
-        airflow_service_entity = client.get_by_name(
+        airflow_service_entity = metadata.get_by_name(
             entity=PipelineService, fqdn=config.airflow_service_name
         )
-        pipeline: Pipeline = client.get_by_name(
+        pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
             fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
         )
@@ -93,7 +93,7 @@ def success_callback(context: Dict[str, str]) -> None:
         add_status(
             operator=operator,
             pipeline=pipeline,
-            client=client,
+            metadata=metadata,
             context=context,
         )
 
