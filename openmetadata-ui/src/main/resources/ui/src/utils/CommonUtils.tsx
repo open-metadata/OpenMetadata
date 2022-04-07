@@ -31,7 +31,7 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
+import { FQN_REGEX, UrlEntityCharRegEx } from '../constants/regex.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
@@ -98,7 +98,7 @@ export const getPartialNameFromTableFQN = (
   arrTypes: Array<'service' | 'database' | 'schema' | 'table' | 'column'> = [],
   joinSeperator = '/'
 ): string => {
-  const arrFqn = fqn.split(FQN_SEPARATOR_CHAR);
+  const arrFqn = fqn.match(FQN_REGEX) || [];
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {

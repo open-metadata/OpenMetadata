@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
-import React, { MouseEvent as ReactMouseEvent } from 'react';
+import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import {
   ArrowHeadType,
   Edge,
@@ -36,7 +36,6 @@ import {
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   nodeHeight,
   nodeWidth,
@@ -56,33 +55,39 @@ import {
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
 
+const prepareLabel = (type: string, fqn: string) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, ['table']);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  return label.replace(/^"|"$/g, '');
+};
+
 export const getHeaderLabel = (
   v = '',
   fqn: string,
   type: string,
-  isMainNode: boolean,
-  separator = FQN_SEPARATOR_CHAR
+  isMainNode: boolean
 ) => {
-  const length = v.split(separator).length;
-
   return (
-    <>
+    <Fragment>
       {isMainNode ? (
         <span
           className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
-          {v.split(separator)[length - 1]}
+          {prepareLabel(type, v)}
         </span>
       ) : (
         <span
           className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {v.split(separator)[length - 1]}
-          </Link>
+          <Link to={getEntityLink(type, fqn)}>{prepareLabel(type, v)}</Link>
         </span>
       )}
-    </>
+    </Fragment>
   );
 };
 
@@ -424,34 +429,33 @@ export const getLineageData = (
 export const getDataLabel = (
   displayName?: string,
   name = '',
-  separator = FQN_SEPARATOR_CHAR,
   isTextOnly = false,
   type?: string
 ) => {
   const databaseName = getPartialNameFromTableFQN(name, ['database']);
+
   let label = '';
   if (displayName) {
     label = displayName;
   } else {
-    const length = name.split(separator).length;
-    label = name.split(separator)[length - 1];
+    label = prepareLabel(type as string, name);
   }
 
   if (isTextOnly) {
     return label;
+  } else {
+    return (
+      <span
+        className="tw-break-words description-text tw-self-center"
+        data-testid="lineage-entity">
+        {type === 'table'
+          ? databaseName
+            ? `${databaseName}.${label}`
+            : label
+          : label}
+      </span>
+    );
   }
-
-  return (
-    <span
-      className="tw-break-words description-text tw-self-center"
-      data-testid="lineage-entity">
-      {type === 'table'
-        ? databaseName
-          ? `${databaseName}.${label}`
-          : label
-        : label}
-    </span>
-  );
 };
 
 export const getNoLineageDataPlaceholder = () => {
