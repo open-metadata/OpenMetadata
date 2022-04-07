@@ -18,7 +18,7 @@ import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -148,7 +148,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   ) => {
     const database =
       index === SearchIndex.TABLE
-        ? getPartialNameFromFQN(fqdn, ['database'])
+        ? getPartialNameFromTableFQN(fqdn, ['database'])
         : undefined;
 
     return (

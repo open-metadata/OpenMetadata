@@ -93,6 +93,29 @@ export const getPartialNameFromFQN = (
 
   return arrPartialName.join(joinSeperator);
 };
+export const getPartialNameFromTableFQN = (
+  fqn: string,
+  arrTypes: Array<'service' | 'database' | 'schema' | 'table' | 'column'> = [],
+  joinSeperator = '/'
+): string => {
+  const arrFqn = fqn.split(FQN_SEPARATOR_CHAR);
+  const arrPartialName = [];
+  for (const type of arrTypes) {
+    if (type === 'service' && arrFqn.length > 0) {
+      arrPartialName.push(arrFqn[0]);
+    } else if (type === 'database' && arrFqn.length > 1) {
+      arrPartialName.push(arrFqn[1]);
+    } else if (type === 'schema' && arrFqn.length > 2) {
+      arrPartialName.push(arrFqn[2]);
+    } else if (type === 'table' && arrFqn.length > 3) {
+      arrPartialName.push(arrFqn[3]);
+    } else if (type === 'column' && arrFqn.length > 4) {
+      arrPartialName.push(arrFqn[4]);
+    }
+  }
+
+  return arrPartialName.join(joinSeperator);
+};
 
 export const getCurrentUserId = (): string => {
   // TODO: Replace below with USERID from Logged-in data

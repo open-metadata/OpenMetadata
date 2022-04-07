@@ -89,7 +89,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFields,
-  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -154,9 +154,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     state: false,
   });
   const [tableFQN, setTableFQN] = useState<string>(
-    getPartialNameFromFQN(
+    getPartialNameFromTableFQN(
       datasetFQN,
-      ['service', 'database', 'table'],
+      ['service', 'database', 'schema', 'table'],
       FQN_SEPARATOR_CHAR
     )
   );
@@ -324,7 +324,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getPartialNameFromFQN(database.name, ['database']),
+              name: getPartialNameFromTableFQN(database.name, ['database']),
               url: getDatabaseDetailsPath(database.name),
             },
             {
@@ -961,9 +961,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     setTableFQN(
-      getPartialNameFromFQN(
+      getPartialNameFromTableFQN(
         datasetFQN,
-        ['service', 'database', 'table'],
+        ['service', 'database', 'schema', 'table'],
         FQN_SEPARATOR_CHAR
       )
     );

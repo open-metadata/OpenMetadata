@@ -43,13 +43,16 @@ import {
   positionX,
   positionY,
 } from '../constants/constants';
-import { EntityLineageDirection } from '../enums/entity.enum';
+import { EntityLineageDirection, EntityType } from '../enums/entity.enum';
 import {
   Edge as LineageEdge,
   EntityLineage,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
-import { getPartialNameFromFQN } from './CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -425,7 +428,7 @@ export const getDataLabel = (
   isTextOnly = false,
   type?: string
 ) => {
-  const databaseName = getPartialNameFromFQN(name, ['database']);
+  const databaseName = getPartialNameFromTableFQN(name, ['database']);
   let label = '';
   if (displayName) {
     label = displayName;
@@ -520,19 +523,38 @@ export const getLayoutedElements = (
 };
 
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
+  let sourceEntity = '';
+  let targetEntity = '';
+
+  if (selectedEdge.source.type === EntityType.TABLE) {
+    sourceEntity = getPartialNameFromTableFQN(
+      selectedEdge.source.name as string,
+      ['table']
+    );
+  } else {
+    sourceEntity = getPartialNameFromFQN(selectedEdge.source.name as string, [
+      'database',
+    ]);
+  }
+
+  if (selectedEdge.target.type === EntityType.TABLE) {
+    targetEntity = getPartialNameFromTableFQN(
+      selectedEdge.target.name as string,
+      ['table']
+    );
+  } else {
+    targetEntity = getPartialNameFromFQN(selectedEdge.target.name as string, [
+      'database',
+    ]);
+  }
+
   return `Are you sure you want to remove the edge between "${
     selectedEdge.source.displayName
       ? selectedEdge.source.displayName
-      : getPartialNameFromFQN(
-          selectedEdge.source.name as string,
-          selectedEdge.source.type === 'table' ? ['table'] : ['database']
-        )
+      : sourceEntity
   } and ${
     selectedEdge.target.displayName
       ? selectedEdge.target.displayName
-      : getPartialNameFromFQN(
-          selectedEdge.target.name as string,
-          selectedEdge.target.type === 'table' ? ['table'] : ['database']
-        )
+      : targetEntity
   }"?`;
 };

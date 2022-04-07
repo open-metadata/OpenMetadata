@@ -59,7 +59,10 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 
@@ -140,9 +143,9 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            ['service', 'database', 'schema', 'table'],
             FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
@@ -162,7 +165,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getPartialNameFromFQN(database.name, ['database']),
+                name: getPartialNameFromTableFQN(database.name, ['database']),
                 url: getDatabaseDetailsPath(database.name),
               },
               {
@@ -364,9 +367,9 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            ['service', 'database', 'schema', 'table'],
             FQN_SEPARATOR_CHAR
           )
         )
@@ -389,7 +392,9 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getPartialNameFromFQN(database.name, ['database']),
+                    name: getPartialNameFromTableFQN(database.name, [
+                      'database',
+                    ]),
                     url: getDatabaseDetailsPath(database.name),
                   },
                   {
