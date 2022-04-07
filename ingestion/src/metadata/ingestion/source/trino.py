@@ -15,7 +15,6 @@ from typing import Iterable, Optional
 from urllib.parse import quote_plus
 
 import click
-from requests import Session
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -34,14 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 
 class TrinoConfig(TrinoConnection, SQLConnectionConfig):
     params: Optional[dict] = None
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    proxies: dict = {}
->>>>>>> make proxies optional
-=======
     proxies: Optional[dict] = None
->>>>>>> make proxies of optional type
 
     def get_connection_url(self):
         url = f"{self.scheme}://"
