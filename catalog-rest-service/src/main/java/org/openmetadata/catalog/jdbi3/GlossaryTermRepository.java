@@ -72,7 +72,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection.tagDAO().getTagCount(Source.GLOSSARY.ordinal(), term.getFullyQualifiedName());
+    return daoCollection.tagUsageDAO().getTagCount(Source.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {

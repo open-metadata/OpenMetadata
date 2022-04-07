@@ -8,7 +8,7 @@ import org.openmetadata.catalog.Entity;
 
 public class FullyQualifiedName {
   // Match the sub parts of fqn string "sss". or sss. or sss$
-  private static final Pattern partsPattern = Pattern.compile("(\")([^\"]+)(\")|([^.]+)([.$])?");
+  private static final Pattern partsPattern = Pattern.compile("((\")([^\"]+)(\"))|([^.]+)([.$])?");
 
   // Quoted name of format "sss" or sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
@@ -32,9 +32,9 @@ public class FullyQualifiedName {
     Matcher matcher = partsPattern.matcher(string);
     while (matcher.find()) {
       if (matcher.group(1) != null) {
-        list.add(matcher.group(2));
+        list.add(matcher.group(3).contains(".") ? matcher.group(1) : matcher.group(3));
       } else {
-        list.add(matcher.group(4));
+        list.add(matcher.group(5));
       }
     }
     return list.toArray(new String[list.size()]);

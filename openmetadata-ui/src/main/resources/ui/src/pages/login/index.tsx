@@ -68,7 +68,18 @@ const SigninPage = () => {
 
         break;
       }
-      // TODO: Add "case AuthTypes.GITHUB, AuthTypes.AUTH0" after adding support for these SSO
+      case AuthTypes.AUTH0: {
+        btnComponent = (
+          <LoginButton
+            ssoBrandLogo={Icons.AUTH0_ICON}
+            ssoBrandName="Auth0"
+            onClick={handleSignIn}
+          />
+        );
+
+        break;
+      }
+      // TODO: Add "case AuthTypes.GITHUB after adding support for these SSO
       default: {
         btnComponent = <></>;
 
