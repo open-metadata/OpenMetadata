@@ -33,6 +33,7 @@ export const getFeedsWithFilter: Function = (
   after?: string
 ): Promise<AxiosResponse> => {
   let config = {};
+  const limit = 1;
 
   if (filterType !== FeedFilter.ALL) {
     config = {
@@ -40,12 +41,14 @@ export const getFeedsWithFilter: Function = (
         userId,
         filterType,
         after,
+        limit,
       },
     };
   } else {
     config = {
       params: {
         after,
+        limit,
       },
     };
   }

@@ -194,7 +194,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
-  }, [isInView, paging]);
+  }, [isInView, paging, isFeedLoading]);
 
   useEffect(() => {
     isMounted.current = true;
