@@ -10,7 +10,7 @@
         "hostPort": "localhost:3306"
       }
     },
-    "sourceConfig": {"config": {"enableDataProfiler": false}}
+    "sourceConfig": {"config": {"enableDataProfiler": false, "includeViews": false}}
   },
   "sink": {
     "type": "metadata-rest",
