@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
@@ -65,6 +68,7 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
 def _(connection):
