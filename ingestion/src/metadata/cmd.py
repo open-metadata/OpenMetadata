@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.utils import add_logging_level
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def check() -> None:
 @click.option(
     "--log-level",
     "-l",
-    type=click.Choice(["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]),
+    type=click.Choice(["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL", "TRACE"]),
     help="Log level",
     required=False,
 )
@@ -63,6 +64,8 @@ def metadata(debug: bool, log_level: str) -> None:
         logging.getLogger("ORM Profiler Workflow").setLevel(logging.DEBUG)
         logging.getLogger("Profiler").setLevel(logging.DEBUG)
     elif log_level:
+        if log_level == "TRACE":
+            add_logging_level("TRACE", logging.INFO - 5)
         logging.getLogger().setLevel(log_level)
     else:
         logging.getLogger().setLevel(logging.WARNING)
