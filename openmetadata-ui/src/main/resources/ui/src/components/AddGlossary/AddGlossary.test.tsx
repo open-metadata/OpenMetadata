@@ -32,6 +32,10 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
+});
+
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
