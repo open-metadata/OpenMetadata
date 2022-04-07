@@ -132,15 +132,15 @@ describe('Test AddWebhook component', () => {
     const active = await findByTestId(container, 'active');
     const entityCreatedCheckbox = await findByTestId(
       container,
-      'entityCreatedCheckbox'
+      'entity-created-checkbox'
     );
     const entityUpdatedCheckbox = await findByTestId(
       container,
-      'entityUpdatedCheckbox'
+      'entity-updated-checkbox'
     );
     const entityDeletedCheckbox = await findByTestId(
       container,
-      'entityDeletedCheckbox'
+      'entity-deleted-checkbox'
     );
     const showAdvancedButton = await findByTestId(container, 'show-advanced');
     const cancelWebhook = await findByTestId(container, 'cancel-webhook');
@@ -177,15 +177,15 @@ describe('Test AddWebhook component', () => {
     const active = await findByTestId(container, 'active');
     const entityCreatedCheckbox = await findByTestId(
       container,
-      'entityCreatedCheckbox'
+      'entity-created-checkbox'
     );
     const entityUpdatedCheckbox = await findByTestId(
       container,
-      'entityUpdatedCheckbox'
+      'entity-updated-checkbox'
     );
     const entityDeletedCheckbox = await findByTestId(
       container,
-      'entityDeletedCheckbox'
+      'entity-deleted-checkbox'
     );
     const dropdown = await findAllByText(container, /DropDown.component/i);
     const saveWebhook = await findByTestId(container, 'save-webhook');

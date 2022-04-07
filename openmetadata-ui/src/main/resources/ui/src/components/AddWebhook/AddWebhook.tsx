@@ -559,7 +559,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(createEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="entityCreatedCheckbox"
+                data-testid="entity-created-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -594,7 +594,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(updateEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="entityUpdatedCheckbox"
+                data-testid="entity-updated-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -629,7 +629,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(deleteEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="entityDeletedCheckbox"
+                data-testid="entity-deleted-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
