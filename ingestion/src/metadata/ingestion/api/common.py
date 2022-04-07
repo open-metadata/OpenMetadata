@@ -10,8 +10,7 @@
 #  limitations under the License.
 
 import logging
-import re
-from typing import Any, List, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel
 
