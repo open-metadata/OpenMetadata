@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+)
 
 
 def get_connection_url_common(connection):
@@ -33,11 +36,12 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        if connection.password:
+            url += (
+                f":{quote_plus(connection.password.get_secret_value())}"
+                if connection
+                else ""
+            )
         url += "@"
 
     url += connection.hostPort
@@ -64,6 +68,7 @@ def get_connection_url(connection):
 
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
+@get_connection_url.register(VerticaConnection)
 def _(connection):
     return get_connection_url_common(connection)
 
