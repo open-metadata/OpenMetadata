@@ -559,7 +559,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(createEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entityCreatedCheckbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -594,7 +594,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(updateEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entityUpdatedCheckbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -629,7 +629,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(deleteEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entityDeletedCheckbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -732,7 +732,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       <input
                         readOnly
                         className="tw-form-inputs tw-px-3 tw-py-1"
-                        data-testid="connection-timeout"
+                        data-testid="secret-key"
                         id="connection-timeout"
                         name="connection-timeout"
                         placeholder="secret key"
