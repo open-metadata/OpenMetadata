@@ -33,7 +33,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --data-raw '{
         "is_paused": false
       }'
-until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/bigquery_gcp:shopify:fact_sale"; do
+until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/bigquery_gcp.ecommerce_db.shopify.fact_sale"; do
   printf '.'
   sleep 2
 done
