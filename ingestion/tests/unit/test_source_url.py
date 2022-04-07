@@ -58,4 +58,3 @@ class TestConfig(TestCase):
         )
         url_without_db = get_connection_url(connection_without_db)
         assert url_without_db == "redshift+psycopg2://username:password@localhost:1234"
-

@@ -115,6 +115,7 @@ def _(connection: TrinoConnection):
         url = f"{url}?{params}"
     return url
 
+
 @get_connection_url.register
 def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
