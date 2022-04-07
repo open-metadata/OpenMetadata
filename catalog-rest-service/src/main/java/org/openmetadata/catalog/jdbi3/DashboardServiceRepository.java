@@ -18,15 +18,18 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
@@ -46,6 +49,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Override
   public DashboardService setFields(DashboardService entity, Fields fields) throws IOException {
+    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
   }
@@ -59,7 +63,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void prepare(DashboardService entity) throws IOException {
     // Check if owner is valid and set the relationship
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
-    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
@@ -79,12 +82,25 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   @Override
   public void storeRelationships(DashboardService entity) {
     // Add owner relationship
-    setOwner(entity, entity.getOwner());
+    storeOwner(entity, entity.getOwner());
   }
 
   @Override
   public EntityUpdater getUpdater(DashboardService original, DashboardService updated, Operation operation) {
     return new DashboardServiceUpdater(original, updated, operation);
+  }
+
+  private List<EntityReference> getIngestionPipelines(DashboardService service) throws IOException {
+    List<String> ingestionPipelineIds =
+        findTo(service.getId(), Entity.DASHBOARD_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (String ingestionPipelineId : ingestionPipelineIds) {
+      ingestionPipelines.add(
+          daoCollection
+              .ingestionPipelineDAO()
+              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
+    }
+    return ingestionPipelines;
   }
 
   public static class DashboardServiceEntityInterface extends EntityInterface<DashboardService> {
@@ -212,21 +228,13 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateDashboardUrl();
-      updateIngestionSchedule();
-      recordChange("userName", original.getEntity().getUsername(), updated.getEntity().getUsername());
-      // TODO change recorded for password
-      //      recordChange("password", original.getEntity().getPassword(), updated.getEntity().getPassword());
+      updateConnection();
     }
 
-    private void updateDashboardUrl() throws JsonProcessingException {
-      recordChange("dashboardUrl", original.getEntity().getDashboardUrl(), updated.getEntity().getDashboardUrl());
-    }
-
-    private void updateIngestionSchedule() throws JsonProcessingException {
-      Schedule origSchedule = original.getEntity().getIngestionSchedule();
-      Schedule updatedSchedule = updated.getEntity().getIngestionSchedule();
-      recordChange("ingestionSchedule", origSchedule, updatedSchedule, true);
+    private void updateConnection() throws JsonProcessingException {
+      DashboardConnection origConn = original.getEntity().getConnection();
+      DashboardConnection updatedConn = updated.getEntity().getConnection();
+      recordChange("connection", origConn, updatedConn, true);
     }
   }
 }

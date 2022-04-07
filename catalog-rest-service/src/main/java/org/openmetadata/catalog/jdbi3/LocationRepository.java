@@ -32,8 +32,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -77,7 +77,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesBefore(Fields fields, String fqn, int limitParam, String before)
       throws IOException {
-    String service = EntityUtil.splitFQN(fqn)[0];
+    String service = FullyQualifiedName.getServiceName(fqn);
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons =
         daoCollection
@@ -113,7 +113,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Transaction
   public final ResultList<Location> listPrefixesAfter(Fields fields, String fqn, int limitParam, String after)
       throws IOException {
-    String service = EntityUtil.splitFQN(fqn)[0];
+    String service = FullyQualifiedName.getServiceName(fqn);
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons =
         daoCollection
@@ -153,13 +153,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public static String getFQN(Location location) {
     return (location != null && location.getService() != null)
-        ? EntityUtil.getFQN(location.getService().getName(), location.getName())
+        ? FullyQualifiedName.add(location.getService().getName(), location.getName())
         : null;
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Location location) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner());
   }
 
   private StorageService getService(UUID serviceId, String entityType) throws IOException {
@@ -177,7 +172,7 @@ public class LocationRepository extends EntityRepository<Location> {
         new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
     location.setServiceType(storageService.getServiceType());
     location.setFullyQualifiedName(getFQN(location));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), location.getOwner()); // Validate owner
+    populateOwner(location.getOwner()); // Validate owner
     location.setTags(addDerivedTags(location.getTags()));
   }
 
@@ -200,7 +195,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void storeRelationships(Location location) {
     // Add location owner relationship
-    setOwner(location.getId(), Entity.LOCATION, location.getOwner());
+    storeOwner(location, location.getOwner());
     EntityReference service = location.getService();
     addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
 

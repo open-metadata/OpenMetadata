@@ -21,8 +21,8 @@ from sqlalchemy.orm import declarative_base
 from metadata.generated.schema.entity.data.table import ColumnProfile, Histogram
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import MissingMetricException, Profiler
-from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.engines import create_and_bind_session
 
 Base = declarative_base()

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByText, getByTestId, render } from '@testing-library/react';
+import {
+  findByText,
+  getByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import QueryCard from './QueryCard';
@@ -53,5 +58,29 @@ describe('Test QueryCard Component', () => {
     expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();
     expect(copyQueryButton).toBeInTheDocument();
+  });
+
+  it('Should not render header if user is undefined', async () => {
+    const { container } = render(
+      <QueryCard query={{ ...mockQueryData, user: undefined }} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const queryHeader = queryByTestId(container, 'query-header');
+
+    expect(queryHeader).not.toBeInTheDocument();
+  });
+
+  it('Should not render header if duration is undefined', async () => {
+    const { container } = render(
+      <QueryCard query={{ ...mockQueryData, duration: undefined }} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const queryHeader = queryByTestId(container, 'query-header');
+
+    expect(queryHeader).not.toBeInTheDocument();
   });
 });

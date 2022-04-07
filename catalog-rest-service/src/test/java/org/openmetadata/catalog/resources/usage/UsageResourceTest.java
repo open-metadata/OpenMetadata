@@ -118,7 +118,7 @@ class UsageResourceTest extends CatalogApplicationTest {
 
   @Order(1) // Run this method first before other usage records are created
   @Test
-  void post_validUsageForDatabaseAndTables_200_OK() throws HttpResponseException {
+  void post_validUsageForTables_200_OK() throws HttpResponseException {
     // This test creates TABLE_COUNT of tables.
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
     // For 100 tables send usage report for last 30 days
@@ -131,6 +131,7 @@ class UsageResourceTest extends CatalogApplicationTest {
     // Add table usages of each table - 0, 1 to TABLE_COUNT - 1 to get database usage
     final int dailyDatabaseUsageCount = TABLE_COUNT * (TABLE_COUNT - 1) / 2;
     UUID databaseId = TABLES.get(0).getDatabase().getId();
+    UUID schemaId = TABLES.get(0).getDatabaseSchema().getId();
     for (int day = 0; day < DAYS_OF_USAGE; day++) {
       String date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, day);
       LOG.info("Posting usage information for date {}", date);
@@ -167,6 +168,16 @@ class UsageResourceTest extends CatalogApplicationTest {
             date,
             Entity.DATABASE,
             databaseId,
+            databaseDailyCount,
+            databaseWeeklyCount,
+            databaseMonthlyCount,
+            ADMIN_AUTH_HEADERS);
+
+        // Schema also has cumulative count
+        checkUsage(
+            date,
+            Entity.DATABASE_SCHEMA,
+            schemaId,
             databaseDailyCount,
             databaseWeeklyCount,
             databaseMonthlyCount,

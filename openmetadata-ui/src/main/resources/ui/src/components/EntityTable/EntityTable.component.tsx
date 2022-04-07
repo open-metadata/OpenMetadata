@@ -61,7 +61,7 @@ import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
 
-type Props = {
+interface Props {
   owner: Table['owner'];
   tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
@@ -74,7 +74,7 @@ type Props = {
   onUpdate?: (columns: ModifiedTableColumn[]) => void;
   onThreadLinkSelect?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
-};
+}
 
 const EntityTable = ({
   tableColumns,
@@ -341,8 +341,11 @@ const EntityTable = ({
 
   return (
     <div className="tw-table-responsive" id="schemaTable">
-      <table className="tw-w-full" {...getTableProps()}>
-        <thead>
+      <table
+        className="tw-w-full"
+        {...getTableProps()}
+        data-testid="entity-table">
+        <thead data-testid="table-header">
           {/* eslint-disable-next-line */}
           {headerGroups.map((headerGroup: any, index: number) => (
             <tr
@@ -356,6 +359,7 @@ const EntityTable = ({
                     'tw-w-60':
                       column.id === 'tags' || column.id === 'columnTests',
                   })}
+                  data-testid={column.id}
                   key={index}
                   {...column.getHeaderProps()}>
                   {column.render('Header')}
@@ -365,7 +369,7 @@ const EntityTable = ({
           ))}
         </thead>
 
-        <tbody {...getTableBodyProps()}>
+        <tbody {...getTableBodyProps()} data-testid="table-body">
           {/* eslint-disable-next-line */}
           {rows.map((row: any, index: number) => {
             prepareRow(row);
@@ -373,6 +377,7 @@ const EntityTable = ({
             return (
               <tr
                 className={classNames('tableBody-row')}
+                data-testid="row"
                 key={index}
                 {...row.getRowProps()}>
                 {/* eslint-disable-next-line */}

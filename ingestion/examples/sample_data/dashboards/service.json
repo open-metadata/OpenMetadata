@@ -1,8 +1,12 @@
 {
-	"name": "sample_superset",
-	"serviceType": "Superset",
-	"description": "Supset Service",
-  	"dashboardUrl": "http://localhost:8088",
-  	"username": "admin",
-  	"password": "admin"
+  "name": "sample_superset",
+  "serviceType": "Superset",
+  "description": "Supset Service",
+  "connection": {
+    "config": {
+      "supersetURL": "http://localhost:8088"
+    }
+  },
+  "username": "admin",
+  "password": "admin"
 }

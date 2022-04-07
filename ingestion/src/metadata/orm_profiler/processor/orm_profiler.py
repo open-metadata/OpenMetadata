@@ -26,18 +26,19 @@ from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTes
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.tests.tableTest import TableTestCase
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.core import Profiler
-from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
 
@@ -70,12 +71,11 @@ class OrmProfilerProcessor(Processor[Table]):
 
     def __init__(
         self,
-        ctx: WorkflowContext,
         config: ProfilerProcessorConfig,
-        metadata_config: MetadataServerConfig,
+        metadata_config: OpenMetadataServerConfig,
         session: Session,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.status = OrmProfilerStatus()
@@ -92,8 +92,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def create(
         cls,
         config_dict: dict,
-        metadata_config_dict: dict,
-        ctx: WorkflowContext,
+        metadata_config: OpenMetadataServerConfig,
         **kwargs,
     ):
         """
@@ -101,7 +100,6 @@ class OrmProfilerProcessor(Processor[Table]):
         """
 
         config = ProfilerProcessorConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
 
         session = kwargs.get("session")
         if not session:
@@ -109,7 +107,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 "Cannot initialise the ProfilerProcessor without an SQLAlchemy Session"
             )
 
-        return cls(ctx, config, metadata_config, session=session)
+        return cls(config, metadata_config, session=session)
 
     def get_table_profile_sample(self, table: Table) -> Optional[float]:
         """
@@ -147,7 +145,12 @@ class OrmProfilerProcessor(Processor[Table]):
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
-        metrics = [Metrics.get(name) for name in self.config.profiler.metrics]
+        # TODO: add_props when needed for incoming metrics
+        metrics = (
+            [Metrics.get(name) for name in self.config.profiler.metrics]
+            if self.config.profiler.metrics
+            else get_default_metrics(orm)
+        )
 
         return Profiler(
             *metrics,
@@ -155,6 +158,7 @@ class OrmProfilerProcessor(Processor[Table]):
             table=orm,
             profile_date=self.execution_date,
             profile_sample=profile_sample,
+            timeout_seconds=self.config.profiler.timeout_seconds,
         )
 
     def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
@@ -171,10 +175,10 @@ class OrmProfilerProcessor(Processor[Table]):
         # Prepare the profilers for all table columns
         profiler = self.build_profiler(orm, table=table)
 
-        logger.info(f"Executing profilers for {table.fullyQualifiedName}...")
+        logger.info(f"Executing profilers for {table.fullyQualifiedName.__root__}...")
         profiler.execute()
 
-        self.status.processed(table.fullyQualifiedName)
+        self.status.processed(table.fullyQualifiedName.__root__)
         return profiler.get_profile()
 
     def log_test_result(self, name: str, result: TestCaseResult) -> None:
@@ -197,7 +201,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :return: Unique name for this execution
         """
         col = f".{column_name}." if column_name else "."
-        return table.fullyQualifiedName + col + test_type
+        return table.fullyQualifiedName.__root__ + col + test_type
 
     def run_table_test(
         self,
@@ -307,7 +311,7 @@ class OrmProfilerProcessor(Processor[Table]):
         :param profiler_results: TableProfile with computed metrics
         """
 
-        logger.info(f"Checking validations for {table.fullyQualifiedName}...")
+        logger.info(f"Checking validations for {table.fullyQualifiedName.__root__}...")
 
         # Check if I have tests for the table I am processing
         my_record_tests = self.get_record_test_def(table)
@@ -351,7 +355,7 @@ class OrmProfilerProcessor(Processor[Table]):
             iter(
                 test
                 for test in self.config.test_suite.tests
-                if test.table == table.fullyQualifiedName
+                if test.table == table.fullyQualifiedName.__root__
             ),
             None,
         )
@@ -397,7 +401,7 @@ class OrmProfilerProcessor(Processor[Table]):
             )
             if config_tests
             else TestDef(
-                table=table.fullyQualifiedName, table_tests=[], column_tests=[]
+                table=table.fullyQualifiedName.__root__, table_tests=[], column_tests=[]
             )
         )
 

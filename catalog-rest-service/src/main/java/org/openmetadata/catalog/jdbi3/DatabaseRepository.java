@@ -35,7 +35,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DatabaseRepository extends EntityRepository<Database> {
   private static final String DATABASE_UPDATE_FIELDS = "owner";
@@ -54,7 +54,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database != null && database.getService() != null)
-        ? EntityUtil.getFQN(database.getService().getName(), database.getName())
+        ? FullyQualifiedName.add(database.getService().getName(), database.getName())
         : null;
   }
 
@@ -67,9 +67,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void prepare(Database database) throws IOException {
     populateService(database);
     database.setFullyQualifiedName(getFQN(database));
-    database.setOwner(
-        EntityUtil.populateOwner(
-            daoCollection.userDAO(), daoCollection.teamDAO(), database.getOwner())); // Validate owner
+    populateOwner(database.getOwner()); // Validate owner
   }
 
   @Override
@@ -81,11 +79,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     database.withOwner(null).withService(null).withHref(null);
 
-    if (update) {
-      daoCollection.databaseDAO().update(database.getId(), JsonUtils.pojoToJson(database));
-    } else {
-      daoCollection.databaseDAO().insert(database);
-    }
+    store(database.getId(), database, update);
 
     // Restore the relationships
     database.withOwner(owner).withService(service);
@@ -95,7 +89,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
-    setOwner(database.getId(), Entity.DATABASE, database.getOwner());
+    storeOwner(database, database.getOwner());
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
@@ -109,7 +103,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getService(database));
     database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
-    database.setTables(fields.contains("tables") ? getTables(database) : null);
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getTables(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
     database.setLocation(fields.contains("location") ? getLocation(database) : null);

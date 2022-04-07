@@ -58,6 +58,10 @@ export interface User {
    * When true indicates a special type of user called Bot.
    */
   isBot?: boolean;
+  /**
+   * A unique name of the user, typically the user ID from an identity provider. Example - uid
+   * from LDAP.
+   */
   name: string;
   /**
    * List of entities owned by the user.
@@ -144,6 +148,10 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */

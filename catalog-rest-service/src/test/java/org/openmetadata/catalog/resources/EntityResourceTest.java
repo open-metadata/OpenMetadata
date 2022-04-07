@@ -80,6 +80,7 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.api.data.TermReference;
@@ -95,6 +96,7 @@ import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -102,12 +104,14 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
 import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
@@ -119,6 +123,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
+import org.openmetadata.catalog.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
@@ -133,6 +138,7 @@ import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
@@ -142,12 +148,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -225,6 +233,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public static Database DATABASE;
   public static EntityReference DATABASE_REFERENCE;
+
+  public static DatabaseSchema DATABASE_SCHEMA;
+  public static EntityReference DATABASE_SCHEMA_REFERENCE;
 
   public static List<Column> COLUMNS;
 
@@ -307,20 +318,29 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         databaseServiceResourceTest
             .createRequest(test, 1)
             .withServiceType(DatabaseServiceType.Snowflake)
-            .withDatabaseConnection(TestUtils.DATABASE_CONNECTION);
+            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
-    createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
+    createDatabaseService
+        .withName("redshiftDB")
+        .withServiceType(DatabaseServiceType.Redshift)
+        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
-    createDatabaseService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
+    createDatabaseService
+        .withName("bigQueryDB")
+        .withServiceType(DatabaseServiceType.BigQuery)
+        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
-    createDatabaseService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
+    createDatabaseService
+        .withName("mysqlDB")
+        .withServiceType(DatabaseServiceType.MySQL)
+        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
 
@@ -330,7 +350,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         new CreateMessagingService()
             .withName("kafka")
             .withServiceType(MessagingServiceType.Kafka)
-            .withBrokers(List.of("192.168.1.1:0"));
+            .withConnection(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
@@ -338,7 +358,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     createMessaging
         .withName("pulsar")
         .withServiceType(MessagingServiceType.Pulsar)
-        .withBrokers(List.of("192.168.1.1:0"));
+        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
+
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
 
@@ -372,18 +393,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
     GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
 
-    USER_ADDRESS_TAG_LABEL = getTagLabel(EntityUtil.getFQN("User", "Address"));
-    PERSONAL_DATA_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PersonalData", "Personal"));
-    PII_SENSITIVE_TAG_LABEL = getTagLabel(EntityUtil.getFQN("PII", "Sensitive"));
-    TIER1_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier1"));
-    TIER2_TAG_LABEL = getTagLabel(EntityUtil.getFQN("Tier", "Tier2"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
+    PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
+    PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
+    TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
+    TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest
-            .createRequest("superset", "", "", null)
-            .withServiceType(DashboardServiceType.Superset)
-            .withDashboardUrl(TestUtils.DASHBOARD_URL);
+        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
 
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
@@ -404,6 +422,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+
+    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
 
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
@@ -437,7 +460,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         Arrays.asList(
             getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-            getColumn("c3", BIGINT, GLOSSARY1_TERM1_LABEL));
+            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
@@ -584,22 +607,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           return entityInterface.getId().equals(deleted.getId());
         };
 
+    // Test listing entities that include deleted, non-deleted, and all the entities
     for (String include : List.of("non-deleted", "all", "deleted")) {
+      if (!supportsSoftDelete && include.equals("deleted")) {
+        continue;
+      }
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", include);
+      ;
 
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("include", include);
-            }
-          };
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with limit set from 1 to maxTables size
-      // Each time compare the returned list with allTables list to make sure right results are
-      // returned
+      // List entity with "limit" set from 1 to maxTables size
+      // Each time compare the returned list with allTables list to make sure right results are returned
       for (int limit = 1; limit < maxEntities; limit++) {
         String after = null;
         String before;
@@ -651,7 +674,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         } while (before != null);
 
         if ("all".equals(include) || "deleted".equals(include)) {
-          assertTrue(foundDeleted);
+          assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
         }
@@ -687,8 +710,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           BAD_REQUEST,
           container.getType() + " is not empty");
 
-      // Now delete the container with recursive flag on
-      containerTest.deleteEntity(container.getId(), true, ADMIN_AUTH_HEADERS);
+      // Now soft-delete the container with recursive flag on
+      containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
       // Make sure entities that belonged to the container are deleted and the new list operation returns less entities
       ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
@@ -710,6 +733,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
       assertEquals(listBeforeDeletion.getData().size(), listAfterRestore.getData().size());
+
+      // Now hard-delete the container with recursive flag on and make sure GET operation can't get the entity
+      containerTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
+      containerTest.assertEntityDeleted(container.getId(), true);
     }
   }
 
@@ -752,6 +779,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void get_deletedVersion(TestInfo test) throws IOException {
+    if (!supportsSoftDelete) {
+      return;
+    }
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
@@ -764,21 +794,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void get_entityIncludeDeleted_200(TestInfo test) throws IOException {
+    if (!supportsSoftDelete) {
+      return;
+    }
     K create = createRequest(test);
     // Create first time using POST
     T entity = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     T entityBeforeDeletion = getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+
     // delete it
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    assertResponse(
-        () -> getEntity(entityInterface.getId(), null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getId()));
-    assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
+    assertEntityDeleted(entityInterface, false);
 
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
@@ -789,16 +816,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
           getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
     }
-
-    queryParams.put("include", "non-deleted");
-    assertResponse(
-        () -> getEntity(entityInterface.getId(), queryParams, null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getId()));
-    assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, null, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1040,7 +1057,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             PipelineService.class,
             StorageService.class,
             DashboardService.class,
-            MessagingService.class);
+            MessagingService.class,
+            IngestionPipeline.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
       assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change
@@ -1203,8 +1221,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (supportsTags) {
       entityInterface.setTags(new ArrayList<>());
       entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
       entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
-      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
+      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      change
+          .getFieldsAdded()
+          .add(new FieldChange().withName("tags").withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
     }
     change
         .getFieldsAdded()
@@ -1316,14 +1338,19 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Soft delete the entity
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
 
-    // Send PUT request (with no changes) to restore the entity from soft deleted state
-    ChangeDescription change = getChangeDescription(version);
-    change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
-    updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Soft entry is soft deleted
+    if (supportsSoftDelete) {
+      Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
+
+      // Send PUT request (with no changes) to restore the entity from soft deleted state
+      ChangeDescription change = getChangeDescription(version);
+      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+      updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } else {
+      assertEntityDeleted(entityInterface, true);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1428,21 +1455,21 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final void deleteAndCheckEntity(T entity, Map<String, String> authHeaders) throws IOException {
-    deleteAndCheckEntity(entity, false, authHeaders);
+    deleteAndCheckEntity(entity, false, false, authHeaders);
   }
 
-  public final void deleteAndCheckEntity(T entity, boolean recursive, Map<String, String> authHeaders)
-      throws IOException {
+  public final void deleteAndCheckEntity(
+      T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     UUID id = entityInterface.getId();
-    long timestamp = System.currentTimeMillis();
 
     // Delete entity
-    deleteEntity(id, recursive, authHeaders);
+    T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
+    long timestamp = getEntityInterface(deletedEntity).getUpdatedAt();
 
     // Validate delete change event
     Double expectedVersion = EntityUtil.nextVersion(entityInterface.getVersion());
-    if (supportsSoftDelete) {
+    if (supportsSoftDelete && !hardDelete) {
       validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
 
       // Validate that the entity version is updated after soft delete
@@ -1463,18 +1490,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
-  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    deleteEntity(id, false, authHeaders);
+  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return deleteEntity(id, false, false, authHeaders);
   }
 
-  public final void deleteEntity(UUID id, boolean recursive, Map<String, String> authHeaders)
+  public final T deleteEntity(UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(id);
-    if (recursive) {
-      target = target.queryParam("recursive", true);
-    }
-    TestUtils.delete(target, entityClass, authHeaders);
+    target = recursive ? target.queryParam("recursive", true) : target;
+    target = hardDelete ? target.queryParam("hardDelete", true) : target;
+    T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
+    return entity;
   }
 
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders) throws IOException {
@@ -1887,12 +1914,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
-  protected static void assertService(EntityReference expected, EntityReference actual) {
-    TestUtils.validateEntityReference(actual);
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getType(), actual.getType());
-  }
-
   protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
       throws HttpResponseException {
     if (owner != null) {
@@ -1983,6 +2004,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   private void printEntities(ResultList<T> list) {
     list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+  }
+
+  public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+
+    // Make sure getting entity by ID get 404 not found response
+    assertEntityDeleted(entityInterface.getId(), hardDelete);
+
+    // Make sure getting entity by name gets 404 not found response
+    assertResponse(
+        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, "", ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
+  }
+
+  public void assertEntityDeleted(UUID id, boolean hardDelete) {
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    assertResponse(() -> getEntity(id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(entityType, id));
   }
 
   /**

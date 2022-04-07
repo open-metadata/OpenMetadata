@@ -30,6 +30,10 @@
     "tag": {
       "javaType": "org.openmetadata.catalog.type.Tag",
       "properties": {
+        "id": {
+          "description": "Unique identifier of this entity instance.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
         "name": {
           "description": "Name of the tag.",
           "$ref": "#/definitions/tagName"
@@ -92,6 +96,10 @@
     }
   },
   "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "name": {
       "$ref": "#/definitions/tagName"
     },

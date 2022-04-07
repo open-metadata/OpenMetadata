@@ -23,7 +23,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
-from metadata.utils.constants import DOT
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +113,7 @@ class OMetaPipelineMixin:
             pipelineLocation=pipeline.pipelineLocation,
             startDate=pipeline.startDate,
             service=pipeline.service,
-            tasks=[
-                task
-                for task in pipeline.tasks
-                if task.name.replace(DOT, ".") in task_ids
-            ],
+            tasks=[task for task in pipeline.tasks if task.name in task_ids],
             owner=pipeline.owner,
             tags=pipeline.tags,
         )

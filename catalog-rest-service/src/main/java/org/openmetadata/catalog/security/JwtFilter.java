@@ -14,13 +14,16 @@
 package org.openmetadata.catalog.security;
 
 import com.auth0.jwk.Jwk;
-import com.auth0.jwk.UrlJwkProvider;
+import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import io.dropwizard.util.Strings;
-import java.net.URI;
+import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.List;
@@ -40,15 +43,28 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
-  private String publicKeyUri;
+
   private List<String> jwtPrincipalClaims;
+  private JwkProvider jwkProvider;
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
+  @SneakyThrows
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
-    this.publicKeyUri = authenticationConfiguration.getPublicKey();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
+
+    ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
+    for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
+      publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
+    }
+    this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+  }
+
+  @VisibleForTesting
+  JwtFilter(JwkProvider jwkProvider, List<String> jwtPrincipalClaims) {
+    this.jwkProvider = jwkProvider;
+    this.jwtPrincipalClaims = jwtPrincipalClaims;
   }
 
   @SneakyThrows
@@ -65,7 +81,12 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // Decode JWT Token
-    DecodedJWT jwt = JWT.decode(tokenFromHeader);
+    DecodedJWT jwt;
+    try {
+      jwt = JWT.decode(tokenFromHeader);
+    } catch (JWTDecodeException e) {
+      throw new AuthenticationException("Invalid token", e);
+    }
 
     // Check if expired
     if (jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
@@ -73,9 +94,7 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // Validate JWT with public key
-    final URI uri = new URI(publicKeyUri).normalize();
-    UrlJwkProvider urlJwkProvider = new UrlJwkProvider(uri.toURL());
-    Jwk jwk = urlJwkProvider.get(jwt.getKeyId());
+    Jwk jwk = jwkProvider.get(jwt.getKeyId());
     Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
     try {
       algorithm.verify(jwt);

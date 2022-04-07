@@ -14,6 +14,10 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import {
+  getDatabaseDetailsByFQN,
+  patchDatabaseDetails,
+} from '../../axiosAPIs/databaseAPI';
 import DatabaseDetails from './';
 
 const mockDatabase = {
@@ -120,7 +124,9 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
-  patchDatabaseDetails: jest.fn(),
+  patchDatabaseDetails: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockDatabase })),
 }));
 
 jest.mock('../../components/containers/PageContainer', () => {
@@ -257,5 +263,52 @@ describe('Test DatabaseDetails page', () => {
     expect(headerUsage).toBeInTheDocument();
     expect(headerTags).toBeInTheDocument();
     expect(tableColumn).toBeInTheDocument();
+  });
+
+  it('Should render error placeholder if getDatabase Details Api fails', async () => {
+    (getDatabaseDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: 'Error!',
+          },
+        },
+      })
+    );
+    const { container } = render(<DatabaseDetails />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorPlaceholder = await findByTestId(container, 'error');
+
+    expect(errorPlaceholder).toBeInTheDocument();
+  });
+
+  it('Should render database component if patchDatabaseDetails Api fails', async () => {
+    (patchDatabaseDetails as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: {
+          data: {
+            message: 'Error!',
+          },
+        },
+      })
+    );
+    const { container } = render(<DatabaseDetails />, {
+      wrapper: MemoryRouter,
+    });
+
+    const pageContainer = await findByTestId(container, 'page-container');
+    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const descriptionContainer = await findByTestId(
+      container,
+      'description-container'
+    );
+    const databaseTable = await findByTestId(container, 'database-tables');
+
+    expect(pageContainer).toBeInTheDocument();
+    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(databaseTable).toBeInTheDocument();
   });
 });

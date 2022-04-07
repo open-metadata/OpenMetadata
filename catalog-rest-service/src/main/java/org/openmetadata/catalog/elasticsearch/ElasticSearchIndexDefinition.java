@@ -15,7 +15,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -39,10 +38,9 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
-import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class ElasticSearchIndexDefinition {
@@ -222,9 +220,6 @@ class ElasticSearchIndex {
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
   Long lastUpdatedTimestamp = System.currentTimeMillis();
-
-  @JsonProperty("change_descriptions")
-  List<ESChangeDescription> changeDescriptions;
 }
 
 @Getter
@@ -240,17 +235,6 @@ class FlattenColumn {
   String name;
   String description;
   List<String> tags;
-}
-
-@Getter
-@Setter
-@Builder
-class ESChangeDescription {
-  String updatedBy;
-  Long updatedAt;
-  List<FieldChange> fieldsAdded;
-  List<FieldChange> fieldsUpdated;
-  List<FieldChange> fieldsDeleted;
 }
 
 class ParseTags {
@@ -365,7 +349,8 @@ class TableESIndex extends ElasticSearchIndex {
 
     if (table.getDatabase() != null) {
       String databaseFQN = table.getDatabase().getName();
-      String[] databaseFQNSplit = EntityUtil.splitFQN(databaseFQN);
+      // TODO fix this code
+      String[] databaseFQNSplit = FullyQualifiedName.split(databaseFQN);
       if (databaseFQNSplit.length == 2) {
         tableESIndexBuilder.database(databaseFQNSplit[1]);
       } else {
@@ -398,25 +383,6 @@ class TableESIndex extends ElasticSearchIndex {
       tableESIndexBuilder.owner(table.getOwner().getId().toString());
     }
 
-    ESChangeDescription esChangeDescription = null;
-
-    if (table.getChangeDescription() != null) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(table.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(table.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(table.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(table.getChangeDescription().getFieldsUpdated());
-    } else if (eventType == EventType.ENTITY_CREATED) {
-      esChangeDescription =
-          ESChangeDescription.builder()
-              .updatedAt(updatedTimestamp)
-              .updatedBy(table.getUpdatedBy())
-              .fieldsAdded(new ArrayList<>())
-              .fieldsUpdated(new ArrayList<>())
-              .fieldsDeleted(new ArrayList<>())
-              .build();
-    }
-    tableESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return tableESIndexBuilder;
   }
 
@@ -427,7 +393,7 @@ class TableESIndex extends ElasticSearchIndex {
     for (Column col : columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
-        columnName = EntityUtil.getFQN(optParentColumn.get(), columnName);
+        columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
       }
       if (col.getTags() != null) {
         tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
@@ -496,22 +462,6 @@ class TopicESIndex extends ElasticSearchIndex {
     if (topic.getOwner() != null) {
       topicESIndexBuilder.owner(topic.getOwner().getId().toString());
     }
-
-    ESChangeDescription esChangeDescription = null;
-
-    if (topic.getChangeDescription() != null) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(topic.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(topic.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(topic.getChangeDescription().getFieldsUpdated());
-    } else if (eventType == EventType.ENTITY_CREATED) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(topic.getUpdatedBy()).build();
-    }
-
-    topicESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
-
     return topicESIndexBuilder;
   }
 }
@@ -606,18 +556,6 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getOwner() != null) {
       dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
     }
-    ESChangeDescription esChangeDescription = null;
-    if (dashboard.getChangeDescription() != null) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(dashboard.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(dashboard.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(dashboard.getChangeDescription().getFieldsUpdated());
-    } else if (eventType == EventType.ENTITY_CREATED) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(dashboard.getUpdatedBy()).build();
-    }
-    dashboardESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return dashboardESIndexBuilder;
   }
 }
@@ -687,19 +625,6 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getOwner() != null) {
       pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
     }
-
-    ESChangeDescription esChangeDescription = null;
-    if (pipeline.getChangeDescription() != null) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
-      esChangeDescription.setFieldsAdded(pipeline.getChangeDescription().getFieldsAdded());
-      esChangeDescription.setFieldsDeleted(pipeline.getChangeDescription().getFieldsDeleted());
-      esChangeDescription.setFieldsUpdated(pipeline.getChangeDescription().getFieldsUpdated());
-    } else if (eventType == EventType.ENTITY_CREATED) {
-      esChangeDescription =
-          ESChangeDescription.builder().updatedAt(updatedTimestamp).updatedBy(pipeline.getUpdatedBy()).build();
-    }
-    pipelineESIndexBuilder.changeDescriptions(esChangeDescription != null ? List.of(esChangeDescription) : null);
     return pipelineESIndexBuilder;
   }
 }

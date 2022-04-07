@@ -21,6 +21,12 @@ from sqlalchemy.orm import declarative_base
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
 )
@@ -30,24 +36,26 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sqlite import SQLiteConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.orm_profiler.processor.orm_profiler import OrmProfilerProcessor
-from metadata.orm_profiler.profiles.default import DefaultProfiler
-from metadata.orm_profiler.profiles.models import ProfilerDef
+from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.orm_profiler.profiler.models import ProfilerDef
 from metadata.orm_profiler.validations.models import TestDef, TestSuite
 
 config = {
-    "source": {"type": "sqlite", "config": {"service_name": "my_service"}},
+    "source": {
+        "type": "sqlite",
+        "serviceName": "my_service",
+        "serviceConnection": {"config": {"type": "SQLite"}},
+        "sourceConfig": {"config": {}},
+    },
     "processor": {"type": "orm-profiler", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth",
+        }
     },
 }
 
@@ -58,8 +66,8 @@ def test_init_workflow():
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, SQLiteConfig)
-    assert isinstance(workflow.metadata_config, MetadataServerConfig)
+    assert isinstance(workflow.source_config, DatabaseServiceMetadataPipeline)
+    assert isinstance(workflow.metadata_config, OpenMetadataServerConfig)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None
@@ -73,29 +81,33 @@ def test_filter_entities():
     """
 
     service_name = "service"
-    db_reference1 = EntityReference(id=uuid.uuid4(), name="one_db", type="database")
-    db_reference2 = EntityReference(id=uuid.uuid4(), name="another_db", type="database")
+    schema_reference1 = EntityReference(
+        id=uuid.uuid4(), name="one_schema", type="databaseSchema"
+    )
+    schema_reference2 = EntityReference(
+        id=uuid.uuid4(), name="another_schema", type="databaseSchema"
+    )
 
     all_tables = [
         Table(
             id=uuid.uuid4(),
             name="table1",
-            database=db_reference1,
-            fullyQualifiedName=f"{service_name}.{db_reference1.name}.table1",
+            databaseSchema=schema_reference1,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table1",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
         Table(
             id=uuid.uuid4(),
             name="table2",
-            database=db_reference1,
-            fullyQualifiedName=f"{service_name}.{db_reference1.name}.table2",
+            databaseSchema=schema_reference1,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table2",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
         Table(
             id=uuid.uuid4(),
             name="table3",
-            database=db_reference2,
-            fullyQualifiedName=f"{service_name}.{db_reference2.name}.table3",
+            databaseSchema=schema_reference2,
+            fullyQualifiedName=f"{service_name}.db.{schema_reference2.name}.table3",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         ),
     ]
@@ -105,9 +117,9 @@ def test_filter_entities():
 
     # We can exclude based on the schema name
     exclude_filter_schema_config = deepcopy(config)
-    exclude_filter_schema_config["source"]["config"]["schema_filter_pattern"] = {
-        "excludes": ["one_db"]
-    }
+    exclude_filter_schema_config["source"]["sourceConfig"]["config"][
+        "schemaFilterPattern"
+    ] = {"excludes": ["one_schema"]}
 
     exclude_filter_schema_workflow = ProfilerWorkflow.create(
         exclude_filter_schema_config
@@ -116,9 +128,9 @@ def test_filter_entities():
 
     # We can include based on the schema name
     include_filter_schema_config = deepcopy(config)
-    include_filter_schema_config["source"]["config"]["schema_filter_pattern"] = {
-        "includes": ["another_db"]
-    }
+    include_filter_schema_config["source"]["sourceConfig"]["config"][
+        "schemaFilterPattern"
+    ] = {"includes": ["another_schema"]}
 
     include_filter_schema_workflow = ProfilerWorkflow.create(
         include_filter_schema_config
@@ -127,18 +139,18 @@ def test_filter_entities():
 
     # We can exclude based on the table name
     exclude_filter_table_config = deepcopy(config)
-    exclude_filter_table_config["source"]["config"]["table_filter_pattern"] = {
-        "excludes": ["tab*"]
-    }
+    exclude_filter_table_config["source"]["sourceConfig"]["config"][
+        "tableFilterPattern"
+    ] = {"excludes": ["tab*"]}
 
     exclude_filter_table_workflow = ProfilerWorkflow.create(exclude_filter_table_config)
     assert len(list(exclude_filter_table_workflow.filter_entities(all_tables))) == 0
 
     # We can include based on the table name
     include_filter_table_config = deepcopy(config)
-    include_filter_table_config["source"]["config"]["table_filter_pattern"] = {
-        "includes": ["table1"]
-    }
+    include_filter_table_config["source"]["sourceConfig"]["config"][
+        "tableFilterPattern"
+    ] = {"includes": ["table1"]}
 
     include_filter_table_workflow = ProfilerWorkflow.create(include_filter_table_config)
     assert len(list(include_filter_table_workflow.filter_entities(all_tables))) == 1

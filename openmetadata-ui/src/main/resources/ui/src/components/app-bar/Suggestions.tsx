@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -59,6 +62,7 @@ type Option = {
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
+  const showToast = useToastContext();
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -92,6 +96,13 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
     );
+  };
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
   };
 
   const getGroupLabel = (index: string) => {
@@ -242,13 +253,24 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
   useEffect(() => {
     if (!isMounting.current) {
-      getSuggestions(searchText).then((res: AxiosResponse) => {
-        if (res.data) {
-          setOptions(res.data.suggest['table-suggest'][0].options);
-          setSuggestions(res.data.suggest['table-suggest'][0].options);
-          setIsOpen(true);
-        }
-      });
+      getSuggestions(searchText)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setOptions(res.data.suggest['table-suggest'][0].options);
+            setSuggestions(res.data.suggest['table-suggest'][0].options);
+            setIsOpen(true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-suggestions-error']
+          );
+
+          handleShowErrorToast(errMsg);
+        });
     }
   }, [searchText]);
 

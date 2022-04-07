@@ -374,7 +374,7 @@ const PipelineDetails = ({
                 </div>
                 <div className="tw-table-responsive tw-my-6">
                   {tasks ? (
-                    <table className="tw-w-full" data-testid="schema-table">
+                    <table className="tw-w-full" data-testid="tasks-table">
                       <thead>
                         <tr className="tableHead-row">
                           <th className="tableHead-cell">Task Name</th>

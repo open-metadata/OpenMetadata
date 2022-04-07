@@ -31,6 +31,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
   private static final String METRICS_UPDATE_FIELDS = "owner";
@@ -48,7 +49,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   public static String getFQN(Metrics metrics) {
     return (metrics != null && metrics.getService() != null)
-        ? EntityUtil.getFQN(metrics.getService().getName(), metrics.getName())
+        ? FullyQualifiedName.add(metrics.getService().getName(), metrics.getName())
         : null;
   }
 
@@ -69,7 +70,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void prepare(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), metrics.getOwner()); // Validate owner
+    populateOwner(metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
     metrics.setTags(addDerivedTags(metrics.getTags()));
   }
@@ -94,7 +95,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   public void storeRelationships(Metrics metrics) {
     EntityReference service = metrics.getService();
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
-    setOwner(metrics, metrics.getOwner());
+    storeOwner(metrics, metrics.getOwner());
     applyTags(metrics);
   }
 

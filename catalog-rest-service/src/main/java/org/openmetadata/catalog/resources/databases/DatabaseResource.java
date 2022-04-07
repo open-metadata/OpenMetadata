@@ -73,7 +73,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
-    Entity.withHref(uriInfo, db.getTables());
+    Entity.withHref(uriInfo, db.getDatabaseSchemas());
     Entity.withHref(uriInfo, db.getLocation());
     Entity.withHref(uriInfo, db.getOwner());
     Entity.withHref(uriInfo, db.getService());
@@ -93,7 +93,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     }
   }
 
-  static final String FIELDS = "owner,tables,usageSummary,location";
+  static final String FIELDS = "owner,databaseSchemas,usageSummary,location";
 
   @GET
   @Operation(
@@ -350,9 +350,13 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
   private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {

@@ -25,6 +25,24 @@
         "type": "string"
       },
       "default": null
+    },
+    "messagingConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MessagingConnection",
+      "description": "Dashboard Connection.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/messaging/kafkaConnection.json"
+            },
+            {
+              "$ref": "./connections/messaging/pulsarConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -48,6 +66,13 @@
       "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",
       "type": "string"
     },
+    "connection": {
+      "$ref": "#/definitions/messagingConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this messaging service to extract topic configs and schemas.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -59,19 +84,6 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
-    },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref": "#/definitions/brokers"
-    },
-    "schemaRegistry": {
-      "description": "Schema registry URL.",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
     },
     "owner": {
       "description": "Owner of this messaging service.",
@@ -91,6 +103,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "brokers"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }

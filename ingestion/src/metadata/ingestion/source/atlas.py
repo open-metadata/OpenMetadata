@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -13,13 +14,14 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import (
@@ -53,10 +55,9 @@ class AtlasSource(Source):
     def __init__(
         self,
         config: AtlasSourceConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+        metadata_config: OpenMetadataServerConfig,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
@@ -83,10 +84,9 @@ class AtlasSource(Source):
         self.topics: Dict[str, Any] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = AtlasSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         for key in self.config.entity_types["Table"].keys():
@@ -146,7 +146,7 @@ class AtlasSource(Source):
                     ]
                     db = self._get_database(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
 
                     om_table_entity = Table(
@@ -216,7 +216,7 @@ class AtlasSource(Source):
                 "table"
             ]["displayText"]
 
-            fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+            fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -237,7 +237,7 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}.{db.name.__root__}.{table_name}"
+                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )

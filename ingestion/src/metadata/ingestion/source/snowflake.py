@@ -22,13 +22,11 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -40,16 +38,14 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 
-class SnowflakeConfig(SQLConnectionConfig):
-    scheme = "snowflake"
-    account: str
-    database: Optional[str]
-    warehouse: Optional[str]
+
+class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
     result_limit: int = 1000
-    role: Optional[str]
     duration: Optional[int]
-    service_type = DatabaseServiceType.Snowflake.value
 
     def get_connection_url(self):
         connect_string = super().get_connection_url()
@@ -65,7 +61,7 @@ class SnowflakeConfig(SQLConnectionConfig):
 
 
 class SnowflakeSource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
+    def __init__(self, config, metadata_config):
         if config.connect_args.get("private_key"):
             private_key = config.connect_args["private_key"]
             p_key = serialization.load_pem_private_key(
@@ -79,7 +75,7 @@ class SnowflakeSource(SQLSource):
                 encryption_algorithm=serialization.NoEncryption(),
             )
             config.connect_args["private_key"] = pkb
-        super().__init__(config, metadata_config, ctx)
+        super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
         if self.config.database != None:
@@ -98,13 +94,7 @@ class SnowflakeSource(SQLSource):
                 yield inspect(self.engine)
 
     def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}.{self.config.database}_{schema}.{table_name}"
-
-    def _get_database(self, schema: str) -> Database:
-        return Database(
-            name=self.config.database + "_" + schema.replace(".", "_DOT_"),
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
-        )
+        return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
@@ -116,7 +106,7 @@ class SnowflakeSource(SQLSource):
                 results = self.connection.execute(query)
                 cols = []
                 for col in results.keys():
-                    cols.append(col.replace(".", "_DOT_"))
+                    cols.append(col)
                 rows = []
                 for res in results:
                     row = list(res)
@@ -126,10 +116,9 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = SnowflakeConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
 
 @reflection.cache

@@ -27,7 +27,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isDisabled = false,
 }: FilterContainerProp) => {
   const getFilterName = (name = '') => {
-    const formattedName = name.startsWith('Tier.Tier')
+    const formattedName = name.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
       ? name.split(FQN_SEPARATOR_CHAR)[1]
       : name;
 

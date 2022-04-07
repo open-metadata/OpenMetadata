@@ -39,13 +39,11 @@ public class ExplorePage {
   By updatedDescription = By.xpath("(//div[@data-testid=\"description-text\"])[1]");
   By shopifyCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"shopify\"]");
   By tagSpecialCategoryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"PersonalData.SpecialCategory\"]");
-  By tierTier3Checkbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Tier.Tier3\"]");
-  By selectedCheckbox =
-      By.xpath(
-          "//span[@class=\"tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center tw-bg-primary tw-text-white tw-border-none tw-py-0 tw-px-0\"]");
-  By kafka = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Kafka\"]");
-  By superset = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Superset\"]");
-  By airflow = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"Airflow\"]");
+  By tierTier3Checkbox = By.xpath("//input[@data-testid='checkbox'][@id='Tier:Tier3']");
+  By selectedCheckbox = By.xpath("//label[@data-testid='filter-container-Superset']/span");
+  By kafka = By.cssSelector("[data-testid='checkbox'][id='Kafka']");
+  By superset = By.cssSelector("[data-testid='checkbox'][id='Superset']");
+  By airflow = By.xpath("//input[@data-testid='checkbox'][@id='Airflow']");
 
   public List<WebElement> serviceName() {
     return webDriver.findElements(serviceName);

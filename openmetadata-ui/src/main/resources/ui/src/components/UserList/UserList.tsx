@@ -23,6 +23,7 @@ import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -308,7 +309,7 @@ const UserList: FunctionComponent<Props> = ({
                   </p>
                 </div>
                 {getCountBadge(
-                  team.users?.length || 0,
+                  getActiveUsers(team.users).length,
                   '',
                   isTeamBadgeActive(team.name)
                 )}

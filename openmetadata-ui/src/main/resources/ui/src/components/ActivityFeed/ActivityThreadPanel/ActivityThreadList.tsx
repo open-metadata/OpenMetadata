@@ -30,6 +30,10 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
 
+  const toggleReplyEditor = (id: string) => {
+    onThreadIdSelect(selectedThreadId === id ? '' : id);
+  };
+
   return (
     <div className={className}>
       {relativeDays.map((d, i) => {
@@ -96,7 +100,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
                           data-testid="quick-reply-button"
                           onClick={() => {
-                            onThreadIdSelect(thread.id);
+                            toggleReplyEditor(thread.id);
                           }}>
                           Reply
                         </p>

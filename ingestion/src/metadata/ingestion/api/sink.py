@@ -16,7 +16,7 @@ from typing import Any, Generic, List
 from pydantic import BaseModel
 
 from metadata.ingestion.api.closeable import Closeable
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
@@ -40,13 +40,9 @@ class SinkStatus(Status):
 class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
 
-    ctx: WorkflowContext
-
     @classmethod
     @abstractmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ) -> "Sink":
+    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Sink":
         pass
 
     @abstractmethod

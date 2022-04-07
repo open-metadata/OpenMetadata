@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -24,12 +24,16 @@ import PageContainer from '../../components/containers/PageContainer';
 import DropDown from '../../components/dropdown/DropDown';
 import { ROUTES } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { fetchAllUsers } from '../../utils/UsedDataUtils';
 
 const Signup = () => {
+  const showToast = useToastContext();
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
   );
@@ -43,6 +47,13 @@ const Signup = () => {
   const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const selectedTeamsHandler = (id?: string) => {
     setSelectedTeams((prevState: Array<string | undefined>) => {
@@ -61,16 +72,27 @@ const Signup = () => {
     [name: string]: string | Array<string> | UserProfile;
   }) => {
     setLoading(true);
-    createUser(details).then((res) => {
-      if (res.data) {
+    createUser(details)
+      .then((res) => {
+        if (res.data) {
+          appState.updateUserDetails(res.data);
+          fetchAllUsers();
+          history.push(ROUTES.HOME);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['create-user-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      })
+      .finally(() => {
         setLoading(false);
-        appState.updateUserDetails(res.data);
-        fetchAllUsers();
-        history.push(ROUTES.HOME);
-      } else {
-        setLoading(false);
-      }
-    });
+      });
   };
 
   const onChangeHadler = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,9 +155,18 @@ const Signup = () => {
   };
 
   useEffect(() => {
-    getTeams().then((res: AxiosResponse) => {
-      setTeams(res?.data?.data || []);
-    });
+    getTeams()
+      .then((res: AxiosResponse) => {
+        setTeams(res?.data?.data || []);
+      })
+      .catch((err: AxiosError) => {
+        const errMsg = getErrorText(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
+
+        handleShowErrorToast(errMsg);
+      });
   }, []);
   useEffect(() => {
     if (selectedTeams.length) {

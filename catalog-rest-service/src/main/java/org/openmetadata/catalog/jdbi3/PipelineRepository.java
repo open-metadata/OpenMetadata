@@ -42,8 +42,8 @@ import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
@@ -63,13 +63,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline != null && pipeline.getService() != null)
-        ? EntityUtil.getFQN(pipeline.getService().getName(), pipeline.getName())
+        ? FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName())
         : null;
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner());
   }
 
   @Override
@@ -160,7 +155,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void prepare(Pipeline pipeline) throws IOException {
     populateService(pipeline);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), pipeline.getOwner()); // Validate owner
+    populateOwner(pipeline.getOwner()); // Validate owner
     pipeline.setTags(addDerivedTags(pipeline.getTags()));
   }
 
@@ -186,7 +181,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
 
     // Add owner relationship
-    setOwner(pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    storeOwner(pipeline, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);

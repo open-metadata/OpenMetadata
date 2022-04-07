@@ -18,7 +18,8 @@ from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.profiles.core import Profiler
+from metadata.orm_profiler.profiler.core import Profiler
+from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.engines import create_and_bind_session
 
 Base = declarative_base()
@@ -76,6 +77,16 @@ class SampleTest(TestCase):
             ]
             cls.session.add_all(data)
             cls.session.commit()
+
+    def test_random_sampler(self):
+        """
+        The random sampler should be able to
+        generate a random subset of data
+        """
+        sampler = Sampler(session=self.session, table=User, profile_sample=50.0)
+        random_sample = sampler.random_sample()
+        res = self.session.query(func.count()).select_from(random_sample).first()
+        assert res[0] < 30
 
     def test_sample_property(self):
         """

@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
 
-from metadata.config.common import ConfigModel
+from metadata.config.common import FQDN_SEPARATOR, ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -36,7 +39,6 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.helpers import get_dashboard_service_or_create
@@ -78,11 +80,11 @@ class AmundsenStatus(SourceStatus):
 
 class AmundsenSource(Source[Entity]):
     def __init__(
-        self, config: AmundsenConfig, metadata_config: MetadataServerConfig, ctx
+        self, config: AmundsenConfig, metadata_config: OpenMetadataServerConfig
     ):
         self.config = config
         self.metadata_config = metadata_config
-        self.ctx = ctx
+
         neo4j_config = Neo4JConfig(
             username=self.config.neo4j_username,
             password=self.config.neo4j_password.get_secret_value(),
@@ -95,10 +97,9 @@ class AmundsenSource(Source[Entity]):
         self.status = AmundsenStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config = AmundsenConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass
@@ -162,7 +163,7 @@ class AmundsenSource(Source[Entity]):
                 col = Column(**parsed_string)
                 columns.append(col)
 
-            fqn = f"{service_name}.{database.name}.{table['schema']}.{table['name']}"
+            fqn = f"{service_name}{FQDN_SEPARATOR}{database.name}{FQDN_SEPARATOR}{table['schema']}{FQDN_SEPARATOR}{table['name']}"
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],

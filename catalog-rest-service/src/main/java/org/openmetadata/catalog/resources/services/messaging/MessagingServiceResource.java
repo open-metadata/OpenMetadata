@@ -314,10 +314,14 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
   private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
@@ -325,10 +329,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
         .withId(UUID.randomUUID())
         .withName(create.getName())
         .withDescription(create.getDescription())
+        .withConnection(create.getConnection())
         .withServiceType(create.getServiceType())
-        .withBrokers(create.getBrokers())
-        .withSchemaRegistry(create.getSchemaRegistry())
-        .withIngestionSchedule(create.getIngestionSchedule())
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

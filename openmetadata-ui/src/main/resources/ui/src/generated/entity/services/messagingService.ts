@@ -17,13 +17,10 @@
  */
 export interface MessagingService {
   /**
-   * Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.
-   */
-  brokers: string[];
-  /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  connection: MessagingConnection;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
@@ -46,10 +43,6 @@ export interface MessagingService {
    */
   id: string;
   /**
-   * Schedule for running metadata ingestion jobs.
-   */
-  ingestionSchedule?: Schedule;
-  /**
    * Name that identifies this messaging service.
    */
   name: string;
@@ -58,9 +51,10 @@ export interface MessagingService {
    */
   owner?: EntityReference;
   /**
-   * Schema registry URL.
+   * References to pipelines deployed for this messaging service to extract topic configs and
+   * schemas.
    */
-  schemaRegistry?: string;
+  pipelines?: EntityReference[];
   /**
    * Type of messaging service such as Kafka or Pulsar...
    */
@@ -122,20 +116,57 @@ export interface FieldChange {
 }
 
 /**
- * Schedule for running metadata ingestion jobs.
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * Dashboard Connection.
  */
-export interface Schedule {
+export interface MessagingConnection {
+  config?: Connection;
+}
+
+/**
+ * Kafka Connection Config
+ *
+ * Pulsar Connection Config
+ */
+export interface Connection {
   /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+   * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
-  repeatFrequency?: string;
+  bootstrapServers?: string;
   /**
-   * Start date and time of the schedule.
+   * Confluent Kafka Schema Registry URL.
    */
-  startDate?: Date;
+  schemaRegistryURL?: string;
+  /**
+   * Supported Metadata Extraction Pipelines.
+   */
+  supportedPipelineTypes?: SupportedPipelineTypes;
+  /**
+   * Service Type
+   */
+  type?: MessagingServiceType;
+}
+
+/**
+ * Supported Metadata Extraction Pipelines.
+ */
+export enum SupportedPipelineTypes {
+  Metadata = 'Metadata',
+}
+
+/**
+ * Service Type
+ *
+ * Kafka service type
+ *
+ * Pulsar service type
+ *
+ * Type of messaging service such as Kafka or Pulsar...
+ *
+ * Type of messaging service - Kafka or Pulsar.
+ */
+export enum MessagingServiceType {
+  Kafka = 'Kafka',
+  Pulsar = 'Pulsar',
 }
 
 /**
@@ -145,8 +176,15 @@ export interface Schedule {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * References to pipelines deployed for this messaging service to extract topic configs and
+ * schemas.
  */
 export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
   /**
    * Optional description of entity.
    */
@@ -173,14 +211,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Type of messaging service such as Kafka or Pulsar...
- *
- * Type of messaging service - Kafka or Pulsar.
- */
-export enum MessagingServiceType {
-  Kafka = 'Kafka',
-  Pulsar = 'Pulsar',
 }

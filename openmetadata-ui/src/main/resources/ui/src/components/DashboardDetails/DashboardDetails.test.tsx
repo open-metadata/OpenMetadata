@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -94,11 +94,11 @@ const DashboardDetailsProps = {
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {
-  return jest.fn().mockReturnValue(<p>ManageTab</p>);
+  return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
 });
 
 jest.mock('../common/description/Description', () => {
-  return jest.fn().mockReturnValue(<p>Description</p>);
+  return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
@@ -116,10 +116,6 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage</p>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p>TabsPane</p>);
-});
-
 jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
   return jest.fn().mockReturnValue(<p>EntityPageInfo</p>);
 });
@@ -128,8 +124,17 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>ActivityFeedList</p>);
+});
+
+jest.mock('../EntityLineage/EntityLineage.component', () => {
+  return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
+  getCountBadge: jest.fn(),
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
@@ -145,9 +150,67 @@ describe('Test DashboardDetails component', () => {
       }
     );
     const EntityPageInfo = await findByText(container, /EntityPageInfo/i);
-    const TabsPane = await findByText(container, /TabsPane/i);
+    const description = await findByText(container, /Description Component/i);
+    const tabs = await findByTestId(container, 'tabs');
+    const detailsTab = await findByTestId(tabs, 'Details');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const lineageTab = await findByTestId(tabs, 'Lineage');
+    const manageTab = await findByTestId(tabs, 'Manage');
 
     expect(EntityPageInfo).toBeInTheDocument();
-    expect(TabsPane).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(tabs).toBeInTheDocument();
+    expect(detailsTab).toBeInTheDocument();
+    expect(activityFeedTab).toBeInTheDocument();
+    expect(lineageTab).toBeInTheDocument();
+    expect(manageTab).toBeInTheDocument();
+  });
+
+  it('Check if active tab is details', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const activityFeedList = await findByTestId(container, 'charts-table');
+
+    expect(activityFeedList).toBeInTheDocument();
+  });
+
+  it('Check if active tab is activity feed', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={2} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const activityFeedList = await findByText(container, /ActivityFeedList/i);
+
+    expect(activityFeedList).toBeInTheDocument();
+  });
+
+  it('Check if active tab is lineage', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const lineage = await findByTestId(container, 'lineage');
+
+    expect(lineage).toBeInTheDocument();
+  });
+
+  it('Check if active tab is manage', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const manage = await findByTestId(container, 'manage');
+
+    expect(manage).toBeInTheDocument();
   });
 });

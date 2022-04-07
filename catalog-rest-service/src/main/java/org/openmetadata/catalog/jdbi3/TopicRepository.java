@@ -21,7 +21,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -34,8 +33,8 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
@@ -43,7 +42,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? EntityUtil.getFQN(topic.getService().getName(), topic.getName())
+        ? FullyQualifiedName.add(topic.getService().getName(), topic.getName())
         : null;
   }
 
@@ -56,11 +55,6 @@ public class TopicRepository extends EntityRepository<Topic> {
         dao,
         TOPIC_PATCH_FIELDS,
         TOPIC_UPDATE_FIELDS);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), topic.getOwner());
   }
 
   @Override
@@ -92,7 +86,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void storeRelationships(Topic topic) {
     setService(topic, topic.getService());
-    setOwner(topic, topic.getOwner());
+    storeOwner(topic, topic.getOwner());
     applyTags(topic);
   }
 

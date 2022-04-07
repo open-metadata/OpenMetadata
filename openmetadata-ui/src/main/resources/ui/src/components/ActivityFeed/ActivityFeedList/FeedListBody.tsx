@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -25,9 +26,52 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onThreadIdSelect,
   postFeed,
   onViewMore,
-  selctedThreadId,
+  selectedThreadId,
   onConfirmation,
 }) => {
+  const toggleReplyEditor = (id: string) => {
+    onThreadIdSelect(selectedThreadId === id ? '' : id);
+  };
+
+  const getFeedEditor = (id: string) => {
+    return selectedThreadId === id ? (
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2"
+        data-testid="quick-reply-editor"
+        onSave={postFeed}
+      />
+    ) : null;
+  };
+
+  const getThreadFooter = (
+    postLength: number,
+    lastPost: Post,
+    repliedUsers: Array<string>,
+    replies: number,
+    threadId: string
+  ) => {
+    return postLength > 1 ? (
+      <div className="tw-mb-6">
+        <div className="tw-ml-9 tw-flex tw-mb-6">
+          <FeedCardFooter
+            isFooterVisible
+            className="tw--mt-4"
+            lastReplyTimeStamp={lastPost?.postTs}
+            repliedUsers={repliedUsers}
+            replies={replies}
+            threadId={threadId}
+            onThreadSelect={(id: string) => {
+              onThreadIdSelect('');
+              onThreadSelect(id);
+              onViewMore();
+            }}
+          />
+        </div>
+      </div>
+    ) : null;
+  };
+
   return (
     <Fragment>
       {updatedFeedList
@@ -57,25 +101,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               />
               {postLength > 0 ? (
                 <Fragment>
-                  {postLength > 1 ? (
-                    <div className="tw-mb-6">
-                      <div className="tw-ml-9 tw-flex tw-mb-6">
-                        <FeedCardFooter
-                          isFooterVisible
-                          className="tw--mt-4"
-                          lastReplyTimeStamp={lastPost?.postTs}
-                          repliedUsers={repliedUsers}
-                          replies={replies}
-                          threadId={feed.id}
-                          onThreadSelect={(id: string) => {
-                            onThreadIdSelect('');
-                            onThreadSelect(id);
-                            onViewMore();
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
+                  {getThreadFooter(
+                    postLength,
+                    lastPost,
+                    repliedUsers,
+                    replies,
+                    feed.id
+                  )}
                   <ActivityFeedCard
                     className="tw-mb-6 tw-ml-9"
                     data-testid="latest-message"
@@ -88,18 +120,11 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                     className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
                     data-testid="quick-reply"
                     onClick={() => {
-                      onThreadIdSelect(feed.id);
+                      toggleReplyEditor(feed.id);
                     }}>
                     Reply
                   </p>
-                  {selctedThreadId === feed.id ? (
-                    <ActivityFeedEditor
-                      buttonClass="tw-mr-4"
-                      className="tw-ml-5 tw-mr-2"
-                      data-testid="quick-reply-editor"
-                      onSave={postFeed}
-                    />
-                  ) : null}
+                  {getFeedEditor(feed.id)}
                 </Fragment>
               ) : (
                 <p

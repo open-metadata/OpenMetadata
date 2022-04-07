@@ -55,15 +55,19 @@ const ReviewerModal = ({
 
   const querySearch = () => {
     setIsLoading(true);
-    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER).then(
-      (res: SearchResponse) => {
+    searchData(WILD_CARD_CHAR, 1, 10, '', '', '', SearchIndex.USER)
+      .then((res: SearchResponse) => {
         const data = getSearchedReviewers(
           formatUsersResponse(res.data.hits.hits)
         );
         setOptions(data);
+      })
+      .catch(() => {
+        setOptions([]);
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    );
+      });
   };
 
   const suggestionSearch = (searchText = '') => {

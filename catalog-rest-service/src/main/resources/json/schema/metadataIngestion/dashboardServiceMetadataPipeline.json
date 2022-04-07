@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/dashboardServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DashboardServiceMetadataPipeline",
+  "description": "DashboardService Metadata Pipeline Configuration.",
+  "properties": {
+    "dashboardFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    }
+  },
+  "additionalProperties": false
+}

@@ -17,49 +17,33 @@ Workflow definition for the ORM Profiler.
 - How to define metrics & tests
 """
 import itertools
-import uuid
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
 import click
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
-from metadata.config.common import (
-    ConfigModel,
-    DynamicTypedConfig,
-    WorkflowExecutionError,
-)
+from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.api.common import WorkflowContext
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import (
-    SQLConnectionConfig,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.sql_source import SQLSource, SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.utils.engines import create_and_bind_session
+from metadata.utils.filters import filter_by_schema, filter_by_table
 
 logger = logger()
-
-
-class ProfilerWorkflowConfig(ConfigModel):
-    """
-    Configurations we expect to find in the
-    Workflow JSON
-    """
-
-    run_id: str = Field(default_factory=lambda: str(uuid.uuid1()))
-    source: DynamicTypedConfig
-    metadata_server: DynamicTypedConfig
-    processor: Optional[DynamicTypedConfig] = None
-    sink: Optional[DynamicTypedConfig] = None
 
 
 class ProfilerWorkflow:
@@ -67,25 +51,21 @@ class ProfilerWorkflow:
     Configure and run the ORM profiler
     """
 
-    config: ProfilerWorkflowConfig
-    ctx: WorkflowContext
+    config: OpenMetadataWorkflowConfig
     source: Source
     processor: Processor
     sink: Sink
     metadata: OpenMetadata
 
-    def __init__(self, config: ProfilerWorkflowConfig):
+    def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        self.ctx = WorkflowContext(workflow_id=self.config.run_id)
-
-        self.metadata_config = MetadataServerConfig.parse_obj(
-            self.config.metadata_server.dict().get("config", {})
+        self.metadata_config: OpenMetadataServerConfig = (
+            self.config.workflowConfig.openMetadataServerConfig
         )
 
         # We will use the existing sources to build the Engine
-        self.source = get_ingestion_source(
+        self.source: Source = get_ingestion_source(
             source_type=self.config.source.type,
-            context=self.ctx,
             source_config=self.config.source,
             metadata_config=self.metadata_config,
         )
@@ -96,23 +76,23 @@ class ProfilerWorkflow:
             )
 
         # Init and type the source config
-        self.source_config: SQLConnectionConfig = self.source.config
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.source.sourceConfig.config
+        )
         self.source_status = SQLSourceStatus()
 
         self.processor = get_processor(
             processor_type=self.config.processor.type,  # orm-profiler
-            context=self.ctx,
             processor_config=self.config.processor or ProfilerProcessorConfig(),
             metadata_config=self.metadata_config,
             _from="orm_profiler",
             # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(get_engine(self.source_config)),
+            session=create_and_bind_session(self.source.engine),
         )
 
         if self.config.sink:
             self.sink = get_sink(
                 sink_type=self.config.sink.type,
-                context=self.ctx,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
                 _from="orm_profiler",
@@ -127,11 +107,11 @@ class ProfilerWorkflow:
         Parse a JSON (dict) and create the workflow
         """
         try:
-            config = ProfilerWorkflowConfig.parse_obj(config_dict)
+            config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
             return cls(config)
         except ValidationError as err:
             logger.error("Error trying to parse the Profiler Workflow configuration")
-            raise ValidationError(f"Error parsing workflow - {err}")
+            raise err
 
     def filter_entities(self, tables: List[Table]) -> Iterable[Table]:
         """
@@ -143,24 +123,26 @@ class ProfilerWorkflow:
         for table in tables:
 
             # Validate schema
-            if not self.source_config.schema_filter_pattern.included(
-                table.database.name
+            if filter_by_schema(
+                schema_filter_pattern=self.source_config.schemaFilterPattern,
+                schema_name=table.databaseSchema.name,
             ):
                 self.source_status.filter(
-                    table.database.name, "Schema pattern not allowed"
+                    table.databaseSchema.name, "Schema pattern not allowed"
                 )
                 continue
 
             # Validate database
-            if not self.source_config.table_filter_pattern.included(
-                str(table.name.__root__)
+            if filter_by_table(
+                table_filter_pattern=self.source_config.tableFilterPattern,
+                table_name=str(table.name.__root__),
             ):
                 self.source_status.filter(
-                    table.fullyQualifiedName, "Table name pattern not allowed"
+                    table.name.__root__, "Table name pattern not allowed"
                 )
                 continue
 
-            self.source_status.scanned(table.fullyQualifiedName)
+            self.source_status.scanned(table.fullyQualifiedName.__root__)
             yield table
 
     def list_entities(self) -> Iterable[Table]:

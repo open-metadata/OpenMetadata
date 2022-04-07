@@ -109,7 +109,7 @@ public class PaginationAndFilterTest {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.selectOverview("tables"));
-    Events.click(webDriver, common.selectFilterExplore("Tier.Tier3"));
+    Events.click(webDriver, common.selectFilterExplore("Tier:Tier3"));
     try {
       WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(common.searchResults()));
       if (dataFound.isDisplayed()) {
@@ -170,22 +170,23 @@ public class PaginationAndFilterTest {
     actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 4; i++) {
+    for (int i = 0; i <= 6; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    webDriver.navigate().back();
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.explore());
     try {
       WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
       if (viewMore.isDisplayed()) {
         Events.click(webDriver, common.viewMore());
       }
-      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
+      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
     } catch (TimeoutException | NoSuchElementException e) {
-      Assert.fail("Tag not present");
+      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
     }
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);

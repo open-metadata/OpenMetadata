@@ -130,9 +130,7 @@
     },
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
@@ -140,7 +138,7 @@
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of this Pipeline.",

@@ -74,7 +74,7 @@ public class DashboardDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    Thread.sleep(3000);
+    Thread.sleep(waitTime);
     if (webDriver.findElement(common.tableCount()).isDisplayed()) {
       LOG.info("Passed");
     } else {
@@ -92,16 +92,16 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
@@ -122,7 +122,7 @@ public class DashboardDetailsPageTest {
       Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(dashboardDetails.breadCrumbTags()).size();
@@ -160,21 +160,21 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTableLink(1));
-    // actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
+    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), description);
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription())).perform();
+    actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     String checkDescription = webDriver.findElement(dashboardDetails.descriptionBox()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
@@ -198,7 +198,7 @@ public class DashboardDetailsPageTest {
       Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(dashboardDetails.chartTags()).size();

@@ -22,7 +22,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -36,6 +35,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts";
@@ -54,18 +54,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard != null && dashboard.getService() != null)
-        ? EntityUtil.getFQN(dashboard.getService().getName(), dashboard.getName())
+        ? FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName())
         : null;
   }
 
   @Override
   public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
     return new DashboardEntityInterface(entity);
-  }
-
-  @Transaction
-  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
-    return EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner());
   }
 
   @Override
@@ -124,7 +119,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
-    EntityUtil.populateOwner(daoCollection.userDAO(), daoCollection.teamDAO(), dashboard.getOwner()); // Validate owner
+    populateOwner(dashboard.getOwner()); // Validate owner
     dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
   }
@@ -156,7 +151,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
     // Add owner relationship
-    setOwner(dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    storeOwner(dashboard, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);

@@ -1,7 +1,21 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import React, { useState } from 'react';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import UserCard from '../../pages/teams/UserCard';
+import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Avatar from '../common/avatar/Avatar';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -51,7 +65,7 @@ const Users = ({ userData }: Props) => {
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-pt-4">
+      <div className="tw-pt-4" data-testid="left-panel">
         <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col tw-items-center">
           {userData.profile?.images?.image ? (
             <div className="tw-h-28 tw-w-28">
@@ -77,9 +91,11 @@ const Users = ({ userData }: Props) => {
         </div>
         <div className="tw-pb-4 tw-mb-4 tw-border-b">
           <h6 className="tw-heading tw-mb-3">Teams</h6>
-
-          {userData.teams?.map((team, i) => (
-            <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
+          {getNonDeletedTeams(userData.teams ?? []).map((team, i) => (
+            <div
+              className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+              data-testid={team.name}
+              key={i}>
               <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
               <span>{team?.displayName || team?.name}</span>
             </div>
@@ -102,7 +118,9 @@ const Users = ({ userData }: Props) => {
   const getEntityData = (data: EntityReference[], placeholder: string) => {
     if ((data?.length as number) <= 0) {
       return (
-        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+        <div
+          className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
+          data-testid="no-assets">
           <p className="tw-text-base">{placeholder}</p>
         </div>
       );

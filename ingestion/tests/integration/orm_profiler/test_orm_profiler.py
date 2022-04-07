@@ -27,7 +27,6 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.engines import create_and_bind_session
 
@@ -104,9 +103,9 @@ class ProfilerWorkflowTest(TestCase):
         """
 
         table_entity: Table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users"
+            entity=Table, fqdn="test_sqlite:main:users"
         )
-        assert table_entity.fullyQualifiedName == "test_sqlite.main.users"
+        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite:main:users"
 
     def test_profiler_workflow(self):
         """
@@ -119,13 +118,14 @@ class ProfilerWorkflowTest(TestCase):
             "config": {
                 "profiler": {
                     "name": "my_profiler",
+                    "timeout_seconds": 60,
                     "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
                 },
                 "test_suite": {
                     "name": "My Test Suite",
                     "tests": [
                         {
-                            "table": "test_sqlite.main.users",  # FQDN
+                            "table": "test_sqlite:main:users",  # FQDN
                             "profile_sample": 75,
                             "table_tests": [
                                 {
@@ -166,7 +166,7 @@ class ProfilerWorkflowTest(TestCase):
 
         # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.users", fields=["profileSample"]
+            entity=Table, fqdn="test_sqlite:main:users", fields=["profileSample"]
         )
         assert table.profileSample == 75.0
 

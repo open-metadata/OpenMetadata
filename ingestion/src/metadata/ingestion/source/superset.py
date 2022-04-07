@@ -19,6 +19,7 @@ from typing import Iterable
 
 import dateutil.parser as dateparser
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -27,13 +28,15 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, WorkflowContext
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.superset_rest import SupersetAPIClient, SupersetConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
@@ -145,7 +148,6 @@ class SupersetSource(Source[Entity]):
     Args:
         config:
         metadata_config:
-        ctx:
 
     Attributes:
         config:
@@ -158,7 +160,7 @@ class SupersetSource(Source[Entity]):
     """
 
     config: SupersetConfig
-    metadata_config: MetadataServerConfig
+    metadata_config: OpenMetadataServerConfig
     status: SourceStatus
     platform = "superset"
     service_type = DashboardServiceType.Superset.value
@@ -166,10 +168,9 @@ class SupersetSource(Source[Entity]):
     def __init__(
         self,
         config: SupersetConfig,
-        metadata_config: MetadataServerConfig,
-        ctx: WorkflowContext,
+        metadata_config: OpenMetadataServerConfig,
     ):
-        super().__init__(ctx)
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata_client = OpenMetadata(self.metadata_config)
@@ -185,12 +186,9 @@ class SupersetSource(Source[Entity]):
         )
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
-    ):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
         config = SupersetConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     def prepare(self):
         pass
@@ -257,8 +255,8 @@ class SupersetSource(Source[Entity]):
         if database_id and table_name:
             platform = self._get_service_type_from_database_id(database_id)
             dataset_fqn = (
-                f"{platform}.{database_name + '.' if database_name else ''}"
-                f"{schema_name + '.' if schema_name else ''}"
+                f"{platform}{FQDN_SEPARATOR}{database_name + FQDN_SEPARATOR if database_name else ''}"
+                f"{schema_name + FQDN_SEPARATOR if schema_name else ''}"
                 f"{table_name}"
             )
             return dataset_fqn

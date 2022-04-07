@@ -195,12 +195,17 @@ public class TagsPageTest {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, tagsPage.tables());
     try {
-      WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
-      if (viewMore.isDisplayed()) {
-        Events.click(webDriver, common.viewMore());
+      try {
+        WebElement viewMore = wait.until(ExpectedConditions.presenceOfElementLocated(common.viewMore()));
+        if (viewMore.isDisplayed()) {
+          Events.click(webDriver, common.viewMore());
+        }
+        Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
+        Events.click(webDriver, tagsPage.tableLink());
+      } catch (TimeoutException | NoSuchElementException e) {
+        Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
+        Events.click(webDriver, tagsPage.tableLink());
       }
-      Events.click(webDriver, tagsPage.tagFilter(tagCategoryDisplayName, tagDisplayName));
-      Events.click(webDriver, tagsPage.tableLink());
     } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Tag not found");
     }
@@ -222,7 +227,8 @@ public class TagsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
   }
 
-  @Test
+  // DO NOT DELETE
+  /*@Test
   @Order(10)
   public void addTagWithExistingName() throws InterruptedException {
     openTagsPage();
@@ -243,14 +249,14 @@ public class TagsPageTest {
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.aTagUsageCountElementIndex(1)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not Used");
-  }
+  }*/
 
   @Test
   @Order(11)
   public void TagUsageCheck() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.usageCountElementIndex(2));
+    Events.click(webDriver, tagsPage.usageCountElementIndex(1));
     Thread.sleep(2000);
     String beforeFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
     Events.click(webDriver, common.entityTabIndex(2));
@@ -259,7 +265,8 @@ public class TagsPageTest {
     Assert.assertEquals(afterFilterCount, beforeFilterCount);
   }
 
-  @Test
+  // DO NOT DELETE
+  /*@Test
   @Order(12)
   public void removeTagWithExistingName() throws InterruptedException {
     openTagsPage();
@@ -280,14 +287,14 @@ public class TagsPageTest {
     Thread.sleep(2000);
     String usageCount = webDriver.findElement(tagsPage.spanTagUsageCountElementIndex(2)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
-  }
+  }*/
 
   @Test
   @Order(13)
   public void addSelfAssociatedTag() throws Exception {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagIndex(3));
+    Events.click(webDriver, tagsPage.addAssociatedTagIndex(2));
     Events.click(webDriver, common.enterAssociatedTagName());
     try {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");

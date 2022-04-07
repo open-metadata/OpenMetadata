@@ -6,7 +6,7 @@
   "type": "object",
   "properties": {
     "name": {
-      "$ref": "../../entity/teams/team.json#/definitions/teamName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Optional name used for display purposes. Example 'Marketing Team'.",

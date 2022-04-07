@@ -113,9 +113,10 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(serviceName));
-    Thread.sleep(5000); // for data ingestion
+    // Thread.sleep(5000); // for data ingestion
   }
 
   @Test
@@ -136,7 +137,7 @@ public class DatabaseServicePageTest {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("ingestions"));
+    Events.click(webDriver, common.ingestion());
     try {
       WebElement runIngestion =
           wait.until(ExpectedConditions.presenceOfElementLocated(databaseServicePage.runIngestion()));
@@ -161,6 +162,7 @@ public class DatabaseServicePageTest {
     Events.click(webDriver, common.saveServiceButton());
 
     webDriver.navigate().refresh();
+    Thread.sleep(waitTime);
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
     Events.click(webDriver, common.saveEditedService());
   }
@@ -171,7 +173,7 @@ public class DatabaseServicePageTest {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.serviceDetailsTabs("connectionConfig"));
+    Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, common.serviceUsername(), "1");
     Events.sendKeys(webDriver, common.servicePassword(), "1");
     Events.sendKeys(webDriver, common.databaseName(), "1");

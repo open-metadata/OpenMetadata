@@ -23,6 +23,9 @@ from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
 from metadata.config.common import load_config_file
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
@@ -79,8 +82,9 @@ def metadata(debug: bool, log_level: str) -> None:
 def ingest(config: str) -> None:
     """Main command for ingesting metadata into Metadata"""
     config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
-
+    workflow_config = OpenMetadataWorkflowConfig.parse_obj(
+        load_config_file(config_file)
+    )
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)

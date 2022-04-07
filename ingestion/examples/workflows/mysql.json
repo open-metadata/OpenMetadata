@@ -1,25 +1,25 @@
 {
   "source": {
     "type": "mysql",
-    "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "database": "openmetadata_db",
-      "service_name": "local_mysql",
-      "schema_filter_pattern": {
-        "includes": ["test_delete.*"]
+    "serviceName": "local_mysql",
+    "serviceConnection": {
+      "config": {
+        "type": "MySQL",
+        "username": "openmetadata_user",
+        "password": "openmetadata_password",
+        "hostPort": "localhost:3306"
       }
-    }
+    },
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

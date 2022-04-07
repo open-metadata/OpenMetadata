@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.events;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.io.IOException;
@@ -68,6 +69,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     supportsAuthorizedMetadataOperations = false;
     supportsPatch = false;
     supportsFieldsQueryParam = false;
+    supportsSoftDelete = false;
   }
 
   @Test
@@ -329,6 +331,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     // For the entity all the webhooks registered for created events have the right number of events
     List<ChangeEvent> callbackEvents =
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
+    assertTrue(callbackEvents.size() > 1);
     long timestamp = callbackEvents.get(0).getTimestamp();
     waitAndCheckForEvents(entity, null, null, timestamp, callbackEvents, 30, 100);
 

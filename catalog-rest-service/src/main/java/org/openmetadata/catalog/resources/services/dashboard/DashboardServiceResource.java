@@ -308,10 +308,14 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string")) @PathParam("id")
           String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, recursive, ADMIN | BOT);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
   private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
@@ -320,11 +324,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withServiceType(create.getServiceType())
-        .withDashboardUrl(create.getDashboardUrl())
-        .withUsername(create.getUsername())
-        .withPassword(create.getPassword())
+        .withConnection(create.getConnection())
         .withOwner(create.getOwner())
-        .withIngestionSchedule(create.getIngestionSchedule())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

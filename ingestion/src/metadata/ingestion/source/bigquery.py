@@ -26,10 +26,12 @@ from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
 )
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -74,36 +76,29 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigQueryConfig(SQLConnectionConfig):
-    scheme = "bigquery"
-    host_port: Optional[str] = "bigquery.googleapis.com"
-    username: Optional[str] = None
-    project_id: Optional[str] = None
+class BigQueryConfig(BigQueryConnection, SQLConnectionConfig):
     duration: int = 1
-    service_type = DatabaseServiceType.BigQuery.value
     partition_query: str = 'select * from {}.{} WHERE {} = "{}" LIMIT 1000'
     partition_field: Optional[str] = "_PARTITIONTIME"
-    enable_policy_tags: bool = False
-    tag_category_name: str = "BigqueryPolicyTags"
 
     def get_connection_url(self):
-        if self.project_id:
-            return f"{self.scheme}://{self.project_id}"
+        if self.projectID:
+            return f"{self.scheme}://{self.projectID}"
         return f"{self.scheme}://"
 
 
-class BigquerySource(SQLSource):
-    def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx)
+class BigquerySource(SQLSource, BigQueryConfig):
+    def __init__(self, config, metadata_config):
+        super().__init__(config, metadata_config)
         self.temp_credentials = None
 
     #  and "policy_tags" in column and column["policy_tags"]
     def prepare(self):
         try:
-            if self.config.enable_policy_tags:
+            if self.enablePolicyTagImport:
                 self.metadata.create_tag_category(
                     CreateTagCategoryRequest(
-                        name=self.config.tag_category_name,
+                        name=self.tagCategoryName,
                         description="",
                         categoryType="Classification",
                     )
@@ -112,9 +107,8 @@ class BigquerySource(SQLSource):
             logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
             if config.options.get("credentials_path"):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
@@ -131,7 +125,7 @@ class BigquerySource(SQLSource):
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
                     "https://docs.open-metadata.org/connectors/bigquery"
                 )
-        return cls(config, metadata_config, ctx)
+        return cls(config, metadata_config)
 
     @staticmethod
     def create_credential_temp_file(credentials: dict) -> str:
@@ -158,18 +152,17 @@ class BigquerySource(SQLSource):
                 partition_details = self.inspector.get_indexes(table, schema)
                 start, end = get_start_and_end(self.config.duration)
 
-                query = self.config.partition_query.format(
+                query = self.partition_query.format(
                     schema,
                     table,
-                    partition_details[0]["column_names"][0]
-                    or self.config.partition_field,
+                    partition_details[0]["column_names"][0] or self.partition_field,
                     start.strftime("%Y-%m-%d"),
                 )
                 logger.info(query)
                 results = self.connection.execute(query)
                 cols = []
                 for col in results.keys():
-                    cols.append(col.replace(".", "_DOT_"))
+                    cols.append(col)
                 rows = []
                 for res in results:
                     row = list(res)

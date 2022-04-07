@@ -88,34 +88,10 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "daily_stats": {
               "type": "long"
-            },
-            "change_descriptions": {
-              "type": "nested",
-              "properties": {
-                "updatedAt": {
-                  "type": "long"
-                },
-                "updatedBy": {
-                  "type": "text"
-                },
-                "fieldsAdded": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "fieldsDeleted": {
-                   "type": "object",
-                   "enabled": false
-                },
-                "fieldsUpdated": {
-                  "type": "object",
-                  "enabled": false
-                }
             }
-          }
          }
-          }
       }
-    }
+   }
     """
 )
 
@@ -169,33 +145,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
-            },
-            "change_descriptions": {
-              "type": "nested",
-              "properties": {
-                "updatedAt": {
-                  "type": "long"
-                },
-                "updatedBy": {
-                  "type": "text"
-                },
-                "fieldsAdded": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "fieldsDeleted": {
-                   "type": "object",
-                   "enabled": false
-                },
-                "fieldsUpdated": {
-                  "type": "object",
-                  "enabled": false
-                }
             }
-          }
          }
-          }
-        }
+      }
     }
     """
 )
@@ -274,33 +226,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "daily_stats": {
               "type": "long"
-            },
-            "change_descriptions": {
-              "type": "nested",
-              "properties": {
-                "updatedAt": {
-                  "type": "long"
-                },
-                "updatedBy": {
-                  "type": "text"
-                },
-                "fieldsAdded": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "fieldsDeleted": {
-                   "type": "object",
-                   "enabled": false
-                },
-                "fieldsUpdated": {
-                  "type": "object",
-                  "enabled": false
-                }
             }
-          }
          }
-          }
-        }
+      }
     }
     """
 )
@@ -361,30 +289,7 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
-            },
-            "change_descriptions": {
-              "type": "nested",
-              "properties": {
-                "updatedAt": {
-                  "type": "long"
-                },
-                "updatedBy": {
-                  "type": "text"
-                },
-                "fieldsAdded": {
-                  "type": "object",
-                  "enabled": false
-                },
-                "fieldsDeleted": {
-                   "type": "object",
-                   "enabled": false
-                },
-                "fieldsUpdated": {
-                  "type": "object",
-                  "enabled": false
-                }
             }
-          }
          }
       }
     }

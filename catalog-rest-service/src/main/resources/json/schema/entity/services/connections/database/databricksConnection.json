@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricksConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabricksConnection",
+  "description": "Databricks Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DatabricksConnection",
+  "definitions": {
+    "databricksType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Databricks"],
+      "default": "Databricks"
+    },
+    "databricksScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["databricks+connector"],
+      "default": "databricks+connector"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/databricksType",
+      "default": "Databricks"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/databricksScheme",
+      "default": "databricks+connector"
+    },
+    "username": {
+      "description": "username to connect  to the Databricks. This user should have privileges to read all the metadata in Databricks.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to the Databricks.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Databricks",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Databricks.",
+      "type": "string"
+    },
+    "token": {
+      "description": "",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}

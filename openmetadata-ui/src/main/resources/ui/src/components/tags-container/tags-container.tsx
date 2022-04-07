@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isNull } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Source } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
@@ -76,7 +77,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => {
         return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
       })
-      .filter((tag) => !tag.fqn?.startsWith('Tier.Tier')) // To filter out Tier tags
+      .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
         return {
           name: tag.fqn,

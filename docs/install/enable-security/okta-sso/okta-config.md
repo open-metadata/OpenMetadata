@@ -7,7 +7,8 @@
 ```
 authenticationConfiguration:
   provider: "okta"
-  publicKey: "https://{okta_domain}/oauth2/default/v1/keys"
+  publicKeyUrls:
+    - "https://{okta_domain}/oauth2/default/v1/keys"
   authority: "{okta_domain}"
   clientId: "{Client Secret}"
   callbackUrl: "http://localhost:8585/callback"
