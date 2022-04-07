@@ -19,7 +19,7 @@ const mockOnSave = jest.fn();
 const mockOnCancel = jest.fn();
 const mockValue = 'Test value';
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
   return () => jest.fn().mockImplementation(() => mockValue);
 });
 

@@ -38,7 +38,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
@@ -502,11 +502,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             htmlFor="description">
             Description:
           </label>
-          <MarkdownWithPreview
+          <RichTextEditor
             data-testid="description"
+            initialValue={description}
             readonly={!allowAccess}
             ref={markdownRef}
-            value={description}
           />
         </Field>
         <Field>
