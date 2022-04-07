@@ -58,6 +58,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import timer
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -106,6 +107,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     to OpenMetadata Entities
     """
 
+    @timer
     def __init__(
         self,
         config: WorkflowSource,
@@ -148,6 +150,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         end = time.perf_counter()
         logger.debug(f"sql_source initialization {end - start}")
 
+    @timer
     def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
         """
         Convert the table to an ORM object and run the ORM
@@ -202,12 +205,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def standardize_schema_table_names(schema: str, table: str) -> Tuple[str, str]:
         return schema, table
 
+    @timer
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         """
         Get some sample data from the source to be added
         to the Table Entities
         """
-        start = time.perf_counter()
         try:
             query = self.source_config.sampleDataQuery.format(schema, table)
             results = self.connection.execute(query)
@@ -218,8 +221,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for res in results:
                 row = list(res)
                 rows.append(row)
-            end = time.perf_counter()
-            logger.debug(f"fetch_sample_data duration {end - start}")
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
@@ -228,18 +229,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return None
 
+    @timer
     def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 
+    @timer
     def get_table_fqn(self, service_name, schema, table_name) -> str:
         return f"{service_name}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
+    @timer
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
         for inspector in inspectors:
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
-                start = time.perf_counter()
                 # clear any previous source database state
                 self.database_source_state.clear()
                 if (
@@ -256,9 +259,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.source_config.markDeletedTables:
                     schema_fqdn = f"{self.config.serviceName}.{schema}"
                     yield from self.delete_tables(schema_fqdn)
-                end = time.perf_counter()
-                logger.debug(f"next_record duration {end - start}")
 
+    @timer
     def fetch_tables(
         self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
@@ -266,7 +268,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
         """
-        start = time.perf_counter()
         tables = inspector.get_table_names(schema)
         for table_name in tables:
             try:
@@ -328,8 +329,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
-                end = time.perf_counter()
-                logger.debug(f"fetch_tables duration {end - start}")
                 yield table_schema_and_db
                 self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
@@ -338,10 +337,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
                 )
-                end = time.perf_counter()
-                logger.debug(f"fetch_tables duration {end - start}")
                 continue
 
+    @timer
     def fetch_views(
         self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
@@ -411,8 +409,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
-                end = time.perf_counter()
-                logger.debug(f"fetch_views duration {end - start}")
                 yield table_schema_and_db
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
@@ -420,6 +416,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.status.warnings.append(f"{self.config.serviceName}.{view_name}")
                 continue
 
+    @timer
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
         database_state = self._build_database_state(schema_fqdn)
         for table in database_state:
@@ -430,6 +427,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.inspector = inspector
         return False
 
+    @timer
     def _parse_data_model(self):
         """
         Get all the DBT information and feed it to the Table Entity
@@ -481,6 +479,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.debug(traceback.print_exc())
                     logger.error(err)
 
+    @timer
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
         if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
@@ -498,6 +497,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     continue
         return upstream_nodes
 
+    @timer
     def _get_data_model(self, schema, table_name):
         table_fqn = f"{schema}{FQDN_SEPARATOR}{table_name}".lower()
         if table_fqn in self.data_models:
@@ -505,6 +505,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return model
         return None
 
+    @timer
     def _parse_data_model_columns(
         self, model_name: str, mnode: Dict, cnode: Dict
     ) -> [Column]:
@@ -535,6 +536,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return columns
 
+    @timer
     def _get_database(self, database: str) -> Database:
         return Database(
             name=database,
@@ -543,6 +545,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ),
         )
 
+    @timer
     def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:
         return DatabaseSchema(
             name=schema,
@@ -573,13 +576,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.UNIQUE
         return constraint
 
+    @timer
     def _get_columns(
         self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
         Get columns types and constraints information
         """
-        start = time.perf_counter()
         # Get inspector information:
         pk_constraints = inspector.get_pk_constraint(table, schema)
         try:
@@ -744,8 +747,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)
-            end = time.perf_counter()
-            logger.debug(f"get_columns duration {end - start}")
             return table_columns
         except Exception as err:
             logger.error(f"{repr(err)}: {table} {err}")
@@ -762,6 +763,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type
 
+    @timer
     def _build_database_state(self, schema_fqdn: str) -> [EntityReference]:
         after = None
         tables = []
