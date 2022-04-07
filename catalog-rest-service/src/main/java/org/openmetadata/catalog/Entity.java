@@ -89,6 +89,7 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
+  public static final String TAG_CATEGORY = "tagCategory";
 
   //
   // Policies

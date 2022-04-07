@@ -233,6 +233,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 self.database_source_state.clear()
                 if (
                     self.source_config.schemaFilterPattern
+                    and self.source_config.schemaFilterPattern.includes
                     and schema not in self.source_config.schemaFilterPattern.includes
                 ):
                     self.status.filter(schema, "Schema pattern not allowed")
