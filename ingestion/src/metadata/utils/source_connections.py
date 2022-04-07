@@ -14,6 +14,8 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from requests import Session
+
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -31,6 +33,9 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
 )
 
 
@@ -96,3 +101,21 @@ def get_connection_url(connection: DatabricksConnection):
     if connection.database:
         url += f"/{connection.database}"
     return url
+
+
+@singledispatch
+def get_connection_args(connection):
+    if connection.connectionArguments:
+        return connection.connectionArguments
+    else:
+        return {}
+
+
+@get_connection_args.register(TrinoConnection)
+def _(connection):
+    if connection.proxies:
+        session = Session()
+        session.proxies = connection.proxies
+        return {**connection.connectionArguments, "http_session": session}
+    else:
+        return connection.connectionArguments
