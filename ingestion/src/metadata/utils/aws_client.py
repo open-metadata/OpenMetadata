@@ -12,6 +12,7 @@
 from typing import Any, Optional
 
 from boto3 import Session
+from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
 
@@ -21,11 +22,11 @@ class AWSClientConfigModel(ConfigModel):
     AWSClientConfigModel holds all config parameters required to instantiate an AWSClient.
     """
 
-    aws_access_key_id: Optional[str]
-    aws_secret_access_key: Optional[str]
-    aws_session_token: Optional[str]
-    endpoint_url: Optional[str]
-    region_name: Optional[str]
+    awsAccessKeyId: Optional[str]
+    awsSecretAccessKey: Optional[SecretStr]
+    awsSessionToken: Optional[str]
+    endPointURL: Optional[str]
+    awsRegion: Optional[str]
 
 
 class AWSClient:
@@ -36,42 +37,43 @@ class AWSClient:
     config: AWSClientConfigModel
 
     def __init__(self, config: AWSClientConfigModel):
+
         self.config = config
 
     def _get_session(self) -> Session:
         if (
-            self.config.aws_access_key_id
-            and self.config.aws_secret_access_key
-            and self.config.aws_session_token
+            self.config.awsAccessKeyId
+            and self.config.awsSecretAccessKey
+            and self.config.awsSessionToken
         ):
             return Session(
-                aws_access_key_id=self.config.aws_access_key_id,
-                aws_secret_access_key=self.config.aws_secret_access_key,
-                aws_session_token=self.config.aws_session_token,
-                region_name=self.config.region_name,
+                aws_access_key_id=self.config.awsAccessKeyId,
+                aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
+                aws_session_token=self.config.awsSessionToken,
+                region_name=self.config.awsRegion,
             )
-        if self.config.aws_access_key_id and self.config.aws_secret_access_key:
+        if self.config.awsAccessKeyId and self.config.awsSecretAccessKey:
             return Session(
-                aws_access_key_id=self.config.aws_access_key_id,
-                aws_secret_access_key=self.config.aws_secret_access_key,
-                region_name=self.config.region_name,
+                aws_access_key_id=self.config.awsAccessKeyId,
+                aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
+                region_name=self.config.awsRegion,
             )
-        if self.config.region_name:
-            return Session(region_name=self.config.region_name)
+        if self.config.awsRegion:
+            return Session(region_name=self.config.awsRegion)
         return Session()
 
     def get_client(self, service_name: str) -> Any:
         session = self._get_session()
-        if self.config.endpoint_url is not None:
+        if self.config.endPointURL is not None:
             return session.client(
-                service_name=service_name, endpoint_url=self.config.endpoint_url
+                service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.client(service_name=service_name)
 
     def get_resource(self, service_name: str) -> Any:
         session = self._get_session()
-        if self.config.endpoint_url is not None:
+        if self.config.endPointURL is not None:
             return session.resource(
-                service_name=service_name, endpoint_url=self.config.endpoint_url
+                service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.resource(service_name=service_name)
