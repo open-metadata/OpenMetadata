@@ -57,9 +57,8 @@ class MysqlSource(SQLSource):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue
 
-            # Fetch tables by default
-            yield from self.fetch_tables(self.inspector, schema)
-
+            if self.source_config.includeTables:
+                yield from self.fetch_tables(self.inspector, schema)
             if self.source_config.includeViews:
                 yield from self.fetch_views(self.inspector, schema)
             if self.source_config.markDeletedTables:
