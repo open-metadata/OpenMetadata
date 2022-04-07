@@ -10,7 +10,7 @@ const mockInitialData = {
   name: '',
 };
 
-jest.mock('../../components/common/editor/MarkdownWithPreview', () => {
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 

@@ -40,6 +40,10 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
+});
+
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
