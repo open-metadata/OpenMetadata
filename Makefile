@@ -56,7 +56,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
-	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated
+	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated --set-default-enum-member
 	$(MAKE) install
 
 ## Ingestion tests & QA

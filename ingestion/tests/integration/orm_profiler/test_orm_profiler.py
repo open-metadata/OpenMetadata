@@ -25,6 +25,9 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
@@ -73,7 +76,7 @@ class ProfilerWorkflowTest(TestCase):
     )
     session = create_and_bind_session(engine)
 
-    server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
+    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     @classmethod
