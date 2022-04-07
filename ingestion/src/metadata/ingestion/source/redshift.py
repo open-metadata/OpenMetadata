@@ -12,11 +12,9 @@
 Redshift source ingestion
 """
 
-
 import logging
 import re
 from collections import defaultdict
-from typing import Optional
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -31,9 +29,11 @@ from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.ingestion.api.source import SourceStatus
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
@@ -427,45 +427,6 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 )
 
 
-class RedshiftConfig(RedshiftConnection, SQLConnectionConfig):
-    """
-    Redshift config class
-
-    Attributes:
-        scheme:
-        where_clause:
-        duration:
-        service_type:
-    """
-
-    where_clause: Optional[str] = None
-    duration: int = 1
-    query = 'select * from "{}"."{}"'
-
-    def get_identifier(self, schema: str, table: str) -> str:
-        """
-        Get identifier
-
-        Args:
-            schema:
-            table:
-        Returns:
-            str
-        """
-        regular = f"{schema}.{table}"
-        if self.database:
-            return f"{self.database}.{regular}"
-        return regular
-
-    def get_connection_url(self):
-        """
-        Get connection url
-
-        Returns:
-        """
-        return super().get_connection_url()
-
-
 # pylint: disable=useless-super-delegation
 class RedshiftSource(SQLSource):
     """
@@ -489,7 +450,17 @@ class RedshiftSource(SQLSource):
             metadata_config:
         Returns:
         """
-        config = RedshiftConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, RedshiftConnection):
+            raise InvalidSourceException(
+                f"Expected RedshiftConnection, but got {connection}"
+            )
+        if (
+            config.sourceConfig.config.sampleDataQuery
+            == WorkflowSource.sourceConfig.config.sampleDataQuery
+        ):
+            config.sourceConfig.config.sampleDataQuery = 'select * from "{}"."{}"'
         return cls(config, metadata_config)
 
     def get_status(self) -> SourceStatus:
