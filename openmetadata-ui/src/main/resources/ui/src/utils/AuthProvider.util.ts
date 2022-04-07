@@ -60,7 +60,8 @@ export const getUserManagerConfig = (
 export const getAuthConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean> => {
-  const { authority, clientId, callbackUrl, provider } = authClient;
+  const { authority, clientId, callbackUrl, provider, providerName } =
+    authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -73,6 +74,18 @@ export const getAuthConfig = (
           scopes: ['openid', 'profile', 'email', 'offline_access'],
           pkce: true,
           provider,
+        };
+      }
+
+      break;
+    case AuthTypes.CUSTOM_OIDC:
+      {
+        config = {
+          authority,
+          clientId,
+          callbackUrl: redirectUri,
+          provider,
+          providerName,
         };
       }
 

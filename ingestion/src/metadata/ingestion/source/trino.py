@@ -11,8 +11,7 @@
 
 import logging
 import sys
-from typing import Iterable, Optional
-from urllib.parse import quote_plus
+from typing import Iterable
 
 import click
 from sqlalchemy.inspection import inspect
@@ -20,37 +19,18 @@ from sqlalchemy.inspection import inspect
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 logger = logging.getLogger(__name__)
 
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
-
-
-class TrinoConfig(TrinoConnection, SQLConnectionConfig):
-    params: Optional[dict] = None
-
-    def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username:
-            url += f"{quote_plus(self.username)}"
-            if self.password:
-                url += f":{quote_plus(self.password.get_secret_value())}"
-            url += "@"
-        url += f"{self.host_port}"
-        url += f"/{self.catalog}"
-        if self.params is not None:
-            params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in self.params.items()
-                if value
-            )
-            url = f"{url}?{params}"
-        return url
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 
 class TrinoSource(SQLSource):
@@ -74,7 +54,12 @@ class TrinoSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = TrinoConfig.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
+        connection: TrinoConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, TrinoConnection):
+            raise InvalidSourceException(
+                f"Expected TrinoConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
