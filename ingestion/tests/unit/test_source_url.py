@@ -12,21 +12,49 @@
 """
 OpenMetadata source URL building tests
 """
+from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
 from metadata.utils.source_connections import get_connection_url
 
 
-def test_mysql_url():
-    """
-    Validate MySQL URL building
-    """
-    connection = MysqlConnection(
-        username="username",
-        password="password",
-        hostPort="localhost:1234",
-    )
-    url = get_connection_url(connection)
-    assert url == "mysql+pymysql://username:password@localhost:1234"
+class TestConfig(TestCase):
+    def test_mysql_url(self):
+        """
+        Validate MySQL URL building
+        """
+        connection = MysqlConnection(
+            username="username",
+            password="password",
+            hostPort="localhost:1234",
+        )
+        url = get_connection_url(connection)
+        assert url == "mysql+pymysql://username:password@localhost:1234"
+
+    def test_redshift_url(self):
+        """
+        Validate Redshift URL building
+        """
+        connection = RedshiftConnection(
+            username="username",
+            password="password",
+            hostPort="localhost:1234",
+            database="dev",
+        )
+        url = get_connection_url(connection)
+        assert url == "redshift+psycopg2://username:password@localhost:1234/dev"
+
+    def test_redshift_url_without_db(self):
+        """
+        Validate Redshift without DB URL building
+        """
+        connection_without_db = RedshiftConnection(
+            username="username", password="password", hostPort="localhost:1234"
+        )
+        url_without_db = get_connection_url(connection_without_db)
+        assert url_without_db == "redshift+psycopg2://username:password@localhost:1234"
