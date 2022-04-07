@@ -48,10 +48,7 @@ import {
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateAirflowPipeline } from '../../generated/api/operations/pipelines/createAirflowPipeline';
-import {
-  DashboardService,
-  DashboardServiceType,
-} from '../../generated/entity/services/dashboardService';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
@@ -69,6 +66,8 @@ import {
   getCountBadge,
   getServiceLogo,
 } from '../../utils/CommonUtils';
+import { getDashboardURL } from '../../utils/DashboardServiceUtils';
+import { getBrokers } from '../../utils/MessagingServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -475,10 +474,12 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
               <label className="tw-mb-0">Brokers:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {messagingService.connection.config?.bootstrapServers}
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="brokers">
+                {getBrokers(messagingService.connection.config)}
               </span>
             </div>
           </>
@@ -489,14 +490,12 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">
-                {dashboardService.serviceType === DashboardServiceType.Tableau
-                  ? 'Site URL:'
-                  : 'URL:'}
-              </label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {dashboardService.connection.config?.url}
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">URL:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="dashboard-url">
+                {getDashboardURL(dashboardService.connection.config)}
               </span>
             </div>
           </>
@@ -507,9 +506,11 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
               <label className="tw-mb-0">URL:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
                 {pipelineService.pipelineUrl}
               </span>
             </div>
@@ -634,8 +635,9 @@ const ServicesPage = () => {
           {serviceList.map((service, index) => (
             <div
               className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
+              data-testid="service-card"
               key={index}>
-              <div className="tw-flex-auto tw-flex tw-flex-col tw-justify-between">
+              <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
                 <div>
                   <Link to={getServiceDetailsPath(service.name, serviceName)}>
                     <button>
@@ -755,13 +757,21 @@ const ServicesPage = () => {
         if (res.data) {
           let allServiceCollectionArr: Array<ServiceCollection> = [];
           if (res.data.data?.length) {
-            allServiceCollectionArr = res.data.data.map(
-              (service: ServiceData) => {
-                return {
-                  name: service.collection.name,
-                  value: service.collection.name,
-                };
-              }
+            allServiceCollectionArr = res.data.data.reduce(
+              (prev: Array<ServiceCollection>, curr: ServiceData) => {
+                const sName = curr.collection.name as ServiceTypes;
+
+                return arrServiceTypes.includes(sName)
+                  ? [
+                      ...prev,
+                      {
+                        name: sName,
+                        value: sName,
+                      },
+                    ]
+                  : prev;
+              },
+              []
             );
             // Removed "setIsLoading(false)" from here,
             // If there are service categories available
