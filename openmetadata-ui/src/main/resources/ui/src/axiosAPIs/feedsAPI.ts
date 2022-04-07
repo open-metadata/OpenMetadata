@@ -18,11 +18,13 @@ import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
-  entityLink?: string
+  entityLink?: string,
+  after?: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
       entityLink: entityLink,
+      after,
     },
   });
 };
@@ -33,7 +35,6 @@ export const getFeedsWithFilter: Function = (
   after?: string
 ): Promise<AxiosResponse> => {
   let config = {};
-  const limit = 1;
 
   if (filterType !== FeedFilter.ALL) {
     config = {
@@ -41,14 +42,12 @@ export const getFeedsWithFilter: Function = (
         userId,
         filterType,
         after,
-        limit,
       },
     };
   } else {
     config = {
       params: {
         after,
-        limit,
       },
     };
   }
