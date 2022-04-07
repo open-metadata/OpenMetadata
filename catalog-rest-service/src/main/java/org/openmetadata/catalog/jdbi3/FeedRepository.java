@@ -550,13 +550,19 @@ public class FeedRepository {
   private FilteredThreads getThreadsByFollows(
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<String> jsons;
+    List<String> teamIds = getTeamIds(userId);
     if (paginationType == PaginationType.BEFORE) {
-      jsons = dao.feedDAO().listThreadsByFollowsBefore(userId, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
+      jsons =
+          dao.feedDAO()
+              .listThreadsByFollowsBefore(userId, teamIds, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
     } else {
-      jsons = dao.feedDAO().listThreadsByFollowsAfter(userId, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
+      jsons =
+          dao.feedDAO()
+              .listThreadsByFollowsAfter(userId, teamIds, limit, time, isResolved, Relationship.FOLLOWS.ordinal());
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    int totalCount = dao.feedDAO().listCountThreadsByFollows(userId, isResolved, Relationship.FOLLOWS.ordinal());
+    int totalCount =
+        dao.feedDAO().listCountThreadsByFollows(userId, teamIds, isResolved, Relationship.FOLLOWS.ordinal());
     return new FilteredThreads(threads, totalCount);
   }
 
