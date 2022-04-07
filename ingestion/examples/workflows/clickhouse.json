@@ -1,13 +1,22 @@
 {
     "source": {
       "type": "clickhouse",
-      "config": {
-        "username":"default",
-        "password":"",
-        "database": "default",
-        "service_name": "local_clickhouse",
-        "schema_filter_pattern": {
-          "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]
+      "serviceName": "local_clickhouse",
+      "serviceConnection": {
+        "config": {
+          "type": "ClickHouse",
+          "username":"default",
+          "password":"",
+          "hostPort": "localhost:8123",
+          "database": "default" 
+        }
+      },
+      "sourceConfig": {
+        "config": {
+        "enableDataProfiler": false,
+        "schemaFilterPattern":{
+          "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
+        }
         }
       }
     },
@@ -15,11 +24,10 @@
       "type": "metadata-rest",
       "config": {}
     },
-    "metadata_server": {
-      "type": "metadata-server",
-      "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+    "workflowConfig": {
+      "openMetadataServerConfig": {
+        "hostPort": "http://localhost:8585/api",
+        "authProvider": "no-auth"
       }
     }
   }

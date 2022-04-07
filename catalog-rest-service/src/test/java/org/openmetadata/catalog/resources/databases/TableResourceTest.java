@@ -660,13 +660,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Fully qualified names for table1, table2, table3 columns
     String t1c1 = FullyQualifiedName.add(table1.getFullyQualifiedName(), "c1");
     String t1c2 = FullyQualifiedName.add(table1.getFullyQualifiedName(), "c2");
-    String t1c3 = FullyQualifiedName.add(table1.getFullyQualifiedName(), "c3");
+    String t1c3 = FullyQualifiedName.add(table1.getFullyQualifiedName(), "\"c.3\"");
     String t2c1 = FullyQualifiedName.add(table2.getFullyQualifiedName(), "c1");
     String t2c2 = FullyQualifiedName.add(table2.getFullyQualifiedName(), "c2");
-    String t2c3 = FullyQualifiedName.add(table2.getFullyQualifiedName(), "c3");
+    String t2c3 = FullyQualifiedName.add(table2.getFullyQualifiedName(), "\"c.3\"");
     String t3c1 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "c1");
     String t3c2 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "c2");
-    String t3c3 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "c3");
+    String t3c3 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "\"c.3\"");
 
     List<ColumnJoin> reportedJoins =
         Arrays.asList(
@@ -686,7 +686,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         new JoinedWith().withFullyQualifiedName(t3c2).withJoinCount(20))),
             // table1.c3 is joined with table2.c1, and table3.c3 with join count 30
             new ColumnJoin()
-                .withColumnName("c3")
+                .withColumnName("\"c.3\"")
                 .withJoinedWith(
                     Arrays.asList(
                         new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30),
@@ -717,7 +717,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                           new JoinedWith().withFullyQualifiedName(t3c2).withJoinCount(20 * i))),
               // table1.c3 is joined with table2.c1, and table3.c3 with join count 30
               new ColumnJoin()
-                  .withColumnName("c3")
+                  .withColumnName("\"c.3\"")
                   .withJoinedWith(
                       Arrays.asList(
                           new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30 * i),
@@ -744,7 +744,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c2).withJoinCount(20 * i))),
               // table2.c3 is joined with table1.c1 with join count 30
               new ColumnJoin()
-                  .withColumnName("c3")
+                  .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
       assertColumnJoins(expectedJoins2, table2.getJoins());
 
@@ -762,7 +762,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c2).withJoinCount(20 * i))),
               // table3.c3 is joined with table1.c1 with join count 30
               new ColumnJoin()
-                  .withColumnName("c3")
+                  .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
       assertColumnJoins(expectedJoins3, table3.getJoins());
 
@@ -830,7 +830,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableSampleData_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    List<String> columns = Arrays.asList("c1", "c2", "c3");
+    List<String> columns = Arrays.asList("c1", "c2", "\"c.3\"");
 
     // Add 3 rows of sample data for 3 columns
     List<List<Object>> rows =
@@ -862,7 +862,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         "Invalid column name invalidColumn");
 
     // Send sample data that has more samples than the number of columns
-    columns = Arrays.asList("c1", "c2", "c3"); // Invalid column name
+    columns = Arrays.asList("c1", "c2", "\"c.3\""); // Invalid column name
     rows = singletonList(Arrays.asList("c1Value1", 1, true, "extra value")); // Extra value
     tableData.withColumns(columns).withRows(rows);
     assertResponseContains(
@@ -871,7 +871,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         "Number of columns is 3 but row " + "has 4 sample values");
 
     // Send sample data that has fewer samples than the number of columns
-    columns = Arrays.asList("c1", "c2", "c3"); // Invalid column name
+    columns = Arrays.asList("c1", "c2", "\"c.3\""); // Invalid column name
     rows = singletonList(Arrays.asList("c1Value1", 1 /* Missing Value */));
     tableData.withColumns(columns).withRows(rows);
     assertResponseContains(
@@ -931,7 +931,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);
     ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax(99.0).withMin(20.0).withUniqueCount(89.0);
-    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
+    ColumnProfile c3Profile = new ColumnProfile().withName("\"c.3\"").withMax(75.0).withMin(25.0).withUniqueCount(77.0);
     // Add column profiles
     List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
     TableProfile tableProfile =
@@ -1463,7 +1463,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL).withDescription(null));
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
-    columns.add(getColumn("c3", FLOAT, GLOSSARY1_TERM1_LABEL));
+    columns.add(getColumn("\"c.3\"", FLOAT, GLOSSARY1_TERM1_LABEL));
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
@@ -1493,7 +1493,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Column c3 tags were removed
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName(build("columns", "c3", "tags")).withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
+        .add(
+            new FieldChange()
+                .withName(build("columns", "\"c.3\"", "tags"))
+                .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
