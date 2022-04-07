@@ -33,63 +33,57 @@ const SigninPage = () => {
   };
 
   const getSignInButton = (): JSX.Element => {
-    let btnComponent: JSX.Element;
+    let ssoBrandLogo;
+    let ssoBrandName;
     switch (authConfig?.provider) {
       case AuthTypes.GOOGLE: {
-        btnComponent = (
-          <LoginButton
-            ssoBrandLogo={Icons.GOOGLE_ICON}
-            ssoBrandName="Google"
-            onClick={handleSignIn}
-          />
-        );
+        ssoBrandLogo = Icons.GOOGLE_ICON;
+        ssoBrandName = 'Google';
+
+        break;
+      }
+      case AuthTypes.CUSTOM_OIDC: {
+        ssoBrandName = authConfig?.providerName
+          ? authConfig?.providerName
+          : 'SSO';
 
         break;
       }
       case AuthTypes.OKTA: {
-        btnComponent = (
-          <LoginButton
-            ssoBrandLogo={Icons.OKTA_ICON}
-            ssoBrandName="Okta"
-            onClick={handleSignIn}
-          />
-        );
+        ssoBrandLogo = Icons.OKTA_ICON;
+        ssoBrandName = 'Okta';
 
         break;
       }
       case AuthTypes.AZURE: {
-        btnComponent = (
-          <LoginButton
-            ssoBrandLogo={Icons.AZURE_ICON}
-            ssoBrandName="Azure"
-            onClick={handleSignIn}
-          />
-        );
+        ssoBrandLogo = Icons.AZURE_ICON;
+        ssoBrandName = 'Azure';
 
         break;
       }
       case AuthTypes.AUTH0: {
-        btnComponent = (
-          <LoginButton
-            ssoBrandLogo={Icons.AUTH0_ICON}
-            ssoBrandName="Auth0"
-            onClick={handleSignIn}
-          />
-        );
+        ssoBrandLogo = Icons.AUTH0_ICON;
+        ssoBrandName = 'Auth0';
 
         break;
       }
       // TODO: Add "case AuthTypes.GITHUB after adding support for these SSO
       default: {
-        btnComponent = <></>;
-
-        break;
+        return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
       }
     }
 
-    return btnComponent;
+    return (
+      <LoginButton
+        ssoBrandLogo={ssoBrandLogo}
+        ssoBrandName={ssoBrandName}
+        onClick={handleSignIn}
+      />
+    );
   };
 
+  // If the user is already logged in or if security is disabled
+  // redirect the user to the home page.
   if (isAuthDisabled || !isEmpty(appState.userDetails)) {
     history.push(ROUTES.HOME);
   }
