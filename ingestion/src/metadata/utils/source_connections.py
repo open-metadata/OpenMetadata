@@ -87,6 +87,7 @@ def get_connection_url(connection):
 @get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
+@get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
