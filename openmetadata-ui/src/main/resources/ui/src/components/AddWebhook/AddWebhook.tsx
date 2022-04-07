@@ -733,8 +733,8 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                         readOnly
                         className="tw-form-inputs tw-px-3 tw-py-1"
                         data-testid="secret-key"
-                        id="connection-timeout"
-                        name="connection-timeout"
+                        id="secret-key"
+                        name="secret-key"
                         placeholder="secret key"
                         type="text"
                         value={secretKey}
