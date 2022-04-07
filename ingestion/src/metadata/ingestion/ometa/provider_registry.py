@@ -37,22 +37,22 @@ class InvalidAuthProviderException(Exception):
 auth_provider_registry = enum_register()
 
 
-@auth_provider_registry.add(AuthProvider.no_auth)
+@auth_provider_registry.add(AuthProvider.no_auth.value)
 def no_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return NoOpAuthenticationProvider.create(config)
 
 
-@auth_provider_registry.add(AuthProvider.google)
+@auth_provider_registry.add(AuthProvider.google.value)
 def google_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return GoogleAuthenticationProvider.create(config)
 
 
-@auth_provider_registry.add(AuthProvider.okta)
+@auth_provider_registry.add(AuthProvider.okta.value)
 def okta_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return OktaAuthenticationProvider.create(config)
 
 
-@auth_provider_registry.add(AuthProvider.auth0)
+@auth_provider_registry.add(AuthProvider.auth0.value)
 def auth0_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return Auth0AuthenticationProvider.create(config)
 
@@ -62,6 +62,6 @@ def azure_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return AzureAuthenticationProvider.create(config)
 
 
-@auth_provider_registry.add(AuthProvider.google)
+@auth_provider_registry.add(AuthProvider.custom_oidc.value)
 def custom_oidc_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return CustomOIDCAuthenticationProvider.create(config)
