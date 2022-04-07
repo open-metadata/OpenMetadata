@@ -150,7 +150,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     isLoading: boolean
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
-      getThreads(paging.after);
+      getThreads(pagingObj.after);
     }
   };
 

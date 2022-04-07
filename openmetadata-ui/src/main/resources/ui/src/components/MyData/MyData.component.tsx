@@ -188,7 +188,7 @@ const MyData: React.FC<MyDataProps> = ({
       !isLoading &&
       isMounted.current
     ) {
-      fetchFeedHandler(feedFilter, paging.after);
+      fetchFeedHandler(feedFilter, pagingObj.after);
     }
   };
 

@@ -319,7 +319,7 @@ const PipelineDetails = ({
     isLoading: boolean
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(paging.after);
+      fetchFeedHandler(pagingObj.after);
     }
   };
 
