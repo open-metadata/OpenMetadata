@@ -256,6 +256,89 @@ export const AuthProvider = ({
     }
   };
 
+  /**
+   * Renew Id Token handler for all the SSOs.
+   * This method will be called when the id token is about to expire.
+   */
+  const renewIdToken = (): Promise<string> => {
+    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+
+    return new Promise((resolve, reject) => {
+      if (onRenewIdTokenHandlerPromise) {
+        onRenewIdTokenHandlerPromise
+          .then(() => {
+            resolve(localStorage.getItem(oidcTokenKey) || '');
+          })
+          .catch((error) => {
+            reject(error);
+          });
+      } else {
+        reject('RenewIdTokenHandler is undefined');
+      }
+    });
+  };
+
+  /**
+   * Initialize Axios interceptors to intercept every request and response
+   * to handle appropriately. This should be called only when security is enabled.
+   */
+  const initializeAxiosInterceptors = () => {
+    // Axios Request interceptor to add Bearer tokens in Header
+    axiosClient.interceptors.request.use(async function (config) {
+      let token: string | void = localStorage.getItem(oidcTokenKey) || '';
+      if (token) {
+        // Before adding token to the Header, check its expiry
+        // If the token will expire within the next time or has already expired
+        // renew the token using silent renewal for a smooth UX
+        const { exp } = jwtDecode<JwtPayload>(token);
+        if (exp) {
+          // Renew token 50 seconds before expiry
+          if (Date.now() >= (exp - 50) * 1000) {
+            // Token expired, renew it before sending request
+            token = await renewIdToken().catch((error) => {
+              showToast({
+                variant: 'error',
+                body: error,
+              });
+            });
+          }
+        } else {
+          // Renew token since expiry is not set
+          token = await renewIdToken().catch((error) => {
+            showToast({
+              variant: 'error',
+              body: error,
+            });
+          });
+        }
+
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      return config;
+    });
+
+    // Axios response interceptor for statusCode 401,403
+    axiosClient.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response) {
+          const { status } = error.response;
+          if (status === ClientErrors.UNAUTHORIZED) {
+            resetUserDetails(true);
+          } else if (status === ClientErrors.FORBIDDEN) {
+            showToast({
+              variant: 'error',
+              body: 'You do not have permission for this action!',
+            });
+          }
+        }
+
+        throw error;
+      }
+    );
+  };
+
   const fetchAuthConfig = (): void => {
     fetchAuthenticationConfig()
       .then((authRes: AxiosResponse) => {
@@ -269,6 +352,7 @@ export const AuthProvider = ({
             callbackUrl,
             provider,
           });
+          initializeAxiosInterceptors();
           setAuthConfig(configJson);
           updateAuthInstance(configJson);
           if (!oidcUserToken) {
@@ -369,81 +453,8 @@ export const AuthProvider = ({
     }
   };
 
-  const renewIdToken = (): Promise<string> => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-
-    return new Promise((resolve, reject) => {
-      if (onRenewIdTokenHandlerPromise) {
-        onRenewIdTokenHandlerPromise
-          .then(() => {
-            resolve(localStorage.getItem(oidcTokenKey) || '');
-          })
-          .catch((error) => {
-            reject(error);
-          });
-      } else {
-        reject('RenewIdTokenHandler is undefined');
-      }
-    });
-  };
-
   useEffect(() => {
     fetchAuthConfig();
-
-    // Axios Request interceptor to add Bearer tokens in Header
-    axiosClient.interceptors.request.use(async function (config) {
-      let token: string | void = localStorage.getItem(oidcTokenKey) || '';
-      if (token) {
-        // Before adding token to the Header, check its expiry
-        // If the token will expire within the next time or has already expired
-        // renew the token using silent renewal for a smooth UX
-        const { exp } = jwtDecode<JwtPayload>(token);
-        if (exp) {
-          // Renew token 50 seconds before expiry
-          if (Date.now() >= (exp - 50) * 1000) {
-            // Token expired, renew it before sending request
-            token = await renewIdToken().catch((error) => {
-              showToast({
-                variant: 'error',
-                body: error,
-              });
-            });
-          }
-        } else {
-          // Renew token since expiry is not set
-          token = await renewIdToken().catch((error) => {
-            showToast({
-              variant: 'error',
-              body: error,
-            });
-          });
-        }
-
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      return config;
-    });
-
-    // Axios response interceptor for statusCode 401,403
-    axiosClient.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response) {
-          const { status } = error.response;
-          if (status === ClientErrors.UNAUTHORIZED) {
-            resetUserDetails(true);
-          } else if (status === ClientErrors.FORBIDDEN) {
-            showToast({
-              variant: 'error',
-              body: 'You do not have permission for this action!',
-            });
-          }
-        }
-
-        throw error;
-      }
-    );
   }, []);
 
   useEffect(() => {
