@@ -20,7 +20,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -122,6 +124,16 @@ public class TagRepository extends EntityRepository<Tag> {
 
   private Integer getUsageCount(Tag tag) {
     return daoCollection.tagUsageDAO().getTagCount(Source.TAG.ordinal(), tag.getFullyQualifiedName());
+  }
+
+  @Transaction
+  public Tag delete(UriInfo uriInfo, String id) throws IOException {
+    Tag tag = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    dao.delete(id);
+    daoCollection.tagDAO().deleteTagsByPrefix(tag.getFullyQualifiedName());
+    daoCollection.tagUsageDAO().deleteTagLabels(Source.TAG.ordinal(), tag.getFullyQualifiedName());
+    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(Source.TAG.ordinal(), tag.getFullyQualifiedName());
+    return tag;
   }
 
   public static class TagEntityInterface extends EntityInterface<Tag> {

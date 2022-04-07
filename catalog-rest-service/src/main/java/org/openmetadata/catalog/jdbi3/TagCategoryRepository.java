@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -115,6 +116,16 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
 
   private Integer getUsageCount(TagCategory category) {
     return daoCollection.tagUsageDAO().getTagCount(Source.TAG.ordinal(), category.getName());
+  }
+
+  @Transaction
+  public TagCategory delete(UriInfo uriInfo, String id) throws IOException {
+    TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
+    dao.delete(id);
+    daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
+    daoCollection.tagUsageDAO().deleteTagLabels(Source.TAG.ordinal(), category.getName());
+    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(Source.TAG.ordinal(), category.getName());
+    return category;
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
