@@ -16,6 +16,9 @@ from urllib.parse import quote_plus
 
 from requests import Session
 
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -170,6 +173,36 @@ def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
+
+
+@get_connection_url.register
+def _(connection: AzureSQLConnection):
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
+        url += "@"
+
+    url += f"DRIVER={connection.driver}"
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+
     return url
 
 
