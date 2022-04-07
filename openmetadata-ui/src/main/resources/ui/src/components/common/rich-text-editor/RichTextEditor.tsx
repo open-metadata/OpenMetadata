@@ -63,7 +63,9 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     return (
       <div className="tw-my-4">
         {readonly ? (
-          <div className="tw-border tw-border-main tw-p-2 tw-rounded">
+          <div
+            className="tw-border tw-border-main tw-p-2 tw-rounded"
+            data-testid="viewer">
             <Viewer
               extendedAutolinks={extendedAutolinks}
               initialValue={editorValue}
@@ -71,19 +73,21 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
             />
           </div>
         ) : (
-          <Editor
-            extendedAutolinks={extendedAutolinks}
-            hideModeSwitch={hideModeSwitch}
-            initialEditType={editorType}
-            initialValue={editorValue}
-            placeholder={placeHolder}
-            previewHighlight={previewHighlight}
-            previewStyle={previewStyle}
-            ref={richTextEditorRef}
-            toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
-            useCommandShortcut={useCommandShortcut}
-            onChange={onChangeHandler}
-          />
+          <div data-testid="editor">
+            <Editor
+              extendedAutolinks={extendedAutolinks}
+              hideModeSwitch={hideModeSwitch}
+              initialEditType={editorType}
+              initialValue={editorValue}
+              placeholder={placeHolder}
+              previewHighlight={previewHighlight}
+              previewStyle={previewStyle}
+              ref={richTextEditorRef}
+              toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
+              useCommandShortcut={useCommandShortcut}
+              onChange={onChangeHandler}
+            />
+          </div>
         )}
       </div>
     );
