@@ -95,6 +95,24 @@ def _(connection: SQLiteConnection):
 
     return f"{connection.scheme.value}:///:memory:"
 
+@get_connection_url.register
+def get_connection_url(connection: TrinoConnection):
+    url = f"{connection.scheme}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    url += f"/{connection.catalog}"
+    if connection.params is not None:
+        params = "&".join(
+            f"{key}={quote_plus(value)}"
+            for (key, value) in connection.params.items()
+            if value
+        )
+        url = f"{url}?{params}"
+    return url
 
 def get_connection_url(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
@@ -111,8 +129,8 @@ def get_connection_args(connection):
         return {}
 
 
-@get_connection_args.register(TrinoConnection)
-def _(connection):
+@get_connection_args.register
+def _(connection: TrinoConnection):
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
