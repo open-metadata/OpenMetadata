@@ -15,9 +15,7 @@ OpenMetadata Airflow Lineage Backend
 import logging
 from typing import TYPE_CHECKING, Dict
 
-from airflow_provider_openmetadata.lineage.config.loader import (
-    get_lineage_config,
-)
+from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
 from airflow_provider_openmetadata.lineage.utils import (
     add_status,
     get_xlets,
