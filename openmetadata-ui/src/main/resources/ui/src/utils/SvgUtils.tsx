@@ -77,6 +77,7 @@ import IconSearch from '../assets/svg/ic-search.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStore from '../assets/svg/ic-store.svg';
+import IconSync from '../assets/svg/ic-sync.svg';
 import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
@@ -265,6 +266,7 @@ export const Icons = {
   WEBHOOK_GREY: 'icon-webhook-grey',
   WEBHOOK_PRIMARY: 'icon-webhook-primary',
   GITHUB_STAR: 'icon-github-star',
+  SYNC: 'icon-sync',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -767,6 +769,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.GITHUB_STAR:
       IconComponent = IconGithubStar;
+
+      break;
+    case Icons.SYNC:
+      IconComponent = IconSync;
 
       break;
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { faArrowLeft, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -745,7 +745,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                         {generatingSecret ? (
                           <Loader size="small" type="default" />
                         ) : (
-                          <FontAwesomeIcon icon={faSyncAlt} />
+                          <SVGIcons
+                            alt="generate"
+                            icon={Icons.SYNC}
+                            width="16"
+                          />
                         )}
                       </Button>
                       {secretKey ? (
