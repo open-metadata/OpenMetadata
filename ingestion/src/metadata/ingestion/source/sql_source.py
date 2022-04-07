@@ -251,7 +251,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 if self.source_config.includeTables:
                     yield from self.fetch_tables(inspector, schema)
-                
+
                 if self.source_config.schemaFilterPattern:
                     if self.source_config.schemaFilterPattern.includes:
                         if (
