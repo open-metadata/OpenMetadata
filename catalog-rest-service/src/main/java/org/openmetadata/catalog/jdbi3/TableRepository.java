@@ -1079,7 +1079,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       // Delete tags related to deleted columns
-      deletedColumns.forEach(deleted -> daoCollection.tagUsageDAO().deleteTags(deleted.getFullyQualifiedName()));
+      deletedColumns.forEach(
+          deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {

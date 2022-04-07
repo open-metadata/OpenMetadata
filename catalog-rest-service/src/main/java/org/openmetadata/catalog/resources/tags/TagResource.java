@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import javax.validation.Valid;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -463,6 +464,37 @@ public class TagResource {
       tag = addHref(parentHRef, dao.createOrUpdate(uriInfo, origTag, tag).getEntity());
     }
     return Response.ok(tag).build();
+  }
+
+  @DELETE
+  @Path("/{id}")
+  @Operation(
+      summary = "Delete tag category",
+      tags = "tags",
+      description = "Delete a tag category and all the tags under it.")
+  public TagCategory deleteCategory(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag category id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    TagCategory tagCategory = daoCategory.delete(uriInfo, id);
+    return addHref(uriInfo, tagCategory);
+  }
+
+  @DELETE
+  @Path("/{category}/{id}")
+  @Operation(summary = "Delete tag", tags = "tags", description = "Delete a tag and all the tags under it.")
+  public Tag deleteTags(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
+      @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    Tag tag = dao.delete(uriInfo, id);
+    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
+    return addHref(categoryHref, tag);
   }
 
   private TagCategory addHref(UriInfo uriInfo, TagCategory category) {
