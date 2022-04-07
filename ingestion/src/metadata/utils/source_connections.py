@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -81,7 +84,7 @@ def get_connection_url(connection):
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
-
+@get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
@@ -187,3 +190,4 @@ def _(connection: SnowflakeConnection):
         url = f"{url}?{params}"
 
     return url
+

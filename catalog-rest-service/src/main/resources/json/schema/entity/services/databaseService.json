@@ -31,7 +31,8 @@
         "AzureSQL",
         "SingleStore",
         "SQLite",
-        "DeltaLake"
+        "DeltaLake",
+        "Salesforce"
       ],
       "javaEnums": [
         {
@@ -102,6 +103,9 @@
         },
         {
           "name": "DeltaLake"
+        },
+        {
+          "name": "Salesforce"
         }
       ]
     },
