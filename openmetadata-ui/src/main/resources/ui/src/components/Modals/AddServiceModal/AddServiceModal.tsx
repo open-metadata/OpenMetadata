@@ -69,7 +69,7 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import IngestionStepper from '../../IngestionStepper/IngestionStepper.component';
 
@@ -1681,10 +1681,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               <label className="tw-block tw-form-label" htmlFor="description">
                 Description:
               </label>
-              <MarkdownWithPreview
+              <RichTextEditor
                 data-testid="description"
+                initialValue={description}
                 ref={markdownRef}
-                value={description}
               />
             </Field>
           </Fragment>

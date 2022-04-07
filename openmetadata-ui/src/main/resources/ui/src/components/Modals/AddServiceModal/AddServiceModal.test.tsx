@@ -36,7 +36,7 @@ const mockOnCancel = jest.fn();
 
 const mockServiceList: Array<ServiceDataObj> = [{ name: mockData.name }];
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="description">MarkdownWithPreview</p>);
