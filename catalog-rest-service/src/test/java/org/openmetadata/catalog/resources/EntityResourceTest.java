@@ -460,7 +460,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         Arrays.asList(
             getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
             getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-            getColumn("c3", BIGINT, GLOSSARY1_TERM1_LABEL));
+            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {

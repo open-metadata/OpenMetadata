@@ -48,8 +48,6 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     _oktaAuth
       .getUser()
       .then((info) => {
-        // eslint-disable-next-line no-console
-        console.log(info);
         setIsAuthenticated(true);
         const user = {
           // eslint-disable-next-line @typescript-eslint/camelcase

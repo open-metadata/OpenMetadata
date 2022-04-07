@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
@@ -84,6 +85,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  @SneakyThrows
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
