@@ -43,7 +43,7 @@ const mockCustomEdgeProp = {
 } as EdgeProps;
 
 describe('Test CustomEdge Component', () => {
-  it('Check if CustomeEdge has all child elements', async () => {
+  it('Check if CustomEdge has all child elements', async () => {
     const { container } = render(<CustomEdge {...mockCustomEdgeProp} />, {
       wrapper: MemoryRouter,
     });
@@ -58,7 +58,7 @@ describe('Test CustomEdge Component', () => {
     expect(edgePathElement).toBeInTheDocument();
   });
 
-  it('Check if CustomeEdge has selectedNode as empty object', async () => {
+  it('Check if CustomEdge has selectedNode as empty object', async () => {
     const { container } = render(
       <CustomEdge
         {...mockCustomEdgeProp}

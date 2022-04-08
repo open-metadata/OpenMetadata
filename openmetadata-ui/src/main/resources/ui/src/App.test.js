@@ -22,7 +22,7 @@ jest.mock('./router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('./auth-provider/AuthProvider', () => {
+jest.mock('./authentication/auth-provider/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()
