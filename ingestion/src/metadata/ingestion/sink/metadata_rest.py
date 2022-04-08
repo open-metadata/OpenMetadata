@@ -155,7 +155,7 @@ class MetadataRestSink(Sink[Entity]):
             db_schema = self.metadata.create_or_update(db_schema_request)
             db_schema_ref = EntityReference(
                 id=db_schema.id.__root__,
-                name=db_schema.name.__root__.__root__,
+                name=db_schema.name.__root__,
                 type="databaseSchema",
             )
             if db_schema_and_table.table.description is not None:
