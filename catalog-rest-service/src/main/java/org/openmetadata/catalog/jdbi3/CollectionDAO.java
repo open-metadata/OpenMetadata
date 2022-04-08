@@ -13,6 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -80,6 +83,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.Tag;
@@ -326,9 +330,14 @@ public interface CollectionDAO {
   }
 
   interface EntityExtensionDAO {
-    @SqlUpdate(
-        "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
-            + "VALUES (:id, :extension, :jsonSchema, :json)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+        connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
         @Bind("extension") String extension,
@@ -382,9 +391,14 @@ public interface CollectionDAO {
       return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation);
     }
 
-    @SqlUpdate(
-        "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
-            + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT (fromId, toId, relation) DO NOTHING",
+        connectionType = POSTGRES)
     int insert(
         @Bind("fromId") String fromId,
         @Bind("toId") String toId,
@@ -427,7 +441,7 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
-            + "AND (toEntity = :toEntity || :toEntity IS NULL) "
+            + "AND (toEntity = :toEntity OR :toEntity IS NULL) "
             + "ORDER BY fromId")
     int findToCount(
         @Bind("fromId") String fromId,
@@ -508,7 +522,10 @@ public interface CollectionDAO {
   }
 
   interface FeedDAO {
-    @SqlUpdate("INSERT INTO thread_entity(json) VALUES (:json)")
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO thread_entity(json) VALUES (:json)", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO thread_entity(json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
@@ -611,7 +628,10 @@ public interface CollectionDAO {
         @Bind("resolved") boolean resolved,
         @Bind("relation") int relation);
 
-    @SqlUpdate("UPDATE thread_entity SET json = :json where id = :id")
+    @ConnectionAwareSqlUpdate(value = "UPDATE thread_entity SET json = :json where id = :id", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE thread_entity SET json = (:json :: jsonb) where id = :id",
+        connectionType = POSTGRES)
     void update(@Bind("id") String id, @Bind("json") String json);
 
     @SqlQuery(
@@ -736,9 +756,14 @@ public interface CollectionDAO {
   }
 
   interface FieldRelationshipDAO {
-    @SqlUpdate(
-        "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) "
-            + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation) ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
+        connectionType = POSTGRES)
     void insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
@@ -746,10 +771,18 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @SqlUpdate(
-        "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
-            + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
-            + "ON DUPLICATE KEY UPDATE json = :json")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET EXCLUDED.json",
+        connectionType = POSTGRES)
     void upsert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
@@ -1264,9 +1297,14 @@ public interface CollectionDAO {
 
   @RegisterRowMapper(TagLabelMapper.class)
   interface TagUsageDAO {
-    @SqlUpdate(
-        "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) "
-            + "VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state) ON CONFLICT (source, tagFQN, targetFQN) DO NOTHING",
+        connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
         @Bind("tagFQN") String tagFQN,
@@ -1321,10 +1359,10 @@ public interface CollectionDAO {
       return "name";
     }
 
-    @SqlQuery("SELECT id FROM role_entity WHERE `defaultRole` = TRUE")
+    @SqlQuery("SELECT id FROM role_entity WHERE defaultRole = TRUE")
     List<String> getDefaultRolesIds();
 
-    @SqlQuery("SELECT json FROM role_entity WHERE `defaultRole` = TRUE")
+    @SqlQuery("SELECT json FROM role_entity WHERE defaultRole = TRUE")
     List<String> getDefaultRoles();
 
     @Override
@@ -1559,7 +1597,7 @@ public interface CollectionDAO {
             + " <cond> "
             + "AND te.name = :team "
             + "AND ue.<nameColumn> > :after "
-            + "GROUP BY ue.json "
+            + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> "
             + "LIMIT :limit")
     List<String> listAfter(
@@ -1573,7 +1611,10 @@ public interface CollectionDAO {
   }
 
   interface ChangeEventDAO {
-    @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO change_event (json) VALUES (:json)", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {

@@ -1,15 +1,11 @@
 package org.openmetadata.catalog.migration;
 
 import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionType;
 
 public class MigrationConfiguration {
-  @NotEmpty private String path;
-
-  public String getPath() {
-    return path;
-  }
-
-  public void setPath(String path) {
-    this.path = path;
-  }
+  @NotEmpty @Getter @Setter private String path;
+  @NotEmpty @Getter @Setter private ConnectionType connectionType = ConnectionType.MYSQL;
 }

@@ -46,6 +46,7 @@ import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
@@ -53,6 +54,7 @@ import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
 import org.openmetadata.catalog.fernet.Fernet;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
@@ -95,6 +97,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Set the Database type for choosing correct queries from annotations
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(
+            new ConnectionAwareAnnotationSqlLocator(catalogConfig.getMigrationConfiguration().getConnectionType()));
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
@@ -149,7 +156,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
-    // bootstrap.addBundle(new CatalogJdbiExceptionsBundle());
     super.initialize(bootstrap);
   }
 

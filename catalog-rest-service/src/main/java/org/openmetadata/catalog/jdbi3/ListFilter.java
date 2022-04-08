@@ -44,10 +44,10 @@ public class ListFilter {
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
     if (include == Include.NON_DELETED) {
-      return columnName + " = false";
+      return columnName + " = FALSE";
     }
     if (include == Include.DELETED) {
-      return columnName + " = true";
+      return columnName + " = TRUE";
     }
     return "";
   }
@@ -69,8 +69,8 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE \"%s%s%%\"", fqnPrefix, Entity.SEPARATOR)
-        : String.format("%s.fullyQualifiedName LIKE \"%s%s%%\"", tableName, fqnPrefix, Entity.SEPARATOR);
+        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
+        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
   }
 
   private String addCondition(String condition1, String condition2) {
