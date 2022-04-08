@@ -18,6 +18,7 @@ from collections import namedtuple
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
+from metadata.utils.dispatch import enum_register
 from metadata.generated.schema.metadataIngestion.workflow import (
     Auth0SSOConfig,
     AuthProvider,
@@ -26,24 +27,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 
 
-def register_provider_config():
+provider_config_registry = enum_register()
+
+
+class InvalidAirflowProviderException(Exception):
     """
-    Helps us register custom functions to parse provider config
+    Raised when we cannot find the provider
+    in Airflow config
     """
-    registry = dict()
-
-    def add(provider: str):
-        def inner(fn):
-            registry[provider] = fn
-            return fn
-
-        return inner
-
-    Register = namedtuple("Register", ["add", "registry"])
-    return Register(add, registry)
-
-
-provider_config_registry = register_provider_config()
 
 
 @provider_config_registry.add(AuthProvider.google.value)
