@@ -23,6 +23,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSourceStatus
@@ -36,7 +37,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 DEFAULT_DATABASE = "default"
 
 
-class DeltalakeSource(Source):
+class DeltalakeSource(Source[Entity]):
     spark: SparkSession = None
 
     def __init__(
@@ -108,7 +109,7 @@ class DeltalakeSource(Source):
         return self.status
 
     def prepare(self):
-        return super().prepare()
+        pass
 
     def _get_table_type(self, table_type: str):
         return self.table_type_map.get(table_type.lower(), TableType.Regular.value)
