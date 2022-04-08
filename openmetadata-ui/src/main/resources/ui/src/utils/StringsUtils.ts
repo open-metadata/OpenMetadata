@@ -106,7 +106,17 @@ export const getErrorText = (
   value: AxiosError | string,
   fallbackText: string
 ): string => {
-  return (
-    (isString(value) ? value : value.response?.data?.message) || fallbackText
-  );
+  let errorText;
+  if (isString(value)) {
+    return value;
+  } else {
+    errorText = value.response?.data?.message;
+    if (!errorText) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorText = value.response?.data?.responseMessage;
+    }
+  }
+
+  // if error text is still empty, return the fallback text
+  return errorText || fallbackText;
 };

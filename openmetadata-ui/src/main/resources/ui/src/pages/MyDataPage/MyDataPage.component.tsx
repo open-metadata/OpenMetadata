@@ -238,11 +238,13 @@ const MyDataPage = () => {
 
         setEntityThread((prevData) => [...prevData, ...data]);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching the Activity Feed',
-        });
+      .catch((err: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-activity-feed-error']
+          )
+        );
       })
       .finally(() => {
         setIsFeedLoading(false);
