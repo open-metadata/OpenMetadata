@@ -251,6 +251,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 if self.source_config.includeTables:
                     yield from self.fetch_tables(inspector, schema)
+
                 if self.source_config.includeViews:
                     yield from self.fetch_views(inspector, schema)
                 if self.source_config.markDeletedTables:
