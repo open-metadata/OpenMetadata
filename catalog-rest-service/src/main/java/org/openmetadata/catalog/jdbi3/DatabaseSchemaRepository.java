@@ -92,7 +92,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema == null) {
       return null;
     }
-    List<String> tableIds = findTo(schema.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE);
+    List<String> tableIds = findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
