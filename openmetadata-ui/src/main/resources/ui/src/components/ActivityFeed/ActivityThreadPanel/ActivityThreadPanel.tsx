@@ -15,13 +15,17 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
-import React, { FC, Fragment, useEffect, useState } from 'react';
+import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
+import { Paging } from '../../../generated/type/paging';
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import useToastContext from '../../../hooks/useToastContext';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
+import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
@@ -51,11 +55,19 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     confirmStateInitialValue
   );
 
-  const getThreads = () => {
-    getAllFeeds(threadLink)
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [isThreadLoading, setIsThreadLoading] = useState(false);
+
+  const getThreads = (after?: string) => {
+    setIsThreadLoading(true);
+    getAllFeeds(threadLink, after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setThreads(data);
+        const { data, paging: pagingObj } = res.data;
+        setThreads((prevData) => [...prevData, ...data]);
+        setPaging(pagingObj);
       })
       .catch((err: AxiosError) => {
         const message = err.response?.data?.message;
@@ -63,6 +75,9 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           variant: 'error',
           body: message || jsonData['api-error-messages']['fetch-thread-error'],
         });
+      })
+      .finally(() => {
+        setIsThreadLoading(false);
       });
   };
 
@@ -125,6 +140,20 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     }, 500);
   };
 
+  const getLoader = () => {
+    return isThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      getThreads(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -145,6 +174,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   useEffect(() => {
     getThreads();
   }, [threadLink]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isThreadLoading);
+  }, [paging, isThreadLoading, isInView]);
 
   return (
     <div className={classNames('tw-h-full', className)}>
@@ -210,6 +243,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
             />
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
           </Fragment>
         )}
       </div>
