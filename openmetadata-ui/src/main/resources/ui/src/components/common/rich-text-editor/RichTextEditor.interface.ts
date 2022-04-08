@@ -26,3 +26,12 @@ export type EditorProp = {
   readonly?: boolean;
   customOptions?: ReactNode[];
 };
+
+export interface PreviewerProp {
+  markdown: string;
+  className?: string;
+  blurClasses?: string;
+  maxHtClass?: string;
+  maxLen?: number;
+  enableSeeMoreVariant?: boolean;
+}

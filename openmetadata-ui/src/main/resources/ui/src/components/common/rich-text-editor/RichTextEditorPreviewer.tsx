@@ -12,12 +12,15 @@
  */
 
 import classNames from 'classnames';
-import Markdown from 'markdown-to-jsx';
 import React, { useEffect, useState } from 'react';
-import { Paragraph, UnOrderedList } from '../../../utils/MarkdownUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+// Markdown Parser and plugin imports
+import MarkdownParser from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import { BlurLayout } from './BlurLayout';
+import { PreviewerProp } from './RichTextEditor.interface';
 
-const MAX_LENGTH = 300;
+export const MAX_LENGTH = 300;
 
 const RichTextEditorPreviewer = ({
   markdown,
@@ -26,18 +29,23 @@ const RichTextEditorPreviewer = ({
   maxHtClass = 'tw-h-24',
   maxLen = MAX_LENGTH,
   enableSeeMoreVariant = true,
-}: {
-  markdown: string;
-  className?: string;
-  blurClasses?: string;
-  maxHtClass?: string;
-  maxLen?: number;
-  enableSeeMoreVariant?: boolean;
-}) => {
+}: PreviewerProp) => {
   const [content, setContent] = useState<string>('');
   const [displayMoreText, setDisplayMoreText] = useState(false);
+
+  const setModifiedContent = (markdownValue: string) => {
+    const modifiedContent = markdownValue
+      .replace(/&lt;/g, '<')
+      .replace(/&gt/g, '>');
+    setContent(modifiedContent);
+  };
+
+  const displayMoreHandler = () => {
+    setDisplayMoreText((pre) => !pre);
+  };
+
   useEffect(() => {
-    setContent(markdown);
+    setModifiedContent(markdown);
   }, [markdown]);
 
   return (
@@ -51,62 +59,55 @@ const RichTextEditorPreviewer = ({
         {
           'tw-mb-5': displayMoreText,
         }
-      )}>
-      <Markdown
-        options={{
-          overrides: {
-            h1: {
-              component: Paragraph,
-            },
-            h2: {
-              component: Paragraph,
-            },
-            h3: {
-              component: Paragraph,
-            },
-            h4: {
-              component: Paragraph,
-            },
-            h5: {
-              component: Paragraph,
-            },
-            h6: {
-              component: Paragraph,
-            },
-            ul: {
-              component: UnOrderedList,
-              props: {
-                className: 'tw-ml-3',
-              },
-            },
-          },
-        }}>
-        {content}
-      </Markdown>
-      {enableSeeMoreVariant && markdown.length > MAX_LENGTH && (
-        <div
-          className={classNames(
-            'tw-absolute tw-flex tw-h-full tw-w-full tw-inset-x-0',
-            !displayMoreText ? blurClasses : null,
-            {
-              'tw-top-0 tw-bottom-0': !displayMoreText,
-              ' tw--bottom-4': displayMoreText,
-            }
-          )}>
-          <p
-            className="tw-cursor-pointer tw-self-end tw-pointer-events-auto tw-text-primary tw-mx-auto"
-            onClick={() => setDisplayMoreText((pre) => !pre)}>
-            <span className="tw-flex tw-items-center tw-gap-2">
-              <SVGIcons
-                alt="expand-collapse"
-                className={classNames({ 'rotate-inverse': displayMoreText })}
-                icon={Icons.CHEVRON_DOWN}
-                width="32"
-              />
-            </span>
-          </p>
-        </div>
       )}
+      data-testid="viewer-container">
+      <MarkdownParser
+        sourcePos
+        components={{
+          h1: 'p',
+          h2: 'p',
+          ul: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ul className="tw-ml-3" {...rest}>
+                {children}
+              </ul>
+            );
+          },
+          ol: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { ordered, ...rest } = props;
+
+            return (
+              <ol className="tw-ml-3" {...rest} style={{ listStyle: 'auto' }}>
+                {children}
+              </ol>
+            );
+          },
+          code: ({ children, ...props }) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { inline, ...rest } = props;
+
+            return (
+              <code {...rest} className="tw-my">
+                {children}
+              </code>
+            );
+          },
+        }}
+        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm]}>
+        {content}
+      </MarkdownParser>
+      <BlurLayout
+        blurClasses={blurClasses}
+        displayMoreHandler={displayMoreHandler}
+        displayMoreText={displayMoreText}
+        enableSeeMoreVariant={enableSeeMoreVariant}
+        markdown={content}
+      />
     </div>
   );
 };
