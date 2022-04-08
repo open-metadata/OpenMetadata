@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -88,6 +91,7 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(PostgresConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(SalesforceConnection)
@@ -194,6 +198,7 @@ def _(connection: SnowflakeConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
+
 
 @get_connection_url.register
 def _(connection: HiveSQLConnection):

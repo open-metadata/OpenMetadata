@@ -13,24 +13,21 @@ from collections import namedtuple
 
 import psycopg2
 
-# This import verifies that the dependencies are available.
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-TableKey = namedtuple("TableKey", ["schema", "table_name"])
-
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
 
+# This import verifies that the dependencies are available.
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.source.sql_source import SQLSource
 
-class PostgresConfig(PostgresConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
+TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
 class PostgresSource(SQLSource):
@@ -40,7 +37,13 @@ class PostgresSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = PostgresConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: PostgresConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PostgresConnection):
+            raise InvalidSourceException(
+                f"Expected MysqlConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
 
     def get_status(self) -> SourceStatus:
