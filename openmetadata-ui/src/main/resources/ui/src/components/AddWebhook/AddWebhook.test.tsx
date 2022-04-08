@@ -64,7 +64,7 @@ jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
     .mockImplementation(() => <p>CopyToClipboardButton.component</p>);
 });
 
-jest.mock('../common/editor/MarkdownWithPreview', () => {
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   return jest
     .fn()
     .mockImplementation(() => <p>MarkdownWithPreview.component</p>);
