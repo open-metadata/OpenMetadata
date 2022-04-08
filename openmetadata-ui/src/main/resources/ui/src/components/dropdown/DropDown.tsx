@@ -133,7 +133,7 @@ const DropDown: React.FC<DropDownProp> = ({
 
                 {isDropDownIconVisible ? (
                   <DropdownIcon
-                    style={{ marginTop: '1px', color: normalLink }}
+                    style={{ marginTop: '2px', color: normalLink }}
                   />
                 ) : null}
               </>
