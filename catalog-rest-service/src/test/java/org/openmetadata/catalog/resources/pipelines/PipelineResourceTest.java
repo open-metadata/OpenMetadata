@@ -493,9 +493,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // TODO
   }
 
-  /** Validate returned fields GET .../pipelines/{id}?fields="..." or GET .../pipelines/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
+  public EntityInterface<Pipeline> validateGetWithDifferentFields(Pipeline pipeline, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     pipeline =
         byName
@@ -516,14 +516,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
-    // Some fields are not set and hence are null - tested elsewhere
-    assertListNotNull(
-        pipeline.getOwner(),
-        /*pipeline.getTasks(),
-        pipeline.getPipelineStatus(),*/
-        pipeline.getTags(),
-        pipeline.getFollowers(),
-        pipeline.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(pipeline);
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)

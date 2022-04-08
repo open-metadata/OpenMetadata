@@ -90,9 +90,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // TODO
   }
 
-  /** Validate returned fields GET .../charts/{id}?fields="..." or GET .../charts/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
+  public EntityInterface<Chart> validateGetWithDifferentFields(Chart chart, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     chart =
         byName
@@ -108,7 +108,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    assertListNotNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(chart);
   }
 
   @Override

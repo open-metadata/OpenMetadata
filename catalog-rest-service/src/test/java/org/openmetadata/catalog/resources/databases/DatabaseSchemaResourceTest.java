@@ -32,7 +32,9 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
+import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
@@ -64,9 +66,23 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
   }
 
-  /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(DatabaseSchema schema, boolean byName) throws HttpResponseException {
+  public EntityInterface<DatabaseSchema> validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
+      throws HttpResponseException {
+    // Add tables to the database schema
+    if (schema.getTables() == null) {
+      EntityInterface<DatabaseSchema> entityInterface = getEntityInterface(schema);
+
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      CreateTable create =
+          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(entityInterface.getEntityReference());
+      Table t1 = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+
+      create.withName("t2");
+      Table t2 = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    // Now query request different fields
     String fields = "";
     schema =
         byName
@@ -82,8 +98,10 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
             : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
-    assertListNotNull(schema.getOwner(), schema.getTables());
-    TestUtils.validateEntityReferences(schema.getTables());
+    assertListNotNull(schema.getTables());
+    TestUtils.validateEntityReferences(schema.getTables(), true);
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(schema);
   }
 
   @Override

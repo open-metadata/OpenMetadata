@@ -614,12 +614,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     return TestUtils.put(getCollection(), create, IngestionPipeline.class, status, authHeaders);
   }
 
-  /**
-   * Validate returned fields GET .../operations/IngestionPipelines/{id}?fields="..." or GET
-   * .../operations/IngestionPipelines/name/{fqn}?fields="..."
-   */
   @Override
-  public void validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName) throws HttpResponseException {
+  public EntityInterface<IngestionPipeline> validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     ingestion =
         byName
@@ -633,7 +630,8 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(ingestion.getOwner(), ingestion.getService());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(ingestion);
   }
 
   private void validateSourceConfig(SourceConfig orig, SourceConfig updated, IngestionPipeline ingestionPipeline) {

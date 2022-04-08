@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
@@ -114,9 +116,20 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // TODO
   }
 
-  /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
+  public EntityInterface<Database> validateGetWithDifferentFields(Database database, boolean byName)
+      throws HttpResponseException {
+    // Add a schema if it already does not exist
+    if (database.getDatabaseSchemas() == null) {
+      EntityInterface<Database> entityInterface = getEntityInterface(database);
+      DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+      CreateDatabaseSchema create =
+          databaseSchemaResourceTest
+              .createRequest("schema", "", "", null)
+              .withDatabase(entityInterface.getEntityReference());
+      databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
     String fields = "";
     database =
         byName
@@ -133,9 +146,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
-    assertListNotNull(
-        database.getOwner(), database.getDatabaseSchemas() /*database.getUsageSummary(), database.getLocation()*/);
-    TestUtils.validateEntityReferences(database.getDatabaseSchemas());
+    TestUtils.validateEntityReferences(database.getDatabaseSchemas(), true);
+    assertListNotEmpty(database.getDatabaseSchemas());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(database);
   }
 
   @Override
