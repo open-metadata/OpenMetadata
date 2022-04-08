@@ -17,11 +17,17 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 class STRUCT(String):
@@ -102,24 +108,15 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 DatabricksDialect.get_columns = get_columns
 
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
-)
-
-
-class DatabricksConfig(DatabricksConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        url = f"{self.scheme}://token:{self.token}@{self.hostPort}"
-        if self.database:
-            url += f"/{self.database}"
-        return url
-
 
 class DatabricksSource(SQLSource):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = DatabricksConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: DatabricksConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, DatabricksConnection):
+            raise InvalidSourceException(
+                f"Expected DatabricksConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
