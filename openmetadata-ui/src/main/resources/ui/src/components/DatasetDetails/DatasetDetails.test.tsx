@@ -29,6 +29,7 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
@@ -147,6 +148,7 @@ const DatasetDetailsProps = {
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
   selectedColumn: '',
+  paging: {} as Paging,
   handleAddColumnTestCase: jest.fn(),
   handleSelectedColumn: jest.fn(),
   createThread: jest.fn(),
@@ -157,6 +159,7 @@ const DatasetDetailsProps = {
   qualityTestFormHandler: jest.fn(),
   deletePostHandler: jest.fn(),
   tagUpdateHandler: jest.fn(),
+  fetchFeedHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
@@ -201,6 +204,14 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
+}));
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
 }));
 
 describe('Test MyDataDetailsPage page', () => {
@@ -329,5 +340,20 @@ describe('Test MyDataDetailsPage page', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

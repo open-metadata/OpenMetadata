@@ -64,6 +64,7 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
@@ -131,6 +132,7 @@ const PipelineDetailsPage = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -211,6 +213,29 @@ const PipelineDetailsPage = () => {
       .finally(() => {
         setIsLineageLoading(false);
       });
+  };
+
+  const getFeedData = (after?: string) => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN), after)
+      .then((res: AxiosResponse) => {
+        const { data, paging: pagingObj } = res.data;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        const errMsg =
+          err.response?.data?.message ||
+          jsonData['api-error-messages']['fetch-entity-feed-error'];
+        handleShowErrorToast(errMsg);
+      })
+      .finally(() => setIsentityThreadLoading(false));
   };
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
@@ -307,27 +332,7 @@ const PipelineDetailsPage = () => {
         break;
       }
       case TabSpecificField.ACTIVITY_FEED: {
-        setIsentityThreadLoading(true);
-        getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
-          .then((res: AxiosResponse) => {
-            const { data } = res.data;
-            if (data) {
-              setEntityThread(data);
-            } else {
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
-            }
-          })
-          .catch((err: AxiosError) => {
-            const errMsg = getErrorText(
-              err,
-              jsonData['api-error-messages']['fetch-entity-feed-error']
-            );
-
-            handleShowErrorToast(errMsg);
-          })
-          .finally(() => setIsentityThreadLoading(false));
+        getFeedData();
 
         break;
       }
@@ -651,16 +656,13 @@ const PipelineDetailsPage = () => {
   };
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
-
-  useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setEntityLineage({} as EntityLineage);
+    getEntityFeedCount();
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -692,6 +694,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           entityThread={entityThread}
           feedCount={feedCount}
+          fetchFeedHandler={getFeedData}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}
@@ -700,6 +703,7 @@ const PipelineDetailsPage = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner}
+          paging={paging}
           pipelineDetails={pipelineDetails}
           pipelineFQN={pipelineFQN}
           pipelineTags={tags}

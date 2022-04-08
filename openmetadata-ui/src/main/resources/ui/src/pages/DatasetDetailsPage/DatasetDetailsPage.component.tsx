@@ -76,6 +76,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import {
@@ -176,6 +177,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableTestCase, setTableTestCase] = useState<TableTest[]>([]);
   const [selectedColumn, setSelectedColumn] = useState<string>();
 
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+
   const handleShowErrorToast = (errMessage: string) => {
     showToast({
       variant: 'error',
@@ -254,13 +257,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const getFeedData = () => {
+  const getFeedData = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
+        const { data, paging: pagingObj } = res.data;
         if (data) {
-          setEntityThread(data);
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
         } else {
           handleShowErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-error']
@@ -957,6 +961,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
+    getEntityFeedCount();
   }, [tableFQN]);
 
   useEffect(() => {
@@ -969,10 +974,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
     setEntityLineage({} as EntityLineage);
   }, [datasetFQN]);
-
-  useEffect(() => {
-    getEntityFeedCount();
-  }, []);
 
   return (
     <>
@@ -1001,6 +1002,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
+          fetchFeedHandler={getFeedData}
           followTableHandler={followTable}
           followers={followers}
           handleAddColumnTestCase={handleAddColumnTestCase}
@@ -1019,6 +1021,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
           owner={owner as Table['owner'] & { displayName: string }}
+          paging={paging}
           postFeedHandler={postFeedHandler}
           qualityTestFormHandler={qualityTestFormHandler}
           removeLineageHandler={removeLineageHandler}

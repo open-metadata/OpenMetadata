@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
@@ -48,6 +48,14 @@ jest.mock('./ActivityThreadList', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
 });
 
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test ActivityThreadPanel Component', () => {
   it('Check if it has all child elements', async () => {
     const { container } = render(
@@ -61,5 +69,18 @@ describe('Test ActivityThreadPanel Component', () => {
     expect(panelOverlay).toBeInTheDocument();
     expect(panelHeader).toBeInTheDocument();
     expect(panelThreadList).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      { wrapper: MemoryRouter }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });
