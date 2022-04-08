@@ -14,8 +14,6 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
-from requests import Session
-
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -31,11 +29,11 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
-    SingleStoreConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -192,4 +190,3 @@ def _(connection: SnowflakeConnection):
         url = f"{url}?{params}"
 
     return url
-
