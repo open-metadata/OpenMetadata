@@ -39,6 +39,13 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
+const mockPaging = {
+  after: 'MTY0OTIzNTQ3MzExMg==',
+  total: 202,
+};
+
+const mockFetchFeedHandler = jest.fn();
+
 const mockData = {
   data: {
     took: 50,
@@ -307,33 +314,47 @@ const feedFilterHandler = jest.fn();
 const fetchData = jest.fn();
 const postFeed = jest.fn();
 
+const mockProp = {
+  countDashboards: 8,
+  countPipelines: 1,
+  countServices: 0,
+  countTables: 10,
+  countTopics: 5,
+  error: '',
+  feedData: formatDataResponse(mockData.data.hits.hits),
+  feedFilter: FeedFilter.ALL,
+  feedFilterHandler: feedFilterHandler,
+  fetchData: fetchData,
+  fetchFeedHandler: mockFetchFeedHandler,
+  followedData: formatDataResponse(mockData.data.hits.hits),
+  isFeedLoading: false,
+  ownedData: formatDataResponse(mockData.data.hits.hits),
+  paging: mockPaging,
+  postFeedHandler: postFeed,
+  userDetails: mockUserDetails as unknown as User,
+  entityCounts: {
+    tableCount: 10,
+    topicCount: 5,
+    dashboardCount: 8,
+    pipelineCount: 1,
+  },
+  ingestionCount: 0,
+  searchResult: mockData as unknown as SearchResponse,
+};
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
-    const { container } = render(
-      <MyDataPage
-        countServices={0}
-        entityCounts={{
-          tableCount: 10,
-          topicCount: 5,
-          dashboardCount: 8,
-          pipelineCount: 1,
-        }}
-        error=""
-        feedData={formatDataResponse(mockData.data.hits.hits)}
-        feedFilter={FeedFilter.ALL}
-        feedFilterHandler={feedFilterHandler}
-        fetchData={fetchData}
-        followedData={formatDataResponse(mockData.data.hits.hits)}
-        ingestionCount={0}
-        ownedData={formatDataResponse(mockData.data.hits.hits)}
-        postFeedHandler={postFeed}
-        searchResult={mockData as unknown as SearchResponse}
-        userDetails={mockUserDetails as unknown as User}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<MyDataPage {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
     const pageLayout = await findByTestId(container, 'PageLayout');
     const leftPanel = await findByTestId(container, 'left-panel-content');
     const rightPanel = await findByTestId(container, 'right-panel-content');
@@ -348,5 +369,17 @@ describe('Test MyData page', () => {
     expect(rightPanel).toBeInTheDocument();
     expect(recentSearchedTerms).toBeInTheDocument();
     expect(entityList.length).toBe(2);
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(<MyDataPage {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread, Post } from 'Models';
@@ -19,17 +19,24 @@ import React, {
   FC,
   Fragment,
   HTMLAttributes,
+  RefObject,
   useEffect,
   useState,
 } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds, getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { observerOptions } from '../../../constants/Mydata.constants';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Paging } from '../../../generated/type/paging';
+import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
+import useToastContext from '../../../hooks/useToastContext';
+import jsonData from '../../../jsons/en';
 import {
   getEntityField,
   getFeedListWithRelativeDays,
   getReplyText,
 } from '../../../utils/FeedUtils';
+import Loader from '../../Loader/Loader';
 import ActivityFeedCard, {
   FeedFooter,
 } from '../ActivityFeedCard/ActivityFeedCard';
@@ -222,23 +229,43 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   postFeedHandler,
   createThread,
 }) => {
+  const showToast = useToastContext();
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
 
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [isThreadLoading, setIsThreadLoading] = useState(false);
+
+  const getThreads = (after?: string) => {
+    setIsThreadLoading(true);
+    getAllFeeds(threadLink, after)
+      .then((res: AxiosResponse) => {
+        const { data, paging: pagingObj } = res.data;
+        setThreads((prevData) => [...prevData, ...data]);
+        setPaging(pagingObj);
+      })
+      .catch((err: AxiosError) => {
+        const message = err.response?.data?.message;
+        showToast({
+          variant: 'error',
+          body: message || jsonData['api-error-messages']['fetch-thread-error'],
+        });
+      })
+      .finally(() => {
+        setIsThreadLoading(false);
+      });
+  };
+
   const entityField = getEntityField(threadLink);
 
   const onShowNewConversation = (value: boolean) => {
     setShowNewConversation(value);
-  };
-
-  const getThreads = () => {
-    getAllFeeds(threadLink).then((res: AxiosResponse) => {
-      const { data } = res.data;
-      setThreads(data);
-    });
   };
 
   const postFeed = (value: string) => {
@@ -276,6 +303,20 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     }, 500);
   };
 
+  const getLoader = () => {
+    return isThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      getThreads(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -296,6 +337,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   useEffect(() => {
     getThreads();
   }, [threadLink]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isThreadLoading);
+  }, [paging, isThreadLoading, isInView]);
 
   return (
     <div className={classNames('tw-h-full', className)}>
@@ -359,6 +404,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
             />
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
           </Fragment>
         )}
       </div>
