@@ -669,6 +669,7 @@ const PipelineDetailsPage = () => {
     if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentPipelineTab(tab));
     }
+    setEntityThread([]);
   }, [tab]);
 
   return (
