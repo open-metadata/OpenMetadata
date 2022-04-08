@@ -25,7 +25,8 @@
     },
     "clientSecret": {
       "description": "clientSecret for the PowerBI.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "credentials": {
       "description": "Credentials for the PowerBI.",
