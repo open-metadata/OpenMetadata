@@ -160,11 +160,6 @@ const DashboardDetailsPage = () => {
     );
   };
 
-  useEffect(() => {
-    if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentDashboardTab(tab));
-    }
-  }, [tab]);
   const getFeedData = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN), after)

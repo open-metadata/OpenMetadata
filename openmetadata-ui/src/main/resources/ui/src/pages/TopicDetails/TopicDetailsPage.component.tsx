@@ -157,15 +157,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
-  useEffect(() => {
-    if (topicDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTopicTab(tab));
-    }
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
-      fetchActivityFeed();
-    }
-  }, [tab]);
-
   const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
     const jsonPatch = compare(topicDetails, updatedData);
 
