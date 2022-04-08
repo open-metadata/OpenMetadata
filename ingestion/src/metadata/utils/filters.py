@@ -15,7 +15,7 @@ Helper that implements table and filter pattern logic
 import re
 from typing import List, Optional
 
-from metadata.generated.schema.type.filterPattern import FilterPatternModel
+from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
 class InvalidPatternException(Exception):
@@ -36,7 +36,7 @@ def validate_regex(regex_list: List[str]) -> None:
             raise InvalidPatternException(f"Invalid regex {regex}.")
 
 
-def _filter(filter_pattern: Optional[FilterPatternModel], name: str) -> bool:
+def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
     """
     Return True if the name needs to be filtered, False otherwise
 
@@ -74,7 +74,7 @@ def _filter(filter_pattern: Optional[FilterPatternModel], name: str) -> bool:
 
 
 def filter_by_schema(
-    schema_filter_pattern: Optional[FilterPatternModel], schema_name: str
+    schema_filter_pattern: Optional[FilterPattern], schema_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -89,7 +89,7 @@ def filter_by_schema(
 
 
 def filter_by_table(
-    table_filter_pattern: Optional[FilterPatternModel], table_name: str
+    table_filter_pattern: Optional[FilterPattern], table_name: str
 ) -> bool:
     """
     Return True if the table needs to be filtered, False otherwise
