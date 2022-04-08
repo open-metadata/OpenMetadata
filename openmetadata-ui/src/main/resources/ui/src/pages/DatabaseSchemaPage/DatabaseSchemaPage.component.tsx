@@ -14,7 +14,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -33,8 +32,8 @@ import React, {
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
-  getDatabaseDetailsByFQN,
-  patchDatabaseDetails,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseSchemaDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
   getAllFeeds,
@@ -42,12 +41,10 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
-import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -59,18 +56,16 @@ import RequestDescriptionModal from '../../components/Modals/RequestDescriptionM
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  getDatabaseDetailsPath,
-  getExplorePathWithSearch,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
   getTeamDetailsPath,
-  pagingObject,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Database } from '../../generated/entity/data/database';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -78,9 +73,9 @@ import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { hasEditAccess, isEven } from '../../utils/CommonUtils';
 import {
-  databaseDetailsTabs,
-  getCurrentDatabaseDetailsTab,
-} from '../../utils/DatabaseDetailsUtils';
+  databaseSchemaDetailsTabs,
+  getCurrentDatabaseSchemaDetailsTab,
+} from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
@@ -93,7 +88,6 @@ import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
-  // User Id for getting followers
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -101,8 +95,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const showToast = useToastContext();
   const { databaseSchemaFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
-  const [database, setDatabase] = useState<Database>();
-  const [serviceType, setServiceType] = useState<string>();
+  const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>();
   const [tableData, setTableData] = useState<Array<Table>>([]);
 
   const [databaseSchemaName, setDatabaseSchemaName] = useState<string>(
@@ -110,12 +103,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [databaseId, setDatabaseId] = useState('');
-  const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
+  const [databaseSchemaId, setDatabaseSchemaId] = useState('');
   const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
-    getCurrentDatabaseDetailsTab(tab)
+    getCurrentDatabaseSchemaDetailsTab(tab)
   );
   const [error, setError] = useState('');
 
@@ -177,14 +169,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       key: 'Owner',
       value:
-        database?.owner?.type === 'team'
+        databaseSchema?.owner?.type === 'team'
           ? getTeamDetailsPath(
-              database?.owner?.displayName || database?.owner?.name || ''
+              databaseSchema?.owner?.displayName ||
+                databaseSchema?.owner?.name ||
+                ''
             )
-          : database?.owner?.displayName || database?.owner?.name || '',
+          : databaseSchema?.owner?.displayName ||
+            databaseSchema?.owner?.name ||
+            '',
       placeholderText:
-        database?.owner?.displayName || database?.owner?.name || '',
-      isLink: database?.owner?.type === 'team',
+        databaseSchema?.owner?.displayName || databaseSchema?.owner?.name || '',
+      isLink: databaseSchema?.owner?.type === 'team',
       openInNewTab: false,
     },
   ];
@@ -200,46 +196,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     showToast({
       variant: 'success',
       body: message,
-    });
-  };
-
-  const fetchDatabaseTables = (pagingObj?: string) => {
-    return new Promise<void>((resolve, reject) => {
-      getDatabaseTables(databaseSchemaFQN, pagingObj, [
-        'owner',
-        'tags',
-        'columns',
-        'usageSummary',
-      ])
-        .then((res: AxiosResponse) => {
-          if (res.data.data) {
-            setTableData(res.data.data);
-            setTablePaging(res.data.paging);
-            setTableInstanceCount(res.data.paging.total);
-          } else {
-            setTableData([]);
-            setTablePaging(pagingObject);
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
-            err,
-            jsonData['api-error-messages']['fetch-database-tables-error']
-          );
-
-          handleShowErrorToast(errMsg);
-          reject();
-        });
-    });
-  };
-
-  const fetchDatabaseTablesAndDBTModels = () => {
-    setIsLoading(true);
-    Promise.allSettled([fetchDatabaseTables()]).finally(() => {
-      setIsLoading(false);
     });
   };
 
@@ -259,7 +215,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseSchemaFQN))
+    getFeedCount(
+      getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
+    )
       .then((res: AxiosResponse) => {
         if (res.data) {
           setFeedCount(res.data.totalCount);
@@ -279,17 +237,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseDetailsByFQN(databaseSchemaFQN, ['owner'])
+    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
+      'owner',
+      'tables',
+      'usageSummary',
+    ])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { description, id, name, service, serviceType } = res.data;
-          setDatabase(res.data);
+          const { description, id, name, service, serviceType, tables } =
+            res.data;
+          setDatabaseSchema(res.data);
           setDescription(description);
-          setDatabaseId(id);
+          setDatabaseSchemaId(id);
           setDatabaseSchemaName(name);
-
-          setServiceType(serviceType);
-
+          setTableData(tables);
+          setTableInstanceCount(tables?.length || 0);
           setSlashedTableName([
             {
               name: service.name,
@@ -307,7 +269,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               activeTitle: true,
             },
           ]);
-          fetchDatabaseTablesAndDBTModels();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -315,7 +276,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-database-details-error']
+          jsonData['api-error-messages']['fetch-databaseSchema-details-error']
         );
         setError(errMsg);
         handleShowErrorToast(errMsg);
@@ -329,30 +290,30 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const saveUpdatedDatabaseData = (
-    updatedData: Database
+  const saveUpdatedDatabaseSchemaData = (
+    updatedData: DatabaseSchema
   ): Promise<AxiosResponse> => {
     let jsonPatch;
-    if (database) {
-      jsonPatch = compare(database, updatedData);
+    if (databaseSchema) {
+      jsonPatch = compare(databaseSchema, updatedData);
     }
 
-    return patchDatabaseDetails(
-      databaseId,
+    return patchDatabaseSchemaDetails(
+      databaseSchemaId,
       jsonPatch
     ) as unknown as Promise<AxiosResponse>;
   };
 
   const onDescriptionUpdate = (updatedHTML: string) => {
-    if (description !== updatedHTML && database) {
-      const updatedDatabaseDetails = {
-        ...database,
+    if (description !== updatedHTML && databaseSchema) {
+      const updatedDatabaseSchemaDetails = {
+        ...databaseSchema,
         description: updatedHTML,
       };
-      saveUpdatedDatabaseData(updatedDatabaseDetails)
+      saveUpdatedDatabaseSchemaData(updatedDatabaseSchemaDetails)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setDatabase(updatedDatabaseDetails);
+            setDatabaseSchema(updatedDatabaseSchemaDetails);
             setDescription(updatedHTML);
             getEntityFeedCount();
           } else {
@@ -362,7 +323,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         .catch((err: AxiosError) => {
           const errMsg = getErrorText(
             err,
-            jsonData['api-error-messages']['update-database-error']
+            jsonData['api-error-messages']['update-databaseSchema-error']
           );
           handleShowErrorToast(errMsg);
         })
@@ -378,38 +339,28 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
-    if (databaseDetailsTabs[currentTabIndex].path !== tab) {
+    if (databaseSchemaDetailsTabs[currentTabIndex].path !== tab) {
       setActiveTab(tabValue);
       history.push({
-        pathname: getDatabaseDetailsPath(
+        pathname: getDatabaseSchemaDetailsPath(
           databaseSchemaFQN,
-          databaseDetailsTabs[currentTabIndex].path
+          databaseSchemaDetailsTabs[currentTabIndex].path
         ),
       });
     }
   };
 
-  const tablePagingHandler = (cursorType: string) => {
-    const pagingString = `&${cursorType}=${
-      tablePaging[cursorType as keyof typeof tablePaging]
-    }`;
-    setIsLoading(true);
-    fetchDatabaseTables(pagingString).finally(() => {
-      setIsLoading(false);
-    });
-  };
-
-  const handleUpdateOwner = (owner: Database['owner']) => {
+  const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
     const updatedData = {
-      ...database,
+      ...databaseSchema,
       owner,
     };
 
     return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
+      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setDatabase(res.data);
+            setDatabaseSchema(res.data);
             reject();
           } else {
             reject();
@@ -420,7 +371,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         .catch((err: AxiosError) => {
           const errMsg = getErrorText(
             err,
-            jsonData['api-error-messages']['update-database-error']
+            jsonData['api-error-messages']['update-databaseSchema-error']
           );
           handleShowErrorToast(errMsg);
           reject();
@@ -431,7 +382,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
     getAllFeeds(
-      getEntityFeedLink(EntityType.DATABASE, databaseSchemaFQN),
+      getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN),
       after
     )
       .then((res: AxiosResponse) => {
@@ -578,17 +529,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    if (!isMounting.current && appState.inPageSearchText) {
-      history.push(
-        `${getExplorePathWithSearch(
-          appState.inPageSearchText
-        )}?database=${databaseSchemaName}&service_type=${serviceType}`
-      );
-    }
-  }, [appState.inPageSearchText]);
-
-  useEffect(() => {
-    const currentTab = getCurrentDatabaseDetailsTab(tab);
+    const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
     const currentTabIndex = currentTab - 1;
 
     if (tabs[currentTabIndex].isProtected) {
@@ -653,7 +594,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 )}
                 entityFqn={databaseSchemaFQN}
                 entityName={databaseSchemaName}
-                entityType={EntityType.DATABASE}
+                entityType={EntityType.DATABASE_SCHEMA}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -674,7 +615,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <Fragment>
                     <table
                       className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-tables">
+                      data-testid="databaseSchema-tables">
                       <thead data-testid="table-header">
                         <tr className="tableHead-row">
                           <th
@@ -779,14 +720,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                         )}
                       </tbody>
                     </table>
-                    {Boolean(
-                      !isNil(tablePaging.after) || !isNil(tablePaging.before)
-                    ) && (
-                      <NextPrevious
-                        paging={tablePaging}
-                        pagingHandler={tablePagingHandler}
-                      />
-                    )}
                   </Fragment>
                 )}
                 {activeTab === 2 && (
@@ -809,10 +742,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 {activeTab === 3 && (
                   <ManageTabComponent
                     hideTier
-                    currentUser={database?.owner?.id}
+                    currentUser={databaseSchema?.owner?.id}
                     hasEditAccess={hasEditAccess(
-                      database?.owner?.type || '',
-                      database?.owner?.id || ''
+                      databaseSchema?.owner?.type || '',
+                      databaseSchema?.owner?.id || ''
                     )}
                     onSave={handleUpdateOwner}
                   />
@@ -839,11 +772,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               <RequestDescriptionModal
                 createThread={createThread}
                 defaultValue={getDefaultValue(
-                  database?.owner as EntityReference
+                  databaseSchema?.owner as EntityReference
                 )}
                 header="Request description"
                 threadLink={getEntityFeedLink(
-                  EntityType.DATABASE,
+                  EntityType.DATABASE_SCHEMA,
                   databaseSchemaFQN,
                   selectedField
                 )}

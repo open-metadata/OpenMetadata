@@ -246,7 +246,10 @@ export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
   return path;
 };
 
-export const getSchemaDetailsPath = (schemaFQN: string, tab?: string) => {
+export const getDatabaseSchemaDetailsPath = (
+  schemaFQN: string,
+  tab?: string
+) => {
   let path = tab ? ROUTES.SCHEMA_DETAILS_WITH_TAB : ROUTES.SCHEMA_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN);
 

@@ -59,9 +59,9 @@ import RequestDescriptionModal from '../../components/Modals/RequestDescriptionM
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
-  getTableDetailsPath,
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
@@ -705,7 +705,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 <Link
                                   to={
                                     schema.fullyQualifiedName
-                                      ? getTableDetailsPath(
+                                      ? getDatabaseSchemaDetailsPath(
                                           schema.fullyQualifiedName
                                         )
                                       : ''
