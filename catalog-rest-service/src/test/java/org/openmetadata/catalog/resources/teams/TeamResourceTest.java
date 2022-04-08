@@ -337,9 +337,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateEntityReferences(team.getOwns());
   }
 
-  /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
+  public EntityInterface<Team> validateGetWithDifferentFields(Team expectedTeam, boolean byName)
+      throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
     String fields = "";
     Team getTeam =
@@ -349,15 +349,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), null, null, null, updatedBy);
     assertNull(getTeam.getOwns());
 
-    fields = "users,owns,profile,defaultRoles";
+    fields = "users,owns,profile,defaultRoles,owner";
     getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
     assertNotNull(getTeam.getProfile());
     validateEntityReferences(getTeam.getOwns());
-    validateEntityReferences(getTeam.getUsers());
-    validateEntityReferences(getTeam.getDefaultRoles());
+    validateEntityReferences(getTeam.getUsers(), true);
+    validateEntityReferences(getTeam.getDefaultRoles(), true);
+    return getEntityInterface(getTeam);
   }
 
   @Override

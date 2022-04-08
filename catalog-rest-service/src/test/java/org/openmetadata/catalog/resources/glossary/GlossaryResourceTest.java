@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.resources.glossary;
 
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 
 import java.io.IOException;
@@ -38,6 +37,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -118,12 +118,13 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public GlossaryEntityInterface getEntityInterface(Glossary entity) {
+  public EntityInterface<Glossary> getEntityInterface(Glossary entity) {
     return new GlossaryEntityInterface(entity);
   }
 
   @Override
-  public void validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
+  public EntityInterface<Glossary> validateGetWithDifferentFields(Glossary entity, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -136,7 +137,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         byName
             ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(entity);
   }
 
   @Override

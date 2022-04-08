@@ -643,7 +643,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  public void validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
+  public EntityInterface<User> validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     String fields = "";
     user =
         byName
@@ -657,6 +657,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
+    return getEntityInterface(user);
   }
 
   @Override

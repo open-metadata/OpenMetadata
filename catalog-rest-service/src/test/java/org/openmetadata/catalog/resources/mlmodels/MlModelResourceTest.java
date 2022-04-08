@@ -348,9 +348,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
-  /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
+  public EntityInterface<MlModel> validateGetWithDifferentFields(MlModel model, boolean byName)
+      throws HttpResponseException {
     // .../models?fields=owner
     String fields = "";
     model =
@@ -366,8 +366,9 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(
-        model.getOwner(), model.getDashboard(), model.getFollowers(), model.getTags(), model.getUsageSummary());
+    assertListNotNull(model.getDashboard(), model.getUsageSummary());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(model);
   }
 
   @Override

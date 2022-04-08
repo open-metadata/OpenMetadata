@@ -203,9 +203,9 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     return TestUtils.put(getResource("locations"), create, Location.class, status, authHeaders);
   }
 
-  /** Validate returned fields GET .../locations/{id}?fields="..." or GET .../locations/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
+  public EntityInterface<Location> validateGetWithDifferentFields(Location location, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     location =
         byName
@@ -220,7 +220,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
             ? getEntityByName(location.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(location.getService(), location.getServiceType());
-    assertListNotNull(location.getOwner(), location.getFollowers(), location.getTags());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(location);
   }
 
   public static LocationList listPrefixes(

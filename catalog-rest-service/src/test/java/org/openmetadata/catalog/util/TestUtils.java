@@ -276,6 +276,14 @@ public final class TestUtils {
   }
 
   public static void validateEntityReferences(List<EntityReference> list) {
+    validateEntityReferences(list, false);
+  }
+
+  public static void validateEntityReferences(List<EntityReference> list, boolean expectedNotEmpty) {
+    if (expectedNotEmpty) {
+      assertNotNull(list);
+      assertListNotEmpty(list);
+    }
     listOrEmpty(list).forEach(TestUtils::validateEntityReference);
   }
 
@@ -384,6 +392,14 @@ public final class TestUtils {
     int index = 0;
     for (Object value : values) {
       Assertions.assertNotNull(value, "Object at index " + index + " is null");
+      index++;
+    }
+  }
+
+  public static void assertListNotEmpty(List... values) {
+    int index = 0;
+    for (List value : values) {
+      Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
       index++;
     }
   }

@@ -45,6 +45,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -130,6 +131,7 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -1635,9 +1637,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotNull(table.getDatabase(), table.getService(), table.getServiceType());
   }
 
-  /** Validate returned fields GET .../tables/{id}?fields="..." or GET .../tables/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
+  public EntityInterface<Table> validateGetWithDifferentFields(Table table, boolean byName)
+      throws HttpResponseException {
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -1670,11 +1672,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getOwner(),
-        table.getTags(),
-        table.getFollowers(),
         table.getJoins() /*, table.getSampleData(), table.getViewDefinition(), table
             .getTableProfile(),  table.getLocation(), table.getTableQueries(), table.getDataModel()*/);
+    assertListNotEmpty(table.getTableConstraints());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(table);
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -2072,7 +2074,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public TableEntityInterface getEntityInterface(Table entity) {
+  public EntityInterface<Table> getEntityInterface(Table entity) {
     return new TableEntityInterface(entity);
   }
 

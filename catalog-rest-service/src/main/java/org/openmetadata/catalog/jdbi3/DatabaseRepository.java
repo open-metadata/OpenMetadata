@@ -92,18 +92,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
     storeOwner(database, database.getOwner());
   }
 
-  private List<EntityReference> getTables(Database database) throws IOException {
+  private List<EntityReference> getSchemas(Database database) throws IOException {
     if (database == null) {
       return null;
     }
-    List<String> tableIds = findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE);
-    return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
+    List<String> schemaIds = findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    return EntityUtil.populateEntityReferences(schemaIds, Entity.DATABASE_SCHEMA);
   }
 
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getService(database));
     database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
-    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getTables(database) : null);
+    database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
     database.setLocation(fields.contains("location") ? getLocation(database) : null);
