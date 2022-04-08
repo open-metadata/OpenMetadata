@@ -101,3 +101,33 @@ def filter_by_table(
     :return: True for filtering, False otherwise
     """
     return _filter(table_filter_pattern, table_name)
+
+
+def filter_by_chart(
+    chart_filter_pattern: Optional[FilterPattern], chart_name: str
+) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param chart_filter_pattern: Model defining chart filtering logic
+    :param chart_name: table chart name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(chart_filter_pattern, chart_name)
+
+
+def filter_by_dashboard(
+    dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
+) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param dashboard_filter_pattern: Model defining dashboard filtering logic
+    :param dashboard_name: table dashboard name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(dashboard_filter_pattern, dashboard_name)
