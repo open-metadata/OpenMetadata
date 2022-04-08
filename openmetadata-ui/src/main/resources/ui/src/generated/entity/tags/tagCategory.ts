@@ -45,6 +45,10 @@ export interface TagCategory {
    * Link to the resource corresponding to the tag category.
    */
   href?: string;
+  /**
+   * Unique identifier of this entity instance.
+   */
+  id?: string;
   name: string;
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
@@ -149,6 +153,10 @@ export interface TagClass {
    * Link to the resource corresponding to the tag.
    */
   href?: string;
+  /**
+   * Unique identifier of this entity instance.
+   */
+  id?: string;
   /**
    * Name of the tag.
    */

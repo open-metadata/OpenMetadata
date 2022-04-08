@@ -16,7 +16,7 @@
  * Salesforce Connection Config
  */
 export interface SalesforceConnection {
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
    * Host and port of the Redshift.
@@ -51,6 +51,17 @@ export interface SalesforceConnection {
    * metadata in Redshift.
    */
   username?: string;
+}
+
+/**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
 }
 
 /**
