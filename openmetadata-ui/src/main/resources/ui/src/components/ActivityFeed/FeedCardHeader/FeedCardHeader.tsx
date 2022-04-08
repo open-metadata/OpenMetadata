@@ -140,11 +140,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   const entityDisplayName = () => {
-    let displayName = entityFQN;
+    let displayName;
     if (entityType === EntityType.TABLE) {
-      displayName = getPartialNameFromTableFQN(entityFQN as string, ['table']);
+      displayName = getPartialNameFromTableFQN(entityFQN, ['table']);
     } else {
-      displayName = getPartialNameFromFQN(entityFQN as string, ['database']);
+      displayName = getPartialNameFromFQN(entityFQN, ['database']);
     }
 
     return displayName;

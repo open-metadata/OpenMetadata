@@ -96,7 +96,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   >([]);
 
   const showToast = useToastContext();
-  const { databaseSchemaFQN, tab } = useParams() as Record<string, string>;
+  const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
   const [isLoading, setIsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>();
   const [tableData, setTableData] = useState<Array<Table>>([]);
