@@ -521,21 +521,21 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void list_threadsWithFollowsFilter() throws HttpResponseException {
-    // Create threads
-    createAndCheck(
-        create().withMessage("Message 1").withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
-        ADMIN_AUTH_HEADERS);
+    // Get the initial thread count of TABLE2
+    String entityLink = String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName());
+    int initialThreadCount = listThreads(entityLink, null, AUTH_HEADERS).getPaging().getTotal();
 
-    createAndCheck(
-        create().withMessage("Message 2").withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
-        ADMIN_AUTH_HEADERS);
+    // Create threads
+    createAndCheck(create().withMessage("Message 1").withAbout(entityLink), ADMIN_AUTH_HEADERS);
+
+    createAndCheck(create().withMessage("Message 2").withAbout(entityLink), ADMIN_AUTH_HEADERS);
 
     // Make the USER follow TABLE2
     followTable(TABLE2.getId(), USER.getId(), AUTH_HEADERS);
 
     ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);
-    assertEquals(2, threads.getPaging().getTotal());
-    assertEquals(2, threads.getData().size());
+    assertEquals(initialThreadCount + 2, threads.getPaging().getTotal());
+    assertEquals(initialThreadCount + 2, threads.getData().size());
     assertEquals("Message 2", threads.getData().get(0).getMessage());
 
     // Filter by follows for another user should return 0 threads
