@@ -32,7 +32,7 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import { FQN_REGEX, UrlEntityCharRegEx } from '../constants/regex.constants';
-import { TabSpecificField } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
   EntityReference,
@@ -531,4 +531,21 @@ export const isUrlFriendlyName = (value: string) => {
  */
 export const getNonDeletedTeams = (teams: EntityReference[]) => {
   return teams.filter((t) => !t.deleted);
+};
+
+/**
+ * prepare label for given entity type and fqn
+ * @param type - entity type
+ * @param fqn - entity fqn
+ * @returns - label for entity
+ */
+export const prepareLabel = (type: string, fqn: string) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, ['table']);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  return label.replace(/^"|"$/g, '');
 };

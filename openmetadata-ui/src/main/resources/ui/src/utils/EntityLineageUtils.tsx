@@ -51,20 +51,10 @@ import { EntityReference } from '../generated/type/entityReference';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
+  prepareLabel,
 } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
-
-const prepareLabel = (type: string, fqn: string) => {
-  let label = '';
-  if (type === EntityType.TABLE) {
-    label = getPartialNameFromTableFQN(fqn, ['table']);
-  } else {
-    label = getPartialNameFromFQN(fqn, ['database']);
-  }
-
-  return label.replace(/^"|"$/g, '');
-};
 
 export const getHeaderLabel = (
   v = '',
