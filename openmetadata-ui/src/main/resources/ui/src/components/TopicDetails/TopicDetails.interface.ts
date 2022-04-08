@@ -20,6 +20,7 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
@@ -48,6 +49,8 @@ export interface TopicDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  paging: Paging;
+  fetchFeedHandler: (after?: string) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;

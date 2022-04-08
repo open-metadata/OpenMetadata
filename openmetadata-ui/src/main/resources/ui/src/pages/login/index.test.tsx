@@ -14,22 +14,18 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import appState from '../../AppState';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
 import SigninPage from './index';
+
+const mockUseAuthContext = useAuthContext as jest.Mock;
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      authConfig: { provider: 'google' },
-      onLoginHandler: jest.fn(),
-    })),
-  };
-});
+jest.mock('../../auth-provider/AuthProvider', () => ({
+  useAuthContext: jest.fn(),
+}));
 
 jest.mock(
   '../../components/containers/PageContainer',
@@ -45,28 +41,73 @@ jest.mock('./LoginCarousel', () =>
 );
 
 describe('Test SigninPage Component', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    jest.resetAllMocks();
+  });
+
   it('Component should render', async () => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'google' },
+      onLoginHandler: jest.fn(),
+    });
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
-    const servicePage = await findByTestId(container, 'signin-page');
+    const signInPage = await findByTestId(container, 'signin-page');
     const bgImg = await findByTestId(container, 'bg-image');
     const LoginCarousel = await findByText(container, /LoginCarousel/i);
 
-    expect(servicePage).toBeInTheDocument();
+    expect(signInPage).toBeInTheDocument();
     expect(bgImg).toBeInTheDocument();
     expect(LoginCarousel).toBeInTheDocument();
   });
 
-  it('Sign in button should render', async () => {
+  it.each([
+    ['google', 'Sign in with google'],
+    ['okta', 'Sign in with okta'],
+    ['auth0', 'Sign in with auth0'],
+    ['azure', 'Sign in with azure'],
+    ['custom-oidc', 'Sign in with sso'],
+    ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
+  ])(
+    'Sign in button should render correctly for %s',
+    async (provider, buttonText) => {
+      mockUseAuthContext.mockReturnValue({
+        isAuthDisabled: false,
+        authConfig: { provider },
+        onLoginHandler: jest.fn(),
+      });
+      const { container } = render(<SigninPage />, {
+        wrapper: MemoryRouter,
+      });
+      const signinButton = await findByText(
+        container,
+        new RegExp(buttonText, 'i')
+      );
+
+      expect(signinButton).toBeInTheDocument();
+    }
+  );
+
+  it('Sign in button should render correctly with custom provider name', async () => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      onLoginHandler: jest.fn(),
+    });
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
-    const store = appState;
-    store.authProvider.provider = 'google';
-    const signinButton = await findByText(container, /Sign in with google/i);
+    const signinButton = await findByText(
+      container,
+      /sign in with custom oidc/i
+    );
 
-    expect(store.authProvider.provider).toBe('google');
     expect(signinButton).toBeInTheDocument();
   });
 });

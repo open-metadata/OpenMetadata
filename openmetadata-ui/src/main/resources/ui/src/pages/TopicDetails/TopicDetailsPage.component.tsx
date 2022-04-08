@@ -49,6 +49,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
@@ -103,6 +104,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -151,13 +153,14 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const fetchActivityFeed = () => {
+  const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
+        const { data, paging: pagingObj } = res.data;
         if (data) {
-          setEntityThread(data);
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
         } else {
           handleShowErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-error']
@@ -508,11 +511,8 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
-
-  useEffect(() => {
     fetchTopicDetail(topicFQN);
+    getEntityFeedCount();
   }, [topicFQN]);
 
   return (
@@ -536,11 +536,13 @@ const TopicDetailsPage: FunctionComponent = () => {
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
+          fetchFeedHandler={fetchActivityFeed}
           followTopicHandler={followTopic}
           followers={followers}
           isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
+          paging={paging}
           partitions={partitions}
           postFeedHandler={postFeedHandler}
           replicationFactor={replicationFactor}

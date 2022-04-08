@@ -35,6 +35,7 @@ import {
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
@@ -62,6 +63,8 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
+
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const handleShowErrorToast = (msg: string) => {
     showToast({
@@ -225,13 +228,15 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (feedFilter: FeedFilter) => {
+  const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
     const currentUserId = AppState.userDetails?.id;
-    getFeedsWithFilter(currentUserId, feedFilter)
+    getFeedsWithFilter(currentUserId, filterType, after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setEntityThread(data);
+        const { data, paging: pagingObj } = res.data;
+        setPaging(pagingObj);
+
+        setEntityThread((prevData) => [...prevData, ...data]);
       })
       .catch(() => {
         showToast({
@@ -339,6 +344,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     getFeedData(feedFilter);
+    setEntityThread([]);
   }, [feedFilter]);
 
   useEffect(() => {
@@ -370,9 +376,11 @@ const MyDataPage = () => {
             feedData={entityThread || []}
             feedFilter={feedFilter}
             feedFilterHandler={feedFilterHandler}
+            fetchFeedHandler={getFeedData}
             followedData={followedData || []}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
+            paging={paging}
             postFeedHandler={postFeedHandler}
           />
           {isSandbox ? <GithubStarButton /> : null}

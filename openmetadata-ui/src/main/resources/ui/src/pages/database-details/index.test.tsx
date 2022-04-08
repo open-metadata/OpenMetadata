@@ -219,6 +219,14 @@ jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<DatabaseDetails />, {
