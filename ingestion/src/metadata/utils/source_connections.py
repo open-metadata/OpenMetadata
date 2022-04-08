@@ -78,6 +78,7 @@ def get_connection_url(connection):
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
+@get_connection_url.register(SingleStoreConnection)
 def _(connection):
     return get_connection_url_common(connection)
 
@@ -145,31 +146,3 @@ def _(connection: TrinoConnection):
             return {"http_session": session}
     else:
         return connection.connectionArguments
-        
-def _(connection: SingleStoreConnection):
-
-    url = f"{connection.scheme.value}://"
-
-    if connection.username:
-        url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
-        url += "@"
-
-    url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
-
-    options = connection.connectionOptions
-    if options:
-        if not connection.database:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
-        url = f"{url}?{params}"
-    print("URL")
-    print(url)
-    return url

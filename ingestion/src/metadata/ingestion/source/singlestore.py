@@ -21,11 +21,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-# class SingleStoreConfig(SingleStoreConnection, SQLConnectionConfig):
-#     def get_connection_url(self):
-#         return super().get_connection_url()
 
 
 class SinglestoreSource(SQLSource):
@@ -38,7 +33,7 @@ class SinglestoreSource(SQLSource):
         connection: SingleStoreConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SingleStoreConnection):
             raise InvalidSourceException(
-                f"Expected SQLiteConnection, but got {connection}"
+                f"Expected SingleStoreConnection, but got {connection}"
             )
 
         return cls(config, metadata_config)
