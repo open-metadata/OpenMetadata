@@ -1,20 +1,23 @@
 {
   "source": {
     "type": "hive",
-    "config": {
-      "service_name": "local_hive",
-      "host_port": "localhost:10000"
-    }
+    "serviceName": "local_hive",
+    "serviceConnection": {
+      "config": {
+        "type":"Hive",
+        "hostPort": "localhost:10000"
+      }
+    },
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

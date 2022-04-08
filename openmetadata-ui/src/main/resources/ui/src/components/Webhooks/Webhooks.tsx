@@ -17,7 +17,6 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
-import { getDocButton } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -131,7 +130,6 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
           callback URLs with webhook integration to receive metadata event
           notifications. You can add, list, update, and delete webhooks.
         </div>
-        {getDocButton('Webhooks Guide', '', 'webhook-doc')}
       </>
     );
   };
