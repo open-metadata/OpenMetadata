@@ -60,13 +60,9 @@ from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
-from metadata.ingestion.ometa.openmetadata_rest import (
-    Auth0AuthenticationProvider,
-    AzureAuthenticationProvider,
-    CustomOIDCAuthenticationProvider,
-    GoogleAuthenticationProvider,
-    NoOpAuthenticationProvider,
-    OktaAuthenticationProvider,
+from metadata.ingestion.ometa.provider_registry import (
+    InvalidAuthProviderException,
+    auth_provider_registry,
 )
 from metadata.ingestion.ometa.utils import get_entity_type, model_str
 
@@ -142,30 +138,18 @@ class OpenMetadata(
 
     def __init__(self, config: OpenMetadataServerConfig, raw_data: bool = False):
         self.config = config
-        if self.config.authProvider.value == "google":
-            self._auth_provider: AuthenticationProvider = (
-                GoogleAuthenticationProvider.create(self.config)
+
+        # Load the auth provider init from the registry
+        auth_provider_fn = auth_provider_registry.registry.get(
+            self.config.authProvider.value
+        )
+        if not auth_provider_fn:
+            raise InvalidAuthProviderException(
+                f"Cannot find {self.config.authProvider.value} in {auth_provider_registry.registry}"
             )
-        elif self.config.authProvider.value == "okta":
-            self._auth_provider: AuthenticationProvider = (
-                OktaAuthenticationProvider.create(self.config)
-            )
-        elif self.config.authProvider.value == "auth0":
-            self._auth_provider: AuthenticationProvider = (
-                Auth0AuthenticationProvider.create(self.config)
-            )
-        elif self.config.authProvider.value == "azure":
-            self._auth_provider: AuthenticationProvider = (
-                AzureAuthenticationProvider.create(self.config)
-            )
-        elif self.config.authProvider.value == "custom-oidc":
-            self._auth_provider: AuthenticationProvider = (
-                CustomOIDCAuthenticationProvider.create(self.config)
-            )
-        else:
-            self._auth_provider: AuthenticationProvider = (
-                NoOpAuthenticationProvider.create(self.config)
-            )
+
+        self._auth_provider = auth_provider_fn(self.config)
+
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
