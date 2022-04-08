@@ -44,20 +44,17 @@ ingestion_config = {
             "config": {
                 "type": "SQLite",
                 "databaseMode": sqlite_shared,
-                "database": "main"
+                "database": "main",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}}
+        "sourceConfig": {"config": {"enableDataProfiler": False}},
     },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
+    "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
         }
-    }
+    },
 }
 
 Base = declarative_base()

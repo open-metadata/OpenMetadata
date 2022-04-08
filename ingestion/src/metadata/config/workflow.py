@@ -20,7 +20,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource, Processor as WorkflowProcessor, Sink as WorkflowSink
+    Processor as WorkflowProcessor,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
 )
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
