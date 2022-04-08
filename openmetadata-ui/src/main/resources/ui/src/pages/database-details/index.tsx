@@ -22,7 +22,14 @@ import {
   ExtraInfo,
   Paging,
 } from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
@@ -59,12 +66,14 @@ import {
   getTeamDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/teams/user';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { hasEditAccess, isEven } from '../../utils/CommonUtils';
@@ -120,6 +129,8 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -192,9 +203,9 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
-  const fetchDatabaseTables = (paging?: string) => {
+  const fetchDatabaseTables = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
-      getDatabaseTables(databaseFQN, paging, [
+      getDatabaseTables(databaseFQN, pagingObj, [
         'owner',
         'tags',
         'columns',
@@ -417,13 +428,14 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
-  const fetchActivityFeed = () => {
+  const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
+        const { data, paging: pagingObj } = res.data;
         if (data) {
-          setEntityThread(data);
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -543,6 +555,21 @@ const DatabaseDetails: FunctionComponent = () => {
         handleShowErrorToast(message);
       });
   };
+
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreFeed = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isFeedLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isFeedLoading) {
+      fetchActivityFeed(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -572,6 +599,10 @@ const DatabaseDetails: FunctionComponent = () => {
       fetchActivityFeed();
     }
   }, [tab]);
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+  }, [isInView, paging, isentityThreadLoading]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -635,7 +666,7 @@ const DatabaseDetails: FunctionComponent = () => {
               />
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
-                  <>
+                  <Fragment>
                     <table
                       className="tw-bg-white tw-w-full tw-mb-4"
                       data-testid="database-tables">
@@ -751,11 +782,11 @@ const DatabaseDetails: FunctionComponent = () => {
                         pagingHandler={tablePagingHandler}
                       />
                     )}
-                  </>
+                  </Fragment>
                 )}
                 {activeTab === 2 && (
                   <div
-                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4"
                     id="activityfeed">
                     <div />
                     <ActivityFeedList
@@ -765,7 +796,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       deletePostHandler={deletePostHandler}
                       entityName={databaseName}
                       feedList={entityThread}
-                      isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}
                     />
                     <div />
@@ -782,6 +812,12 @@ const DatabaseDetails: FunctionComponent = () => {
                     onSave={handleUpdateOwner}
                   />
                 )}
+                <div
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}>
+                  {getLoader()}
+                </div>
               </div>
             </div>
             {threadLink ? (
