@@ -12,6 +12,7 @@
 from collections import namedtuple
 
 import psycopg2
+
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
