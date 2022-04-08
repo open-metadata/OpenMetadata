@@ -93,7 +93,7 @@ class PowerbiSource(Source[Entity]):
         connection: PowerBIConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PowerBIConnection):
             raise InvalidSourceException(
-                f"Expected RedshiftConnection, but got {connection}"
+                f"Expected PowerBIConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
