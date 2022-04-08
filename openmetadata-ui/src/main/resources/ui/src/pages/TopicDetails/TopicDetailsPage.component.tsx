@@ -49,8 +49,10 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -101,6 +103,14 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const handleShowErrorToast = (errMessage: string) => {
+    showToast({
+      variant: 'error',
+      body: errMessage,
+    });
+  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -124,12 +134,19 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const fetchActivityFeed = () => {
+  const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setEntityThread(data);
+        const { data, paging: pagingObj } = res.data;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          handleShowErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
       })
       .catch(() => {
         showToast({
@@ -390,11 +407,17 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    if (topicDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTopicTab(tab));
+    }
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
+    }
+  }, [tab]);
 
   useEffect(() => {
     fetchTopicDetail(topicFQN);
+    getEntityFeedCount();
   }, [topicFQN]);
 
   return (
@@ -417,11 +440,13 @@ const TopicDetailsPage: FunctionComponent = () => {
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
+          fetchFeedHandler={fetchActivityFeed}
           followTopicHandler={followTopic}
           followers={followers}
           isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
+          paging={paging}
           partitions={partitions}
           postFeedHandler={postFeedHandler}
           replicationFactor={replicationFactor}

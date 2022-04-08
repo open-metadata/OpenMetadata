@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
 
@@ -90,7 +91,18 @@ const DashboardDetailsProps = {
   entityFieldThreadCount: [],
   createThread: jest.fn(),
   dashboardFQN: '',
+  deletePostHandler: jest.fn(),
+  paging: {} as Paging,
+  fetchFeedHandler: jest.fn(),
 };
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
 
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
@@ -148,5 +160,20 @@ describe('Test DashboardDetails component', () => {
 
     expect(EntityPageInfo).toBeInTheDocument();
     expect(TabsPane).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

@@ -32,6 +32,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   ColumnTest,
@@ -80,6 +81,7 @@ export interface DatasetDetailsProps {
   tableTestCase: TableTest[];
   showTestForm: boolean;
   selectedColumn: string;
+  paging: Paging;
   qualityTestFormHandler: (
     tabValue: number,
     testMode?: DatasetTestModeType,
@@ -108,4 +110,5 @@ export interface DatasetDetailsProps {
     columnName: string,
     testType: ColumnTestType
   ) => void;
+  fetchFeedHandler: (after?: string) => void;
 }

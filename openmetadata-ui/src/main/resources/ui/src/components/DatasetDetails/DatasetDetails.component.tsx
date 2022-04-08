@@ -14,9 +14,10 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -26,7 +27,9 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
   getPartialNameFromFQN,
@@ -50,6 +53,7 @@ import PageContainer from '../containers/PageContainer';
 import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
@@ -118,6 +122,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   qualityTestFormHandler,
   handleSelectedColumn,
   selectedColumn,
+  paging,
+  fetchFeedHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -133,6 +139,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -463,6 +471,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -479,6 +501,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   useEffect(() => {
     setTableJoinData(joins);
   }, [joins]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
+  }, [paging, isentityThreadLoading, isInView]);
 
   return (
     <PageContainer>
@@ -588,7 +614,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4"
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
@@ -597,7 +623,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   className=""
                   entityName={entityName}
                   feedList={entityThread}
-                  isLoading={isentityThreadLoading}
                   postFeedHandler={postFeedHandler}
                 />
                 <div />
@@ -696,6 +721,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </div>
             )}
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
           </div>
         </div>
       </div>

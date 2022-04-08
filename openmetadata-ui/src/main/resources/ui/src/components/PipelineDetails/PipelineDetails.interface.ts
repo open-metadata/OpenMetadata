@@ -28,6 +28,7 @@ import {
   EntityLineage,
   EntityReference,
 } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
@@ -57,6 +58,8 @@ export interface PipeLineDetailsProp {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  paging: Paging;
+  fetchFeedHandler: (after?: string) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;

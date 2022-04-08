@@ -37,6 +37,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
@@ -135,9 +136,12 @@ const TourPage = () => {
             fetchData={() => {
               setMyDataSearchResult(mockData);
             }}
+            fetchFeedHandler={handleOnClick}
             followedData={[]}
             ingestionCount={0}
+            isFeedLoading={false}
             ownedData={[]}
+            paging={{} as Paging}
             postFeedHandler={handleOnClick}
             searchResult={myDataSearchResult as unknown as SearchResponse}
             userDetails={AppState.userDetails}
@@ -187,6 +191,7 @@ const TourPage = () => {
             entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
+            fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
@@ -205,6 +210,7 @@ const TourPage = () => {
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
             owner={undefined as unknown as DatasetOwner}
+            paging={{} as Paging}
             postFeedHandler={handleCountChange}
             qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}

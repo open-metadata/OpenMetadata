@@ -15,15 +15,18 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { EntityFieldThreads, EntityTags } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference, User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
   getHtmlForNonAdminAction,
@@ -48,6 +51,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
+import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -92,6 +96,8 @@ const PipelineDetails = ({
   entityFieldThreadCount,
   createThread,
   pipelineFQN,
+  paging,
+  fetchFeedHandler,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -105,6 +111,8 @@ const PipelineDetails = ({
   const [threadLink, setThreadLink] = useState<string>('');
 
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -296,6 +304,20 @@ const PipelineDetails = ({
     setThreadLink('');
   };
 
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -305,6 +327,10 @@ const PipelineDetails = ({
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
+  }, [paging, isentityThreadLoading, isInView]);
 
   return (
     <>
@@ -507,7 +533,7 @@ const PipelineDetails = ({
               )}
               {activeTab === 2 && (
                 <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4"
                   id="activityfeed">
                   <div />
                   <ActivityFeedList
@@ -548,6 +574,12 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
+              <div
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
+              </div>
             </div>
           </div>
         </div>

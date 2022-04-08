@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByText, getByTestId, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  getByTestId,
+  render,
+} from '@testing-library/react';
 import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -22,6 +27,7 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
@@ -101,6 +107,7 @@ const DatasetDetailsProps = {
   handleAddTableTestCase: jest.fn(),
   tableTestCase: [],
   selectedColumn: '',
+  paging: {} as Paging,
   handleAddColumnTestCase: jest.fn(),
   handleSelectedColumn: jest.fn(),
   createThread: jest.fn(),
@@ -109,6 +116,9 @@ const DatasetDetailsProps = {
   handleRemoveColumnTest: jest.fn(),
   handleTestModeChange: jest.fn(),
   qualityTestFormHandler: jest.fn(),
+  deletePostHandler: jest.fn(),
+  tagUpdateHandler: jest.fn(),
+  fetchFeedHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
@@ -157,6 +167,14 @@ jest.mock('../../utils/CommonUtils', () => ({
   getUserTeams: () => mockUserTeam,
 }));
 
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', async () => {
     const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {
@@ -170,5 +188,20 @@ describe('Test MyDataDetailsPage page', () => {
     expect(relatedTables).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(TabsPane).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });
