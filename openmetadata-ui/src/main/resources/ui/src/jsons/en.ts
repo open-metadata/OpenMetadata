@@ -54,6 +54,9 @@ const jsonData = {
     'fetch-data-error': 'Error while fetching data!',
     'fetch-database-details-error': 'Error while fetching database details!',
     'fetch-database-tables-error': 'Error while fetching database tables!',
+    'fetch-database-schemas-error': 'Error while fetching database schemas!',
+    'fetch-databaseSchema-details-error':
+      'Error while fetching database schema details!',
     'fetch-activity-feed-error': 'Error while fetching activity feeds!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
@@ -92,6 +95,7 @@ const jsonData = {
     'update-chart-error': 'Error while updating charts!',
     'update-description-error': 'Error while updating description!',
     'update-database-error': 'Error while updating database!',
+    'update-databaseSchema-error': 'Error while updating database schema!',
     'update-entity-error': 'Error while updating entity!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',

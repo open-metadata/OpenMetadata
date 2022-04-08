@@ -42,6 +42,7 @@ const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
+const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
@@ -154,7 +155,9 @@ export const ROUTES = {
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
+  SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
   DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SCHEMA_DETAILS_WITH_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
@@ -235,6 +238,20 @@ export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
 export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
   let path = tab ? ROUTES.DATABASE_DETAILS_WITH_TAB : ROUTES.DATABASE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDatabaseSchemaDetailsPath = (
+  schemaFQN: string,
+  tab?: string
+) => {
+  let path = tab ? ROUTES.SCHEMA_DETAILS_WITH_TAB : ROUTES.SCHEMA_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -340,8 +357,6 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
-export const LIST_TYPES = ['numbered-list', 'bulleted-list'];
-
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -372,10 +387,3 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
-
-// Entity Lineage Constant
-export const positionX = 150;
-export const positionY = 60;
-
-export const nodeWidth = 240;
-export const nodeHeight = 40;

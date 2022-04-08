@@ -23,7 +23,10 @@ import { AssetsType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
@@ -48,16 +51,23 @@ const UserCard = ({
 }: Props) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getArrForPartialName = (
-    type: string
-  ): Array<'service' | 'database' | 'table' | 'column'> => {
+
+  /**
+   * prepare asset displayname and return it
+   * @param type - asset type
+   * @param fqn - asset fqn
+   * @returns - displayname
+   */
+  const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return ['database', 'table'];
-      case AssetsType.TOPIC:
+        return getPartialNameFromTableFQN(fqn, ['database', 'table']);
+
       case AssetsType.DASHBOARD:
+      case AssetsType.PIPELINE:
+      case AssetsType.TOPIC:
       default:
-        return ['service', 'database', 'table'];
+        return getPartialNameFromFQN(fqn, ['service', 'database']);
     }
   };
 
@@ -119,7 +129,7 @@ const UserCard = ({
     return (
       <Link data-testid="dataset-link" to={link}>
         <button className="tw-font-medium tw-text-grey-body tw-break-all">
-          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
+          {getAssetDisplayName(type, fqn)}
         </button>
       </Link>
     );

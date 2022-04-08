@@ -31,8 +31,8 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
-import { TabSpecificField } from '../enums/entity.enum';
+import { FQN_REGEX, UrlEntityCharRegEx } from '../constants/regex.constants';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
   EntityReference,
@@ -88,6 +88,29 @@ export const getPartialNameFromFQN = (
       arrPartialName.push(arrFqn[2]);
     } else if (type === 'column' && arrFqn.length > 3) {
       arrPartialName.push(arrFqn[3]);
+    }
+  }
+
+  return arrPartialName.join(joinSeperator);
+};
+export const getPartialNameFromTableFQN = (
+  fqn: string,
+  arrTypes: Array<'service' | 'database' | 'schema' | 'table' | 'column'> = [],
+  joinSeperator = '/'
+): string => {
+  const arrFqn = fqn.match(FQN_REGEX) || [];
+  const arrPartialName = [];
+  for (const type of arrTypes) {
+    if (type === 'service' && arrFqn.length > 0) {
+      arrPartialName.push(arrFqn[0]);
+    } else if (type === 'database' && arrFqn.length > 1) {
+      arrPartialName.push(arrFqn[1]);
+    } else if (type === 'schema' && arrFqn.length > 2) {
+      arrPartialName.push(arrFqn[2]);
+    } else if (type === 'table' && arrFqn.length > 3) {
+      arrPartialName.push(arrFqn[3]);
+    } else if (type === 'column' && arrFqn.length > 4) {
+      arrPartialName.push(arrFqn[4]);
     }
   }
 
@@ -508,4 +531,26 @@ export const isUrlFriendlyName = (value: string) => {
  */
 export const getNonDeletedTeams = (teams: EntityReference[]) => {
   return teams.filter((t) => !t.deleted);
+};
+
+/**
+ * prepare label for given entity type and fqn
+ * @param type - entity type
+ * @param fqn - entity fqn
+ * @param withQuotes - boolean value
+ * @returns - label for entity
+ */
+export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, ['table']);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  if (withQuotes) {
+    return label;
+  } else {
+    return label.replace(/(^"|"$)/g, '');
+  }
 };

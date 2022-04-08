@@ -44,6 +44,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -59,7 +60,10 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import useToastContext from '../../hooks/useToastContext';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
 
@@ -140,16 +144,24 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            ['service', 'database', 'schema', 'table'],
             FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, database, service, serviceType } =
-              res.data;
+            const {
+              id,
+              owner,
+              tags,
+              name,
+              database,
+              service,
+              serviceType,
+              databaseSchema,
+            } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -162,8 +174,14 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getPartialNameFromFQN(database.name, ['database']),
+                name: getPartialNameFromTableFQN(database.name, ['database']),
                 url: getDatabaseDetailsPath(database.name),
+              },
+              {
+                name: getPartialNameFromTableFQN(databaseSchema.name, [
+                  'schema',
+                ]),
+                url: getDatabaseSchemaDetailsPath(databaseSchema.name),
               },
               {
                 name: name,
@@ -364,14 +382,15 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            ['service', 'database', 'schema', 'table'],
             FQN_SEPARATOR_CHAR
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, database, name, service, serviceType } = res.data;
+            const { id, database, name, service, serviceType, databaseSchema } =
+              res.data;
             getTableVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -389,8 +408,16 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getPartialNameFromFQN(database.name, ['database']),
+                    name: getPartialNameFromTableFQN(database.name, [
+                      'database',
+                    ]),
                     url: getDatabaseDetailsPath(database.name),
+                  },
+                  {
+                    name: getPartialNameFromTableFQN(databaseSchema.name, [
+                      'schema',
+                    ]),
+                    url: getDatabaseSchemaDetailsPath(databaseSchema.name),
                   },
                   {
                     name: name,

@@ -39,7 +39,6 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
@@ -172,7 +171,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const getNodeLable = (node: EntityReference) => {
     return (
-      <>
+      <Fragment>
         {node.type === 'table' && !isEditMode ? (
           <button
             className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
@@ -192,15 +191,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(
-            node.displayName,
-            node.name,
-            FQN_SEPARATOR_CHAR,
-            false,
-            node.type
-          )}
+          {getDataLabel(node.displayName, node.name, false, node.type)}
         </p>
-      </>
+      </Fragment>
     );
   };
 
@@ -551,7 +544,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             body: `Error while fetching ${getDataLabel(
               expandNode.displayName,
               expandNode.name,
-              FQN_SEPARATOR_CHAR,
               true
             )} columns`,
           });

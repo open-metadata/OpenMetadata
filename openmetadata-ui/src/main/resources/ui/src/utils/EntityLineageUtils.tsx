@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
-import React, { MouseEvent as ReactMouseEvent } from 'react';
+import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import {
   ArrowHeadType,
   Edge,
@@ -42,14 +42,18 @@ import {
   nodeWidth,
   positionX,
   positionY,
-} from '../constants/constants';
-import { EntityLineageDirection } from '../enums/entity.enum';
+} from '../constants/Lineage.constants';
+import { EntityLineageDirection, EntityType } from '../enums/entity.enum';
 import {
   Edge as LineageEdge,
   EntityLineage,
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
-import { getPartialNameFromFQN } from './CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+  prepareLabel,
+} from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -57,29 +61,26 @@ export const getHeaderLabel = (
   v = '',
   fqn: string,
   type: string,
-  isMainNode: boolean,
-  separator = FQN_SEPARATOR_CHAR
+  isMainNode: boolean
 ) => {
-  const length = v.split(separator).length;
-
   return (
-    <>
+    <Fragment>
       {isMainNode ? (
         <span
           className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
-          {v.split(separator)[length - 1]}
+          {prepareLabel(type, v, false)}
         </span>
       ) : (
         <span
           className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
           <Link to={getEntityLink(type, fqn)}>
-            {v.split(separator)[length - 1]}
+            {prepareLabel(type, v, false)}
           </Link>
         </span>
       )}
-    </>
+    </Fragment>
   );
 };
 
@@ -421,34 +422,34 @@ export const getLineageData = (
 export const getDataLabel = (
   displayName?: string,
   name = '',
-  separator = FQN_SEPARATOR_CHAR,
   isTextOnly = false,
   type?: string
 ) => {
-  const databaseName = getPartialNameFromFQN(name, ['database']);
+  const databaseName = getPartialNameFromTableFQN(name, ['database']);
+  const schemaName = getPartialNameFromTableFQN(name, ['schema']);
+
   let label = '';
   if (displayName) {
     label = displayName;
   } else {
-    const length = name.split(separator).length;
-    label = name.split(separator)[length - 1];
+    label = prepareLabel(type as string, name);
   }
 
   if (isTextOnly) {
     return label;
+  } else {
+    return (
+      <span
+        className="tw-break-words description-text tw-self-center"
+        data-testid="lineage-entity">
+        {type === 'table'
+          ? databaseName && schemaName
+            ? `${databaseName}${FQN_SEPARATOR_CHAR}${schemaName}${FQN_SEPARATOR_CHAR}${label}`
+            : label
+          : label}
+      </span>
+    );
   }
-
-  return (
-    <span
-      className="tw-break-words description-text tw-self-center"
-      data-testid="lineage-entity">
-      {type === 'table'
-        ? databaseName
-          ? `${databaseName}.${label}`
-          : label
-        : label}
-    </span>
-  );
 };
 
 export const getNoLineageDataPlaceholder = () => {
@@ -520,19 +521,38 @@ export const getLayoutedElements = (
 };
 
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
+  let sourceEntity = '';
+  let targetEntity = '';
+
+  if (selectedEdge.source.type === EntityType.TABLE) {
+    sourceEntity = getPartialNameFromTableFQN(
+      selectedEdge.source.name as string,
+      ['table']
+    );
+  } else {
+    sourceEntity = getPartialNameFromFQN(selectedEdge.source.name as string, [
+      'database',
+    ]);
+  }
+
+  if (selectedEdge.target.type === EntityType.TABLE) {
+    targetEntity = getPartialNameFromTableFQN(
+      selectedEdge.target.name as string,
+      ['table']
+    );
+  } else {
+    targetEntity = getPartialNameFromFQN(selectedEdge.target.name as string, [
+      'database',
+    ]);
+  }
+
   return `Are you sure you want to remove the edge between "${
     selectedEdge.source.displayName
       ? selectedEdge.source.displayName
-      : getPartialNameFromFQN(
-          selectedEdge.source.name as string,
-          selectedEdge.source.type === 'table' ? ['table'] : ['database']
-        )
+      : sourceEntity
   } and ${
     selectedEdge.target.displayName
       ? selectedEdge.target.displayName
-      : getPartialNameFromFQN(
-          selectedEdge.target.name as string,
-          selectedEdge.target.type === 'table' ? ['table'] : ['database']
-        )
+      : targetEntity
   }"?`;
 };

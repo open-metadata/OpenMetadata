@@ -24,6 +24,7 @@ import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
+import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
@@ -69,6 +70,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DatabaseDetails}
         path={ROUTES.DATABASE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaPageComponent}
+        path={ROUTES.SCHEMA_DETAILS}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaPageComponent}
+        path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
       />
       <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
       <Route

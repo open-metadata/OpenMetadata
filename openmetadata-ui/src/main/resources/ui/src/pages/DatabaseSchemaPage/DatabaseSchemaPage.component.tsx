@@ -14,7 +14,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -33,9 +32,8 @@ import React, {
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemas,
-  patchDatabaseDetails,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseSchemaDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
   getAllFeeds,
@@ -47,7 +45,6 @@ import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/Act
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -60,26 +57,29 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
-  getExplorePathWithSearch,
   getServiceDetailsPath,
+  getTableDetailsPath,
   getTeamDetailsPath,
-  pagingObject,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { hasEditAccess, isEven } from '../../utils/CommonUtils';
 import {
-  databaseDetailsTabs,
-  getCurrentDatabaseDetailsTab,
-} from '../../utils/DatabaseDetailsUtils';
+  getPartialNameFromTableFQN,
+  hasEditAccess,
+  isEven,
+} from '../../utils/CommonUtils';
+import {
+  databaseSchemaDetailsTabs,
+  getCurrentDatabaseSchemaDetailsTab,
+} from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityFeedLink, getInfoElements } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
@@ -89,33 +89,28 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 
-const DatabaseDetails: FunctionComponent = () => {
-  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
+const DatabaseSchemaPage: FunctionComponent = () => {
+  const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
   const showToast = useToastContext();
-  const { databaseFQN, tab } = useParams() as Record<string, string>;
+  const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
   const [isLoading, setIsLoading] = useState(true);
-  const [database, setDatabase] = useState<Database>();
-  const [serviceType, setServiceType] = useState<string>();
-  const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
+  const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>();
+  const [tableData, setTableData] = useState<Array<Table>>([]);
 
-  const [databaseName, setDatabaseName] = useState<string>(
-    databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
+  const [databaseSchemaName, setDatabaseSchemaName] = useState<string>(
+    databaseSchemaFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
   );
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [databaseId, setDatabaseId] = useState('');
-  const [databaseSchemaPaging, setSchemaPaging] =
-    useState<Paging>(pagingObject);
-  const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
-    useState<number>(0);
+  const [databaseSchemaId, setDatabaseSchemaId] = useState('');
+  const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
-    getCurrentDatabaseDetailsTab(tab)
+    getCurrentDatabaseSchemaDetailsTab(tab)
   );
   const [error, setError] = useState('');
 
@@ -137,14 +132,14 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const tabs = [
     {
-      name: 'Schemas',
+      name: 'Tables',
       icon: {
-        alt: 'schemas',
-        name: 'schema-grey',
-        title: 'Schemas',
-        selectedName: 'schemas',
+        alt: 'tables',
+        name: 'table-grey',
+        title: 'Tables',
+        selectedName: 'table',
       },
-      count: databaseSchemaInstanceCount,
+      count: tableInstanceCount,
       isProtected: false,
       position: 1,
     },
@@ -177,14 +172,18 @@ const DatabaseDetails: FunctionComponent = () => {
     {
       key: 'Owner',
       value:
-        database?.owner?.type === 'team'
+        databaseSchema?.owner?.type === 'team'
           ? getTeamDetailsPath(
-              database?.owner?.displayName || database?.owner?.name || ''
+              databaseSchema?.owner?.displayName ||
+                databaseSchema?.owner?.name ||
+                ''
             )
-          : database?.owner?.displayName || database?.owner?.name || '',
+          : databaseSchema?.owner?.displayName ||
+            databaseSchema?.owner?.name ||
+            '',
       placeholderText:
-        database?.owner?.displayName || database?.owner?.name || '',
-      isLink: database?.owner?.type === 'team',
+        databaseSchema?.owner?.displayName || databaseSchema?.owner?.name || '',
+      isLink: databaseSchema?.owner?.type === 'team',
       openInNewTab: false,
     },
   ];
@@ -200,41 +199,6 @@ const DatabaseDetails: FunctionComponent = () => {
     showToast({
       variant: 'success',
       body: message,
-    });
-  };
-
-  const fetchDatabaseSchemas = (pagingObj?: string) => {
-    return new Promise<void>((resolve, reject) => {
-      getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
-        .then((res: AxiosResponse) => {
-          if (res.data.data) {
-            setSchemaData(res.data.data);
-            setSchemaPaging(res.data.paging);
-            setSchemaInstanceCount(res.data.paging.total);
-          } else {
-            setSchemaData([]);
-            setSchemaPaging(pagingObject);
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
-            err,
-            jsonData['api-error-messages']['fetch-database-schemas-error']
-          );
-
-          handleShowErrorToast(errMsg);
-          reject();
-        });
-    });
-  };
-
-  const fetchDatabaseSchemasAndDBTModels = () => {
-    setIsLoading(true);
-    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
-      setIsLoading(false);
     });
   };
 
@@ -254,7 +218,9 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getFeedCount(
+      getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
+    )
       .then((res: AxiosResponse) => {
         if (res.data) {
           setFeedCount(res.data.totalCount);
@@ -274,18 +240,29 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
-    getDatabaseDetailsByFQN(databaseFQN, ['owner'])
+    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
+      'owner',
+      'tables',
+      'usageSummary',
+    ])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { description, id, name, service, serviceType } = res.data;
-          setDatabase(res.data);
-          setDescription(description);
-          setDatabaseId(id);
-          setDatabaseName(name);
-
-          setServiceType(serviceType);
-
-          setSlashedDatabaseName([
+          const {
+            description: schemaDescription,
+            id,
+            name,
+            service,
+            serviceType,
+            tables,
+            database,
+          } = res.data;
+          setDatabaseSchema(res.data);
+          setDescription(schemaDescription);
+          setDatabaseSchemaId(id);
+          setDatabaseSchemaName(name);
+          setTableData(tables);
+          setTableInstanceCount(tables?.length || 0);
+          setSlashedTableName([
             {
               name: service.name,
               url: service.name
@@ -297,12 +274,15 @@ const DatabaseDetails: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
+              name: getPartialNameFromTableFQN(database.name, ['database']),
+              url: getDatabaseDetailsPath(database.name),
+            },
+            {
               name: name,
               url: '',
               activeTitle: true,
             },
           ]);
-          fetchDatabaseSchemasAndDBTModels();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -310,7 +290,7 @@ const DatabaseDetails: FunctionComponent = () => {
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
           err,
-          jsonData['api-error-messages']['fetch-database-details-error']
+          jsonData['api-error-messages']['fetch-databaseSchema-details-error']
         );
         setError(errMsg);
         handleShowErrorToast(errMsg);
@@ -324,30 +304,30 @@ const DatabaseDetails: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const saveUpdatedDatabaseData = (
-    updatedData: Database
+  const saveUpdatedDatabaseSchemaData = (
+    updatedData: DatabaseSchema
   ): Promise<AxiosResponse> => {
     let jsonPatch;
-    if (database) {
-      jsonPatch = compare(database, updatedData);
+    if (databaseSchema) {
+      jsonPatch = compare(databaseSchema, updatedData);
     }
 
-    return patchDatabaseDetails(
-      databaseId,
+    return patchDatabaseSchemaDetails(
+      databaseSchemaId,
       jsonPatch
     ) as unknown as Promise<AxiosResponse>;
   };
 
   const onDescriptionUpdate = (updatedHTML: string) => {
-    if (description !== updatedHTML && database) {
-      const updatedDatabaseDetails = {
-        ...database,
+    if (description !== updatedHTML && databaseSchema) {
+      const updatedDatabaseSchemaDetails = {
+        ...databaseSchema,
         description: updatedHTML,
       };
-      saveUpdatedDatabaseData(updatedDatabaseDetails)
+      saveUpdatedDatabaseSchemaData(updatedDatabaseSchemaDetails)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setDatabase(updatedDatabaseDetails);
+            setDatabaseSchema(updatedDatabaseSchemaDetails);
             setDescription(updatedHTML);
             getEntityFeedCount();
           } else {
@@ -357,7 +337,7 @@ const DatabaseDetails: FunctionComponent = () => {
         .catch((err: AxiosError) => {
           const errMsg = getErrorText(
             err,
-            jsonData['api-error-messages']['update-database-error']
+            jsonData['api-error-messages']['update-databaseSchema-error']
           );
           handleShowErrorToast(errMsg);
         })
@@ -373,38 +353,28 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
-    if (databaseDetailsTabs[currentTabIndex].path !== tab) {
+    if (databaseSchemaDetailsTabs[currentTabIndex].path !== tab) {
       setActiveTab(tabValue);
       history.push({
-        pathname: getDatabaseDetailsPath(
-          databaseFQN,
-          databaseDetailsTabs[currentTabIndex].path
+        pathname: getDatabaseSchemaDetailsPath(
+          databaseSchemaFQN,
+          databaseSchemaDetailsTabs[currentTabIndex].path
         ),
       });
     }
   };
 
-  const databaseSchemaPagingHandler = (cursorType: string) => {
-    const pagingString = `&${cursorType}=${
-      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-    }`;
-    setIsLoading(true);
-    fetchDatabaseSchemas(pagingString).finally(() => {
-      setIsLoading(false);
-    });
-  };
-
-  const handleUpdateOwner = (owner: Database['owner']) => {
+  const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
     const updatedData = {
-      ...database,
+      ...databaseSchema,
       owner,
     };
 
     return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
+      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setDatabase(res.data);
+            setDatabaseSchema(res.data);
             reject();
           } else {
             reject();
@@ -415,7 +385,7 @@ const DatabaseDetails: FunctionComponent = () => {
         .catch((err: AxiosError) => {
           const errMsg = getErrorText(
             err,
-            jsonData['api-error-messages']['update-database-error']
+            jsonData['api-error-messages']['update-databaseSchema-error']
           );
           handleShowErrorToast(errMsg);
           reject();
@@ -425,7 +395,10 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN),
+      after
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -456,10 +429,10 @@ const DatabaseDetails: FunctionComponent = () => {
     postFeedById(id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { id, posts } = res.data;
+          const { id: threadId, posts } = res.data;
           setEntityThread((pre) => {
             return pre.map((thread) => {
-              if (thread.id === id) {
+              if (thread.id === threadId) {
                 return { ...res.data, posts: posts.slice(-3) };
               } else {
                 return thread;
@@ -529,9 +502,9 @@ const DatabaseDetails: FunctionComponent = () => {
               ];
             }
           })
-          .catch((error) => {
+          .catch((err) => {
             const errMsg = getErrorText(
-              error,
+              err,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
 
@@ -542,9 +515,9 @@ const DatabaseDetails: FunctionComponent = () => {
           jsonData['api-success-messages']['delete-message']
         );
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         const message = getErrorText(
-          error,
+          err,
           jsonData['api-error-messages']['delete-message-error']
         );
         handleShowErrorToast(message);
@@ -565,29 +538,58 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  useEffect(() => {
-    getEntityFeedCount();
-  }, []);
-
-  useEffect(() => {
-    if (!isMounting.current && appState.inPageSearchText) {
-      history.push(
-        `${getExplorePathWithSearch(
-          appState.inPageSearchText
-        )}?database=${databaseName}&service_type=${serviceType}`
-      );
-    }
-  }, [appState.inPageSearchText]);
-
-  useEffect(() => {
-    const currentTab = getCurrentDatabaseDetailsTab(tab);
-    const currentTabIndex = currentTab - 1;
-
-    if (tabs[currentTabIndex].isProtected) {
-      activeTabHandler(1);
-    }
-    getDetailsByFQN();
-  }, []);
+  const getSchemaTableList = () => {
+    return (
+      <Fragment>
+        <table
+          className="tw-bg-white tw-w-full tw-mb-4"
+          data-testid="databaseSchema-tables">
+          <thead data-testid="table-header">
+            <tr className="tableHead-row">
+              <th className="tableHead-cell" data-testid="header-name">
+                Table Name
+              </th>
+              <th className="tableHead-cell" data-testid="header-description">
+                Description
+              </th>
+            </tr>
+          </thead>
+          <tbody className="tableBody">
+            {tableData.length > 0 ? (
+              tableData.map((table, index) => (
+                <tr
+                  className={classNames(
+                    'tableBody-row',
+                    !isEven(index + 1) ? 'odd-row' : null
+                  )}
+                  data-testid="tabale-column"
+                  key={index}>
+                  <td className="tableBody-cell">
+                    <Link to={getTableDetailsPath(table.name)}>
+                      {getPartialNameFromTableFQN(table.name, ['table'])}
+                    </Link>
+                  </td>
+                  <td className="tableBody-cell">
+                    {table.description?.trim() ? (
+                      <RichTextEditorPreviewer markdown={table.description} />
+                    ) : (
+                      <span className="tw-no-description">No description</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr className="tableBody-row">
+                <td className="tableBody-cell tw-text-center" colSpan={5}>
+                  No records found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Fragment>
+    );
+  };
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
@@ -601,6 +603,20 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
   }, [isInView, paging, isentityThreadLoading]);
 
+  useEffect(() => {
+    getEntityFeedCount();
+  }, []);
+
+  useEffect(() => {
+    const currentTab = getCurrentDatabaseSchemaDetailsTab(tab);
+    const currentTabIndex = currentTab - 1;
+
+    if (tabs[currentTabIndex].isProtected) {
+      activeTabHandler(1);
+    }
+    getDetailsByFQN();
+  }, []);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -608,7 +624,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   return (
-    <>
+    <Fragment>
       {isLoading ? (
         <Loader />
       ) : error ? (
@@ -620,7 +636,7 @@ const DatabaseDetails: FunctionComponent = () => {
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
-            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+            <TitleBreadcrumb titleLinks={slashedTableName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
@@ -643,9 +659,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   'description',
                   entityFieldThreadCount
                 )}
-                entityFqn={databaseFQN}
-                entityName={databaseName}
-                entityType={EntityType.DATABASE}
+                entityFqn={databaseSchemaFQN}
+                entityName={databaseSchemaName}
+                entityType={EntityType.DATABASE_SCHEMA}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -662,108 +678,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 tabs={tabs}
               />
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                {activeTab === 1 && (
-                  <Fragment>
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-databaseSchemas">
-                      <thead data-testid="table-header">
-                        <tr className="tableHead-row">
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-name">
-                            Schema Name
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-description">
-                            Description
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-owner">
-                            Owner
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-usage">
-                            Usage
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {schemaData.length > 0 ? (
-                          schemaData.map((schema, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="tabale-column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={
-                                    schema.fullyQualifiedName
-                                      ? getDatabaseSchemaDetailsPath(
-                                          schema.fullyQualifiedName
-                                        )
-                                      : ''
-                                  }>
-                                  {schema.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {schema.description?.trim() ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={schema.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description
-                                  </span>
-                                )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(schema?.owner?.id)
-                                    ?.displayName ||
-                                    getOwnerFromId(schema?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getUsagePercentile(
-                                    schema.usageSummary?.weeklyStats
-                                      ?.percentileRank || 0
-                                  )}
-                                </p>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={5}>
-                              No records found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                    {Boolean(
-                      !isNil(databaseSchemaPaging.after) ||
-                        !isNil(databaseSchemaPaging.before)
-                    ) && (
-                      <NextPrevious
-                        paging={databaseSchemaPaging}
-                        pagingHandler={databaseSchemaPagingHandler}
-                      />
-                    )}
-                  </Fragment>
-                )}
+                {activeTab === 1 && <Fragment>{getSchemaTableList()}</Fragment>}
                 {activeTab === 2 && (
                   <div
                     className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
@@ -774,7 +689,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       withSidePanel
                       className=""
                       deletePostHandler={deletePostHandler}
-                      entityName={databaseName}
+                      entityName={databaseSchemaName}
                       feedList={entityThread}
                       postFeedHandler={postFeedHandler}
                     />
@@ -784,10 +699,10 @@ const DatabaseDetails: FunctionComponent = () => {
                 {activeTab === 3 && (
                   <ManageTabComponent
                     hideTier
-                    currentUser={database?.owner?.id}
+                    currentUser={databaseSchema?.owner?.id}
                     hasEditAccess={hasEditAccess(
-                      database?.owner?.type || '',
-                      database?.owner?.id || ''
+                      databaseSchema?.owner?.type || '',
+                      databaseSchema?.owner?.id || ''
                     )}
                     onSave={handleUpdateOwner}
                   />
@@ -814,12 +729,12 @@ const DatabaseDetails: FunctionComponent = () => {
               <RequestDescriptionModal
                 createThread={createThread}
                 defaultValue={getDefaultValue(
-                  database?.owner as EntityReference
+                  databaseSchema?.owner as EntityReference
                 )}
                 header="Request description"
                 threadLink={getEntityFeedLink(
-                  EntityType.DATABASE,
-                  databaseFQN,
+                  EntityType.DATABASE_SCHEMA,
+                  databaseSchemaFQN,
                   selectedField
                 )}
                 onCancel={closeRequestModal}
@@ -828,8 +743,8 @@ const DatabaseDetails: FunctionComponent = () => {
           </div>
         </PageContainer>
       )}
-    </>
+    </Fragment>
   );
 };
 
-export default observer(DatabaseDetails);
+export default observer(DatabaseSchemaPage);

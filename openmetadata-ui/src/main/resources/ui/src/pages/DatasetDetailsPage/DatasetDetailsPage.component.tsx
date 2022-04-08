@@ -55,6 +55,7 @@ import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
@@ -90,7 +91,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFields,
-  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -155,9 +156,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     state: false,
   });
   const [tableFQN, setTableFQN] = useState<string>(
-    getPartialNameFromFQN(
+    getPartialNameFromTableFQN(
       datasetFQN,
-      ['service', 'database', 'table'],
+      ['service', 'database', 'schema', 'table'],
       FQN_SEPARATOR_CHAR
     )
   );
@@ -307,6 +308,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             version,
             service,
             serviceType,
+            databaseSchema,
           } = res.data;
           setTableDetails(res.data);
           setTableId(id);
@@ -328,8 +330,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getPartialNameFromFQN(database.name, ['database']),
+              name: getPartialNameFromTableFQN(database.name, ['database']),
               url: getDatabaseDetailsPath(database.name),
+            },
+            {
+              name: getPartialNameFromTableFQN(databaseSchema.name, ['schema']),
+              url: getDatabaseSchemaDetailsPath(databaseSchema.name),
             },
             {
               name: name,
@@ -967,9 +973,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     setTableFQN(
-      getPartialNameFromFQN(
+      getPartialNameFromTableFQN(
         datasetFQN,
-        ['service', 'database', 'table'],
+        ['service', 'database', 'schema', 'table'],
         FQN_SEPARATOR_CHAR
       )
     );

@@ -33,7 +33,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
@@ -301,7 +301,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(
+            name: getPartialNameFromTableFQN(
               tableFQN,
               ['database', 'table'],
               FQN_SEPARATOR_CHAR
@@ -600,7 +600,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
                 <div className="tw-col-span-full">
                   <SchemaTab
-                    columnName={getPartialNameFromFQN(
+                    columnName={getPartialNameFromTableFQN(
                       datasetFQN,
                       ['column'],
                       FQN_SEPARATOR_CHAR

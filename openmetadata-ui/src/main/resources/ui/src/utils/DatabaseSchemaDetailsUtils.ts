@@ -1,9 +1,9 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
-export const databaseDetailsTabs = [
+export const databaseSchemaDetailsTabs = [
   {
-    name: 'Schemas',
-    path: 'schemas',
+    name: 'Tables',
+    path: 'tables',
   },
   {
     name: 'Activity Feed',
@@ -16,7 +16,7 @@ export const databaseDetailsTabs = [
   },
 ];
 
-export const getCurrentDatabaseDetailsTab = (tab: string) => {
+export const getCurrentDatabaseSchemaDetailsTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
     case 'activity_feed':
@@ -28,7 +28,7 @@ export const getCurrentDatabaseDetailsTab = (tab: string) => {
 
       break;
 
-    case 'schemas':
+    case 'tables':
     default:
       currentTab = 1;
 
