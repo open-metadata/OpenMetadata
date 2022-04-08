@@ -13,7 +13,6 @@
 OpenMetadata Airflow Lineage Backend security providers config
 """
 
-from collections import namedtuple
 
 from airflow.configuration import conf
 
@@ -24,26 +23,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     GoogleSSOConfig,
     OktaSSOConfig,
 )
+from metadata.utils.dispatch import enum_register
+
+provider_config_registry = enum_register()
 
 
-def register_provider_config():
+class InvalidAirflowProviderException(Exception):
     """
-    Helps us register custom functions to parse provider config
+    Raised when we cannot find the provider
+    in Airflow config
     """
-    registry = dict()
-
-    def add(provider: str):
-        def inner(fn):
-            registry[provider] = fn
-            return fn
-
-        return inner
-
-    Register = namedtuple("Register", ["add", "registry"])
-    return Register(add, registry)
-
-
-provider_config_registry = register_provider_config()
 
 
 @provider_config_registry.add(AuthProvider.google.value)
