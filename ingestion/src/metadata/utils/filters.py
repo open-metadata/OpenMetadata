@@ -104,7 +104,7 @@ def filter_by_table(
 
 
 def filter_by_chart(
-    chart_filter_pattern: Optional[FilterPatternModel], chart_name: str
+    chart_filter_pattern: Optional[FilterPattern], chart_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -119,7 +119,7 @@ def filter_by_chart(
 
 
 def filter_by_dashboard(
-    dashboard_filter_pattern: Optional[FilterPatternModel], dashboard_name: str
+    dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
