@@ -12,6 +12,8 @@
  */
 
 import parse from 'html-react-parser';
+import { isString } from 'lodash';
+import { AxiosError } from 'axios';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -92,4 +94,29 @@ export const bytesToSize = (bytes: number) => {
       return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
     }
   }
+};
+
+/**
+ * Checks the value and return error text
+ * @param value - The value to check
+ * @param fallbackText
+ * @returns Returns the error text
+ */
+export const getErrorText = (
+  value: AxiosError | string,
+  fallbackText: string
+): string => {
+  let errorText;
+  if (isString(value)) {
+    return value;
+  } else {
+    errorText = value.response?.data?.message;
+    if (!errorText) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorText = value.response?.data?.responseMessage;
+    }
+  }
+
+  // if error text is still empty, return the fallback text
+  return errorText || fallbackText;
 };
