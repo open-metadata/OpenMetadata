@@ -13,19 +13,17 @@
 OpenMetadata Airflow Lineage Backend security providers config
 """
 
-from collections import namedtuple
 
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
-from metadata.utils.dispatch import enum_register
 from metadata.generated.schema.metadataIngestion.workflow import (
     Auth0SSOConfig,
     AuthProvider,
     GoogleSSOConfig,
     OktaSSOConfig,
 )
-
+from metadata.utils.dispatch import enum_register
 
 provider_config_registry = enum_register()
 
