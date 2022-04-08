@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from airflow_provider_openmetadata.lineage.config.providers import (
+    InvalidAirflowProviderException,
     provider_config_registry,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -45,7 +46,13 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
     if auth_provider_type == AuthProvider.no_auth.value:
         security_config = None
     else:
-        load_security_config_fn = provider_config_registry.registry(auth_provider_type)
+        load_security_config_fn = provider_config_registry.registry.get(
+            auth_provider_type
+        )
+        if not load_security_config_fn:
+            raise InvalidAirflowProviderException(
+                f"Cannot find {auth_provider_type} in airflow providers registry."
+            )
         security_config = load_security_config_fn()
 
     return AirflowLineageConfig(

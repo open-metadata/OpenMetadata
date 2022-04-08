@@ -1,28 +1,30 @@
 {
   "source": {
     "type": "tableau",
-    "config": {
-      "personal_access_token_secret": "personal_access_token_secret",
-      "personal_access_token_name": "personal_access_token_name",
-      "username": "username",
-      "password": "password",
-      "service_name": "local_tableau",
-      "server": "server_address",
-      "site_name": "site_name",
-      "site_url": "site_url",
-      "api_version": "api version",
-      "env": "env"
-    }
+    "serviceName": "local_tableau",
+    "serviceConnection": {
+      "config": {
+        "type": "Tableau",
+        "username": "username",
+        "password": "password",
+        "env": "tableau_prod",
+        "hostPort": "localhost",
+        "siteName": "site_name",
+        "apiVersion": "api_version",
+        "personalAccessTokenName": "personal_access_token_name",
+        "personalAccessTokenSecret": "personal_access_token_secret"
+      }
+    },
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

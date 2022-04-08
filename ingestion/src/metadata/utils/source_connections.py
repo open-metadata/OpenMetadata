@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -84,6 +87,7 @@ def get_connection_url(connection):
 
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
+@get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
@@ -104,7 +108,9 @@ def _(connection: SQLiteConnection):
     SQLite is only used for testing with the in-memory db
     """
 
-    return f"{connection.scheme.value}:///:memory:"
+    database_mode = connection.databaseMode if connection.databaseMode else ":memory:"
+
+    return f"{connection.scheme.value}:///{database_mode}"
 
 
 @get_connection_url.register
