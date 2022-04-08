@@ -49,10 +49,6 @@ const RecentSearchedTerms: FunctionComponent = () => {
               data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">
-                {/* <FontAwesomeIcon
-                  className="tw-text-grey-muted tw-pr-2 tw-self-center"
-                  icon="search"
-                /> */}
                 <SVGIcons
                   alt="search"
                   className="tw-h-4 tw-w-4 tw-mr-2 tw-self-center"

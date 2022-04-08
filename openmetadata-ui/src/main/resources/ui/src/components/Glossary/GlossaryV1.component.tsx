@@ -268,14 +268,14 @@ Props) => {
                 <DropdownIcon
                   style={{
                     transform: 'rotate(180deg)',
-                    marginTop: '1px',
+                    marginTop: '2px',
                     color: '#fff',
                   }}
                 />
               ) : (
                 <DropdownIcon
                   style={{
-                    marginTop: '1px',
+                    marginTop: '2px',
                     color: '#fff',
                   }}
                 />
