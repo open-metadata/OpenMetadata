@@ -66,7 +66,13 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     getAllFeeds(threadLink, after)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
-        setThreads((prevData) => [...prevData, ...data]);
+        setThreads((prevData) => {
+          if (after) {
+            return [...prevData, ...data];
+          } else {
+            return [...data];
+          }
+        });
         setPaging(pagingObj);
       })
       .catch((err: AxiosError) => {
