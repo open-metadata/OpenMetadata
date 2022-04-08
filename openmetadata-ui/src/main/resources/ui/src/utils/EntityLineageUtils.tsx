@@ -36,12 +36,13 @@ import {
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   nodeHeight,
   nodeWidth,
   positionX,
   positionY,
-} from '../constants/constants';
+} from '../constants/Lineage.constants';
 import { EntityLineageDirection, EntityType } from '../enums/entity.enum';
 import {
   Edge as LineageEdge,
@@ -68,13 +69,15 @@ export const getHeaderLabel = (
         <span
           className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
-          {prepareLabel(type, v)}
+          {prepareLabel(type, v, false)}
         </span>
       ) : (
         <span
           className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>{prepareLabel(type, v)}</Link>
+          <Link to={getEntityLink(type, fqn)}>
+            {prepareLabel(type, v, false)}
+          </Link>
         </span>
       )}
     </Fragment>
@@ -423,6 +426,7 @@ export const getDataLabel = (
   type?: string
 ) => {
   const databaseName = getPartialNameFromTableFQN(name, ['database']);
+  const schemaName = getPartialNameFromTableFQN(name, ['schema']);
 
   let label = '';
   if (displayName) {
@@ -439,8 +443,8 @@ export const getDataLabel = (
         className="tw-break-words description-text tw-self-center"
         data-testid="lineage-entity">
         {type === 'table'
-          ? databaseName
-            ? `${databaseName}.${label}`
+          ? databaseName && schemaName
+            ? `${databaseName}${FQN_SEPARATOR_CHAR}${schemaName}${FQN_SEPARATOR_CHAR}${label}`
             : label
           : label}
       </span>

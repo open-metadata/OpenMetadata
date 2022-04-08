@@ -15,6 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
@@ -146,10 +147,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     name: string,
     index: string
   ) => {
-    const database =
-      index === SearchIndex.TABLE
-        ? getPartialNameFromTableFQN(fqdn, ['database'])
-        : undefined;
+    let database;
+    let schema;
+    if (index === SearchIndex.TABLE) {
+      database = getPartialNameFromTableFQN(fqdn, ['database']);
+      schema = getPartialNameFromTableFQN(fqdn, ['schema']);
+    }
 
     return (
       <div
@@ -166,7 +169,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           id={fqdn.replace(/\./g, '')}
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>
-          {database ? `${database}.${name}` : name}
+          {database && schema
+            ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+            : name}
         </Link>
       </div>
     );

@@ -537,9 +537,10 @@ export const getNonDeletedTeams = (teams: EntityReference[]) => {
  * prepare label for given entity type and fqn
  * @param type - entity type
  * @param fqn - entity fqn
+ * @param withQuotes - boolean value
  * @returns - label for entity
  */
-export const prepareLabel = (type: string, fqn: string) => {
+export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
   let label = '';
   if (type === EntityType.TABLE) {
     label = getPartialNameFromTableFQN(fqn, ['table']);
@@ -547,5 +548,9 @@ export const prepareLabel = (type: string, fqn: string) => {
     label = getPartialNameFromFQN(fqn, ['database']);
   }
 
-  return label.replace(/(^"|"$)/g, '');
+  if (withQuotes) {
+    return label;
+  } else {
+    return label.replace(/(^"|"$)/g, '');
+  }
 };
