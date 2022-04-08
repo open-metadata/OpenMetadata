@@ -108,7 +108,9 @@ def _(connection: SQLiteConnection):
     SQLite is only used for testing with the in-memory db
     """
 
-    return f"{connection.scheme.value}:///:memory:"
+    database_mode = connection.databaseMode if connection.databaseMode else ":memory:"
+
+    return f"{connection.scheme.value}:///{database_mode}"
 
 
 @get_connection_url.register

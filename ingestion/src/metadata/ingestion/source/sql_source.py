@@ -233,8 +233,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 
-    def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
+    def register_record(self, table_schema_and_db: OMetaDatabaseAndTable) -> None:
+        """
+        Mark the record as scanned and update the database_source_state
+        """
+        fqn = self.get_table_fqn(
+            self.config.serviceName,
+            str(table_schema_and_db.database.name.__root__),
+            str(table_schema_and_db.database_schema.name.__root__),
+            str(table_schema_and_db.table.name.__root__),
+        )
+
+        self.database_source_state.add(fqn)
+        self.status.scanned(fqn)
+
+    # TODO centralize me
+    def get_table_fqn(self, service_name, db_name, schema_name, table_name) -> str:
+        return ".".join((service_name, db_name, schema_name, table_name))
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -287,8 +302,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = self.get_table_fqn(self.config.serviceName, schema, table_name)
-                self.database_source_state.add(fqn)
+
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
@@ -326,8 +340,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+
+                self.register_record(table_schema_and_db)
+
                 yield table_schema_and_db
-                self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
@@ -404,6 +420,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+
+                self.register_record(table_schema_and_db)
+
                 yield table_schema_and_db
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
