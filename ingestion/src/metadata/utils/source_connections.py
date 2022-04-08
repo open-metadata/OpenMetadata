@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveSQLConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -192,4 +195,9 @@ def _(connection: SnowflakeConnection):
         )
         url = f"{url}?{params}"
 
+@get_connection_url.register
+def _(connection: HiveSQLConnection):
+    url = get_connection_url_common(connection)
+    if connection.authOptions:
+        return f"{url};{connection.authOptions}"
     return url
