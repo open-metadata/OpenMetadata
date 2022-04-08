@@ -31,17 +31,20 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
 )
 
 
@@ -69,7 +72,6 @@ def get_connection_url_common(connection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-
     return url
 
 
@@ -83,6 +85,7 @@ def get_connection_url(connection):
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
+@get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
 def _(connection):
     return get_connection_url_common(connection)
