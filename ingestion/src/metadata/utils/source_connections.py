@@ -40,11 +40,11 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
 )
 
 
