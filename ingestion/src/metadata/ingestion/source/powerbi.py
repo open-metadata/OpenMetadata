@@ -59,7 +59,6 @@ class PowerbiSource(Source[Entity]):
         metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
-        print(config)
         self.config = config
         self.source_config = self.config.sourceConfig.config
         self.service_connection_config = config.serviceConnection.__root__.config
