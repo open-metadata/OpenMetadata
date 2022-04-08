@@ -37,7 +37,8 @@ const AppRouter = () => {
     <Loader />
   ) : (
     <>
-      {authConfig?.provider === AuthTypes.GOOGLE ? (
+      {authConfig?.provider === AuthTypes.GOOGLE ||
+      authConfig?.provider === AuthTypes.CUSTOM_OIDC ? (
         <AuthenticatedAppRouter />
       ) : (
         <>

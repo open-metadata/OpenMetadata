@@ -17,4 +17,5 @@ export enum AuthTypes {
   OKTA = 'okta',
   AUTH0 = 'auth0',
   AZURE = 'azure',
+  CUSTOM_OIDC = 'custom-oidc',
 }

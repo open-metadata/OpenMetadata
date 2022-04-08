@@ -14,6 +14,8 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from requests import Session
+
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -26,8 +28,14 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
+    TrinoConnection,
 )
 
 
@@ -65,6 +73,7 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
 def _(connection):
@@ -87,8 +96,50 @@ def _(connection: SQLiteConnection):
     return f"{connection.scheme.value}:///:memory:"
 
 
-def get_connection_url(connection: DatabricksConnection):
+@get_connection_url.register
+def _(connection: TrinoConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    url += f"/{connection.catalog}"
+    if connection.params is not None:
+        params = "&".join(
+            f"{key}={quote_plus(value)}"
+            for (key, value) in connection.params.items()
+            if value
+        )
+        url = f"{url}?{params}"
+    return url
+
+
+@get_connection_url.register
+def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
     return url
+
+
+@singledispatch
+def get_connection_args(connection):
+    if connection.connectionArguments:
+        return connection.connectionArguments
+    else:
+        return {}
+
+
+@get_connection_args.register
+def _(connection: TrinoConnection):
+    if connection.proxies:
+        session = Session()
+        session.proxies = connection.proxies
+        if connection.connectionArguments:
+            return {**connection.connectionArguments, "http_session": session}
+        else:
+            return {"http_session": session}
+    else:
+        return connection.connectionArguments
