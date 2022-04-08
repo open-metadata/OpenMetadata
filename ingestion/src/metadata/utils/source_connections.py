@@ -31,11 +31,20 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
 )
 
 
@@ -44,11 +53,12 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        if connection.password:
+            url += (
+                f":{quote_plus(connection.password.get_secret_value())}"
+                if connection
+                else ""
+            )
         url += "@"
 
     url += connection.hostPort
@@ -62,7 +72,6 @@ def get_connection_url_common(connection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-
     return url
 
 
@@ -76,6 +85,8 @@ def get_connection_url(connection):
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(ClickhouseConnection)
+@get_connection_url.register(SingleStoreConnection)
+@get_connection_url.register(VerticaConnection)
 def _(connection):
     return get_connection_url_common(connection)
 
@@ -143,3 +154,36 @@ def _(connection: TrinoConnection):
             return {"http_session": session}
     else:
         return connection.connectionArguments
+
+
+@get_connection_args.register
+def _(connection: SnowflakeConnection):
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
+        url += "@"
+
+    url += connection.account
+    url += f"/{connection.database}" if connection.database else ""
+    url += "?warehouse=" + connection.warehouse
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+
+    return url

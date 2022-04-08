@@ -131,9 +131,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       {
         key: 'Owner',
         value:
-          !isUndefined(ownerDiff.added) ||
-          !isUndefined(ownerDiff.deleted) ||
-          !isUndefined(ownerDiff.updated)
+          !isUndefined(ownerDiff?.added) ||
+          !isUndefined(ownerDiff?.deleted) ||
+          !isUndefined(ownerDiff?.updated)
             ? getDiffValue(
                 oldOwner?.displayName || oldOwner?.name || '',
                 newOwner?.displayName || newOwner?.name || ''
@@ -215,11 +215,14 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       <div
         className={classNames(
           'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}>
+        )}
+        data-testid="dashboard-version-container">
         {isVersionLoading ? (
           <Loader />
         ) : (
-          <div className={classNames('version-data')}>
+          <div
+            className={classNames('version-data')}
+            data-testid="version-data">
             <EntityPageInfo
               isVersionSelected
               deleted={deleted}
