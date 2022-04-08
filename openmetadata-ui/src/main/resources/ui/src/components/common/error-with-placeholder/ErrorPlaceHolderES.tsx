@@ -15,7 +15,7 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
-import { useAuthContext } from '../../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 
 type Props = {
   type: 'error' | 'noData';

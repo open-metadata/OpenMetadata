@@ -23,17 +23,17 @@ import React, {
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import AppState from '../AppState';
+import AppState from '../../AppState';
+import Appbar from '../../components/app-bar/Appbar';
+import Loader from '../../components/Loader/Loader';
+import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import SigninPage from '../../pages/login';
+import PageNotFound from '../../pages/page-not-found';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../auth-provider/AuthProvider.interface';
-import Appbar from '../components/app-bar/Appbar';
-import Loader from '../components/Loader/Loader';
-import { oidcTokenKey, ROUTES } from '../constants/constants';
-import SigninPage from '../pages/login';
-import PageNotFound from '../pages/page-not-found';
 
 interface Props {
   childComponentType: ComponentType;

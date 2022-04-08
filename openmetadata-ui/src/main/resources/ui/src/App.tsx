@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from './auth-provider/AuthProvider';
-import { ToastContextProvider } from './contexts/ToastContext';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
-  faTimes,
   faCheck,
-  faSearch,
-  faPlus,
-  faCheckSquare,
   faCheckCircle,
+  faCheckSquare,
+  faPlus,
+  faSearch,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+import React, { FunctionComponent } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { AuthProvider } from './authentication/auth-provider/AuthProvider';
+import { ToastContextProvider } from './contexts/ToastContext';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {

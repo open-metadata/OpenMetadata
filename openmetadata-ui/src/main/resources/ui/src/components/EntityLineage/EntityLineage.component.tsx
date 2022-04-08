@@ -37,7 +37,7 @@ import ReactFlow, {
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Column } from '../../generated/entity/data/table';

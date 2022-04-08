@@ -18,10 +18,10 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
+import { oidcTokenKey } from '../../constants/constants';
+import { AuthTypes } from '../../enums/signin.enum';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
-import { oidcTokenKey } from '../constants/constants';
-import { AuthTypes } from '../enums/signin.enum';
 
 interface Props {
   children: ReactNode;

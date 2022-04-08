@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import { useAuthContext } from '../auth-provider/AuthProvider';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';

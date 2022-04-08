@@ -14,7 +14,7 @@
 import { IDToken, OktaAuth } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import React, { FunctionComponent, ReactNode } from 'react';
-import { oidcTokenKey } from '../constants/constants';
+import { oidcTokenKey } from '../../constants/constants';
 import { useAuthContext } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 

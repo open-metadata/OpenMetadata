@@ -18,7 +18,7 @@ import { isUndefined, toLower } from 'lodash';
 import { EntityTags, FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,

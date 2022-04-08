@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { oidcTokenKey } from '../constants/constants';
+import { oidcTokenKey } from '../../constants/constants';
 
 export const refreshTokenSetup = (res) => {
   // Timing to renew access token
