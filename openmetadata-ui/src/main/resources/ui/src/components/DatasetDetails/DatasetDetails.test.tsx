@@ -45,6 +45,10 @@ jest.mock('../../auth-provider/AuthProvider', () => {
   };
 });
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 const mockUserTeam = [
   {
     description: 'description',
