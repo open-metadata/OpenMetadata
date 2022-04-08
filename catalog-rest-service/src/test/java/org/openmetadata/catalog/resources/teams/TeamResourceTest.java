@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.teams.Role;
@@ -340,6 +341,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public EntityInterface<Team> validateGetWithDifferentFields(Team expectedTeam, boolean byName)
       throws HttpResponseException {
+    if (expectedTeam.getUsers() == null) {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
+      userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
     String fields = "";
     Team getTeam =

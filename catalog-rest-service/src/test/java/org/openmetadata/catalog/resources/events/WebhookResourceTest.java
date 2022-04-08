@@ -258,7 +258,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   @Override
   public EntityInterface<Webhook> validateGetWithDifferentFields(Webhook entity, boolean byName)
       throws HttpResponseException {
-    return null; // Field query param is not supported in GET operations
+    return getEntityInterface(entity); // Nothing to validate
   }
 
   @Override
