@@ -248,7 +248,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       .then((res: AxiosResponse) => {
         if (res.data) {
           const {
-            description,
+            description: schemaDescription,
             id,
             name,
             service,
@@ -257,7 +257,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             database,
           } = res.data;
           setDatabaseSchema(res.data);
-          setDescription(description);
+          setDescription(schemaDescription);
           setDatabaseSchemaId(id);
           setDatabaseSchemaName(name);
           setTableData(tables);
@@ -429,10 +429,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     postFeedById(id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { id, posts } = res.data;
+          const { id: threadId, posts } = res.data;
           setEntityThread((pre) => {
             return pre.map((thread) => {
-              if (thread.id === id) {
+              if (thread.id === threadId) {
                 return { ...res.data, posts: posts.slice(-3) };
               } else {
                 return thread;
@@ -502,9 +502,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               ];
             }
           })
-          .catch((error) => {
+          .catch((err) => {
             const errMsg = getErrorText(
-              error,
+              err,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
 
@@ -515,9 +515,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           jsonData['api-success-messages']['delete-message']
         );
       })
-      .catch((error: AxiosError) => {
+      .catch((err: AxiosError) => {
         const message = getErrorText(
-          error,
+          err,
           jsonData['api-error-messages']['delete-message-error']
         );
         handleShowErrorToast(message);
