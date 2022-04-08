@@ -19,7 +19,7 @@
       "$ref": "#/definitions/tableauType",
       "default": "Tableau"
     },
-    "server": {
+    "hostPort": {
       "description": "Tableau Server",
       "type": "string"
     },
@@ -40,17 +40,16 @@
       "description": "Tableau Site Name",
       "type": "string"
     },
-    "siteURL": {
-      "description": "Tableau Site URL",
-      "type": "string",
-      "format": "uri"
-    },
     "personalAccessTokenName": {
       "description": "Personal Access Token Name",
       "type": "string"
     },
     "personalAccessTokenSecret": {
       "description": "Personal Access Token Secret",
+      "type": "string"
+    },
+    "env": {
+      "description": "Tableau Environment Name",
       "type": "string"
     },
     "supportedPipelineTypes": {
