@@ -15,6 +15,7 @@ public class DatabaseServicePage {
   By editIngestion = By.cssSelector("[data-testid='edit']");
   By deleteIngestion = By.cssSelector("[data-testid='delete']");
   By selectInterval = By.xpath("//select[@id='ingestionType']");
+  By deploy = By.cssSelector("[data-testid='deploy-button']");
 
   public By ingestionInterval(String interval) {
     return By.xpath("//select[@id='ingestionType']/option[@value='" + interval + "']");

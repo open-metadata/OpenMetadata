@@ -20,6 +20,13 @@ public class UserPage {
   By userListSearchResult =
       By.xpath("//div[@data-testid='user-card-container']/div/div[@data-testid='user-card-container']");
   By closeCheckBoxDropDown = By.cssSelector("[data-testid='close-dropdown']");
+  By addUser = By.cssSelector("[data-testid='add-teams']");
+  By emailTextBox = By.cssSelector("[data-testid='email']");
+  By createUserButton = By.cssSelector("[data-testid='save-user']");
+  By searchBar = By.cssSelector("[data-testid='searchbar']");
+  By deleteUser = By.cssSelector("[data-testid='remove']");
+  By deleteSave = By.cssSelector("[data-testid='save-button']");
+  By saveButton = By.cssSelector("[data-testid='saveButton'][type='submit']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");
@@ -31,5 +38,9 @@ public class UserPage {
 
   public WebElement closeCheckBoxDropDown() {
     return webDriver.findElement(closeCheckBoxDropDown);
+  }
+
+  public void selectDataSteward() {
+    webDriver.findElement(By.cssSelector("[data-testid='Data Steward']")).click();
   }
 }

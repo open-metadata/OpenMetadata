@@ -26,7 +26,7 @@ public class Common {
   By headerSettings = By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']");
   By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By headerSettingsServices = By.cssSelector("[data-testid='menu-item-Services']");
-  By addServiceButton = By.cssSelector("[data-testid='add-service-button']");
+  By addServiceButton = By.cssSelector("[data-testid='add-new-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
   By serviceName = By.cssSelector("[data-testid='name']");
   By serviceUsername = By.cssSelector("[name='username']");

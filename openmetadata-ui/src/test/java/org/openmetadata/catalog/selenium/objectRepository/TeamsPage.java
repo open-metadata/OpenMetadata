@@ -35,6 +35,9 @@ public class TeamsPage {
   By teamsCount = By.xpath("//div[@id='left-panel']//p");
   By teamsDropdownCount = By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']");
   By errorMessage = By.xpath("//strong[@data-testid='error-message']");
+  By deleteTeam = By.cssSelector("[data-testid='delete-team-button']");
+  By saveDeletedTeam = By.cssSelector("[data-testid='save-button']");
+  By selectUser = By.cssSelector("[data-testid='checkboxAddUser']");
 
   public List<WebElement> checkboxAddUser() {
     return webDriver.findElements(checkboxAddUser);
