@@ -412,6 +412,8 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
+    } else {
+      setEntityThread([]);
     }
   }, [tab]);
 

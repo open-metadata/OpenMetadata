@@ -395,7 +395,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 "
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4 "
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
@@ -404,7 +404,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   className=""
                   entityName={entityName}
                   feedList={entityThread}
-                  isLoading={isentityThreadLoading}
                   postFeedHandler={postFeedHandler}
                 />
                 <div />

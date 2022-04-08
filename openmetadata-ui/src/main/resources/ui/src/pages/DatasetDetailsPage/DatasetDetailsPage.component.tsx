@@ -423,6 +423,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     if (datasetTableTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentDatasetTab(tab));
     }
+    setEntityThread([]);
   }, [tab]);
 
   useEffect(() => {
