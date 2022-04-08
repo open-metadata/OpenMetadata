@@ -357,7 +357,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertNotNull(getTeam.getProfile());
     validateEntityReferences(getTeam.getOwns());
     validateEntityReferences(getTeam.getUsers(), true);
-    validateEntityReferences(getTeam.getDefaultRoles(), true);
+    validateEntityReferences(getTeam.getDefaultRoles());
     return getEntityInterface(getTeam);
   }
 
