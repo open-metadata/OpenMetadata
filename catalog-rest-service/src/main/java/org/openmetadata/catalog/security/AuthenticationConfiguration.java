@@ -19,6 +19,7 @@ import lombok.Setter;
 
 public class AuthenticationConfiguration {
   @Getter @Setter private String provider;
+  @Getter @Setter private String providerName;
 
   /** @deprecated Use publicKeyUrls */
   @Deprecated(since = "0.9.1", forRemoval = true)

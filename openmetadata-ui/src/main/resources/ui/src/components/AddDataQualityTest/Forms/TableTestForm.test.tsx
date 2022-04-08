@@ -5,7 +5,7 @@ import TableTestForm from './TableTestForm';
 
 const mockFunction = jest.fn();
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>MarkdownWithPreview component</div>);
 });
 

@@ -14,6 +14,7 @@
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
+  RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -22,8 +23,10 @@ import React, {
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getExplorePathWithSearch } from '../../constants/constants';
-import { filterList } from '../../constants/Mydata.constants';
+import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { Paging } from '../../generated/type/paging';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { getOwnerIds } from '../../utils/CommonUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -32,6 +35,7 @@ import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolde
 import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import EntityList from '../EntityList/EntityList';
+import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
@@ -53,9 +57,12 @@ const MyData: React.FC<MyDataProps> = ({
   isFeedLoading,
   postFeedHandler,
   deletePostHandler,
+  fetchFeedHandler,
+  paging,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const handleDropDown = (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
@@ -166,6 +173,29 @@ const MyData: React.FC<MyDataProps> = ({
     );
   }, [ownedData, followedData]);
 
+  const getLoader = () => {
+    return isFeedLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreFeed = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (
+      isElementInView &&
+      pagingObj?.after &&
+      !isLoading &&
+      isMounted.current
+    ) {
+      fetchFeedHandler(feedFilter, pagingObj.after);
+    }
+  };
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
+  }, [isInView, paging, isFeedLoading]);
+
   useEffect(() => {
     isMounted.current = true;
   }, []);
@@ -184,13 +214,18 @@ const MyData: React.FC<MyDataProps> = ({
                 className=""
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
-                isLoading={isFeedLoading}
                 postFeedHandler={postFeedHandler}
               />
             </Fragment>
           ) : (
             <Onboarding />
           )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}>
+            {getLoader()}
+          </div>
         </Fragment>
       )}
     </PageLayout>

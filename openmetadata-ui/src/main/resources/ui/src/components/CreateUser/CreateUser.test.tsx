@@ -33,7 +33,7 @@ jest.mock('../dropdown/DropDown', () => {
   return jest.fn().mockReturnValue(<p>Dropdown component</p>);
 });
 
-jest.mock('../common/editor/MarkdownWithPreview', () => {
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<p>MarkdownWithPreview component</p>);
 });
 

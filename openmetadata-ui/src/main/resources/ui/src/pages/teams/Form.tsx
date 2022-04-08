@@ -19,7 +19,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { errorMsg } from '../../utils/CommonUtils';
 
 type FormProp = {
@@ -114,7 +114,10 @@ const Form: React.FC<FormProp> = forwardRef(
             </div>
             <div>
               <label className="tw-form-label">Description</label>
-              <MarkdownWithPreview ref={markdownRef} value={data.description} />
+              <RichTextEditor
+                initialValue={data.description}
+                ref={markdownRef}
+              />
             </div>
           </div>
         </div>

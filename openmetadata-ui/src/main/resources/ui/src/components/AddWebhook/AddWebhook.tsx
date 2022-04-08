@@ -38,7 +38,7 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
-import MarkdownWithPreview from '../common/editor/MarkdownWithPreview';
+import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
@@ -464,8 +464,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
       classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">{header}</h6>
-      <div className="tw-pb-3">
+      <h6 className="tw-heading tw-text-base" data-testid="header">
+        {header}
+      </h6>
+      <div className="tw-pb-3" data-testid="formContainer">
         <Field>
           <label className="tw-block tw-form-label" htmlFor="name">
             {requiredField('Name:')}
@@ -502,11 +504,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             htmlFor="description">
             Description:
           </label>
-          <MarkdownWithPreview
+          <RichTextEditor
             data-testid="description"
+            initialValue={description}
             readonly={!allowAccess}
             ref={markdownRef}
-            value={description}
           />
         </Field>
         <Field>
@@ -557,7 +559,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(createEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entity-created-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -592,7 +594,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(updateEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entity-updated-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -627,7 +629,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
               <input
                 checked={!isEmpty(deleteEvents)}
                 className="tw-mr-1 custom-checkbox"
-                data-testid="checkbox"
+                data-testid="entity-deleted-checkbox"
                 disabled={!allowAccess}
                 type="checkbox"
                 onChange={(e) => {
@@ -730,9 +732,9 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                       <input
                         readOnly
                         className="tw-form-inputs tw-px-3 tw-py-1"
-                        data-testid="connection-timeout"
-                        id="connection-timeout"
-                        name="connection-timeout"
+                        data-testid="secret-key"
+                        id="secret-key"
+                        name="secret-key"
                         placeholder="secret key"
                         type="text"
                         value={secretKey}

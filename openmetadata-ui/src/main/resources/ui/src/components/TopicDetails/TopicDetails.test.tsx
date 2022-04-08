@@ -16,6 +16,7 @@ import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Topic } from '../../generated/entity/data/topic';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import TopicDetails from './TopicDetails.component';
 
@@ -89,7 +90,17 @@ const TopicDetailsProps = {
   createThread: jest.fn(),
   topicFQN: '',
   deletePostHandler: jest.fn(),
+  paging: {} as Paging,
+  fetchFeedHandler: jest.fn(),
 };
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
 
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
@@ -200,5 +211,20 @@ describe('Test TopicDetails component', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

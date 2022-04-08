@@ -57,3 +57,9 @@ export const filterList = [
   { name: 'Mentions', value: 'MENTIONS' },
   { name: 'Following', value: 'FOLLOWS' },
 ];
+
+export const observerOptions = {
+  root: null,
+  rootMargin: '0px',
+  threshold: 1.0,
+};
