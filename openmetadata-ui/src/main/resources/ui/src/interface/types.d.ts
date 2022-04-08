@@ -582,4 +582,15 @@ declare module 'Models' {
     count: number;
     entityField: string;
   }
+
+  type ConfigFormValue = string | number | boolean;
+  export interface ConfigFormFields {
+    error?: string;
+    key: string;
+    placeholder?: string;
+    readOnly: boolean;
+    required: boolean;
+    secret: boolean;
+    value: ConfigFormValue | Array<ConfigFormValue>;
+  }
 }

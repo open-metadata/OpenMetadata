@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
+import { ConfigFormFields } from 'Models';
 import {
   MessagingConnection,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import { kafkaConfig } from '../jsons/services/messaging/kafkaConfig';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
@@ -26,4 +28,21 @@ export const getBrokers = (config: MessagingConnection['config']) => {
   }
 
   return !isUndefined(retVal) ? retVal : '--';
+};
+
+export const getMessagingConfig = (config: MessagingConnection['config']) => {
+  let retVal: Array<ConfigFormFields> = [];
+  if (config?.type === MessagingServiceType.Kafka) {
+    retVal = kafkaConfig;
+  }
+  if (config) {
+    for (const k of retVal) {
+      const data = config[k.key as keyof MessagingConnection['config']];
+      if (data) {
+        k.value = data;
+      }
+    }
+  }
+
+  return cloneDeep(retVal);
 };

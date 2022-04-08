@@ -1,3 +1,4 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isEqual } from 'lodash';
 import { ServicesData } from 'Models';
 import React, { useState } from 'react';
@@ -7,8 +8,14 @@ import {
   // MessagingServiceType,
   ServiceCategory,
 } from '../../enums/service.enum';
-import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
-import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import {
+  DashboardService,
+  DashboardServiceType,
+} from '../../generated/entity/services/dashboardService';
+import {
+  MessagingService,
+  MessagingServiceType,
+} from '../../generated/entity/services/messagingService';
 import useToastContext from '../../hooks/useToastContext';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import {
@@ -19,7 +26,8 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Loader from '../Loader/Loader';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import DashboardConfigs from './DashboardConfigs';
+import MessagingConfigs from './MessagingConfigs';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
@@ -120,11 +128,11 @@ const ServiceConfig = ({
   const [server, setServer] = useState(data?.server || '');
   const [env, setEnv] = useState(data?.env || '');
 
-  const getBrokerUrlPlaceholder = (): string => {
-    return data?.serviceType === MessagingServiceType.Pulsar
-      ? 'hostname:port'
-      : 'hostname1:port1, hostname2:port2';
-  };
+  // const getBrokerUrlPlaceholder = (): string => {
+  //   return data?.serviceType === MessagingServiceType.Pulsar
+  //     ? 'hostname:port'
+  //     : 'hostname1:port1, hostname2:port2';
+  // };
 
   const [pipelineUrl, setPipelineUrl] = useState(data?.pipelineUrl || '');
 
@@ -691,312 +699,11 @@ const ServiceConfig = ({
   };
 
   const getMessagingFields = (): JSX.Element => {
-    return (
-      <>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="broker">
-            {requiredField('Broker Url:')}
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="broker-url"
-            id="broker"
-            name="broker"
-            placeholder={getBrokerUrlPlaceholder()}
-            type="text"
-            value={brokers}
-            onChange={handleValidation}
-          />
-          {showErrorMsg.broker && errorMsg('Broker url is required')}
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="schema-registry">
-            Schema Registry:{' '}
-            {data?.schemaRegistry && (
-              <a
-                className="link-text tw-ml-1"
-                href={data.schemaRegistry}
-                rel="noopener noreferrer"
-                target="_blank">
-                <SVGIcons
-                  alt="external-link"
-                  className="tw-align-middle"
-                  icon="external-link"
-                  width="12px"
-                />
-              </a>
-            )}
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="schema-registry"
-            id="schema-registry"
-            name="schemaRegistry"
-            placeholder="http(s)://hostname:port"
-            type="text"
-            value={schemaRegistry}
-            onChange={handleValidation}
-          />
-        </Field>
-      </>
-    );
+    return <MessagingConfigs data={data as MessagingService} />;
   };
 
   const getDashboardFields = (): JSX.Element => {
-    let elemFields: JSX.Element;
-    switch (data?.serviceType) {
-      case DashboardServiceType.Redash: {
-        elemFields = (
-          <>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="dashboardUrl">
-                {requiredField('Dashboard Url:')}
-                {data?.dashboardUrl && (
-                  <a
-                    className="link-text tw-ml-1"
-                    href={data.dashboardUrl}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </a>
-                )}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="dashboardUrl"
-                name="dashboardUrl"
-                placeholder="http(s)://hostname:port"
-                type="text"
-                value={dashboardUrl}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.dashboardUrl && errorMsg('Url is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="apiKey">
-                {requiredField('Api key:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="apiKey"
-                name="apiKey"
-                placeholder="api key"
-                type="password"
-                value={apiKey}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.apiKey && errorMsg('Api key is required')}
-            </Field>
-          </>
-        );
-
-        break;
-      }
-      case DashboardServiceType.Tableau: {
-        elemFields = (
-          <>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="siteName">
-                {requiredField('Site Name:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="siteName"
-                name="siteName"
-                placeholder="site name"
-                type="text"
-                value={siteName}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.siteName && errorMsg('Site name is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="dashboard-url">
-                {requiredField('Site Url:')}{' '}
-                {data?.dashboardUrl && (
-                  <a
-                    className="link-text tw-ml-1"
-                    href={data.dashboardUrl}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </a>
-                )}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="dashboard-url"
-                name="dashboardUrl"
-                placeholder="http(s)://hostname:port"
-                type="text"
-                value={dashboardUrl}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.dashboardUrl && errorMsg('Site url is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="username">
-                {requiredField('Username:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="username"
-                name="username"
-                placeholder="username"
-                type="text"
-                value={username}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.username && errorMsg('Username is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="password">
-                {requiredField('Password:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="password"
-                name="password"
-                placeholder="password"
-                type="password"
-                value={password}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.password && errorMsg('Password is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="server">
-                {requiredField('Server:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="server"
-                name="server"
-                placeholder="http(s)://hostname:port"
-                type="text"
-                value={server}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.server && errorMsg('Server is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="apiVersion">
-                {requiredField('Api Version:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="apiVersion"
-                name="apiVersion"
-                placeholder="api version"
-                type="text"
-                value={apiVersion}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.apiVersion && errorMsg('Api version is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="env">
-                Environment:
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="env"
-                name="env"
-                placeholder="environment"
-                type="text"
-                value={env}
-                onChange={(e) => setEnv(e.target.value)}
-              />
-            </Field>
-          </>
-        );
-
-        break;
-      }
-      default: {
-        elemFields = (
-          <>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="dashboardUrl">
-                {requiredField('Dashboard Url:')}
-                {data?.dashboardUrl && (
-                  <a
-                    className="link-text tw-ml-1"
-                    href={data.dashboardUrl}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </a>
-                )}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="dashboardUrl"
-                id="dashboardUrl"
-                name="dashboardUrl"
-                placeholder="http(s)://hostname:port"
-                type="text"
-                value={dashboardUrl}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.dashboardUrl &&
-                errorMsg('Dashboard url is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="username">
-                {requiredField('Username:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="username"
-                id="username"
-                name="username"
-                placeholder="username"
-                type="text"
-                value={username}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.username && errorMsg('Username is required')}
-            </Field>
-            <Field>
-              <label className="tw-block tw-form-label" htmlFor="password">
-                {requiredField('Password:')}
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                data-testid="password"
-                id="password"
-                name="password"
-                placeholder="password"
-                type="password"
-                value={password}
-                onChange={handleValidation}
-              />
-              {showErrorMsg.password && errorMsg('Password is required')}
-            </Field>
-          </>
-        );
-
-        break;
-      }
-    }
-
-    return elemFields;
+    return <DashboardConfigs data={data as DashboardService} />;
   };
 
   const getPipelineFields = (): JSX.Element => {
