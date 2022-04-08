@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -519,6 +520,31 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void list_threadsWithFollowsFilter() throws HttpResponseException {
+    // Get the initial thread count of TABLE2
+    String entityLink = String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName());
+    int initialThreadCount = listThreads(entityLink, null, AUTH_HEADERS).getPaging().getTotal();
+
+    // Create threads
+    createAndCheck(create().withMessage("Message 1").withAbout(entityLink), ADMIN_AUTH_HEADERS);
+
+    createAndCheck(create().withMessage("Message 2").withAbout(entityLink), ADMIN_AUTH_HEADERS);
+
+    // Make the USER follow TABLE2
+    followTable(TABLE2.getId(), USER.getId(), AUTH_HEADERS);
+
+    ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);
+    assertEquals(initialThreadCount + 2, threads.getPaging().getTotal());
+    assertEquals(initialThreadCount + 2, threads.getData().size());
+    assertEquals("Message 2", threads.getData().get(0).getMessage());
+
+    // Filter by follows for another user should return 0 threads
+    threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);
+    assertEquals(0, threads.getPaging().getTotal());
+    assertEquals(0, threads.getData().size());
+  }
+
+  @Test
   void list_threadsWithInvalidFilter() {
     assertResponse(
         () -> listThreadsWithFilter(USER.getId().toString(), "Invalid", AUTH_HEADERS),
@@ -677,6 +703,12 @@ public class FeedResourceTest extends CatalogApplicationTest {
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
+  }
+
+  public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("tables/" + tableId + "/followers");
+    TestUtils.put(target, userId.toString(), CREATED, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
