@@ -644,6 +644,7 @@ public interface CollectionDAO {
             + "LIMIT :limit")
     List<String> listThreadsByFollowsBefore(
         @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Bind("before") long before,
         @Bind("resolved") boolean resolved,
@@ -658,6 +659,7 @@ public interface CollectionDAO {
             + "LIMIT :limit")
     List<String> listThreadsByFollowsAfter(
         @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Bind("after") long after,
         @Bind("resolved") boolean resolved,
@@ -669,7 +671,10 @@ public interface CollectionDAO {
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation)")
     int listCountThreadsByFollows(
-        @Bind("userId") String userId, @Bind("resolved") boolean resolved, @Bind("relation") int relation);
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("resolved") boolean resolved,
+        @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND id in ("

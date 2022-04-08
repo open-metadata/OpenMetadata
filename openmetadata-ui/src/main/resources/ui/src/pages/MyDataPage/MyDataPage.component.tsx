@@ -42,6 +42,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getEntityCountByType } from '../../utils/EntityUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -63,6 +64,13 @@ const MyDataPage = () => {
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
+  };
+
+  const handleShowErrorToast = (msg: string) => {
+    showToast({
+      variant: 'error',
+      body: msg,
+    });
   };
 
   const fetchData = (fetchService = false) => {
@@ -138,11 +146,13 @@ const MyDataPage = () => {
         const { data } = res.data;
         setEntityThread(data);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching the Activity Feed',
-        });
+      .catch((err: AxiosError) => {
+        handleShowErrorToast(
+          getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-activity-feed-error']
+          )
+        );
       })
       .finally(() => {
         setIsFeedLoading(false);
