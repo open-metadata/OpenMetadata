@@ -163,12 +163,6 @@ const PipelineDetailsPage = () => {
     );
   };
 
-  useEffect(() => {
-    if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentPipelineTab(tab));
-    }
-  }, [tab]);
-
   const saveUpdatedPipelineData = (
     updatedData: Pipeline
   ): Promise<AxiosResponse> => {
