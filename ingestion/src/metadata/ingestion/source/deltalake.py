@@ -84,9 +84,6 @@ class DeltalakeSource(Source):
         self.ARRAY_CHILD_START_INDEX = 6
         self.ARRAY_CHILD_END_INDEX = -1
 
-    def set_spark(self, spark):
-        self.spark = spark
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
