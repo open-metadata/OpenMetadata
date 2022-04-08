@@ -31,30 +31,29 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import appState from '../AppState';
-import Auth0Callback from '../authentication/callbacks/Auth0Callback/Auth0Callback';
-import Auth0Authenticator from '../authenticators/Auth0Authenticator';
-import MsalAuthenticator from '../authenticators/MsalAuthenticator';
-import OidcAuthenticator from '../authenticators/OidcAuthenticator';
-import OktaAuthenticator from '../authenticators/OktaAuthenticator';
-import axiosClient from '../axiosAPIs';
+import appState from '../../AppState';
+import axiosClient from '../../axiosAPIs';
 import {
   fetchAuthenticationConfig,
   getLoggedInUserPermissions,
-} from '../axiosAPIs/miscAPI';
+} from '../../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
   getUserByName,
   updateUser,
-} from '../axiosAPIs/userAPI';
-import Loader from '../components/Loader/Loader';
-import { NO_AUTH } from '../constants/auth.constants';
-import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
-import { ClientErrors } from '../enums/axios.enum';
-import { AuthTypes } from '../enums/signin.enum';
-import { User } from '../generated/entity/teams/user';
-import useToastContext from '../hooks/useToastContext';
-import jsonData from '../jsons/en';
+} from '../../axiosAPIs/userAPI';
+import Loader from '../../components/Loader/Loader';
+import { NO_AUTH } from '../../constants/auth.constants';
+import {
+  isAdminUpdated,
+  oidcTokenKey,
+  ROUTES,
+} from '../../constants/constants';
+import { ClientErrors } from '../../enums/axios.enum';
+import { AuthTypes } from '../../enums/signin.enum';
+import { User } from '../../generated/entity/teams/user';
+import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -63,10 +62,15 @@ import {
   isTourRoute,
   msalInstance,
   setMsalInstance,
-} from '../utils/AuthProvider.util';
-import { getImages } from '../utils/CommonUtils';
-import { getErrorText } from '../utils/StringsUtils';
-import { fetchAllUsers } from '../utils/UsedDataUtils';
+} from '../../utils/AuthProvider.util';
+import { getImages } from '../../utils/CommonUtils';
+import { getErrorText } from '../../utils/StringsUtils';
+import { fetchAllUsers } from '../../utils/UsedDataUtils';
+import Auth0Authenticator from '../authenticators/Auth0Authenticator';
+import MsalAuthenticator from '../authenticators/MsalAuthenticator';
+import OidcAuthenticator from '../authenticators/OidcAuthenticator';
+import OktaAuthenticator from '../authenticators/OktaAuthenticator';
+import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
 

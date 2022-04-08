@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addWebhook } from '../../axiosAPIs/webhookAPI';
 import AddWebhook from '../../components/AddWebhook/AddWebhook';
 import PageContainerV1 from '../../components/containers/PageContainerV1';

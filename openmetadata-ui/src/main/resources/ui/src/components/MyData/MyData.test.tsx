@@ -26,7 +26,7 @@ import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
 import MyDataPage from './MyData.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

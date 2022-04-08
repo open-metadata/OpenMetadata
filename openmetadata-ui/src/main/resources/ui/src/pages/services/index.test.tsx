@@ -47,7 +47,7 @@ import {
 } from '../../mocks/Service.mock';
 import ServicesPage from './index';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';

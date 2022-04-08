@@ -20,7 +20,7 @@ import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createRole,
   getPolicy,

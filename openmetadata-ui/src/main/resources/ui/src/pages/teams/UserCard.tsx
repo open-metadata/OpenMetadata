@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import { AssetsType } from '../../enums/entity.enum';

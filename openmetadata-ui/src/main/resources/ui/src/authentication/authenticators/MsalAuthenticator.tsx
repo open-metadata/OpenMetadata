@@ -23,13 +23,13 @@ import React, {
   useEffect,
   useImperativeHandle,
 } from 'react';
+import { oidcTokenKey } from '../../constants/constants';
+import { msalLoginRequest } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../auth-provider/AuthProvider.interface';
-import { oidcTokenKey } from '../constants/constants';
-import { msalLoginRequest } from '../utils/AuthProvider.util';
 
 interface Props {
   children: ReactNode;

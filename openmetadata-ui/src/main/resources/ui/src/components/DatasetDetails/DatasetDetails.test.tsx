@@ -35,7 +35,7 @@ import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
 import { DatasetOwner } from './DatasetDetails.interface';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

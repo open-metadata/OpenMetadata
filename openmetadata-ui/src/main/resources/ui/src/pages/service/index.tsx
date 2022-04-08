@@ -25,7 +25,7 @@ import {
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   addAirflowPipeline,
   deleteAirflowPipelineById,

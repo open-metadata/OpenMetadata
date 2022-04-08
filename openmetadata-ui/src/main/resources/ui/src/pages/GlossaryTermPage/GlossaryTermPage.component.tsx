@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { Key } from 'rc-tree/lib/interface';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,

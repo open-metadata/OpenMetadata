@@ -17,7 +17,7 @@ import React from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';

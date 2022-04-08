@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   AirflowPipeline,

@@ -37,7 +37,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => mockAdminData),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => ({
+jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn().mockImplementation(() => mockAuthContext),
 }));
 

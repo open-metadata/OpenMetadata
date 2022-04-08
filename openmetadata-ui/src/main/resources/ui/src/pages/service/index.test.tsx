@@ -23,7 +23,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import ServicePage from './index';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
