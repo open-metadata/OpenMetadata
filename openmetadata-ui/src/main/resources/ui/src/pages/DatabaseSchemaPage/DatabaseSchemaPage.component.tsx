@@ -53,7 +53,6 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -90,7 +89,6 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -540,6 +538,71 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
+  const getSchemaTableList = () => {
+    return (
+      <Fragment>
+        <table
+          className="tw-bg-white tw-w-full tw-mb-4"
+          data-testid="databaseSchema-tables">
+          <thead data-testid="table-header">
+            <tr className="tableHead-row">
+              <th className="tableHead-cell" data-testid="header-name">
+                Table Name
+              </th>
+              <th className="tableHead-cell" data-testid="header-description">
+                Description
+              </th>
+            </tr>
+          </thead>
+          <tbody className="tableBody">
+            {tableData.length > 0 ? (
+              tableData.map((table, index) => (
+                <tr
+                  className={classNames(
+                    'tableBody-row',
+                    !isEven(index + 1) ? 'odd-row' : null
+                  )}
+                  data-testid="tabale-column"
+                  key={index}>
+                  <td className="tableBody-cell">
+                    <Link to={getTableDetailsPath(table.name)}>
+                      {getPartialNameFromTableFQN(table.name, ['table'])}
+                    </Link>
+                  </td>
+                  <td className="tableBody-cell">
+                    {table.description?.trim() ? (
+                      <RichTextEditorPreviewer markdown={table.description} />
+                    ) : (
+                      <span className="tw-no-description">No description</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr className="tableBody-row">
+                <td className="tableBody-cell tw-text-center" colSpan={5}>
+                  No records found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Fragment>
+    );
+  };
+
+  useEffect(() => {
+    if (TabSpecificField.ACTIVITY_FEED === tab) {
+      fetchActivityFeed();
+    } else {
+      setEntityThread([]);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+  }, [isInView, paging, isentityThreadLoading]);
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -554,18 +617,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     getDetailsByFQN();
   }, []);
 
-  useEffect(() => {
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
-      fetchActivityFeed();
-    } else {
-      setEntityThread([]);
-    }
-  }, [tab]);
-
-  useEffect(() => {
-    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
-  }, [isInView, paging, isentityThreadLoading]);
-
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -573,7 +624,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <>
+    <Fragment>
       {isLoading ? (
         <Loader />
       ) : error ? (
@@ -627,117 +678,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 tabs={tabs}
               />
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                {activeTab === 1 && (
-                  <Fragment>
-                    <table
-                      className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="databaseSchema-tables">
-                      <thead data-testid="table-header">
-                        <tr className="tableHead-row">
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-name">
-                            Table Name
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-description">
-                            Description
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-owner">
-                            Owner
-                          </th>
-                          <th
-                            className="tableHead-cell"
-                            data-testid="header-usage">
-                            Usage
-                          </th>
-                          <th
-                            className="tableHead-cell tw-w-60"
-                            data-testid="header-tags">
-                            Tags
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {tableData.length > 0 ? (
-                          tableData.map((table, index) => (
-                            <tr
-                              className={classNames(
-                                'tableBody-row',
-                                !isEven(index + 1) ? 'odd-row' : null
-                              )}
-                              data-testid="tabale-column"
-                              key={index}>
-                              <td className="tableBody-cell">
-                                <Link
-                                  to={
-                                    table.fullyQualifiedName
-                                      ? getTableDetailsPath(
-                                          table.fullyQualifiedName
-                                        )
-                                      : ''
-                                  }>
-                                  {table.name}
-                                </Link>
-                              </td>
-                              <td className="tableBody-cell">
-                                {table.description?.trim() ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={table.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description
-                                  </span>
-                                )}
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(table?.owner?.id)
-                                    ?.displayName ||
-                                    getOwnerFromId(table?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <p>
-                                  {getUsagePercentile(
-                                    table.usageSummary?.weeklyStats
-                                      ?.percentileRank || 0
-                                  )}
-                                </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <TagsViewer
-                                  sizeCap={-1}
-                                  tags={(table.tags || []).map((tag) => ({
-                                    ...tag,
-                                    tagFQN: tag.tagFQN?.startsWith(
-                                      `Tier${FQN_SEPARATOR_CHAR}Tier`
-                                    )
-                                      ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-                                      : tag.tagFQN,
-                                  }))}
-                                />
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="tableBody-row">
-                            <td
-                              className="tableBody-cell tw-text-center"
-                              colSpan={5}>
-                              No records found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </Fragment>
-                )}
+                {activeTab === 1 && <Fragment>{getSchemaTableList()}</Fragment>}
                 {activeTab === 2 && (
                   <div
                     className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
@@ -802,7 +743,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           </div>
         </PageContainer>
       )}
-    </>
+    </Fragment>
   );
 };
 
