@@ -44,6 +44,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -151,8 +152,16 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, database, service, serviceType } =
-              res.data;
+            const {
+              id,
+              owner,
+              tags,
+              name,
+              database,
+              service,
+              serviceType,
+              databaseSchema,
+            } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -167,6 +176,12 @@ const EntityVersionPage: FunctionComponent = () => {
               {
                 name: getPartialNameFromTableFQN(database.name, ['database']),
                 url: getDatabaseDetailsPath(database.name),
+              },
+              {
+                name: getPartialNameFromTableFQN(databaseSchema.name, [
+                  'schema',
+                ]),
+                url: getDatabaseSchemaDetailsPath(databaseSchema.name),
               },
               {
                 name: name,
@@ -374,7 +389,8 @@ const EntityVersionPage: FunctionComponent = () => {
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, database, name, service, serviceType } = res.data;
+            const { id, database, name, service, serviceType, databaseSchema } =
+              res.data;
             getTableVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -396,6 +412,12 @@ const EntityVersionPage: FunctionComponent = () => {
                       'database',
                     ]),
                     url: getDatabaseDetailsPath(database.name),
+                  },
+                  {
+                    name: getPartialNameFromTableFQN(databaseSchema.name, [
+                      'schema',
+                    ]),
+                    url: getDatabaseSchemaDetailsPath(databaseSchema.name),
                   },
                   {
                     name: name,

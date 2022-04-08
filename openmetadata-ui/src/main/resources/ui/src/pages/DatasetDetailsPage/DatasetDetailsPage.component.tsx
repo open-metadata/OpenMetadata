@@ -55,6 +55,7 @@ import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
@@ -307,6 +308,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             version,
             service,
             serviceType,
+            databaseSchema,
           } = res.data;
           setTableDetails(res.data);
           setTableId(id);
@@ -330,6 +332,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
             {
               name: getPartialNameFromTableFQN(database.name, ['database']),
               url: getDatabaseDetailsPath(database.name),
+            },
+            {
+              name: getPartialNameFromTableFQN(databaseSchema.name, ['schema']),
+              url: getDatabaseSchemaDetailsPath(databaseSchema.name),
             },
             {
               name: name,

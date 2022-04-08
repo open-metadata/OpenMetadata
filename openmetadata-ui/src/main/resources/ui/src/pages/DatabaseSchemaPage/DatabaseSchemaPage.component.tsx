@@ -56,6 +56,7 @@ import RequestDescriptionModal from '../../components/Modals/RequestDescriptionM
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
+  getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -71,7 +72,11 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { hasEditAccess, isEven } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromTableFQN,
+  hasEditAccess,
+  isEven,
+} from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
@@ -244,8 +249,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { description, id, name, service, serviceType, tables } =
-            res.data;
+          const {
+            description,
+            id,
+            name,
+            service,
+            serviceType,
+            tables,
+            database,
+          } = res.data;
           setDatabaseSchema(res.data);
           setDescription(description);
           setDatabaseSchemaId(id);
@@ -262,6 +274,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   )
                 : '',
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: getPartialNameFromTableFQN(database.name, ['database']),
+              url: getDatabaseDetailsPath(database.name),
             },
             {
               name: name,

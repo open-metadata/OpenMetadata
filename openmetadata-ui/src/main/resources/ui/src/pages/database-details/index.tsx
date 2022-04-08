@@ -672,7 +672,7 @@ const DatabaseDetails: FunctionComponent = () => {
                           <th
                             className="tableHead-cell"
                             data-testid="header-name">
-                            Table Name
+                            Schema Name
                           </th>
                           <th
                             className="tableHead-cell"
