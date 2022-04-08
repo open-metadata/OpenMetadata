@@ -547,5 +547,5 @@ export const prepareLabel = (type: string, fqn: string) => {
     label = getPartialNameFromFQN(fqn, ['database']);
   }
 
-  return label.replace(/^"|"$/g, '');
+  return label.replace(/(^"|"$)/g, '');
 };
