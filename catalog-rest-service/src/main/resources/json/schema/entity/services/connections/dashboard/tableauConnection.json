@@ -19,7 +19,7 @@
       "$ref": "#/definitions/tableauType",
       "default": "Tableau"
     },
-    "server": {
+    "hostPort": {
       "description": "Tableau Server",
       "type": "string"
     },

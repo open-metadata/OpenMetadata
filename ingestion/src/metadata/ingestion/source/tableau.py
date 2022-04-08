@@ -81,6 +81,7 @@ class TableauSource(Source[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.connection_config = self.config.serviceConnection.__root__.config
         self.client = self.tableau_client()
         self.service = get_dashboard_service_or_create(
             service_name=config.serviceName,
@@ -99,39 +100,34 @@ class TableauSource(Source[Entity]):
         Returns:
         """
         tableau_server_config = {
-            f"{self.config.serviceConnection.__root__.config.env}": {
-                "server": self.config.serviceConnection.__root__.config.server,
-                "api_version": self.config.serviceConnection.__root__.config.apiVersion,
-                "site_name": self.config.serviceConnection.__root__.config.siteName,
-                "site_url": self.config.serviceConnection.__root__.config.siteName,
+            f"{self.connection_config.env}": {
+                "server": self.connection_config.hostPort,
+                "api_version": self.connection_config.apiVersion,
+                "site_name": self.connection_config.siteName,
+                "site_url": self.connection_config.siteName,
             }
         }
-        if (
-            self.config.serviceConnection.__root__.config.username
-            and self.config.serviceConnection.__root__.config.password
-        ):
-            tableau_server_config[self.config.serviceConnection.__root__.config.env][
+        if self.connection_config.username and self.connection_config.password:
+            tableau_server_config[self.connection_config.env][
                 "username"
-            ] = self.config.serviceConnection.__root__.config.username
-            tableau_server_config[self.config.serviceConnection.__root__.config.env][
+            ] = self.connection_config.username
+            tableau_server_config[self.connection_config.env][
                 "password"
-            ] = (
-                self.config.serviceConnection.__root__.config.password.get_secret_value()
-            )
+            ] = self.connection_config.password.get_secret_value()
         elif (
-            self.config.serviceConnection.__root__.config.personalAccessTokenName
-            and self.config.serviceConnection.__root__.config.personalAccessTokenSecret
+            self.connection_config.personalAccessTokenName
+            and self.connection_config.personalAccessTokenSecret
         ):
-            tableau_server_config[self.config.serviceConnection.__root__.config.env][
+            tableau_server_config[self.connection_config.env][
                 "personal_access_token_name"
-            ] = self.config.serviceConnection.__root__.config.personalAccessTokenName
-            tableau_server_config[self.config.serviceConnection.__root__.config.env][
+            ] = self.connection_config.personalAccessTokenName
+            tableau_server_config[self.connection_config.env][
                 "personal_access_token_secret"
-            ] = self.config.serviceConnection.__root__.config.personalAccessTokenSecret
+            ] = self.connection_config.personalAccessTokenSecret
         try:
             conn = TableauServerConnection(
                 config_json=tableau_server_config,
-                env=self.config.serviceConnection.__root__.config.env,
+                env=self.connection_config.env,
             )
             conn.sign_in().json()
         except Exception as err:  # pylint: disable=broad-except
@@ -247,7 +243,7 @@ class TableauSource(Source[Entity]):
             chart_tags = self.all_dashboard_details["tags"][index]
             chart_type = self.all_dashboard_details["sheetType"][index]
             chart_url = (
-                f"{self.config.serviceConnection.__root__.config.server}/#/site/{self.config.serviceConnection.__root__.config.siteName}"
+                f"{self.connection_config.hostPort}/#/site/{self.connection_config.siteName}"
                 f"{self.all_dashboard_details['contentUrl'][index]}"
             )
             chart_owner = self.all_dashboard_details["owner"][index]
