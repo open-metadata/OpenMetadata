@@ -1,23 +1,26 @@
 {
   "source": {
     "type": "postgres",
-    "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "host_port": "localhost:5432",
-      "database": "pagila",
-      "service_name": "local_postgres"
-    }
+    "serviceName": "local_postgres",
+    "serviceConnection": {
+      "config": {
+        "type": "Postgres",
+        "username": "openmetadata_user",
+        "password": "openmetadata_password",
+        "hostPort": "localhost:5432",
+        "database": "pagila"
+      }
+    },
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
