@@ -61,3 +61,16 @@ export const patchDatabaseDetails: Function = (
 
   return APIClient.patch(`/databases/${id}`, data, configOptions);
 };
+
+export const getDatabaseSchemas: Function = (
+  databaseName: string,
+  paging: string,
+  arrQueryFields?: string
+): Promise<AxiosResponse> => {
+  const url = `${getURLWithQueryFields(
+    `/databaseSchemas`,
+    arrQueryFields
+  )}&database=${databaseName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};

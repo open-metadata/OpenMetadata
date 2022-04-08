@@ -54,6 +54,7 @@ const jsonData = {
     'fetch-data-error': 'Error while fetching data!',
     'fetch-database-details-error': 'Error while fetching database details!',
     'fetch-database-tables-error': 'Error while fetching database tables!',
+    'fetch-database-schemas-error': 'Error while fetching database schemas!',
     'fetch-activity-feed-error': 'Error while fetching activity feeds!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
