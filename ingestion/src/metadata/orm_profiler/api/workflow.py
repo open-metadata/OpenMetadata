@@ -164,7 +164,7 @@ class ProfilerWorkflow:
         # First, get all the databases for the service:
         all_dbs = self.metadata.list_entities(
             entity=Database,
-            params={"service": self.source_config.service_name},
+            params={"service": self.config.source.serviceName},
         )
 
         # Then list all tables from each db.
@@ -177,7 +177,7 @@ class ProfilerWorkflow:
                     "tests",
                 ],  # We will need it for window metrics to check past data
                 params={
-                    "database": f"{self.source_config.service_name}.{database.name.__root__}"
+                    "database": f"{self.config.source.serviceName}.{database.name.__root__}"
                 },
             ).entities
             for database in all_dbs.entities

@@ -20,9 +20,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
+    Source as WorkflowSource, Processor as WorkflowProcessor, Sink as WorkflowSink
 )
-from metadata.ingestion.api.common import DynamicTypedConfig
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
@@ -85,7 +84,7 @@ def get_ingestion_source(
 
 def get_sink(
     sink_type: str,
-    sink_config: DynamicTypedConfig,
+    sink_config: WorkflowSink,
     metadata_config: OpenMetadataServerConfig,
     _from: str = "ingestion",
 ) -> Sink:
@@ -118,7 +117,7 @@ def get_sink(
 
 def get_processor(
     processor_type: str,
-    processor_config: DynamicTypedConfig,
+    processor_config: WorkflowProcessor,
     metadata_config: OpenMetadataServerConfig,
     _from: str = "ingestion",
     **kwargs,
