@@ -14,8 +14,6 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
-from requests import Session
-
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -86,7 +84,6 @@ def get_connection_url(connection):
     )
 
 
-@get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(SalesforceConnection)
