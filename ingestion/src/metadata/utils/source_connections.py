@@ -14,8 +14,6 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
-from requests import Session
-
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -40,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
+from requests import Session
 
 
 def get_connection_url_common(connection):
@@ -146,9 +145,9 @@ def _(connection: TrinoConnection):
             return {"http_session": session}
     else:
         return connection.connectionArguments
-        
-        
-@get_connection_args.register      
+
+
+@get_connection_args.register
 def _(connection: SnowflakeConnection):
 
     url = f"{connection.scheme.value}://"
