@@ -248,7 +248,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status.scanned(fqn)
 
     # TODO centralize me
-    def get_table_fqn(self, service_name, db_name, schema_name, table_name) -> str:
+    @staticmethod
+    def get_table_fqn(service_name, db_name, schema_name, table_name) -> str:
         return ".".join((service_name, db_name, schema_name, table_name))
 
     def next_record(self) -> Iterable[Entity]:
@@ -388,8 +389,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = self.get_table_fqn(self.config.serviceName, schema, view_name)
-                self.database_source_state.add(fqn)
+
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
