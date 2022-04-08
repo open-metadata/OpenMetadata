@@ -743,6 +743,7 @@ const DashboardDetailsPage = () => {
     if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentDashboardTab(tab));
     }
+    setEntityThread([]);
   }, [tab]);
 
   return (

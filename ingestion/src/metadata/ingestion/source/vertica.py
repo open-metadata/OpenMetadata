@@ -12,17 +12,23 @@
 import re
 from textwrap import dedent
 
-from sqlalchemy import exc, sql, util
+from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.sql.sqltypes import VARCHAR, String
+from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_vertica.base import VerticaDialect
 
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.sql_queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
@@ -210,14 +216,6 @@ VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-
 VerticaDialect.get_view_definition = (
     get_view_definition  # pylint: disable=protected-access
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-)
-
-
-class VerticaConfig(VerticaConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
 
 
 class VerticaSource(SQLSource):
@@ -226,5 +224,11 @@ class VerticaSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = VerticaConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: VerticaConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, VerticaConnection):
+            raise InvalidSourceException(
+                f"Expected VerticaConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
