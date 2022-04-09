@@ -61,9 +61,10 @@ class GlueSource(Source[Entity]):
             metadata_config=metadata_config,
             service_name=self.config.serviceName,
         )
+        config_obj = self.config.serviceConnection.__root__.config
         self.storage_service = get_storage_service_or_create(
             {
-                "name": self.config.serviceConnection.__root__.config.storageServiceName,
+                "name": config_obj.storageServiceName,
                 "serviceType": "S3",
             },
             metadata_config,
@@ -71,17 +72,15 @@ class GlueSource(Source[Entity]):
         self.task_id_mapping = {}
         self.pipeline_service = get_pipeline_service_or_create(
             {
-                "name": self.config.serviceConnection.__root__.config.pipelineServiceName,
+                "name": config_obj.pipelineServiceName,
                 "serviceType": "Glue",
-                "pipelineUrl": self.config.serviceConnection.__root__.config.endPointURL
-                if self.config.serviceConnection.__root__.config.endPointURL is not None
-                else f"https://glue.{self.config.serviceConnection.__root__.config.awsRegion}.amazonaws.com",
+                "pipelineUrl": config_obj.endPointURL
+                if config_obj.endPointURL is not None
+                else f"https://glue.{config_obj.awsRegion}.amazonaws.com",
             },
             metadata_config,
         )
-        self.glue = AWSClient(self.config.serviceConnection.__root__.config).get_client(
-            "glue"
-        )
+        self.glue = AWSClient(config_obj).get_client("glue")
         self.database_name = None
         self.next_db_token = None
 
