@@ -282,4 +282,4 @@ class MetabaseSource(Source[Entity]):
                 resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
                 dashboard_details = resp_dashboard.json()
                 card_list = dashboard_details["ordered_cards"]
-                yield from self.get_card_detail(card_list)
+                self.get_card_detail(card_list)
