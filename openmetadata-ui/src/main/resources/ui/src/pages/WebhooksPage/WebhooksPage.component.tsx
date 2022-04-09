@@ -25,24 +25,15 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const WebhooksPage: FunctionComponent = () => {
   const history = useHistory();
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [data, setData] = useState<Array<Webhook>>([]);
   const [selectedStatus, setSelectedStatus] = useState<Status[]>([]);
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
@@ -59,12 +50,10 @@ const WebhooksPage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-webhook-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);

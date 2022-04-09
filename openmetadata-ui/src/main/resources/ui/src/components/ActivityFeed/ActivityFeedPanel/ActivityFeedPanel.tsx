@@ -17,9 +17,9 @@ import { EntityThread } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
-import useToastContext from '../../../hooks/useToastContext';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
@@ -36,7 +36,6 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   postFeed,
   deletePostHandler,
 }) => {
-  const showToast = useToastContext();
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
@@ -66,11 +65,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
-        const message = err.response?.data?.message;
-        showToast({
-          variant: 'error',
-          body: message || jsonData['api-error-messages']['fetch-feed-error'],
-        });
+        showErrorToast(err, jsonData['api-error-messages']['fetch-feed-error']);
       })
       .finally(() => setIsLoading(false));
   }, [selectedThread]);

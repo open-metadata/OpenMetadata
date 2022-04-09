@@ -47,10 +47,6 @@ jest.mock('../../axiosAPIs/webhookAPI', () => ({
   deleteWebhook: jest.fn(),
 }));
 
-jest.mock('../../hooks/useToastContext', () => {
-  return jest.fn().mockImplementation(() => jest.fn());
-});
-
 describe('Test DatasetDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<EditWebhookPage />, {

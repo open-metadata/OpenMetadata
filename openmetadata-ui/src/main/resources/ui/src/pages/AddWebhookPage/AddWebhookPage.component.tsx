@@ -23,13 +23,13 @@ import { ROUTES } from '../../constants/constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddWebhookPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToWebhooks = () => {
@@ -51,10 +51,7 @@ const AddWebhookPage: FunctionComponent = () => {
         }, 500);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setStatus('initial');
       });
   };

@@ -32,13 +32,11 @@ import Loader from '../../components/Loader/Loader';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const GlossaryTermPage: FunctionComponent = () => {
-  const showToast = useToastContext();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const { glossaryName, glossaryTermsFQN } =
@@ -67,13 +65,6 @@ const GlossaryTermPage: FunctionComponent = () => {
     setActiveTab(value);
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
   const fetchGlossaryTermsData = (id?: string) => {
     setIsLoading(true);
     getGlossaryTerms(id, ['children', 'relatedTerms', 'reviewers', 'tags'])
@@ -82,10 +73,10 @@ const GlossaryTermPage: FunctionComponent = () => {
         setGlossaryTerms(data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while fetching glossary terms!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-glossary-terms-error']
+        );
       })
       .finally(() => setIsLoading(false));
   };
@@ -102,10 +93,10 @@ const GlossaryTermPage: FunctionComponent = () => {
       })
       .catch((err: AxiosError) => {
         setActiveGlossaryTerm(undefined);
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while fetching glossary terms!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-glossary-terms-error']
+        );
       });
   };
 
@@ -124,10 +115,10 @@ const GlossaryTermPage: FunctionComponent = () => {
         fetchGlossaryTermsData(res.data.id);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while fetching glossary!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-glossary-error']
+        );
         setIsLoading(false);
       });
   };
@@ -168,10 +159,10 @@ const GlossaryTermPage: FunctionComponent = () => {
         setActiveGlossaryTerm(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while updating glossaryTerm!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-glossary-term-error']
+        );
       });
   };
 
@@ -192,10 +183,10 @@ const GlossaryTermPage: FunctionComponent = () => {
         setGlossaryData(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while updating description!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
       });
   };
 
@@ -205,10 +196,10 @@ const GlossaryTermPage: FunctionComponent = () => {
         setGlossaryData(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Error while updating reviewer!',
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-reviewer-error']
+        );
       });
   };
 
@@ -219,12 +210,7 @@ const GlossaryTermPage: FunctionComponent = () => {
         setTagList(getTaglist(res.data));
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
       })
       .finally(() => {
         setIsTagLoading(false);

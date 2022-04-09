@@ -25,9 +25,9 @@ import {
   PipelineType,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import { getAirflowPipelineTypes } from '../../utils/ServiceUtils';
+import { showInfoToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -53,7 +53,6 @@ const Ingestion: React.FC<Props> = ({
 }: Props) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const showToast = useToastContext();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -188,10 +187,9 @@ const Ingestion: React.FC<Props> = ({
 
   const handleAddIngestionClick = () => {
     if (!getAirflowPipelineTypeOption().length) {
-      showToast({
-        variant: 'info',
-        body: `${serviceName} already has all the supported ingestion jobs added.`,
-      });
+      showInfoToast(
+        `${serviceName} already has all the supported ingestion jobs added.`
+      );
     } else {
       setIsAdding(true);
     }

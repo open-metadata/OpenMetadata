@@ -9,15 +9,14 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -30,17 +29,11 @@ const AddGlossaryPage: FunctionComponent = () => {
     goToGlossary();
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleSaveFailure = (errorMessage = '') => {
-    handleShowErrorToast(
-      errorMessage || jsonData['api-error-messages']['add-glossary-error']
-    );
+  const handleSaveFailure = (
+    error: AxiosError | string,
+    fallbackText?: string
+  ) => {
+    showErrorToast(error, fallbackText);
     setStatus('initial');
   };
 
@@ -55,11 +48,16 @@ const AddGlossaryPage: FunctionComponent = () => {
             goToGlossary(res.data.name);
           }, 500);
         } else {
-          handleSaveFailure();
+          handleSaveFailure(
+            jsonData['api-error-messages']['add-glossary-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        handleSaveFailure(err.response?.data?.message);
+        handleSaveFailure(
+          err,
+          jsonData['api-error-messages']['add-glossary-error']
+        );
       });
   };
 
@@ -70,16 +68,11 @@ const AddGlossaryPage: FunctionComponent = () => {
         if (res.data) {
           setTagList(getTaglist(res.data));
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['fetch-tags-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-tags-error']
-        );
+        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
       })
       .finally(() => {
         setIsTagLoading(false);

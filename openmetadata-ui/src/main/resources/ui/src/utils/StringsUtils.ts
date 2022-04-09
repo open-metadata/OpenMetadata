@@ -109,7 +109,7 @@ export const getErrorText = (
   let errorText;
   if (isString(value)) {
     return value;
-  } else {
+  } else if (value) {
     errorText = value.response?.data?.message;
     if (!errorText) {
       // if error text is undefined or null or empty, try responseMessage in data

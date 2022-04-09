@@ -49,7 +49,6 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -64,10 +63,10 @@ import {
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 
 const TagsPage = () => {
-  const showToast = useToastContext();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
@@ -90,13 +89,6 @@ const TagsPage = () => {
     return getTagOptionsFromFQN(filteredTags);
   }, [currentCategory, editTag]);
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
   const fetchCategories = () => {
     setIsLoading(true);
     getTagCategories('usageCount')
@@ -113,9 +105,7 @@ const TagsPage = () => {
           err,
           jsonData['api-error-messages']['fetch-tags-category-error']
         );
-
-        handleShowErrorToast(errMsg);
-
+        showErrorToast(errMsg);
         setError(errMsg);
       })
       .finally(() => {
@@ -132,16 +122,16 @@ const TagsPage = () => {
           setCurrentCategory(currentCategory.data);
           setIsLoading(false);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
         }
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
           jsonData['api-error-messages']['fetch-tags-category-error']
         );
-
-        handleShowErrorToast(errMsg);
-
+        showErrorToast(errMsg);
         setError(errMsg);
         setIsLoading(false);
       }
@@ -186,12 +176,10 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['create-tag-category-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingCategory(false);
@@ -213,12 +201,10 @@ const TagsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-tag-category-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsEditCategory(false);
@@ -266,12 +252,10 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['create-tag-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingTag(false);
@@ -293,12 +277,10 @@ const TagsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-tags-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsEditTag(false);
@@ -322,12 +304,10 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-tags-error']
           );
-
-          handleShowErrorToast(errMsg);
         });
     }
 

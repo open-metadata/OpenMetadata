@@ -79,7 +79,6 @@ import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
 import {
   ColumnTest,
   DatasetTestModeType,
@@ -102,10 +101,10 @@ import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [isSampleDataLoading, setIsSampleDataLoading] =
@@ -180,20 +179,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
   const handleTestModeChange = (mode: DatasetTestModeType) => {
     setTestMode(mode);
   };
@@ -242,16 +227,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityLineage(res.data);
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-lineage-error'];
-        handleShowErrorToast(msg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
       })
       .finally(() => {
         setIsLineageLoading(false);
@@ -267,16 +250,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -364,7 +347,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setUsageSummary(usageSummary);
           setJoins(joins);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-table-details-error']
           );
           setIsError(true);
@@ -374,10 +357,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-table-details-error'];
-          handleShowErrorToast(errMsg);
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-table-details-error']
+          );
         }
       })
       .finally(() => {
@@ -398,16 +381,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
                 const { sampleData } = res.data;
                 setSampleData(sampleData);
               } else {
-                handleShowErrorToast(
+                showErrorToast(
                   jsonData['api-error-messages']['fetch-sample-data-error']
                 );
               }
             })
             .catch((err: AxiosError) => {
-              const errMsg =
-                err.response?.data?.message ||
-                jsonData['api-error-messages']['fetch-sample-data-error'];
-              handleShowErrorToast(errMsg);
+              showErrorToast(
+                err,
+                jsonData['api-error-messages']['fetch-sample-data-error']
+              );
             })
             .finally(() => setIsSampleDataLoading(false));
 
@@ -438,16 +421,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
                 const { tableQueries } = res.data;
                 setTableQueries(tableQueries);
               } else {
-                handleShowErrorToast(
+                showErrorToast(
                   jsonData['api-error-messages']['fetch-table-queries-error']
                 );
               }
             })
             .catch((err: AxiosError) => {
-              const errMsg =
-                err.response?.data?.message ||
-                jsonData['api-error-messages']['fetch-table-queries-error'];
-              handleShowErrorToast(errMsg);
+              showErrorToast(
+                err,
+                jsonData['api-error-messages']['fetch-table-queries-error']
+              );
             })
             .finally(() => setIsTableQueriesLoading(false));
 
@@ -483,16 +466,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-count-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
       });
   };
 
@@ -515,16 +498,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-description-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-description-error'];
-        handleShowErrorToast(msg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
       });
   };
 
@@ -538,16 +521,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setColumns(columns);
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['update-entity-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['update-entity-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-entity-error'];
-        handleShowErrorToast(msg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-entity-error']
+        );
       });
   };
 
@@ -560,16 +541,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setTableTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['update-tags-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-tags-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
       });
   };
 
@@ -586,16 +565,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            handleShowErrorToast(
+            showErrorToast(
               jsonData['api-error-messages']['update-entity-error']
             );
           }
         })
         .catch((err: AxiosError) => {
-          const msg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['update-entity-error'];
-          handleShowErrorToast(msg);
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-entity-error']
+          );
           reject();
         });
     });
@@ -609,16 +588,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-entity-follow-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-entity-follow-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-entity-follow-error']
+        );
       });
   };
   const unfollowTable = () => {
@@ -631,16 +610,16 @@ const DatasetDetailsPage: FunctionComponent = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-entity-unfollow-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-entity-unfollow-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-entity-unfollow-error']
+        );
       });
   };
 
@@ -677,7 +656,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setLeafNode(res.data, pos);
           setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-lineage-node-error']
           );
         }
@@ -686,10 +665,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
         }, 500);
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-lineage-node-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
       });
   };
 
@@ -700,10 +679,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['add-lineage-error'];
-          handleShowErrorToast(errMsg);
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
           reject();
         });
     });
@@ -716,10 +695,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
       data.toEntity,
       data.toId
     ).catch((err: AxiosError) => {
-      const errMsg =
-        err.response?.data?.message ||
-        jsonData['api-error-messages']['delete-lineage-error'];
-      handleShowErrorToast(errMsg);
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
     });
   };
 
@@ -745,16 +724,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['add-feed-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['add-feed-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -764,20 +738,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['create-conversation-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
       });
   };
 
@@ -801,22 +775,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
           }
           setTableTestCase(existingData);
           handleShowTestForm(false);
-          handleShowSuccessToast(
+          showSuccessToast(
             `Test ${data.testCase.tableTestType} for ${name} has been ${
               itsNewTest ? 'added' : 'updated'
             } successfully.`
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['add-table-test-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['add-table-test-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['add-table-test-error']
+        );
       });
   };
 
@@ -850,22 +824,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setColumns(updatedColumns);
           handleShowTestForm(false);
           setSelectedColumn(undefined);
-          handleShowSuccessToast(
+          showSuccessToast(
             `Test ${data.testCase.columnTestType} for ${
               data.columnName
             } has been ${itsNewTest ? 'added' : 'updated'} successfully.`
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['add-column-test-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['add-column-test-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['add-column-test-error']
+        );
       });
   };
 
@@ -876,13 +850,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           (d) => d.testCase.tableTestType !== testType
         );
         setTableTestCase(updatedTest);
-        handleShowSuccessToast(jsonData['api-success-messages']['delete-test']);
+        showSuccessToast(jsonData['api-success-messages']['delete-test']);
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['delete-test-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-test-error']
+        );
       });
   };
 
@@ -908,13 +882,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           return d;
         });
         setColumns(updatedColumns);
-        handleShowSuccessToast(jsonData['api-success-messages']['delete-test']);
+        showSuccessToast(jsonData['api-success-messages']['delete-test']);
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['delete-test-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-test-error']
+        );
       });
   };
 
@@ -938,7 +912,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
                 });
               });
             } else {
-              handleShowErrorToast(
+              showErrorToast(
                 jsonData['api-error-messages'][
                   'fetch-updated-conversation-error'
                 ]
@@ -946,23 +920,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const message =
-              error?.response?.data?.message ||
-              jsonData['api-error-messages'][
-                'fetch-updated-conversation-error'
-              ];
-            handleShowErrorToast(message);
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message =
-          error?.response?.data?.message ||
-          jsonData['api-error-messages']['delete-message-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
       });
   };
   useEffect(() => {

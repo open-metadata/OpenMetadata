@@ -28,16 +28,15 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
-import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -67,7 +66,6 @@ const GlossaryTermsV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
 }: Props) => {
-  const showToast = useToastContext();
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -85,13 +83,6 @@ const GlossaryTermsV1 = ({
   const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
     []
   );
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const tabs = [
     {
@@ -223,12 +214,7 @@ const GlossaryTermsV1 = ({
         setTagList(getTaglist(res.data));
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
       })
       .finally(() => {
         setIsTagLoading(false);
