@@ -24,16 +24,14 @@ import PageContainer from '../../components/containers/PageContainer';
 import DropDown from '../../components/dropdown/DropDown';
 import { ROUTES } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { fetchAllUsers } from '../../utils/UsedDataUtils';
 
 const Signup = () => {
-  const showToast = useToastContext();
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
     []
   );
@@ -47,13 +45,6 @@ const Signup = () => {
   const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const selectedTeamsHandler = (id?: string) => {
     setSelectedTeams((prevState: Array<string | undefined>) => {
@@ -83,12 +74,10 @@ const Signup = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['create-user-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setLoading(false);
@@ -160,12 +149,10 @@ const Signup = () => {
         setTeams(res?.data?.data || []);
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-teams-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   }, []);
   useEffect(() => {

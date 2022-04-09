@@ -37,14 +37,12 @@ import {
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
 import { getFilterString } from '../../utils/FilterUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const showToast = useToastContext();
   const initialFilter = getFilterString(getQueryParam(location.search));
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
@@ -90,13 +88,6 @@ const ExplorePage: FunctionComponent = () => {
 
   const handlePathChange = (path: string) => {
     AppState.explorePageTab = path;
-  };
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
   };
 
   const fetchCounts = () => {
@@ -163,12 +154,10 @@ const ExplorePage: FunctionComponent = () => {
         }
       )
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-count-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);

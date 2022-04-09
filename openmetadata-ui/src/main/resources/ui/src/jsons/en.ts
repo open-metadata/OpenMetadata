@@ -44,7 +44,9 @@ const jsonData = {
 
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
-    'elastic-search-error': 'Error while fetch data from Elasticsearch!',
+    'forbidden-error': 'You do not have permissions to perform this action!',
+
+    'elastic-search-error': 'Error while fetching data from Elasticsearch!',
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
@@ -65,6 +67,7 @@ const jsonData = {
     'fetch-glossary-error': 'Error while fetching glossary!',
     'fetch-glossary-list-error': 'Error while fetching glossaries!',
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
+    'fetch-glossary-terms-error': 'Error while fetching glossary terms!',
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
@@ -89,6 +92,7 @@ const jsonData = {
     'fetch-teams-error': 'Error while fetching teams!',
     'fetch-version-error': 'Error while fetching version!',
     'fetch-webhook-error': 'Error while fetching webhooks!',
+    'fetch-user-count-error': 'Error while getting users count!',
 
     'unexpected-server-response': 'Unexpected response from server!',
 
@@ -109,6 +113,12 @@ const jsonData = {
     'update-task-error': 'Error while updating tasks!',
     'update-team-error': 'Error while updating team!',
     'update-user-error': 'Error while updating user!',
+    'update-admin-profile-error':
+      'Error while updating the admin user profile!',
+    'update-service-error': 'Error while updating service!',
+    'update-reviewer-error': 'Error while updating reviewer!',
+
+    'feed-post-error': 'Error while posting the message!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

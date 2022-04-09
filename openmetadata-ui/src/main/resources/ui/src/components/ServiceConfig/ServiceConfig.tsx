@@ -1,15 +1,12 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isEqual } from 'lodash';
 import { ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { ONLY_NUMBER_REGEX } from '../../constants/constants';
-import {
-  // DashboardServiceType,
-  // MessagingServiceType,
-  ServiceCategory,
-} from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
 import { errorMsg, requiredField } from '../../utils/CommonUtils';
 import {
   getHostPortDetails,
@@ -17,9 +14,9 @@ import {
   getKeyValuePair,
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Loader from '../Loader/Loader';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
@@ -58,7 +55,6 @@ const ServiceConfig = ({
   data,
   handleUpdate,
 }: ServiceConfigProps) => {
-  const showToast = useToastContext();
   const [loading, setLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
     'initial'
@@ -352,10 +348,9 @@ const ServiceConfig = ({
             setLoading(false);
           })
           .catch(() => {
-            showToast({
-              variant: 'error',
-              body: `Error while updating service`,
-            });
+            showErrorToast(
+              jsonData['api-error-messages']['update-service-error']
+            );
           });
       }
     }

@@ -198,10 +198,6 @@ jest.mock(
   }
 );
 
-jest.mock('../../hooks/useToastContext', () => {
-  return jest.fn().mockImplementation(() => jest.fn());
-});
-
 jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
