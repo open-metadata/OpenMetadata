@@ -57,8 +57,24 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const sortBuckets = (buckets: Array<Bucket>) => {
     return buckets.sort((a, b) => (a.key > b.key ? 1 : -1));
   };
-  const getBuckets = (buckets: Array<Bucket>, state: boolean) => {
-    return sortBuckets(buckets).slice(0, state ? buckets.length : LIST_SIZE);
+
+  const sortBucketbyCount = (buckets: Array<Bucket>) => {
+    return buckets.sort((a, b) => (a.doc_count < b.doc_count ? 1 : -1));
+  };
+
+  const getBuckets = (
+    buckets: Array<Bucket>,
+    state: boolean,
+    sortBycount = false
+  ) => {
+    if (sortBycount) {
+      return sortBucketbyCount(buckets).slice(
+        0,
+        state ? buckets.length : LIST_SIZE
+      );
+    } else {
+      return sortBuckets(buckets).slice(0, state ? buckets.length : LIST_SIZE);
+    }
   };
 
   const getLinkTextByTitle = (title: string, bucketLength: number) => {
@@ -79,13 +95,14 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const getBucketsByTitle = (title: string, buckets: Array<Bucket>) => {
     switch (title) {
       case 'Service':
-        return getBuckets(buckets, showAllServices);
+        return getBuckets(buckets, showAllServices, true);
       case 'Tags':
-        return getBuckets(buckets, showAllTags);
+        return getBuckets(buckets, showAllTags, true);
+
       case 'Tier':
         return getBuckets(buckets, showAllTier);
       case 'Database':
-        return getBuckets(buckets, showAllDatabase);
+        return getBuckets(buckets, showAllDatabase, true);
       default:
         return [];
     }
