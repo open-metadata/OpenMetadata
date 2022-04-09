@@ -37,7 +37,7 @@ export const showErrorToast = (
     errorMessage = getErrorText(error, fallback);
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page
-    if (error.response?.status === 401) {
+    if (error && error.response?.status === 401) {
       return;
     }
   }
