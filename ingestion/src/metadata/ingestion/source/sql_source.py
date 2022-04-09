@@ -546,6 +546,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return columns
 
     def _get_database(self, database: str) -> Database:
+        if not database:
+            database = "default"
         return Database(
             name=database,
             service=EntityReference(

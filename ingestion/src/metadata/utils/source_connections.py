@@ -28,11 +28,17 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveSQLConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -93,6 +99,7 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(MariaDBConnection)
 @get_connection_url.register(PostgresConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
@@ -110,6 +117,15 @@ def _(connection: MssqlConnection):
     if connection.scheme.value == connection.scheme.mssql_pyodbc:
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
+
+
+@get_connection_url.register
+def _(connection: OracleConnection):
+    url = get_connection_url_common(connection)
+    if connection.oracleServiceName:
+        assert not connection.database
+        url = f"{url}/?service_name={connection.oracleServiceName}"
+    return url
 
 
 @get_connection_url.register

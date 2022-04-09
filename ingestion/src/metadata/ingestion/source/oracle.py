@@ -10,40 +10,24 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-from typing import Optional
 
 import cx_Oracle  # noqa: F401
 import pydantic
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-
-class OracleConfig(OracleConnection, SQLConnectionConfig):
-    # defaults
-    oracle_service_name: Optional[str] = None
-    query: Optional[str] = "select * from {}.{} where ROWNUM <= 50"
-
-    @pydantic.validator("oracle_service_name")
-    def check_oracle_service_name(cls, v, values):
-        if values.get("database") and v:
-            raise ValueError(
-                "Please provide database or oracle_service_name but not both"
-            )
-        return v
-
-    def get_connection_url(self):
-        url = super().get_connection_url()
-        if self.oracle_service_name:
-            assert not self.database
-            url = f"{url}service_name={self.oracle_service_name}"
-        return url
 
 
 class OracleSource(SQLSource):
@@ -52,5 +36,24 @@ class OracleSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = OracleConfig.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
+        connection: OracleConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, OracleConnection):
+            raise InvalidSourceException(
+                f"Expected OracleConnection, but got {connection}"
+            )
+        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
+            config.sourceConfig.config.sampleDataQuery = (
+                "select * from {}.{} where ROWNUM <= 50"
+            )
         return cls(config, metadata_config)
+
+    def _get_database(self, database: str) -> Database:
+        if not database:
+            database = self.service_connection.oracleServiceName
+        return Database(
+            name=database,
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
+        )
