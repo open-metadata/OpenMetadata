@@ -24,6 +24,8 @@ export const INITIAL_FROM = 1;
 export const ZERO_SIZE = 0;
 export const emptyValue = '';
 
+export const UPDATABLE_AGGREGATION = ['Service', 'Tier', 'Tags'];
+
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];
   buckets.forEach((el) => {

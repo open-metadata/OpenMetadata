@@ -54,6 +54,7 @@ import {
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
+  UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -185,21 +186,25 @@ const Explore: React.FC<ExploreProps> = ({
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            const buckets = cloneDeep(oldAgg.buckets)
-              .map((item) => {
-                // eslint-disable-next-line @typescript-eslint/camelcase
-                return { ...item, doc_count: 0 };
-              })
-              .concat(newAgg.buckets);
-            const bucketHashmap = buckets.reduce((obj, item) => {
-              obj[item.key]
-                ? // eslint-disable-next-line @typescript-eslint/camelcase
-                  (obj[item.key].doc_count += item.doc_count)
-                : (obj[item.key] = { ...item });
+            if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
+              const buckets = cloneDeep(oldAgg.buckets)
+                .map((item) => {
+                  // eslint-disable-next-line @typescript-eslint/camelcase
+                  return { ...item, doc_count: 0 };
+                })
+                .concat(newAgg.buckets);
+              const bucketHashmap = buckets.reduce((obj, item) => {
+                obj[item.key]
+                  ? // eslint-disable-next-line @typescript-eslint/camelcase
+                    (obj[item.key].doc_count += item.doc_count)
+                  : (obj[item.key] = { ...item });
 
-              return obj;
-            }, {} as { [key: string]: Bucket });
-            oldAgg.buckets = Object.values(bucketHashmap);
+                return obj;
+              }, {} as { [key: string]: Bucket });
+              oldAgg.buckets = Object.values(bucketHashmap);
+            } else {
+              oldAgg.buckets = newAgg.buckets;
+            }
           }
         }
       }
