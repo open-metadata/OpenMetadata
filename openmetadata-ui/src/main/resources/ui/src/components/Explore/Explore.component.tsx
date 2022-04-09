@@ -457,6 +457,10 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  /**
+   * on filter change , change the route
+   * @param filters - filter object
+   */
   const handleFilterChange = (filters: FilterObject) => {
     const params = prepareQueryParams(filters);
 
