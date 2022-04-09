@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    DB2Connection,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveSQLConnection,
 )
@@ -97,6 +100,7 @@ def get_connection_url(connection):
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
+@get_connection_url.register(DB2Connection)
 def _(connection):
     return get_connection_url_common(connection)
 
