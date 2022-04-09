@@ -15,8 +15,11 @@ from sqlalchemy.engine import reflection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 @reflection.cache
@@ -30,16 +33,16 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 )
 
 
-class Db2Config(DB2Connection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
-
-
 class Db2Source(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = Db2Config.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: DB2Connection = config.serviceConnection.__root__.config
+        if not isinstance(connection, DB2Connection):
+            raise InvalidSourceException(
+                f"Expected DB2Connection, but got {connection}"
+            )
         return cls(config, metadata_config)
