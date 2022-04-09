@@ -20,23 +20,32 @@
       "default": "Glue"
     },
     "hostPort": {
-      "description": "Host and port of the DynamoDB",
+      "description": "Host and port of the Glue",
       "type": "string"
     },
     "endPointURL": {
-      "description": "EndPoint URL for the Dynamo DB",
+      "description": "EndPoint URL for the Glue",
       "type": "string"
     },
     "awsAccessKeyId": {
       "description": "AWS Access key ID.",
-      "typ": "string"
+      "type": "string"
     },
     "awsSecretAccessKey": {
       "description": "AWS Secret Access Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "awsSessionToken": {
       "description": "AWS Session Token.",
+      "type": "string"
+    },
+    "storageServiceName": {
+      "description": "AWS storageServiceName Name.",
+      "type": "string"
+    },
+    "pipelineServiceName": {
+      "description": "AWS pipelineServiceName Name.",
       "type": "string"
     },
     "awsRegion": {
@@ -46,7 +55,7 @@
     "database": {
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Glue.",
       "type": "string",
-      "default": "DynamoDB"
+      "default": "Glue"
     },
     "connectionOptions": {
       "$ref": "connectionBasicType.json#/definitions/connectionOptions"
