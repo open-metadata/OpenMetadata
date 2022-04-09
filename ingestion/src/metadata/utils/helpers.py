@@ -36,8 +36,6 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)

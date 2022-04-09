@@ -271,9 +271,6 @@ class MetabaseSource(Source[Entity]):
                         .get("native", {})
                         .get("query", "")
                     )
-                    metadata.ingest_lineage_by_query(
-                        raw_query, self.config.db_service_name
-                    )
             except Exception as e:
                 logger.error(repr(e))
 

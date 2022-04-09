@@ -10,6 +10,7 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
@@ -128,16 +129,16 @@ class OMetaLineageMixin(Generic[T]):
             return None
 
     def _create_lineage_by_table_name(
-        self, from_table: str, to_table: str, service_name: str
+        self, from_table: str, to_table: str, service_name: str, database: str
     ):
         """
         This method is to create a lineage between two tables
         """
         try:
-            from_fqdn = f"{service_name}.{_get_formmated_table_name(str(from_table))}"
+            from_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(from_table))}"
             from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
 
-            to_fqdn = f"{service_name}.{_get_formmated_table_name(str(to_table))}"
+            to_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(to_table))}"
             to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
             if not from_entity or not to_entity:
                 return None
@@ -161,7 +162,7 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def ingest_lineage_by_query(self, query: str, service_name: str):
+    def ingest_lineage_by_query(self, query: str, database: str, service_name: str):
         """
         This method parses the query to get source, target and intermediate table names to create lineage
         """
@@ -172,17 +173,17 @@ class OMetaLineageMixin(Generic[T]):
             for intermediate_table in result.intermediate_tables:
                 for source_table in result.source_tables:
                     self._create_lineage_by_table_name(
-                        source_table, intermediate_table, service_name
+                        source_table, intermediate_table, service_name, database
                     )
                 for target_table in result.target_tables:
                     self._create_lineage_by_table_name(
-                        intermediate_table, target_table, service_name
+                        intermediate_table, target_table, service_name, database
                     )
             if not result.intermediate_tables:
                 for target_table in result.target_tables:
                     for source_table in result.source_tables:
                         self._create_lineage_by_table_name(
-                            source_table, target_table, service_name
+                            source_table, target_table, service_name, database
                         )
         except Exception as err:
             logger.error(str(err))
