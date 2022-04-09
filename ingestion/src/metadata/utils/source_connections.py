@@ -121,11 +121,11 @@ def _(connection: MssqlConnection):
 
 @get_connection_url.register
 def _(connection: OracleConnection):
-    get_connection_url_common(connection)
-    # if self.oracle_service_name:
-    #     assert not self.database
-    #     url = f"{url}service_name={self.oracle_service_name}"
-    # return url
+    url = get_connection_url_common(connection)
+    if connection.oracleServiceName:
+        assert not connection.database
+        url = f"{url}/?service_name={connection.oracleServiceName}"
+    return url
 
 
 @get_connection_url.register
