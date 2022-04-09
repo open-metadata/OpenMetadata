@@ -14,6 +14,9 @@ from collections import namedtuple
 from typing import Iterable
 
 import psycopg2
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -31,8 +34,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.engines import get_engine
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
