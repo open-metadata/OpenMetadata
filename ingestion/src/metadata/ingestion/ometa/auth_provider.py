@@ -25,6 +25,7 @@ import requests
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.metadataIngestion.workflow import (
     Auth0SSOConfig,
+    AzureSSOConfig,
     CustomOidcSSOConfig,
     GoogleSSOConfig,
     OktaSSOConfig,
@@ -278,7 +279,7 @@ class AzureAuthenticationProvider(AuthenticationProvider):
     # TODO: Prepare JSON for Azure Auth
     def __init__(self, config: OpenMetadataServerConfig):
         self.config = config
-
+        self.security_config: AzureSSOConfig = self.config.securityConfig
         self.generated_auth_token = None
         self.expiry = None
 
@@ -292,11 +293,11 @@ class AzureAuthenticationProvider(AuthenticationProvider):
         )
 
         app = ConfidentialClientApplication(
-            client_id=self.config.client_id,
-            client_credential=self.config.secret_key,
-            authority=self.config.authority,
+            client_id=self.security_config.clientId,
+            client_credential=self.security_config.clientSecret,
+            authority=self.security_config.authority,
         )
-        token = app.acquire_token_for_client(scopes=self.config.scopes)
+        token = app.acquire_token_for_client(scopes=self.security_config.scopes)
         try:
             self.generated_auth_token = token["access_token"]
             self.expiry = token["expires_in"]
