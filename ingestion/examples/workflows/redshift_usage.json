@@ -1,14 +1,20 @@
 {
   "source": {
     "type": "redshift-usage",
-    "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
-      "username": "username",
-      "password": "strong_password",
-      "database": "warehouse",
-      "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
-      "service_name": "aws_redshift",
-      "duration": 2
+    "serviceName": "aws_redshift_demo_2",
+    "serviceConnection": {
+      "config": {
+        "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
+        "username": "username",
+        "password": "strong_password",
+        "database": "dev",
+        "type": "Redshift"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "queryLogDuration": "1"
+      }
     }
   },
   "processor": {
@@ -23,17 +29,16 @@
       "filename": "/tmp/redshift_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/redshift_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": { 
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
