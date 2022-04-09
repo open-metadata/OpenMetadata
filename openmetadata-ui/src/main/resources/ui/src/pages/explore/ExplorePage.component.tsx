@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { Bucket, SearchDataFunctionType, SearchResponse } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
@@ -87,7 +87,7 @@ const ExplorePage: FunctionComponent = () => {
   };
 
   const handlePathChange = (path: string) => {
-    AppState.explorePageTab = path;
+    AppState.updateExplorePageTab(path);
   };
 
   const fetchCounts = () => {
@@ -209,7 +209,7 @@ const ExplorePage: FunctionComponent = () => {
   }, [searchText, showDeleted]);
 
   useEffect(() => {
-    AppState.explorePageTab = tab;
+    AppState.updateExplorePageTab(tab);
   }, [tab]);
 
   useEffect(() => {
@@ -254,7 +254,7 @@ const ExplorePage: FunctionComponent = () => {
   }, []);
 
   return (
-    <>
+    <Fragment>
       {isLoading || isLoadingForData ? (
         <Loader />
       ) : (
@@ -287,7 +287,7 @@ const ExplorePage: FunctionComponent = () => {
           />
         </PageContainerV1>
       )}
-    </>
+    </Fragment>
   );
 };
 

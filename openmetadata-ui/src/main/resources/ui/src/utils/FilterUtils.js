@@ -49,3 +49,14 @@ export const getFilterCount = (filterData) => {
 export const getFilterKey = (key) => {
   return key === 'service_type' ? 'service' : key;
 };
+
+export const prepareQueryParams = (filters) => {
+  const entries = Object.entries(filters);
+
+  const params = entries
+    .filter((entry) => entry[1].length)
+    .map((entry) => `${entry[0]}=${entry[1].join(',')}`)
+    .join('&');
+
+  return params;
+};

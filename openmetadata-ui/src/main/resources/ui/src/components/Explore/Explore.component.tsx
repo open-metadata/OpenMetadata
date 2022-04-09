@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  faSortAmountDownAlt,
+  faSortAmountUpAlt,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -59,15 +64,14 @@ import {
 } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
+import {
+  getFilterCount,
+  getFilterString,
+  prepareQueryParams,
+} from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
-import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -130,10 +134,12 @@ const Explore: React.FC<ExploreProps> = ({
         }
         setIsFilterSet(true);
 
-        return {
+        const updatedFilters = {
           ...prevState,
           [type]: [...prevState[type], selectedFilter],
         };
+
+        return updatedFilters;
       });
     } else {
       if (searchTag.includes(selectedFilter)) {
@@ -145,8 +151,9 @@ const Explore: React.FC<ExploreProps> = ({
       setFilters((prevState) => {
         const selectedFilterCount = getFilterCount(prevState);
         setIsFilterSet(selectedFilterCount >= 1);
+        const updatedFilters = { ...prevState, [type]: filter };
 
-        return { ...prevState, [type]: filter };
+        return updatedFilters;
       });
     }
   };
@@ -450,6 +457,17 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  const handleFilterChange = (filters: FilterObject) => {
+    const params = prepareQueryParams(filters);
+
+    const explorePath = getExplorePathWithSearch(searchQuery);
+
+    history.push({
+      pathname: explorePath,
+      search: params,
+    });
+  };
+
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
@@ -536,6 +554,9 @@ const Explore: React.FC<ExploreProps> = ({
       getData();
     } else {
       setCurrentPage(1);
+    }
+    if (!isMounting.current) {
+      handleFilterChange(filters);
     }
   }, [filters]);
 

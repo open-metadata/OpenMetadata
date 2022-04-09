@@ -52,6 +52,7 @@ class AppState {
       updateUserRole: action,
       updateUsers: action,
       updateUserPermissions: action,
+      updateExplorePageTab: action,
     });
   }
 
@@ -81,6 +82,9 @@ class AppState {
   }
   updateUserPermissions(permissions: UserPermissions) {
     this.userPermissions = permissions;
+  }
+  updateExplorePageTab(tab: string) {
+    this.explorePageTab = tab;
   }
 }
 
