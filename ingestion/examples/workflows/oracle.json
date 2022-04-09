@@ -4,13 +4,14 @@
     "serviceName": "local_oracle",
     "serviceConnection": {
       "config": {
-        "host_port": "host:1521",
-        "username": "pdbadmin",
+        "hostPort": "hostPort",
+        "username": "username",
         "password": "password",
-        "database": "",
         "type": "Oracle",
-        "oracle_service_name": "ORCLPDB1"
+        "oracleServiceName":"TESTDB"
       }
+    },"sourceConfig":{
+      "config":{}
     }
   },
   "sink": {
