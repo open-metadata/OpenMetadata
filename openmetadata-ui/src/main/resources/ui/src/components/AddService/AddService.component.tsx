@@ -11,7 +11,12 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { DataObj } from '../../interface/service.interface';
-import { getKeyValueObject } from '../../utils/ServiceUtils';
+import {
+  getIsIngestionEnable,
+  getKeyValueObject,
+} from '../../utils/ServiceUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { Button } from '../buttons/Button/Button';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddServiceProps } from './AddService.interface';
@@ -432,7 +437,49 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
           />
         )}
 
-        {activeStepperStep > 3 && <p>Completed</p>}
+        {activeStepperStep > 3 && (
+          <div className="tw-flex tw-flex-col tw-items-center tw-mt-14 tw-mb-24">
+            <div className="tw-mb-7">
+              <SVGIcons
+                alt="success"
+                className="tw-w-10 tw-h-10"
+                icon={Icons.CIRCLE_CHECKBOX}
+              />
+            </div>
+            <p className="tw-mb-7">
+              <span className="tw-mr-1 tw-font-semibold">
+                &quot;{serviceName}&quot;
+              </span>
+              <span>has been successfuly created</span>
+            </p>
+
+            <div>
+              <Button
+                data-testid="view-service-button"
+                size="regular"
+                theme="primary"
+                variant="outlined"
+                // this will be implementd once api integration is done, as we need FQN to re-direct
+                // onClick={handleViewServiceClick}
+              >
+                <span>View Service</span>
+              </Button>
+
+              {getIsIngestionEnable(serviceCategory as ServiceCategory) && (
+                <Button
+                  className="tw-ml-3.5"
+                  data-testid="add-ingestion-button"
+                  size="regular"
+                  theme="primary"
+                  variant="contained"
+                  // onClick={onNext}
+                >
+                  <span>Add Ingestion</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </PageLayout>
   );
