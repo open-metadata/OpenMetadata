@@ -72,7 +72,7 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toBeInTheDocument();
   });
 
-  it('Left button should be disabled if pagin.before is empty', () => {
+  it('Left button should be disabled if paging.before is empty', () => {
     const paging = {
       after: 'testString',
       before: '',
@@ -95,7 +95,7 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toBeInTheDocument();
   });
 
-  it('Next button should be disabled if pagin.after is empty', () => {
+  it('Next button should be disabled if paging.after is empty', () => {
     const paging = {
       before: 'test',
       after: '',
