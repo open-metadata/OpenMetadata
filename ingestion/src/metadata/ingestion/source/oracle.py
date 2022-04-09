@@ -14,6 +14,7 @@
 import cx_Oracle  # noqa: F401
 import pydantic
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
@@ -23,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
@@ -45,3 +47,13 @@ class OracleSource(SQLSource):
                 "select * from {}.{} where ROWNUM <= 50"
             )
         return cls(config, metadata_config)
+
+    def _get_database(self, database: str) -> Database:
+        if not database:
+            database = self.service_connection.oracleServiceName
+        return Database(
+            name=database,
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
+        )
