@@ -16,13 +16,6 @@ import logging
 
 from pydantic import SecretStr
 
-from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )

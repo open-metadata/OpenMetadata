@@ -19,8 +19,11 @@ from sqlalchemy.engine import reflection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 _type_map.update(
     {
@@ -75,26 +78,16 @@ from metadata.generated.schema.entity.services.connections.database.prestoConnec
 )
 
 
-class PrestoConfig(PrestoConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        url = f"{self.scheme}://"
-        if self.username:
-            url += f"{quote_plus(self.username)}"
-            if self.password:
-                url += f":{quote_plus(self.password.get_secret_value())}"
-            url += "@"
-        url += f"{self.hostPort}"
-        url += f"/{self.catalog}"
-        if self.database:
-            url += f"?schema={quote_plus(self.database)}"
-        return url
-
-
 class PrestoSource(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = PrestoConfig.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
+        connection: PrestoConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PrestoConnection):
+            raise InvalidSourceException(
+                f"Expected PrestoConnection, but got {connection}"
+            )
         return cls(config, metadata_config)

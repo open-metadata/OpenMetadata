@@ -43,6 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -167,6 +170,21 @@ def _(connection: DatabricksConnection):
     return url
 
 
+@get_connection_url.register
+def _(connection: PrestoConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    url += f"/{connection.catalog}"
+    if connection.database:
+        url += f"?schema={quote_plus(connection.database)}"
+    return url
+
+
 @singledispatch
 def get_connection_args(connection):
     if connection.connectionArguments:
@@ -188,7 +206,7 @@ def _(connection: TrinoConnection):
         return connection.connectionArguments
 
 
-@get_connection_url.register
+@get_connection_args.register
 def _(connection: SnowflakeConnection):
 
     url = f"{connection.scheme.value}://"
@@ -217,7 +235,6 @@ def _(connection: SnowflakeConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-    return url
 
 
 @get_connection_url.register
