@@ -67,7 +67,7 @@ type Props = {
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
-  onAssetPaginate: (num: number) => void;
+  onAssetPaginate: (num: string | number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   isChildLoading: boolean;
 };

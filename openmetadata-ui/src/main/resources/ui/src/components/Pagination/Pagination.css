@@ -31,15 +31,22 @@
   cursor: pointer;
 }
 
+.button-text.active {
+  background: #7147e8;
+}
+.button-text.active .tw-link {
+  color: #ffffff;
+}
+
 .pagination > .disabled > .tw-link {
   color: #7147e8;
 }
 
 .pagination > .disabled:hover > .tw-link,
 .pagination > .disabled:focus > .tw-link {
-  color: white;
+  color: #ffffff;
 }
 .pagination > .button-text:hover > .tw-link,
 .pagination > .button-text:focus > .tw-link {
-  color: white;
+  color: #ffffff;
 }

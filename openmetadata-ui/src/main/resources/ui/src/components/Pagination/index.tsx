@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { PaginationProps } from 'Models';
-import PropTypes from 'prop-types';
-import React from 'react';
-import Paginations from 'react-js-pagination';
-import './Pagination.css';
 import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { PaginationProps } from 'Models';
+import PropTypes from 'prop-types';
+import React, { Fragment } from 'react';
+import Paginations from 'react-js-pagination';
+import './Pagination.css';
 const Pagination: React.FC<PaginationProps> = ({
   sizePerPage,
   totalNumberOfValues,
@@ -30,27 +30,27 @@ const Pagination: React.FC<PaginationProps> = ({
         hideFirstLastPages
         activePage={currentPage}
         disabledClass="tw-opacity-60 disabled"
-        itemClass="tw-border tw-border-primary tw-text-blue-500 tw-rounded tw-px-3 tw-py-1.5 tw-text-sm tw-mx-2 hover:tw-bg-primary button-text"
+        itemClass="tw-border tw-border-primary tw-rounded tw-px-3 tw-py-1.5 tw-text-sm tw-mx-2 hover:tw-bg-primary button-text"
         itemsCountPerPage={sizePerPage}
         linkClass="tw-text-primary tw-font-medium tw-link"
         nextPageText={
-          <>
+          <Fragment>
             Next{' '}
             <FontAwesomeIcon
               className="tw-text-sm tw-align-middle tw-pr-1.5"
               icon={faArrowRight}
             />
-          </>
+          </Fragment>
         }
-        pageRangeDisplayed={-1}
+        pageRangeDisplayed={1}
         prevPageText={
-          <>
+          <Fragment>
             <FontAwesomeIcon
               className="tw-text-sm tw-align-middle tw-pr-1.5"
               icon={faArrowLeft}
             />
             Previous{' '}
-          </>
+          </Fragment>
         }
         totalItemsCount={totalNumberOfValues}
         onChange={paginate}

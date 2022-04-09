@@ -13,6 +13,7 @@
 
 import { render } from '@testing-library/react';
 import React from 'react';
+import { PAGE_SIZE } from '../../../constants/constants';
 import NextPrevious from './NextPrevious';
 
 const mockCallback = jest.fn();
@@ -22,9 +23,15 @@ describe('Test Pagination Component', () => {
     const paging = {
       after: 'afterString',
       before: 'BeforString',
+      total: 0,
     };
     const { getByTestId } = render(
-      <NextPrevious paging={paging} pagingHandler={mockCallback} />
+      <NextPrevious
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+        totalCount={paging.total}
+      />
     );
     const pagination = getByTestId('pagination');
 
@@ -35,10 +42,16 @@ describe('Test Pagination Component', () => {
     const paging = {
       after: '',
       before: '',
+      total: 0,
     };
 
     const { getByTestId } = render(
-      <NextPrevious paging={paging} pagingHandler={mockCallback} />
+      <NextPrevious
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+        totalCount={paging.total}
+      />
     );
     const previous = getByTestId('previous');
     const next = getByTestId('next');
@@ -52,10 +65,16 @@ describe('Test Pagination Component', () => {
     const paging = {
       after: 'testString',
       before: '',
+      total: 0,
     };
 
     const { getByTestId } = render(
-      <NextPrevious paging={paging} pagingHandler={mockCallback} />
+      <NextPrevious
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+        totalCount={paging.total}
+      />
     );
     const previous = getByTestId('previous');
 
@@ -66,10 +85,16 @@ describe('Test Pagination Component', () => {
     const paging = {
       before: 'test',
       after: '',
+      total: 0,
     };
 
     const { getByTestId } = render(
-      <NextPrevious paging={paging} pagingHandler={mockCallback} />
+      <NextPrevious
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+        totalCount={paging.total}
+      />
     );
     const next = getByTestId('next');
 

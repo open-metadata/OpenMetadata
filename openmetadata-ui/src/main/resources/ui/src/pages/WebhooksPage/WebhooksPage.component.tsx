@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
@@ -25,6 +24,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Paging } from '../../generated/type/paging';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { getErrorText } from '../../utils/StringsUtils';
@@ -71,7 +71,7 @@ const WebhooksPage: FunctionComponent = () => {
       });
   };
 
-  const handlePageChange = (cursorType: string) => {
+  const handlePageChange = (cursorType: string | number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;

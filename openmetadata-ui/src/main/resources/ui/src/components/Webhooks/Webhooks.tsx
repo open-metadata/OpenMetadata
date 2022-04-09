@@ -14,7 +14,10 @@
 import classNames from 'classnames';
 import { cloneDeep, isNil, startCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
 import { Button } from '../buttons/Button/Button';
@@ -195,7 +198,12 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
               </div>
             ))}
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={onPageChange} />
+              <NextPrevious
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={onPageChange}
+                totalCount={paging.total}
+              />
             )}
           </>
         ) : (

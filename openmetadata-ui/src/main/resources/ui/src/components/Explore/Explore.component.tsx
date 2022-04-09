@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  faSortAmountDownAlt,
+  faSortAmountUpAlt,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -63,11 +68,6 @@ import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
-import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -171,8 +171,8 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const paginate = (pageNumber: string | number) => {
+    setCurrentPage(pageNumber as number);
   };
 
   const updateAggregationCount = useCallback(

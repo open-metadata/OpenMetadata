@@ -173,6 +173,7 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
     const { container } = render(
       <Ingestion
@@ -202,6 +203,7 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(
@@ -237,6 +239,7 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(

@@ -19,7 +19,6 @@ import {
   EntityFieldThreadCount,
   EntityThread,
   ExtraInfo,
-  Paging,
   ServicesData,
 } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
@@ -64,6 +63,7 @@ import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -81,6 +81,7 @@ import {
   Schema,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { ServiceDataObj } from '../../interface/service.interface';
@@ -902,14 +903,14 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     getOtherDetails(pagingString);
   };
 
-  const ingestionPagingHandler = (cursorType: string) => {
+  const ingestionPagingHandler = (cursorType: string | number) => {
     const pagingString = `&${cursorType}=${
       ingestionPaging[cursorType as keyof typeof paging]
     }`;
@@ -1179,8 +1180,10 @@ const ServicePage: FunctionComponent = () => {
                     </div>
                     {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
                       <NextPrevious
+                        pageSize={PAGE_SIZE}
                         paging={paging}
                         pagingHandler={pagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
                   </Fragment>

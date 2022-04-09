@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'Models';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Paging } from '../../generated/type/paging';
 
 export interface WebhooksProps {
   data: Array<Webhook>;
@@ -20,6 +20,6 @@ export interface WebhooksProps {
   selectedStatus: Status[];
   onAddWebhook: () => void;
   onClickWebhook: (name: string) => void;
-  onPageChange: (type: string) => void;
+  onPageChange: (type: string | number) => void;
   onStatusFilter: (status: Status[]) => void;
 }

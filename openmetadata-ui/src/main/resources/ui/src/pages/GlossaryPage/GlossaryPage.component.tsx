@@ -1,5 +1,4 @@
 import { AxiosError, AxiosResponse } from 'axios';
-import { Paging } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { getGlossaries } from '../../axiosAPIs/glossaryAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -7,6 +6,7 @@ import GlossaryComponent from '../../components/Glossary/Glossary.component';
 import Loader from '../../components/Loader/Loader';
 import { pagingObject } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Paging } from '../../generated/type/paging';
 import useToastContext from '../../hooks/useToastContext';
 
 const GlossaryPage = () => {
@@ -38,7 +38,7 @@ const GlossaryPage = () => {
       });
   };
 
-  const handlePageChange = (cursorType: string) => {
+  const handlePageChange = (cursorType: string | number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;

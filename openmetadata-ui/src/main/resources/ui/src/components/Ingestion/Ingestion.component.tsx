@@ -18,7 +18,10 @@ import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import {
   AirflowPipeline,
   ConfigClass,
@@ -411,7 +414,12 @@ const Ingestion: React.FC<Props> = ({
               </tbody>
             </table>
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
+              <NextPrevious
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={pagingHandler}
+                totalCount={paging.total}
+              />
             )}
           </div>
         ) : (

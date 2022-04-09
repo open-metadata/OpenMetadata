@@ -55,7 +55,7 @@ type Props = {
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
-  onAssetPaginate: (num: number) => void;
+  onAssetPaginate: (num: string | number) => void;
   onRelatedTermClick?: (fqn: string) => void;
 };
 

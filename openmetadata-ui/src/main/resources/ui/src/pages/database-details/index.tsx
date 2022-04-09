@@ -16,12 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
+import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -63,6 +58,7 @@ import {
   getExplorePathWithSearch,
   getServiceDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -72,6 +68,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
@@ -384,7 +381,7 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (cursorType: string) => {
+  const databaseSchemaPagingHandler = (cursorType: string | number) => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
@@ -758,8 +755,10 @@ const DatabaseDetails: FunctionComponent = () => {
                         !isNil(databaseSchemaPaging.before)
                     ) && (
                       <NextPrevious
+                        pageSize={PAGE_SIZE}
                         paging={databaseSchemaPaging}
                         pagingHandler={databaseSchemaPagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
                   </Fragment>

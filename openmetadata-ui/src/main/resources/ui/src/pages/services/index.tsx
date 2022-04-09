@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -38,6 +38,7 @@ import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServ
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  PAGE_SIZE,
   pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -53,6 +54,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
@@ -523,7 +525,7 @@ const ServicesPage = () => {
     }
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number) => {
     setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
@@ -591,8 +593,10 @@ const ServicesPage = () => {
     return !isNil(paging[serviceName].after) ||
       !isNil(paging[serviceName].before) ? (
       <NextPrevious
+        pageSize={PAGE_SIZE}
         paging={paging[serviceName]}
         pagingHandler={pagingHandler}
+        totalCount={paging[serviceName].total}
       />
     ) : null;
   };
