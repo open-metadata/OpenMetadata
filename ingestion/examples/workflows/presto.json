@@ -5,16 +5,16 @@
     "serviceConnection": {
       "config": {
         "type": "Presto",
-        "host_port": "localhost:8080",
+        "hostPort": "localhost:8080",
         "catalog": "tpcds",
-        "username": "username",
+        "username": "admin",
         "password": "password",
         "database": "database"
       }
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": false
+        "generateSampleData": false
       }
     }
   },
