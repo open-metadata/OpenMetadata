@@ -235,8 +235,7 @@ def _(connection: SnowflakeConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-    return url 
-        
+    return url
 
 
 @get_connection_url.register
