@@ -21,6 +21,10 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
@@ -52,5 +56,14 @@ class OracleSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = OracleConfig.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
+        connection: OracleConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, OracleConnection):
+            raise InvalidSourceException(
+                f"Expected OracleConnection, but got {connection}"
+            )
+        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
+            config.sourceConfig.config.sampleDataQuery = (
+                "select * from {}.{} where ROWNUM <= 50"
+            )
         return cls(config, metadata_config)
