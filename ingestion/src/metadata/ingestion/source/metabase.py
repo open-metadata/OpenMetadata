@@ -138,7 +138,7 @@ class MetabaseSource(Source[Entity]):
         for chart in charts:
             try:
                 chart_details = chart["card"]
-                if "name" not in chart_details:
+                if not ("name" in chart_details):
                     continue
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart_details["name"]
