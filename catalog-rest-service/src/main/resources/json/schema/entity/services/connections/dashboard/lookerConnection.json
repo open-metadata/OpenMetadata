@@ -28,19 +28,10 @@
       "type": "string",
       "format": "password"
     },
-    "url": {
+    "hostPort": {
       "description": "URL to Looker instance.",
       "type": "string",
       "format": "uri"
-    },
-    "platformName": {
-      "description": "Looker Platform Name",
-      "type": "string",
-      "default": "looker"
-    },
-    "actor": {
-      "description": "Looker actor.",
-      "type": "string"
     },
     "env": {
       "description": "Looker Environment",
