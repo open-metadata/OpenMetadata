@@ -69,7 +69,6 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   getPartialNameFromTableFQN,
@@ -89,13 +88,13 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const showToast = useToastContext();
   const { databaseSchemaFQN, tab } = useParams<Record<string, string>>();
   const [isLoading, setIsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>();
@@ -188,20 +187,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     },
   ];
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
   const onThreadLinkSelect = (link: string) => {
     setThreadLink(link);
   };
@@ -230,12 +215,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-count-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -293,7 +276,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-databaseSchema-details-error']
         );
         setError(errMsg);
-        handleShowErrorToast(errMsg);
+        showErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -335,11 +318,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-databaseSchema-error']
           );
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsEdit(false);
@@ -383,11 +365,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-databaseSchema-error']
           );
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -409,12 +390,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -445,12 +424,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['add-feed-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -460,20 +434,20 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['create-conversation-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -503,24 +477,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             }
           })
           .catch((err) => {
-            const errMsg = getErrorText(
+            showErrorToast(
               err,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
-
-            handleShowErrorToast(errMsg);
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((err: AxiosError) => {
-        const message = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-message-error']
         );
-        handleShowErrorToast(message);
       });
   };
 

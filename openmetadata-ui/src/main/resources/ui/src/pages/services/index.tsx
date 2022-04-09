@@ -54,7 +54,6 @@ import { MessagingService } from '../../generated/entity/services/messagingServi
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import {
   DataObj,
   EditObj,
@@ -70,6 +69,7 @@ import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type ServiceRecord = {
   databaseServices: Array<DatabaseService>;
@@ -96,7 +96,6 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
-  const showToast = useToastContext();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -131,13 +130,6 @@ const ServicesPage = () => {
     dashboardServices: 0,
     pipelineServices: 0,
   });
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -192,13 +184,13 @@ const ServicesPage = () => {
               for (const err of errors) {
                 const errMsg = getErrorText(err, '');
                 if (errMsg) {
-                  handleShowErrorToast(errMsg);
+                  showErrorToast(errMsg);
                 } else {
                   unexpectedResponses++;
                 }
               }
               if (unexpectedResponses > 0) {
-                handleShowErrorToast(
+                showErrorToast(
                   jsonData['api-error-messages']['unexpected-server-response']
                 );
               }
@@ -207,11 +199,10 @@ const ServicesPage = () => {
           setIsLoading(false);
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-services-error']
           );
-          handleShowErrorToast(errMsg);
         });
     }
   };
@@ -313,14 +304,10 @@ const ServicesPage = () => {
           });
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['add-ingestion-error']
           );
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
         });
     } else {
       setIsModalOpen(false);
@@ -357,14 +344,10 @@ const ServicesPage = () => {
         handleServiceSavePromise(serviceRes, ingestionList);
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['add-service-error']
         );
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
       });
   };
 
@@ -392,11 +375,10 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-service-error']
         );
-        handleShowErrorToast(errMsg);
       });
 
     handleCancelConfirmationModal();
@@ -549,11 +531,10 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError | string) => {
-        const msg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
-        handleShowErrorToast(msg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -787,13 +768,12 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
         setIsLoading(false);
         setErrorMessage(jsonData['message']['no-services']);
-        handleShowErrorToast(errMsg);
       });
   }, []);
 

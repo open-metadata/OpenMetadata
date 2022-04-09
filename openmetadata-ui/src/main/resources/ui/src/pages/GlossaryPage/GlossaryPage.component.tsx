@@ -7,17 +7,17 @@ import GlossaryComponent from '../../components/Glossary/Glossary.component';
 import Loader from '../../components/Loader/Loader';
 import { pagingObject } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const GlossaryPage = () => {
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [glossariesList, setGlossariesList] = useState<Array<Glossary>>([]);
 
-  const fetchData = (pagin = '') => {
+  const fetchData = (paging = '') => {
     setIsLoading(true);
-    getGlossaries(pagin, ['owner', 'tags', 'reviewers'])
+    getGlossaries(paging, ['owner', 'tags', 'reviewers'])
       .then((res: AxiosResponse) => {
         if (res.data?.data) {
           setGlossariesList(res.data.data);
@@ -28,10 +28,7 @@ const GlossaryPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
       })
       .finally(() => {
         setIsLoading(false);

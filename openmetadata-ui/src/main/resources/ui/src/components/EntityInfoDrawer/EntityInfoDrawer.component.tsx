@@ -24,10 +24,10 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import useToastContext from '../../hooks/useToastContext';
 import { getHeaderLabel } from '../../utils/EntityLineageUtils';
 import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
@@ -41,7 +41,6 @@ const EntityInfoDrawer = ({
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const showToast = useToastContext();
   const [entityDetail, setEntityDetail] = useState<
     Partial<Table> & Partial<Pipeline> & Partial<Dashboard> & Partial<Topic>
   >(
@@ -71,11 +70,10 @@ const EntityInfoDrawer = ({
             setServiceType(res.data.serviceType);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;
@@ -89,22 +87,19 @@ const EntityInfoDrawer = ({
                 setServiceType(serviceRes.data.serviceType);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ?? `Error while getting ${selectedNode.name} service`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while getting ${selectedNode.name} service`
+                );
               });
             setEntityDetail(res.data);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;
@@ -118,22 +113,19 @@ const EntityInfoDrawer = ({
                 setServiceType(serviceRes.data.serviceType);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ?? `Error while getting ${selectedNode.name} service`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while getting ${selectedNode.name} service`
+                );
               });
             setEntityDetail(res.data);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;

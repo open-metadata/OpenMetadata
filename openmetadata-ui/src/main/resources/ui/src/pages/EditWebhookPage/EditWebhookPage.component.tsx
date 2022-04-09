@@ -29,14 +29,14 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { CreateWebhook } from '../../generated/api/events/createWebhook';
 import { Webhook } from '../../generated/entity/events/webhook';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
+import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditWebhookPage: FunctionComponent = () => {
   const { webhookName } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [webhookData, setWebhookData] = useState<Webhook>();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -49,10 +49,7 @@ const EditWebhookPage: FunctionComponent = () => {
         setWebhookData(res.data);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
       })
       .finally(() => setIsLoading(false));
   };
@@ -77,10 +74,7 @@ const EditWebhookPage: FunctionComponent = () => {
         }, 500);
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setStatus('initial');
       });
   };
@@ -93,10 +87,7 @@ const EditWebhookPage: FunctionComponent = () => {
         goToWebhooks();
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.message || 'Something went wrong!',
-        });
+        showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
         setDeleteStatus('initial');
       });
   };

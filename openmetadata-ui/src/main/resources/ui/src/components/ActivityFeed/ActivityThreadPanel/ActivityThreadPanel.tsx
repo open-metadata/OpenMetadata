@@ -22,9 +22,9 @@ import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { Paging } from '../../../generated/type/paging';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
-import useToastContext from '../../../hooks/useToastContext';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -44,7 +44,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   createThread,
   deletePostHandler,
 }) => {
-  const showToast = useToastContext();
   const [threads, setThreads] = useState<EntityThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<EntityThread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -76,11 +75,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
         setPaging(pagingObj);
       })
       .catch((err: AxiosError) => {
-        const message = err.response?.data?.message;
-        showToast({
-          variant: 'error',
-          body: message || jsonData['api-error-messages']['fetch-thread-error'],
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-thread-error']
+        );
       })
       .finally(() => {
         setIsThreadLoading(false);

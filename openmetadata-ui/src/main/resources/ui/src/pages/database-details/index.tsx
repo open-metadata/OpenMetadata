@@ -73,7 +73,6 @@ import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { hasEditAccess, isEven } from '../../utils/CommonUtils';
 import {
@@ -90,13 +89,13 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const showToast = useToastContext();
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
@@ -189,20 +188,6 @@ const DatabaseDetails: FunctionComponent = () => {
     },
   ];
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
   const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
       getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
@@ -220,12 +205,11 @@ const DatabaseDetails: FunctionComponent = () => {
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-database-schemas-error']
           );
 
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -264,12 +248,10 @@ const DatabaseDetails: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-count-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -313,7 +295,7 @@ const DatabaseDetails: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-database-details-error']
         );
         setError(errMsg);
-        handleShowErrorToast(errMsg);
+        showErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -355,11 +337,10 @@ const DatabaseDetails: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-database-error']
           );
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsEdit(false);
@@ -413,11 +394,10 @@ const DatabaseDetails: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-database-error']
           );
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -436,12 +416,10 @@ const DatabaseDetails: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -472,12 +450,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['add-feed-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -487,20 +460,20 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['create-conversation-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -524,30 +497,25 @@ const DatabaseDetails: FunctionComponent = () => {
                 });
               });
             } else {
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
+              showErrorToast(
+                jsonData['api-error-messages']['unexpected-server-response']
+              );
             }
           })
           .catch((error) => {
-            const errMsg = getErrorText(
+            showErrorToast(
               error,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
-
-            handleShowErrorToast(errMsg);
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['delete-message-error']
         );
-        handleShowErrorToast(message);
       });
   };
 

@@ -51,7 +51,6 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -61,6 +60,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -88,19 +88,6 @@ const TeamsPage = () => {
     team: Team | undefined;
     state: boolean;
   }>({ team: undefined, state: false });
-
-  const showToast = useToastContext();
-
-  /**
-   * Take error message as input and display toast message
-   * @param errMessage - error message
-   */
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -151,10 +138,8 @@ const TeamsPage = () => {
           err,
           jsonData['api-error-messages']['fetch-teams-error']
         );
-
         setError(errMsg);
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -195,7 +180,7 @@ const TeamsPage = () => {
 
           setError(errMsg);
 
-          handleShowErrorToast(errMsg);
+          showErrorToast(errMsg);
         })
         .finally(() => {
           setIsLoading(false);
@@ -259,12 +244,10 @@ const TeamsPage = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             error,
             jsonData['api-error-messages']['create-team-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingTeam(false);
@@ -291,12 +274,10 @@ const TeamsPage = () => {
         }
       })
       .catch((error: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['update-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsAddingUsers(false);
@@ -337,12 +318,10 @@ const TeamsPage = () => {
         }
       })
       .catch((error: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['update-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingUser({ user: undefined, state: false });
@@ -371,12 +350,10 @@ const TeamsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingTeam({ team: undefined, state: false });
@@ -646,12 +623,10 @@ const TeamsPage = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             error,
             jsonData['api-error-messages']['update-team-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsEditable(false);
@@ -733,14 +708,12 @@ const TeamsPage = () => {
         })
         .catch((err: AxiosError) => {
           reject();
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             `${jsonData['api-error-messages']['update-owner-error']} for ${
               currentTeam?.displayName ?? currentTeam?.name
             }`
           );
-
-          handleShowErrorToast(errMsg);
         });
     });
   };

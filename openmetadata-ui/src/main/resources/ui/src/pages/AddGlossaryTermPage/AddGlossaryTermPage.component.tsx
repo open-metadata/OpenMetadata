@@ -29,13 +29,12 @@ import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm'
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryTermPage = () => {
   const { glossaryName, glossaryTermsFQN } =
     useParams<{ [key: string]: string }>();
-  const showToast = useToastContext();
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -53,17 +52,11 @@ const AddGlossaryTermPage = () => {
     goToGlossary();
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleSaveFailure = (errorMessage = '') => {
-    handleShowErrorToast(
-      errorMessage || jsonData['api-error-messages']['add-glossary-term-error']
-    );
+  const handleSaveFailure = (
+    error: AxiosError | string,
+    fallbackText?: string
+  ) => {
+    showErrorToast(error, fallbackText);
     setStatus('initial');
   };
 
@@ -78,11 +71,16 @@ const AddGlossaryTermPage = () => {
             goToGlossary(res?.data?.fullyQualifiedName);
           }, 500);
         } else {
-          handleSaveFailure();
+          handleSaveFailure(
+            jsonData['api-error-messages']['add-glossary-term-error']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        handleSaveFailure(err.response?.data?.message);
+        handleSaveFailure(
+          err,
+          jsonData['api-error-messages']['add-glossary-term-error']
+        );
       });
   };
 
@@ -93,16 +91,16 @@ const AddGlossaryTermPage = () => {
           setGlossaryData(res.data);
         } else {
           setGlossaryData(undefined);
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-glossary-error']
           );
         }
       })
       .catch((err: AxiosError) => {
         setGlossaryData(undefined);
-        handleShowErrorToast(
-          err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-glossary-error']
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-glossary-error']
         );
       })
       .finally(() => setIsLoading(false));
@@ -120,14 +118,14 @@ const AddGlossaryTermPage = () => {
           setParentGlossaryData(res.data);
         } else {
           setParentGlossaryData(undefined);
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-glossary-term-error']
           );
         }
       })
       .catch((err: AxiosError) => {
         setParentGlossaryData(undefined);
-        handleShowErrorToast(
+        showErrorToast(
           err.response?.data?.message ||
             jsonData['api-error-messages']['fetch-glossary-term-error']
         );
