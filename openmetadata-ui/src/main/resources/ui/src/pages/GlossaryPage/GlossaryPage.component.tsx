@@ -15,9 +15,9 @@ const GlossaryPage = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [glossariesList, setGlossariesList] = useState<Array<Glossary>>([]);
 
-  const fetchData = (paging = '') => {
+  const fetchData = (pagin = '') => {
     setIsLoading(true);
-    getGlossaries(paging, ['owner', 'tags', 'reviewers'])
+    getGlossaries(pagin, ['owner', 'tags', 'reviewers'])
       .then((res: AxiosResponse) => {
         if (res.data?.data) {
           setGlossariesList(res.data.data);

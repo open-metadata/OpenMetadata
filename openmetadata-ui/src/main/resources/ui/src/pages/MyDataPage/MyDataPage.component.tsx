@@ -252,11 +252,8 @@ const MyDataPage = () => {
           });
         }
       })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['feed-post-error']
-        );
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
       });
   };
 
