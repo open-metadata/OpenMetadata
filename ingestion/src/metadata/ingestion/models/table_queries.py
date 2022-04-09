@@ -61,6 +61,7 @@ class TableUsageCount(BaseModel):
     table: str
     date: str
     database: str
+    database_schema: Optional[str]
     sql_queries: List[SqlQuery]
     count: int = 1
     joins: TableColumnJoins

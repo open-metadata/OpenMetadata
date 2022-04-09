@@ -15,7 +15,8 @@ from typing import Any, Iterable
 from sqlalchemy import create_engine
 
 from ...generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
-from .sql_source import SQLConnectionConfig, SQLSourceStatus
+from ...utils.source_connections import get_connection_url
+from .sql_source import SQLSourceStatus
 
 
 class SQLAlchemyHelper:
@@ -23,7 +24,7 @@ class SQLAlchemyHelper:
 
     def __init__(
         self,
-        config: SQLConnectionConfig,
+        config,
         metadata_config: OpenMetadataServerConfig,
         platform: str,
         query: str,
@@ -39,9 +40,11 @@ class SQLAlchemyHelper:
         Create a SQLAlchemy connection to Database
         """
         engine = create_engine(
-            self.config.get_connection_url(),
-            **self.config.options,
-            connect_args=self.config.connect_args
+            get_connection_url(self.config),
+            **self.config.connectionOptions if self.config.connectionOptions else {},
+            connect_args=self.config.connectionArguments
+            if self.config.connectionArguments
+            else {}
         )
         conn = engine.connect()
         return conn

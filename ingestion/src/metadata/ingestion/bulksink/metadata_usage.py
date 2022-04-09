@@ -28,6 +28,7 @@ from metadata.ingestion.models.table_queries import (
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import _get_formmated_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +73,13 @@ class MetadataUsageBulkSink(BulkSink):
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             if "." in table_usage.table:
-                table_usage.database, table_usage.table = table_usage.table.split(".")[
-                    -2:
-                ]
+                (
+                    table_usage.database_schema,
+                    table_usage.table,
+                ) = table_usage.table.split(".")[-2:]
             self.service_name = table_usage.service_name
             table_entity = self.__get_table_entity(
-                table_usage.database, table_usage.table
+                table_usage.database, table_usage.database_schema, table_usage.table
             )
             if table_entity is not None:
                 if not table_usage_map.get(table_entity.id.__root__):
@@ -168,11 +170,13 @@ class MetadataUsageBulkSink(BulkSink):
             else:
                 column_joins_dict[column_join.table_column.column] = {}
             main_column_fqdn = self.__get_column_fqdn(
-                table_usage.database, column_join.table_column
+                table_usage.database,
+                table_usage.database_schema,
+                column_join.table_column,
             )
             for column in column_join.joined_with:
                 joined_column_fqdn = self.__get_column_fqdn(
-                    table_usage.database, column
+                    table_usage.database, table_usage.database_schema, column
                 )
                 if str(joined_column_fqdn) in joined_with.keys():
                     column_joined_with = joined_with[str(joined_column_fqdn)]
@@ -194,16 +198,23 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqdn(self, database: str, table_column: TableColumn):
-        table_entity = self.__get_table_entity(database, table_column.table)
+    def __get_column_fqdn(
+        self, database: str, database_schema: str, table_column: TableColumn
+    ):
+        table_entity = self.__get_table_entity(
+            database, database_schema, table_column.table
+        )
         if table_entity is None:
             return None
         for tbl_column in table_entity.columns:
             if table_column.column.lower() == tbl_column.name.__root__.lower():
-                return tbl_column.fullyQualifiedName.__root__
+                return tbl_column.fullyQualifiedName.__root__.__root__
 
-    def __get_table_entity(self, database_name: str, table_name: str) -> Table:
-        table_fqn = f"{self.service_name}{FQDN_SEPARATOR}{database_name}{FQDN_SEPARATOR}{table_name}"
+    def __get_table_entity(
+        self, database_name: str, database_schema: str, table_name: str
+    ) -> Table:
+        table_fqn = f"{self.service_name}{FQDN_SEPARATOR}{database_name}{FQDN_SEPARATOR}{database_schema}{FQDN_SEPARATOR}{table_name}"
+        table_fqn = _get_formmated_table_name(table_fqn)
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         return table_entity
 

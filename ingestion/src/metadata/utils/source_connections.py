@@ -62,12 +62,11 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
-        if connection.password:
-            url += (
-                f":{quote_plus(connection.password.get_secret_value())}"
-                if connection
-                else ""
-            )
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
         url += "@"
 
     url += connection.hostPort
