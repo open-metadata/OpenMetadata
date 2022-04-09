@@ -15,7 +15,12 @@
         "personalAccessTokenSecret": "personal_access_token_secret"
       }
     },
-    "sourceConfig": {"config": {"enableDataProfiler": false}}
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
+    }
   },
   "sink": {
     "type": "metadata-rest",

@@ -9,7 +9,12 @@
         "apiKey": "api_key"
       }
     },
-    "sourceConfig": {"config": {"enableDataProfiler": false}}
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
+    }
   },
   "sink": {
     "type": "metadata-rest",
