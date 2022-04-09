@@ -42,26 +42,20 @@ const NextPrevious: FC<Prop> = ({
   const [activePage, setActivePage] = useState(1);
 
   const onNextHandler = () => {
+    setActivePage(activePage + 1);
     if (isNumberBased) {
-      setActivePage((prev) => {
-        pagingHandler(prev + 1);
-
-        return prev + 1;
-      });
+      pagingHandler(activePage + 1);
     } else {
-      pagingHandler(CursorType.AFTER, activePage);
+      pagingHandler(CursorType.AFTER, activePage + 1);
     }
   };
 
   const onPreviousHandler = () => {
+    setActivePage(activePage - 1);
     if (isNumberBased) {
-      setActivePage((prev) => {
-        pagingHandler(prev - 1);
-
-        return prev - 1;
-      });
+      pagingHandler(activePage - 1);
     } else {
-      pagingHandler(CursorType.BEFORE, activePage);
+      pagingHandler(CursorType.BEFORE, activePage - 1);
     }
   };
 
