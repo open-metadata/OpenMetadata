@@ -32,6 +32,10 @@
       "description": "Host and Port of Metabase instance.",
       "type": "string"
     },
+    "dbServiceName": {
+      "description": "Database Service Name for creation of lineage",
+      "type": "string"
+    },
     "supportedPipelineTypes": {
       "description": "Supported Metadata Extraction Pipelines.",
       "type": "string",
