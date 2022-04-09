@@ -6,16 +6,7 @@ import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
-
-type SelectServiceTypeProps = {
-  showError: boolean;
-  serviceCategory: ServiceCategory;
-  serviceCategoryHandler: (category: ServiceCategory) => void;
-  selectServiceType: string;
-  handleServiceTypeClick: (type: string) => void;
-  onCancel: () => void;
-  onNext: () => void;
-};
+import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
   serviceCategory,
@@ -59,7 +50,7 @@ const SelectServiceType = ({
         <div
           className="tw-flex tw-flex-wrap tw-gap-5 tw-mt-4"
           data-testid="selectService">
-          {serviceTypes[serviceCategory].map((type) => (
+          {serviceTypes[serviceCategory]?.map((type) => (
             <div
               className={classNames(
                 'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',

@@ -4,20 +4,7 @@ import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { Field } from '../../Field/Field';
-
-type ConfigureServiceProps = {
-  serviceName: string;
-  description: string;
-  showError: {
-    name: boolean;
-    duplicateName: boolean;
-  };
-  handleValidation: (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => void;
-  onBack: () => void;
-  onNext: (description: string) => void;
-};
+import { ConfigureServiceProps } from './Steps.interface';
 
 const ConfigureService = ({
   serviceName,
