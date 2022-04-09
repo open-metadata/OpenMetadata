@@ -177,32 +177,8 @@ def _(connection: DatabricksConnection):
 
 @get_connection_url.register
 def _(connection: AzureSQLConnection):
-
-    url = f"{connection.scheme.value}://"
-
-    if connection.username:
-        url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
-        url += "@"
-
+    url = get_connection_url_common(connection)
     url += f"DRIVER={connection.driver}"
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
-    if options:
-        if not connection.database:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
-        url = f"{url}?{params}"
-
     return url
 
 
