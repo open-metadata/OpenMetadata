@@ -45,23 +45,6 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
-    result_limit: int = 1000
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        connect_string = super().get_connection_url()
-        options = {
-            "account": self.account,
-            "warehouse": self.warehouse,
-            "role": self.role,
-        }
-        params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
-        if params:
-            connect_string = f"{connect_string}{params}"
-        return connect_string
-
-
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config):
         connection_arguments = (
