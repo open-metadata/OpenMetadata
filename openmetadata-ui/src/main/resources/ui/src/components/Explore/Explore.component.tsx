@@ -175,8 +175,8 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const paginate = (pageNumber: string | number) => {
+    setCurrentPage(pageNumber as number);
   };
 
   const updateAggregationCount = useCallback(

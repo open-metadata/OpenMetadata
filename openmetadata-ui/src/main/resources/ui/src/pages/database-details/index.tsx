@@ -16,12 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
+import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -63,6 +58,7 @@ import {
   getExplorePathWithSearch,
   getServiceDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -72,6 +68,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import { hasEditAccess, isEven } from '../../utils/CommonUtils';
@@ -130,6 +127,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -365,7 +363,10 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (cursorType: string) => {
+  const databaseSchemaPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
@@ -373,6 +374,7 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchDatabaseSchemas(pagingString).finally(() => {
       setIsLoading(false);
     });
+    setCurrentPage(activePage ?? 1);
   };
 
   const handleUpdateOwner = (owner: Database['owner']) => {
@@ -726,8 +728,11 @@ const DatabaseDetails: FunctionComponent = () => {
                         !isNil(databaseSchemaPaging.before)
                     ) && (
                       <NextPrevious
+                        currentPage={currentPage}
+                        pageSize={PAGE_SIZE}
                         paging={databaseSchemaPaging}
                         pagingHandler={databaseSchemaPagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
                   </Fragment>

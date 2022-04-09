@@ -91,6 +91,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
@@ -127,6 +128,7 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
@@ -173,10 +175,12 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
     const { container } = render(
       <Ingestion
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
@@ -202,12 +206,14 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
@@ -237,12 +243,14 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]

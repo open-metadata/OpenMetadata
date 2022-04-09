@@ -18,22 +18,23 @@ import React, { ReactNode } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
 import { TableType } from '../../generated/entity/data/table';
+import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
 import {
   getOwnerFromId,
   getTierFromSearchTableTags,
 } from '../../utils/TableUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
-import Pagination from '../Pagination';
 type SearchedDataProp = {
   children?: ReactNode;
   data: Array<FormatedTableData>;
   currentPage: number;
   isLoading?: boolean;
-  paginate: (value: number) => void;
+  paginate: (value: string | number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   showResultCount?: boolean;
@@ -162,11 +163,13 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                       data-testid="search-results">
                       {highlightSearchResult()}
                       {totalValue > PAGE_SIZE && data.length > 0 && (
-                        <Pagination
+                        <NextPrevious
+                          isNumberBased
                           currentPage={currentPage}
-                          paginate={paginate}
-                          sizePerPage={PAGE_SIZE}
-                          totalNumberOfValues={totalValue}
+                          pageSize={PAGE_SIZE}
+                          paging={{} as Paging}
+                          pagingHandler={paginate}
+                          totalCount={totalValue}
                         />
                       )}
                     </div>

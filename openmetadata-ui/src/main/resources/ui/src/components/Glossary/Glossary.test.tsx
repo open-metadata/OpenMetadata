@@ -51,6 +51,7 @@ jest.mock('../../components/GlossaryTerms/GlossaryTermsV1.component', () => {
 
 const mockProps = {
   assetData: mockedAssetData,
+  currentPage: 1,
   deleteStatus: 'initial' as LoadingState,
   isSearchResultEmpty: false,
   isHasAccess: true,

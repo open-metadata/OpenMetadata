@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getWebhooks } from '../../axiosAPIs/webhookAPI';
@@ -25,6 +24,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { Status, Webhook } from '../../generated/entity/events/webhook';
+import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -34,6 +34,7 @@ const WebhooksPage: FunctionComponent = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [data, setData] = useState<Array<Webhook>>([]);
   const [selectedStatus, setSelectedStatus] = useState<Status[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = (paging?: string) => {
     setIsLoading(true);
@@ -60,11 +61,15 @@ const WebhooksPage: FunctionComponent = () => {
       });
   };
 
-  const handlePageChange = (cursorType: string) => {
+  const handlePageChange = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     fetchData(pagingString);
+    setCurrentPage(activePage ?? 1);
   };
 
   const handleStatusFilter = (status: Status[]) => {
@@ -87,6 +92,7 @@ const WebhooksPage: FunctionComponent = () => {
     <PageContainerV1 className="tw-pt-4">
       {!isLoading ? (
         <Webhooks
+          currentPage={currentPage}
           data={data}
           paging={paging}
           selectedStatus={selectedStatus}

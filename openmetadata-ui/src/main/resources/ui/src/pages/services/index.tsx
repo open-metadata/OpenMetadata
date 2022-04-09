@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -38,6 +38,7 @@ import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServ
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  PAGE_SIZE,
   pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -53,6 +54,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import {
   DataObj,
@@ -130,6 +132,8 @@ const ServicesPage = () => {
     dashboardServices: 0,
     pipelineServices: 0,
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -505,7 +509,7 @@ const ServicesPage = () => {
     }
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
@@ -526,6 +530,7 @@ const ServicesPage = () => {
             ...paging,
             [serviceName]: result.data.paging,
           });
+          setCurrentPage(activePage ?? 0);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -572,8 +577,11 @@ const ServicesPage = () => {
     return !isNil(paging[serviceName].after) ||
       !isNil(paging[serviceName].before) ? (
       <NextPrevious
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
         paging={paging[serviceName]}
         pagingHandler={pagingHandler}
+        totalCount={paging[serviceName].total}
       />
     ) : null;
   };

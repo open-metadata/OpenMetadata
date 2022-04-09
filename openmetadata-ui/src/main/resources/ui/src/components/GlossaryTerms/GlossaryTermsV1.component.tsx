@@ -53,8 +53,9 @@ type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
+  currentPage: number;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
-  onAssetPaginate: (num: number) => void;
+  onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
 };
 
@@ -65,6 +66,7 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
+  currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -603,6 +605,7 @@ const GlossaryTermsV1 = ({
           {activeTab === 2 && (
             <AssetsTabs
               assetData={assetData}
+              currentPage={currentPage}
               onAssetPaginate={onAssetPaginate}
             />
           )}

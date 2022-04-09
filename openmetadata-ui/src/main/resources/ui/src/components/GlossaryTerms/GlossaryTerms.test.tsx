@@ -60,6 +60,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 
 const mockProps = {
   assetData: mockedAssetData,
+  currentPage: 1,
   isHasAccess: true,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),

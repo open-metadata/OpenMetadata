@@ -3,7 +3,11 @@ import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { ROUTES, TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  PAGE_SIZE,
+  ROUTES,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 import { Button } from '../buttons/Button/Button';
 import GlossaryDataCard from '../common/glossary-data-card/GlossaryDataCard';
@@ -16,6 +20,7 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
   data = [],
   paging,
   onPageChange,
+  currentPage,
 }: GlossaryProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -74,7 +79,13 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
           </div>
         ))}
         {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-          <NextPrevious paging={paging} pagingHandler={onPageChange} />
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={onPageChange}
+            totalCount={paging.total}
+          />
         )}
       </div>
     </PageLayout>

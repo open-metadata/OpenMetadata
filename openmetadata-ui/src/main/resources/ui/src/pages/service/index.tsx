@@ -19,7 +19,6 @@ import {
   EntityFieldThreadCount,
   EntityThread,
   ExtraInfo,
-  Paging,
   ServicesData,
 } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
@@ -64,6 +63,7 @@ import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -81,6 +81,7 @@ import {
   Schema,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
@@ -149,6 +150,9 @@ const ServicePage: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -883,19 +887,24 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     getOtherDetails(pagingString);
+    setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (cursorType: string) => {
+  const ingestionPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       ingestionPaging[cursorType as keyof typeof paging]
     }`;
 
     getAllIngestionWorkflows(pagingString);
+    setIngestionCurrentPage(activePage ?? 1);
   };
   const fetchActivityFeed = () => {
     setIsentityThreadLoading(true);
@@ -1156,8 +1165,11 @@ const ServicePage: FunctionComponent = () => {
                     </div>
                     {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
                       <NextPrevious
+                        currentPage={currentPage}
+                        pageSize={PAGE_SIZE}
                         paging={paging}
                         pagingHandler={pagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
                   </Fragment>
@@ -1188,6 +1200,7 @@ const ServicePage: FunctionComponent = () => {
                     {isConnectionAvailable ? (
                       <Ingestion
                         addIngestion={addIngestionWorkflowHandler}
+                        currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
                         ingestionList={ingestions}
                         isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(

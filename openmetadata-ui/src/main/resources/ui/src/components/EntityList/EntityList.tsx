@@ -46,7 +46,9 @@ const EntityList: FunctionComponent<Prop> = ({
                   <Link
                     className="tw-font-medium tw-pl-2"
                     to={getEntityLink(item.index, item.fullyQualifiedName)}>
-                    <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    <button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline tw-w-52 tw-truncate"
+                      title={item.name}>
                       {item.name}
                     </button>
                   </Link>

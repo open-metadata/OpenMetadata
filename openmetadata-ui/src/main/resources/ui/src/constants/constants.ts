@@ -56,7 +56,7 @@ const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 const PLACEHOLDER_USER_NAME = ':username';
 
-export const pagingObject = { after: '', before: '' };
+export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 

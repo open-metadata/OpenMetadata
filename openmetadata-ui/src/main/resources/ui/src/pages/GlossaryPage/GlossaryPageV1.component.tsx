@@ -635,8 +635,8 @@ const GlossaryPageV1 = () => {
    * handle assets page change
    * @param page new page number
    */
-  const handleAssetPagination = (page: number) => {
-    setAssetData((pre) => ({ ...pre, currPage: page }));
+  const handleAssetPagination = (page: string | number) => {
+    setAssetData((pre) => ({ ...pre, currPage: page as number }));
   };
 
   /**
@@ -687,6 +687,7 @@ const GlossaryPageV1 = () => {
       ) : (
         <GlossaryV1
           assetData={assetData}
+          currentPage={assetData.currPage}
           deleteStatus={deleteStatus}
           expandedKey={expandedKey}
           glossaryList={glossariesList as ModifiedGlossaryData[]}
