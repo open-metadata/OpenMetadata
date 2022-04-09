@@ -258,21 +258,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
-                self.database_source_state.clear()
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name=schema
-                ):
-                    self.status.filter(schema, "Schema pattern not allowed")
-                    continue
+                try:
+                    self.database_source_state.clear()
+                    if filter_by_schema(
+                        self.source_config.schemaFilterPattern, schema_name=schema
+                    ):
+                        self.status.filter(schema, "Schema pattern not allowed")
+                        continue
 
-                if self.source_config.includeTables:
-                    yield from self.fetch_tables(inspector, schema)
+                    if self.source_config.includeTables:
+                        yield from self.fetch_tables(inspector, schema)
 
-                if self.source_config.includeViews:
-                    yield from self.fetch_views(inspector, schema)
-                if self.source_config.markDeletedTables:
-                    schema_fqdn = f"{self.config.serviceName}.{schema}"
-                    yield from self.delete_tables(schema_fqdn)
+                    if self.source_config.includeViews:
+                        yield from self.fetch_views(inspector, schema)
+                    if self.source_config.markDeletedTables:
+                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        yield from self.delete_tables(schema_fqdn)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str

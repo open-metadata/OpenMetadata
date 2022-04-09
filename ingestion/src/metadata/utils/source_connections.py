@@ -43,6 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -164,6 +167,21 @@ def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
+    return url
+
+
+@get_connection_url.register
+def _(connection: PrestoConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    url += f"/{connection.catalog}"
+    if connection.database:
+        url += f"?schema={quote_plus(connection.database)}"
     return url
 
 
