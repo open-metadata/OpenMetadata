@@ -58,10 +58,8 @@ export const getFilterKey = (key) => {
 export const prepareQueryParams = (filters) => {
   const entries = Object.entries(filters);
 
-  const params = entries
+  return entries
     .filter((entry) => entry[1].length)
     .map((entry) => `${entry[0]}=${entry[1].join(',')}`)
     .join('&');
-
-  return params;
 };

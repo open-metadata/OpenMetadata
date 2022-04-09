@@ -134,12 +134,10 @@ const Explore: React.FC<ExploreProps> = ({
         }
         setIsFilterSet(true);
 
-        const updatedFilters = {
+        return {
           ...prevState,
           [type]: [...prevState[type], selectedFilter],
         };
-
-        return updatedFilters;
       });
     } else {
       if (searchTag.includes(selectedFilter)) {
@@ -151,9 +149,8 @@ const Explore: React.FC<ExploreProps> = ({
       setFilters((prevState) => {
         const selectedFilterCount = getFilterCount(prevState);
         setIsFilterSet(selectedFilterCount >= 1);
-        const updatedFilters = { ...prevState, [type]: filter };
 
-        return updatedFilters;
+        return { ...prevState, [type]: filter };
       });
     }
   };
@@ -459,10 +456,10 @@ const Explore: React.FC<ExploreProps> = ({
 
   /**
    * on filter change , change the route
-   * @param filters - filter object
+   * @param filtersObj - filter object
    */
-  const handleFilterChange = (filters: FilterObject) => {
-    const params = prepareQueryParams(filters);
+  const handleFilterChange = (filtersObj: FilterObject) => {
+    const params = prepareQueryParams(filtersObj);
 
     const explorePath = getExplorePathWithSearch(searchQuery);
 
