@@ -1,23 +1,31 @@
 {
   "source": {
     "type": "metabase",
-    "config": {
-      "username": "username",
-      "password": "password",
-      "host_port": "host:port",
-      "service_name": "local_metabase",
-      "db_service_name": "Optional - Create Lineage by adding relevant Database Service Name"
+    "serviceName": "test",
+    "serviceConnection": {
+      "config": {
+        "type": "Metabase",
+        "username": "username",
+        "password": "password",
+        "hostPort": "hostPort",
+        "dbServiceName": "Database Service Name to create Lineage"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {}
+,        "chartFilterPattern": {}
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

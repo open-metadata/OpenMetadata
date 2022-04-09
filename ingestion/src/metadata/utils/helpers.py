@@ -158,9 +158,12 @@ def get_dashboard_service_or_create(
     if service is not None:
         return service
     else:
+        dashboard_config = {"config": config}
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
-                name=service_name, serviceType=dashboard_service_type, connection=config
+                name=service_name,
+                serviceType=dashboard_service_type,
+                connection=dashboard_config,
             )
         )
         return created_service

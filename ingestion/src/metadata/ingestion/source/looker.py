@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.services.connections.dashboard import (
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
@@ -75,7 +78,7 @@ class LookerSource(Source[Entity]):
                     "LOOKERSDK_CLIENT_SECRET"
                 ] = self.service_connection.password.get_secret_value()
             if not self.check_env("LOOKERSDK_BASE_URL"):
-                os.environ["LOOKERSDK_BASE_URL"] = self.service_connection.url
+                os.environ["LOOKERSDK_BASE_URL"] = self.service_connection.hostPort
             client = looker_sdk.init31()
             client.me()
             return client
@@ -110,7 +113,7 @@ class LookerSource(Source[Entity]):
             displayName=dashboard_elements.title or "",
             description="",
             chart_type=dashboard_elements.type,
-            url=f"{self.service_connection.url}/dashboard_elements/{dashboard_elements.id}",
+            url=f"{self.service_connection.hostPort}/dashboard_elements/{dashboard_elements.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
         if not dashboard_elements.id:
@@ -153,7 +156,7 @@ class LookerSource(Source[Entity]):
                     displayName=dashboard.title,
                     description=dashboard.description or "",
                     charts=self.chart_names,
-                    url=f"{self.service_connection.url}/dashboards/{dashboard.id}",
+                    url=f"{self.service_connection.hostPort}/dashboards/{dashboard.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
