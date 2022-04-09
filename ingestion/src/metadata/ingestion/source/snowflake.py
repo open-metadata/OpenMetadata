@@ -34,7 +34,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.engines import get_engine
 
@@ -43,23 +42,6 @@ ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-
-class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
-    result_limit: int = 1000
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        connect_string = super().get_connection_url()
-        options = {
-            "account": self.account,
-            "warehouse": self.warehouse,
-            "role": self.role,
-        }
-        params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
-        if params:
-            connect_string = f"{connect_string}{params}"
-        return connect_string
 
 
 class SnowflakeSource(SQLSource):

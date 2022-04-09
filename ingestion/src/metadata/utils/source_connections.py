@@ -148,7 +148,7 @@ def _(connection: TrinoConnection):
         return connection.connectionArguments
 
 
-@get_connection_args.register
+@get_connection_url.register
 def _(connection: SnowflakeConnection):
 
     url = f"{connection.scheme.value}://"
