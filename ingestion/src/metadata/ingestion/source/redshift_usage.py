@@ -56,7 +56,7 @@ class RedshiftUsageSource(Source[TableQuery]):
     ):
         super().__init__()
         self.config = config
-        self.source_connection = config.serviceConnection.__root__.config
+        self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
@@ -65,7 +65,7 @@ class RedshiftUsageSource(Source[TableQuery]):
         )
         self.analysis_date = start
         self.alchemy_helper = SQLAlchemyHelper(
-            self.source_connection, metadata_config, "Redshift", self.sql_stmt
+            self.service_connection, metadata_config, "Redshift", self.sql_stmt
         )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "redshift"
@@ -105,7 +105,7 @@ class RedshiftUsageSource(Source[TableQuery]):
                 starttime=str(row["starttime"]),
                 endtime=str(row["endtime"]),
                 analysis_date=str(self.analysis_date),
-                database=self.source_connection.database,
+                database=self.service_connection.database,
                 aborted=row["aborted"],
                 sql=row["querytxt"],
                 service_name=self.config.serviceName,
