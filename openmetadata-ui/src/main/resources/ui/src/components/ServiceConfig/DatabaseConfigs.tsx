@@ -14,12 +14,12 @@
 
 import { ConfigFormFields, LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { DashboardService } from '../../generated/entity/services/dashboardService';
-import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
-  data: DashboardService;
+  data: DatabaseService;
   status: LoadingState;
   onChange?: (
     e: React.ChangeEvent<{ value: ConfigFormFields['value'] }>,
@@ -27,13 +27,10 @@ interface Props {
   ) => void;
 }
 
-const DashboardConfigs: FunctionComponent<Props> = ({
-  data,
-  status,
-}: Props) => {
+const DatabaseConfigs: FunctionComponent<Props> = ({ data, status }: Props) => {
   const { config } = data.connection;
-  const getDashboardFields = () => {
-    const { schema, uiSchema } = getDashboardConfig(config);
+  const getDatabaseFields = () => {
+    const { schema, uiSchema } = getDatabaseConfig(config);
 
     return (
       <FormBuilder
@@ -45,7 +42,7 @@ const DashboardConfigs: FunctionComponent<Props> = ({
     );
   };
 
-  return <>{getDashboardFields()}</>;
+  return <>{getDatabaseFields()}</>;
 };
 
-export default DashboardConfigs;
+export default DatabaseConfigs;

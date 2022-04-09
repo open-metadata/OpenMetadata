@@ -12,12 +12,11 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
-import { ConfigFormFields } from 'Models';
 import {
   MessagingConnection,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
-import { kafkaConfig } from '../jsons/services/messaging/kafkaConfig';
+import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
@@ -31,18 +30,14 @@ export const getBrokers = (config: MessagingConnection['config']) => {
 };
 
 export const getMessagingConfig = (config: MessagingConnection['config']) => {
-  let retVal: Array<ConfigFormFields> = [];
+  let schema = {};
+  const uiSchema = {
+    supportedPipelineTypes: { 'ui:widget': 'hidden' },
+    type: { 'ui:widget': 'hidden' },
+  };
   if (config?.type === MessagingServiceType.Kafka) {
-    retVal = kafkaConfig;
-  }
-  if (config) {
-    for (const k of retVal) {
-      const data = config[k.key as keyof MessagingConnection['config']];
-      if (data) {
-        k.value = data;
-      }
-    }
+    schema = kafkaConnection;
   }
 
-  return cloneDeep(retVal);
+  return cloneDeep({ schema, uiSchema });
 };

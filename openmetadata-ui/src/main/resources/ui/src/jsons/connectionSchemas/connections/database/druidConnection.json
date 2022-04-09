@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/druidConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DruidConnection",
+  "description": "Druid Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DruidConnection",
+  "definitions": {
+    "druidType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Druid"],
+      "default": "Druid"
+    },
+    "druidScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["druid"],
+      "default": "druid"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/druidType",
+      "default": "Druid"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/druidScheme",
+      "default": "druid"
+    },
+    "username": {
+      "description": "username to connect  to the Druid. This user should have privileges to read all the metadata in Druid.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to the Druid.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Druid",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Druid.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}

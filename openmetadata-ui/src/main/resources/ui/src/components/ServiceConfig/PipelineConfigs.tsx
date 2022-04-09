@@ -14,12 +14,12 @@
 
 import { ConfigFormFields, LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
-import { DashboardService } from '../../generated/entity/services/dashboardService';
-import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
-  data: DashboardService;
+  data: PipelineService;
   status: LoadingState;
   onChange?: (
     e: React.ChangeEvent<{ value: ConfigFormFields['value'] }>,
@@ -27,17 +27,14 @@ interface Props {
   ) => void;
 }
 
-const DashboardConfigs: FunctionComponent<Props> = ({
-  data,
-  status,
-}: Props) => {
-  const { config } = data.connection;
-  const getDashboardFields = () => {
-    const { schema, uiSchema } = getDashboardConfig(config);
+const PipelineConfigs: FunctionComponent<Props> = ({ data, status }: Props) => {
+  const { pipelineUrl } = data;
+  const getPipelineFields = () => {
+    const { schema, uiSchema } = getPipelineConfig();
 
     return (
       <FormBuilder
-        formData={config as Record<string, any>}
+        formData={{ pipelineUrl } as Record<string, any>}
         schema={schema}
         status={status}
         uiSchema={uiSchema}
@@ -45,7 +42,7 @@ const DashboardConfigs: FunctionComponent<Props> = ({
     );
   };
 
-  return <>{getDashboardFields()}</>;
+  return <>{getPipelineFields()}</>;
 };
 
-export default DashboardConfigs;
+export default PipelineConfigs;

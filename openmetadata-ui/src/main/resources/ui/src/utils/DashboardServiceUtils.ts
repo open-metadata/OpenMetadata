@@ -12,23 +12,16 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
-import { ConfigFormFields } from 'Models';
-// import { LookerConnection } from '../generated/entity/services/connections/dashboard/lookerConnection';
-// import { MetabaseConnection } from '../generated/entity/services/connections/dashboard/metabaseConnection';
-// import { PowerBIConnection } from '../generated/entity/services/connections/dashboard/powerBIConnection';
-// import { RedashConnection } from '../generated/entity/services/connections/dashboard/redashConnection';
-// import { SupersetConnection } from '../generated/entity/services/connections/dashboard/supersetConnection';
-// import { TableauConnection } from '../generated/entity/services/connections/dashboard/tableauConnection';
 import {
   DashboardConnection,
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
-import { lookerConfig } from '../jsons/services/dashboard/lookerConfig';
-import { metabaseConfig } from '../jsons/services/dashboard/metabaseConfig';
-import { powerBIConfig } from '../jsons/services/dashboard/powerBIConfig';
-import { redashConfig } from '../jsons/services/dashboard/redashConfig';
-import { supersetConfig } from '../jsons/services/dashboard/supersetConfig';
-import { tableauConfig } from '../jsons/services/dashboard/tableauConfig';
+import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
+import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
+import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
+import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   let retVal: string | undefined;
@@ -69,47 +62,43 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
 };
 
 export const getDashboardConfig = (config?: DashboardConnection['config']) => {
-  let retVal: Array<ConfigFormFields> = [];
+  let schema = {};
+  const uiSchema = {
+    supportedPipelineTypes: { 'ui:widget': 'hidden' },
+    type: { 'ui:widget': 'hidden' },
+  };
   switch (config?.type) {
     case DashboardServiceType.Looker: {
-      retVal = lookerConfig;
+      schema = lookerConnection;
 
       break;
     }
     case DashboardServiceType.Metabase: {
-      retVal = metabaseConfig;
+      schema = metabaseConnection;
 
       break;
     }
     case DashboardServiceType.PowerBI: {
-      retVal = powerBIConfig;
+      schema = powerBIConnection;
 
       break;
     }
     case DashboardServiceType.Redash: {
-      retVal = redashConfig;
+      schema = redashConnection;
 
       break;
     }
     case DashboardServiceType.Superset: {
-      retVal = supersetConfig;
+      schema = supersetConnection;
 
       break;
     }
     case DashboardServiceType.Tableau: {
-      retVal = tableauConfig;
+      schema = tableauConnection;
 
       break;
     }
   }
-  if (config) {
-    for (const k of retVal) {
-      const data = config[k.key as keyof DashboardConnection['config']];
-      if (data) {
-        k.value = data;
-      }
-    }
-  }
 
-  return cloneDeep(retVal);
+  return cloneDeep({ schema, uiSchema });
 };

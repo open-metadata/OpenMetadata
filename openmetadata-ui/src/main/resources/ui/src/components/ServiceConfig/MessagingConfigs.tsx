@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { ConfigFormFields } from 'Models';
+import { ConfigFormFields, LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
@@ -20,6 +20,7 @@ import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
   data: MessagingService;
+  status: LoadingState;
   onChange?: (
     e: React.ChangeEvent<{ value: ConfigFormFields['value'] }>,
     field: ConfigFormFields
@@ -28,13 +29,20 @@ interface Props {
 
 const MessagingConfigs: FunctionComponent<Props> = ({
   data,
-  onChange,
+  status,
 }: Props) => {
   const { config } = data.connection;
   const getMessagingFields = () => {
-    const elemFields = getMessagingConfig(config);
+    const { schema, uiSchema } = getMessagingConfig(config);
 
-    return <FormBuilder elemFields={elemFields} onChange={onChange} />;
+    return (
+      <FormBuilder
+        formData={config as Record<string, any>}
+        schema={schema}
+        status={status}
+        uiSchema={uiSchema}
+      />
+    );
   };
 
   return <>{getMessagingFields()}</>;

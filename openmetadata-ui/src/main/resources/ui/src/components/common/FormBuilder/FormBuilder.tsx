@@ -12,121 +12,91 @@
  *  limitations under the License.
  */
 
-import { isArray, startCase } from 'lodash';
-import { ConfigFormFields } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
-import { errorMsg, requiredField } from '../../../utils/CommonUtils';
-import { Field } from '../../Field/Field';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Form, { FormProps } from '@rjsf/core';
+import classNames from 'classnames';
+import { LoadingState } from 'Models';
+import React, { FunctionComponent } from 'react';
+import { Button } from '../../buttons/Button/Button';
+import Loader from '../../Loader/Loader';
 
-interface Props {
-  elemFields: Array<ConfigFormFields>;
-  onChange?: (
-    e: React.ChangeEvent<{ value: ConfigFormFields['value'] }>,
-    field: ConfigFormFields
-  ) => void;
+interface Props extends FormProps<Record<string, any>> {
+  showFormHeader?: boolean;
+  status?: LoadingState;
+  onCancel?: () => void;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
-  elemFields,
-  onChange,
+  showFormHeader = false,
+  status = 'initial',
+  onCancel,
+  onSubmit,
+  ...props
 }: Props) => {
-  const handleChange = (
-    e: React.ChangeEvent<{ value: ConfigFormFields['value'] }>,
-    field: ConfigFormFields
-  ) => {
-    if (onChange) {
-      onChange(e, field);
+  let oForm: Form<Record<string, string>> | null;
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
     }
   };
 
-  const getFieldInput = (field: ConfigFormFields) => {
-    switch (typeof field.value) {
-      case 'string': {
-        return (
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid={field.key}
-            defaultValue={field.value}
-            id={field.key}
-            name={field.key}
-            placeholder={field.placeholder}
-            readOnly={field.readOnly}
-            type={field.secret ? 'password' : 'text'}
-            onChange={(e) => handleChange(e, field)}
-          />
-        );
-      }
-      case 'number': {
-        return (
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid={field.key}
-            defaultValue={field.value}
-            id={field.key}
-            name={field.key}
-            placeholder={field.placeholder}
-            readOnly={field.readOnly}
-            type={field.secret ? 'password' : 'number'}
-            onChange={(e) => handleChange(e, field)}
-          />
-        );
-      }
-      case 'boolean': {
-        return (
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid={field.key}
-            defaultChecked={field.value}
-            id={field.key}
-            name={field.key}
-            placeholder={field.placeholder}
-            readOnly={field.readOnly}
-            type="checkbox"
-            onChange={(e) => handleChange(e, field)}
-          />
-        );
-      }
-      default: {
-        if (isArray(field.value)) {
-          return (
-            <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid={field.key}
-              defaultValue={field.value.join()}
-              id={field.key}
-              name={field.key}
-              placeholder={field.placeholder}
-              readOnly={field.readOnly}
-              type={field.secret ? 'password' : 'text'}
-              onChange={(e) => handleChange(e, field)}
-            />
-          );
-        }
-
-        return <></>;
-      }
+  const handleSubmit = () => {
+    if (oForm?.submit) {
+      oForm.submit();
     }
   };
 
-  const getFormFields = () => {
-    return elemFields.map((field) => {
-      const label = `${startCase(field.key)}:`;
-
-      return (
-        <Fragment key={field.key}>
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor={field.key}>
-              {field.required ? requiredField(label) : label}
-            </label>
-            {getFieldInput(field)}
-            {field.error && errorMsg(field.error)}
-          </Field>
-        </Fragment>
-      );
-    });
-  };
-
-  return <>{getFormFields()}</>;
+  return (
+    <Form
+      className={classNames('rjsf', props.className, {
+        'no-header': !showFormHeader,
+      })}
+      ref={(form) => {
+        oForm = form;
+      }}
+      onSubmit={onSubmit}
+      {...props}>
+      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
+        <Button
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={handleCancel}>
+          Discard
+        </Button>
+        {status === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : status === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <FontAwesomeIcon icon="check" />
+          </Button>
+        ) : (
+          <Button
+            className="tw-w-16 tw-h-10"
+            data-testid="saveManageTab"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleSubmit}>
+            Save
+          </Button>
+        )}
+      </div>
+    </Form>
+  );
 };
 
 export default FormBuilder;

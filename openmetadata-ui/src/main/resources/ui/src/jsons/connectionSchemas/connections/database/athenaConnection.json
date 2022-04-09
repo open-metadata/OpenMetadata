@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AthenaConnection",
+  "description": "AWS Athena Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
+  "definitions": {
+    "athenaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Athena"],
+      "default": "Athena"
+    },
+    "athenaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["awsathena+rest"],
+      "default": "awsathena+rest"
+    }
+  },
+  "properties": {
+    "serviceType": {
+      "description": "Service Type",
+      "$ref": "#/definitions/athenaType",
+      "default": "Athena"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/athenaScheme",
+      "default": "awsathena+rest"
+    },
+    "username": {
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Athena.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Athena",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "type": "string"
+    },
+    "awsRegion": {
+      "description": "AWS Athena AWS Region. ",
+      "type": "string"
+    },
+    "s3StagingDir": {
+      "description": "S3 Staging Directory.",
+      "type": "string"
+    },
+    "workgroup": {
+      "description": "Athena workgroup.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}
