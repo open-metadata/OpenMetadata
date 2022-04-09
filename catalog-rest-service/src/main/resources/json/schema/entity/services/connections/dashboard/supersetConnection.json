@@ -39,6 +39,11 @@
       "type": "string",
       "default": "db"
     },
+    "dbServiceConnection": {
+      "description": "Database Service to create lineage",
+      "type": "string",
+      "default": null
+    },
     "connectionOptions": {
       "description": "Additional connection options that can be sent to service during the connection.",
       "type": "object"
