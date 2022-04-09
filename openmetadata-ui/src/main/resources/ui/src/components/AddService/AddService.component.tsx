@@ -12,6 +12,7 @@ import { DashboardServiceType } from '../../generated/entity/services/dashboardS
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { DataObj } from '../../interface/service.interface';
 import {
+  getAirflowPipelineTypes,
   getIsIngestionEnable,
   getKeyValueObject,
 } from '../../utils/ServiceUtils';
@@ -30,7 +31,11 @@ const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   { name: 'Connection Details', step: 3 },
 ];
 
-const AddService = ({ serviceCategory }: AddServiceProps) => {
+const AddService = ({
+  serviceCategory,
+  onSave,
+  handleAddIngestion,
+}: AddServiceProps) => {
   const history = useHistory();
   const [showErrorMessage, setShowErrorMessage] = useState({
     serviceType: false,
@@ -194,7 +199,7 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
       default:
         break;
     }
-
+    onSave(dataObj);
     setActiveStepperStep(4);
   };
 
@@ -345,6 +350,13 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
     }
   };
 
+  const isIngestionSupported = () => {
+    return (
+      getIsIngestionEnable(serviceCategory as ServiceCategory) &&
+      (getAirflowPipelineTypes(selectServiceType, true) || []).length > 0
+    );
+  };
+
   const fetchRightPanel = () => {
     return (
       <>
@@ -465,15 +477,14 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
                 <span>View Service</span>
               </Button>
 
-              {getIsIngestionEnable(serviceCategory as ServiceCategory) && (
+              {isIngestionSupported() && (
                 <Button
                   className="tw-ml-3.5"
                   data-testid="add-ingestion-button"
                   size="regular"
                   theme="primary"
                   variant="contained"
-                  // onClick={onNext}
-                >
+                  onClick={handleAddIngestion}>
                   <span>Add Ingestion</span>
                 </Button>
               )}
