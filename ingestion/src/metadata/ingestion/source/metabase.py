@@ -28,9 +28,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
-    DashboardServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
