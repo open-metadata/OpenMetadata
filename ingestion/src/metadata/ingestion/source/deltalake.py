@@ -37,6 +37,12 @@ logger: logging.Logger = logging.getLogger(__name__)
 DEFAULT_DATABASE = "default"
 
 
+class MetaStoreNotFoundException(Exception):
+    """
+    Metastore is not passed thorugh file or url
+    """
+
+
 class DeltalakeSource(Source[Entity]):
     spark: SparkSession = None
 
@@ -92,6 +98,10 @@ class DeltalakeSource(Source[Entity]):
         if not isinstance(connection, DeltaLakeConnection):
             raise InvalidSourceException(
                 f"Expected DeltaLakeConnection, but got {connection}"
+            )
+        if not connection.metastoreFilePath and not connection.metastoreHostPort:
+            raise MetaStoreNotFoundException(
+                "Either of metastoreFilePath or metastoreHostPort is required"
             )
         return cls(config, metadata_config)
 
