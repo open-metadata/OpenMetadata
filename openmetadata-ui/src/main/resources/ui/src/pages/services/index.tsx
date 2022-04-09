@@ -133,6 +133,8 @@ const ServicesPage = () => {
     pipelineServices: 0,
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
@@ -507,7 +509,7 @@ const ServicesPage = () => {
     }
   };
 
-  const pagingHandler = (cursorType: string | number) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
@@ -528,6 +530,7 @@ const ServicesPage = () => {
             ...paging,
             [serviceName]: result.data.paging,
           });
+          setCurrentPage(activePage ?? 0);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -574,6 +577,7 @@ const ServicesPage = () => {
     return !isNil(paging[serviceName].after) ||
       !isNil(paging[serviceName].before) ? (
       <NextPrevious
+        currentPage={currentPage}
         pageSize={PAGE_SIZE}
         paging={paging[serviceName]}
         pagingHandler={pagingHandler}

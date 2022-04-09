@@ -27,6 +27,7 @@ describe('Test Pagination Component', () => {
     };
     const { getByTestId } = render(
       <NextPrevious
+        currentPage={1}
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
@@ -47,6 +48,7 @@ describe('Test Pagination Component', () => {
 
     const { getByTestId } = render(
       <NextPrevious
+        currentPage={1}
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
@@ -70,6 +72,7 @@ describe('Test Pagination Component', () => {
 
     const { getByTestId } = render(
       <NextPrevious
+        currentPage={1}
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}
@@ -90,6 +93,7 @@ describe('Test Pagination Component', () => {
 
     const { getByTestId } = render(
       <NextPrevious
+        currentPage={1}
         pageSize={PAGE_SIZE}
         paging={paging}
         pagingHandler={mockCallback}

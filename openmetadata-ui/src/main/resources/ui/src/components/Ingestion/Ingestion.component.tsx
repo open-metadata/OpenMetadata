@@ -53,6 +53,7 @@ const Ingestion: React.FC<Props> = ({
   updateIngestion,
   paging,
   pagingHandler,
+  currrentPage,
 }: Props) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -413,6 +414,7 @@ const Ingestion: React.FC<Props> = ({
             </table>
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious
+                currentPage={currrentPage}
                 pageSize={PAGE_SIZE}
                 paging={paging}
                 pagingHandler={pagingHandler}

@@ -151,6 +151,9 @@ const ServicePage: FunctionComponent = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
+
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
   };
@@ -884,19 +887,24 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const pagingHandler = (cursorType: string | number) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     getOtherDetails(pagingString);
+    setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (cursorType: string | number) => {
+  const ingestionPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       ingestionPaging[cursorType as keyof typeof paging]
     }`;
 
     getAllIngestionWorkflows(pagingString);
+    setIngestionCurrentPage(activePage ?? 1);
   };
   const fetchActivityFeed = () => {
     setIsentityThreadLoading(true);
@@ -1157,6 +1165,7 @@ const ServicePage: FunctionComponent = () => {
                     </div>
                     {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
                       <NextPrevious
+                        currentPage={currentPage}
                         pageSize={PAGE_SIZE}
                         paging={paging}
                         pagingHandler={pagingHandler}
@@ -1191,6 +1200,7 @@ const ServicePage: FunctionComponent = () => {
                     {isConnectionAvailable ? (
                       <Ingestion
                         addIngestion={addIngestionWorkflowHandler}
+                        currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
                         ingestionList={ingestions}
                         isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(

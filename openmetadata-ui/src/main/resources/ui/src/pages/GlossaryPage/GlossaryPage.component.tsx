@@ -14,6 +14,7 @@ const GlossaryPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [glossariesList, setGlossariesList] = useState<Array<Glossary>>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = (pagin = '') => {
     setIsLoading(true);
@@ -35,11 +36,15 @@ const GlossaryPage = () => {
       });
   };
 
-  const handlePageChange = (cursorType: string | number) => {
+  const handlePageChange = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     fetchData(pagingString);
+    setCurrentPage(activePage ?? 1);
   };
 
   useEffect(() => {
@@ -52,6 +57,7 @@ const GlossaryPage = () => {
         <Loader />
       ) : (
         <GlossaryComponent
+          currentPage={currentPage}
           data={glossariesList}
           paging={paging}
           onPageChange={handlePageChange}

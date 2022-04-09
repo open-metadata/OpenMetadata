@@ -4,5 +4,6 @@ import { Paging } from '../../generated/type/paging';
 export interface GlossaryProps {
   data: Array<Glossary>;
   paging: Paging;
-  onPageChange: (type: string | number) => void;
+  currentPage: number;
+  onPageChange: (type: string | number, activePage?: number) => void;
 }

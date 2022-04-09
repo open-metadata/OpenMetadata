@@ -55,7 +55,8 @@ export interface Props {
   paging: Paging;
   ingestionList: Array<AirflowPipeline>;
   serviceList: Array<DatabaseService>;
-  pagingHandler: (value: string | number) => void;
+  currrentPage: number;
+  pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   addIngestion: (data: AirflowPipeline, triggerIngestion?: boolean) => void;

@@ -20,6 +20,7 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
   data = [],
   paging,
   onPageChange,
+  currentPage,
 }: GlossaryProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -79,6 +80,7 @@ const Glossary: FunctionComponent<GlossaryProps> = ({
         ))}
         {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
           <NextPrevious
+            currentPage={currentPage}
             pageSize={PAGE_SIZE}
             paging={paging}
             pagingHandler={onPageChange}

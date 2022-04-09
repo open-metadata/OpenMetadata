@@ -20,11 +20,11 @@ import { Button } from '../../buttons/Button/Button';
 
 interface Prop {
   paging: Paging;
-  pagingHandler: (value: string | number) => void;
+  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
   totalCount: number;
   pageSize: number;
+  currentPage: number;
   isNumberBased?: boolean;
-  currentPage?: number;
 }
 
 const computeTotalPages = (pSize: number, total: number) => {
@@ -49,7 +49,7 @@ const NextPrevious: FC<Prop> = ({
         return prev + 1;
       });
     } else {
-      pagingHandler(CursorType.AFTER);
+      pagingHandler(CursorType.AFTER, activePage);
     }
   };
 
@@ -61,7 +61,7 @@ const NextPrevious: FC<Prop> = ({
         return prev - 1;
       });
     } else {
-      pagingHandler(CursorType.BEFORE);
+      pagingHandler(CursorType.BEFORE, activePage);
     }
   };
 
@@ -84,7 +84,7 @@ const NextPrevious: FC<Prop> = ({
   };
 
   useEffect(() => {
-    setActivePage(currentPage ?? 1);
+    setActivePage(currentPage);
   }, [currentPage]);
 
   return (

@@ -62,7 +62,7 @@ jest.mock('../common/table-data-card/TableDataCard', () => {
     .mockReturnValue(<p data-testid="table-data-card">TableDataCard</p>);
 });
 
-jest.mock('../Pagination', () => {
+jest.mock('../common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<p>Pagination</p>);
 });
 

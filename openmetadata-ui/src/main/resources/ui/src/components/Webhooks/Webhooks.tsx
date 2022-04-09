@@ -59,6 +59,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
   onClickWebhook,
   onPageChange,
   onStatusFilter,
+  currentPage,
 }: WebhooksProps) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
   const [filteredData, setFilteredData] = useState<Array<Webhook>>(data);
@@ -199,6 +200,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
             ))}
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious
+                currentPage={currentPage}
                 pageSize={PAGE_SIZE}
                 paging={paging}
                 pagingHandler={onPageChange}

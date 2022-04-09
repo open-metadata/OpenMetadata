@@ -127,6 +127,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -362,7 +363,10 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (cursorType: string | number) => {
+  const databaseSchemaPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
@@ -370,6 +374,7 @@ const DatabaseDetails: FunctionComponent = () => {
     fetchDatabaseSchemas(pagingString).finally(() => {
       setIsLoading(false);
     });
+    setCurrentPage(activePage ?? 1);
   };
 
   const handleUpdateOwner = (owner: Database['owner']) => {
@@ -723,6 +728,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         !isNil(databaseSchemaPaging.before)
                     ) && (
                       <NextPrevious
+                        currentPage={currentPage}
                         pageSize={PAGE_SIZE}
                         paging={databaseSchemaPaging}
                         pagingHandler={databaseSchemaPagingHandler}

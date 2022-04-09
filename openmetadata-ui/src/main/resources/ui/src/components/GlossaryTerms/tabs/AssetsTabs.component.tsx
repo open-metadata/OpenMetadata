@@ -13,10 +13,11 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 
 interface Props {
   assetData: GlossaryTermAssets;
-  onAssetPaginate: (num: string | number) => void;
+  currentPage: number;
+  onAssetPaginate: (num: string | number, activePage?: number) => void;
 }
 
-const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
+const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
   const getLinkForFqn = (fqn: string, entityType?: EntityType) => {
     switch (entityType) {
       case EntityType.TOPIC:
@@ -91,6 +92,7 @@ const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
       {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
         <NextPrevious
           isNumberBased
+          currentPage={currentPage}
           pageSize={PAGE_SIZE}
           paging={{} as Paging}
           pagingHandler={onAssetPaginate}

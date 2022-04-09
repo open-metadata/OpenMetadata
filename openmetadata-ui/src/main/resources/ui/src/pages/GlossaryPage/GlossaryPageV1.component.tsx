@@ -687,6 +687,7 @@ const GlossaryPageV1 = () => {
       ) : (
         <GlossaryV1
           assetData={assetData}
+          currentPage={assetData.currPage}
           deleteStatus={deleteStatus}
           expandedKey={expandedKey}
           glossaryList={glossariesList as ModifiedGlossaryData[]}
