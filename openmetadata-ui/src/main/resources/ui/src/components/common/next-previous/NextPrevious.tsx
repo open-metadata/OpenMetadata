@@ -69,7 +69,7 @@ const NextPrevious: FC<Prop> = ({
     if (isNumberBased) {
       return activePage === 1;
     } else {
-      return Boolean(paging.before);
+      return paging.before ? false : true;
     }
   };
 
@@ -79,7 +79,7 @@ const NextPrevious: FC<Prop> = ({
 
       return activePage === totalPages;
     } else {
-      return Boolean(paging.after);
+      return paging.after ? false : true;
     }
   };
 
