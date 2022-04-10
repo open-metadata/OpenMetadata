@@ -154,6 +154,7 @@ def get_dashboard_service_or_create(
         return service
     else:
         dashboard_config = {"config": config}
+        print(dashboard_config)
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
                 name=service_name,
