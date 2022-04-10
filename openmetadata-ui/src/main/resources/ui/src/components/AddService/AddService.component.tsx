@@ -472,17 +472,19 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
 
   return (
     <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
+      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      {addIngestion ? (
-        <AddIngestion
-          handleAddIngestion={handleAddIngestion}
-          serviceData={serviceData as DataObj}
-        />
-      ) : (
-        addNewService()
-      )}
+      <div className="tw-form-container">
+        {addIngestion ? (
+          <AddIngestion
+            handleAddIngestion={handleAddIngestion}
+            serviceData={serviceData as DataObj}
+          />
+        ) : (
+          addNewService()
+        )}
+      </div>
     </PageLayout>
   );
 };
