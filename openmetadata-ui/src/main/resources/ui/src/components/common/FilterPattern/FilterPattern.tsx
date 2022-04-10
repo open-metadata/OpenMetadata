@@ -13,21 +13,10 @@
 
 import { capitalize } from 'lodash';
 import React from 'react';
-import { FilterPatternType } from '../../../enums/filterPattern.enum';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
 import ReactSelectMultiInput from '../react-select-component/ReactSelectMultiInput';
-
-type Props = {
-  checked: boolean;
-  showSeparator?: boolean;
-  handleChecked: (e: boolean) => void;
-  includePattern: Array<string> | undefined;
-  excludePattern: Array<string> | undefined;
-  type: FilterPatternType;
-  getExcludeValue: (value: Array<string>, type: FilterPatternType) => void;
-  getIncludeValue: (value: Array<string>, type: FilterPatternType) => void;
-};
+import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
   showSeparator = true,
@@ -38,9 +27,9 @@ const FilterPattern = ({
   getIncludeValue,
   getExcludeValue,
   type,
-}: Props) => {
+}: FilterPatternProps) => {
   return (
-    <Field>
+    <div className="tw-mt-4" data-testid="filter-pattern-container">
       <div className="tw-flex tw-items-center">
         <input
           checked={checked}
@@ -57,7 +46,7 @@ const FilterPattern = ({
         )} Filter Pattern`}</label>
       </div>
       {checked && (
-        <div>
+        <div data-testid="field-container">
           <Field>
             <label className="tw-block tw-form-label">Include:</label>
             <ReactSelectMultiInput
@@ -77,7 +66,7 @@ const FilterPattern = ({
           {showSeparator && getSeparator('')}
         </div>
       )}
-    </Field>
+    </div>
   );
 };
 

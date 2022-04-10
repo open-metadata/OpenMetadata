@@ -30,7 +30,7 @@ const ConfigureService = ({
   const markdownRef = useRef<EditorContentRef>();
 
   return (
-    <div>
+    <div data-testid="configure-service-container">
       <Field>
         <label className="tw-block tw-form-label" htmlFor="serviceName">
           {requiredField('Service Name:')}
@@ -54,11 +54,7 @@ const ConfigureService = ({
         <label className="tw-block tw-form-label" htmlFor="description">
           Description:
         </label>
-        <RichTextEditor
-          data-testid="description"
-          initialValue={description}
-          ref={markdownRef}
-        />
+        <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
 
       <Field className="tw-flex tw-justify-end tw-mt-10">

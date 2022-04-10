@@ -27,15 +27,18 @@ const SuccessScreen = ({
   handleIngestionClick,
 }: SuccessScreenProps) => {
   return (
-    <div className="tw-flex tw-flex-col tw-items-center tw-mt-14 tw-mb-24">
+    <div
+      className="tw-flex tw-flex-col tw-items-center tw-mt-14 tw-mb-24"
+      data-testid="success-screen-container">
       <div className="tw-mb-7">
         <SVGIcons
           alt="success"
           className="tw-w-10 tw-h-10"
+          data-testid="success-icon"
           icon={Icons.CIRCLE_CHECKBOX}
         />
       </div>
-      <p className="tw-mb-7">
+      <p className="tw-mb-7" data-testid="success-line">
         <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
         <span>has been successfuly created</span>
       </p>

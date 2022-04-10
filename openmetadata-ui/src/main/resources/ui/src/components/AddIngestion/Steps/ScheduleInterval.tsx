@@ -28,7 +28,7 @@ const ScheduleInterval = ({
   onDeloy,
 }: ScheduleIntervalProps) => {
   return (
-    <div>
+    <div data-testid="schedule-intervel-container">
       <Field>
         <div className="tw-flex tw-mt-2 tw-ml-3">
           <CronEditor

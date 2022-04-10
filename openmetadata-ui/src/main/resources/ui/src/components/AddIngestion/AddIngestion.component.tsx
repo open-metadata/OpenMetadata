@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, useState } from 'react';
+import React, { useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -20,7 +20,7 @@ import {
 import { FilterPatternType } from '../../enums/filterPattern.enum';
 import { PipelineType } from '../../generated/api/operations/pipelines/createAirflowPipeline';
 import { getCurrentDate } from '../../utils/CommonUtils';
-import SuccessScreen from '../common/add-service-success-screen/SuccessScreen';
+import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddIngestionProps, PatternType } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
@@ -138,7 +138,7 @@ const AddIngestion = ({
   };
 
   return (
-    <Fragment>
+    <div data-testid="add-ingestion-container">
       <h6 className="tw-heading tw-text-base">Add New Ingestion</h6>
 
       <IngestionStepper
@@ -195,7 +195,7 @@ const AddIngestion = ({
           <SuccessScreen name={ingestionName} showIngestionButton={false} />
         )}
       </div>
-    </Fragment>
+    </div>
   );
 };
 

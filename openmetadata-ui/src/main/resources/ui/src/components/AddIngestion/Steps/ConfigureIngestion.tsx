@@ -43,9 +43,9 @@ const ConfigureIngestion = ({
   onNext,
 }: ConfigureIngestionProps) => {
   return (
-    <div className="tw-px-2">
+    <div className="tw-px-2" data-testid="configure-ingestion-container">
       <Field>
-        <p>
+        <p data-testid="ingestion-name">
           Ingestion Name{' '}
           <span className="tw-font-semibold">{ingestionName}</span>
         </p>

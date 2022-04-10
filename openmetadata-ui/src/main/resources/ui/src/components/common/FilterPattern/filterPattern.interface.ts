@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import React from 'react';
+import { FilterPatternType } from '../../../enums/filterPattern.enum';
 
-interface ToggleSwitchV1 {
+export interface FilterPatternProps {
   checked: boolean;
-  handleCheck: () => void;
+  showSeparator?: boolean;
+  handleChecked: (e: boolean) => void;
+  includePattern: Array<string> | undefined;
+  excludePattern: Array<string> | undefined;
+  type: FilterPatternType;
+  getExcludeValue: (value: Array<string>, type: FilterPatternType) => void;
+  getIncludeValue: (value: Array<string>, type: FilterPatternType) => void;
 }
-
-const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1) => {
-  return (
-    <div
-      className={classNames('toggle-switch', checked ? 'open' : null)}
-      data-testid="toggle-button"
-      onClick={handleCheck}>
-      <div className="switch" />
-    </div>
-  );
-};
-
-export default ToggleSwitchV1;

@@ -12,7 +12,7 @@
  */
 
 import { DynamicFormFieldType } from 'Models';
-import React, { Fragment, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   getAddServicePath,
@@ -31,7 +31,7 @@ import {
   getKeyValueObject,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
-import SuccessScreen from '../common/add-service-success-screen/SuccessScreen';
+import SuccessScreen from '../common/success-screen/SuccessScreen';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddServiceProps } from './AddService.interface';
@@ -370,8 +370,10 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
 
   const addNewService = () => {
     return (
-      <Fragment>
-        <h6 className="tw-heading tw-text-base">Add New Service</h6>
+      <div data-testid="add-new-service-container">
+        <h6 className="tw-heading tw-text-base" data-testid="header">
+          Add New Service
+        </h6>
         <IngestionStepper
           activeStep={activeStepperStep}
           stepperLineClassName="add-service-line"
@@ -450,7 +452,7 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
             />
           )}
         </div>
-      </Fragment>
+      </div>
     );
   };
 

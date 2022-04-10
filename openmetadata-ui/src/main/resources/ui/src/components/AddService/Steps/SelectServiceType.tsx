@@ -60,33 +60,35 @@ const SelectServiceType = ({
       </Field>
 
       <Field className="tw-mt-7">
-        <div
-          className="tw-flex tw-flex-wrap tw-gap-5 tw-mt-4"
-          data-testid="selectService">
-          {serviceTypes[serviceCategory]?.map((type) => (
-            <div
-              className={classNames(
-                'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
-                {
-                  'tw-border-primary': type === selectServiceType,
-                }
-              )}
-              data-testid={type}
-              key={type}
-              onClick={() => handleServiceTypeClick(type)}>
-              <div className="tw-mb-2.5">
-                <div className="tw-w-9" data-testid="service-icon">
-                  {getServiceLogo(type || '', 'tw-h-9 tw-w-9')}
+        <div className="tw-flex tw-justify-center">
+          <div
+            className="tw-grid tw-grid-cols-5 tw-grid-flow-row tw-gap-5 tw-mt-4"
+            data-testid="select-service">
+            {serviceTypes[serviceCategory]?.map((type) => (
+              <div
+                className={classNames(
+                  'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',
+                  {
+                    'tw-border-primary': type === selectServiceType,
+                  }
+                )}
+                data-testid={type}
+                key={type}
+                onClick={() => handleServiceTypeClick(type)}>
+                <div className="tw-mb-2.5">
+                  <div className="tw-w-9" data-testid="service-icon">
+                    {getServiceLogo(type || '', 'tw-h-9 tw-w-9')}
+                  </div>
+                  <div className="tw-absolute tw-top-0 tw-right-1.5">
+                    {type === selectServiceType && (
+                      <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
+                    )}
+                  </div>
                 </div>
-                <div className="tw-absolute tw-top-0 tw-right-1.5">
-                  {type === selectServiceType && (
-                    <SVGIcons alt="checkbox" icon={Icons.CHECKBOX_PRIMARY} />
-                  )}
-                </div>
+                <p className="">{type}</p>
               </div>
-              <p className="">{type}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         {showError && errorMsg('Service is required')}
       </Field>

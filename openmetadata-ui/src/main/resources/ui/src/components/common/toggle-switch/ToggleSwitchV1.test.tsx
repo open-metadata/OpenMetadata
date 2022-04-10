@@ -11,23 +11,22 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import ToggleSwitchV1 from './ToggleSwitchV1';
 
-interface ToggleSwitchV1 {
-  checked: boolean;
-  handleCheck: () => void;
-}
+const mockFn = jest.fn();
 
-const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1) => {
-  return (
-    <div
-      className={classNames('toggle-switch', checked ? 'open' : null)}
-      data-testid="toggle-button"
-      onClick={handleCheck}>
-      <div className="switch" />
-    </div>
-  );
-};
+describe('Test SuccessScreen component', () => {
+  it('SuccessScreen component should render', async () => {
+    const { container } = render(
+      <ToggleSwitchV1 checked={false} handleCheck={mockFn} />
+    );
 
-export default ToggleSwitchV1;
+    const toggleButton = await findByTestId(container, 'toggle-button');
+    fireEvent.click(toggleButton);
+
+    expect(toggleButton).toBeInTheDocument();
+    expect(mockFn).toBeCalled();
+  });
+});
