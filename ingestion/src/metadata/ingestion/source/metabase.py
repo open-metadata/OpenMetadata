@@ -42,7 +42,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create, ingest_lineage
+from metadata.utils.helpers import get_dashboard_service_or_create
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -214,8 +214,7 @@ class MetabaseSource(Source[Entity]):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqdn = f"{self.service_connection.dbServiceName}.\
-                                    {table['schema']}.{table['name']}"
+                    table_fqdn = f"{self.service_connection.dbServiceName}.{table['schema']}.{table['name']}"
                     dashboard_fqdn = (
                         f"{self.dashboard_service.name}.{quote(dashboard_name)}"
                     )
@@ -259,6 +258,7 @@ class MetabaseSource(Source[Entity]):
         pass
 
     def get_card_detail(self, card_list):
+        metadata = OpenMetadata(self.metadata_config)
         for card in card_list:
             try:
                 card_details = card["card"]
@@ -271,13 +271,6 @@ class MetabaseSource(Source[Entity]):
                         .get("native", {})
                         .get("query", "")
                     )
-                    query_info = {
-                        "sql": raw_query,
-                        "from_type": "table",
-                        "to_type": "table",
-                        "service_name": self.config.serviceName,
-                    }
-                    ingest_lineage(query_info, self.metadata_config)
             except Exception as e:
                 logger.error(repr(e))
 

@@ -10,11 +10,9 @@
 #  limitations under the License.
 
 import logging
-import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
@@ -30,7 +28,6 @@ from metadata.generated.schema.api.services.createPipelineService import (
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -39,8 +36,6 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)
@@ -218,58 +213,8 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp())
 
 
-def create_lineage(from_table, to_table, query_info, metadata):
-    try:
-        from_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(from_table))}"
-        from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
-        to_fqdn = f"{query_info.get('service_name')}.{_get_formmated_table_name(str(to_table))}"
-        to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
-        if not from_entity or not to_entity:
-            return None
-
-        lineage = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(
-                    id=from_entity.id.__root__,
-                    type=query_info["from_type"],
-                ),
-                toEntity=EntityReference(
-                    id=to_entity.id.__root__,
-                    type=query_info["to_type"],
-                ),
-            )
-        )
-
-        created_lineage = metadata.add_lineage(lineage)
-        logger.info(f"Successfully added Lineage {created_lineage}")
-
-    except Exception as err:
-        logger.debug(traceback.print_exc())
-        logger.error(err)
-
-
 def _get_formmated_table_name(table_name):
     return table_name.replace("[", "").replace("]", "")
-
-
-def ingest_lineage(query_info, metadata_config):
-    from sqllineage.runner import LineageRunner
-
-    try:
-        result = LineageRunner(query_info["sql"])
-        metadata = OpenMetadata(metadata_config)
-        for intermediate_table in result.intermediate_tables:
-            for source_table in result.source_tables:
-                create_lineage(source_table, intermediate_table, query_info, metadata)
-            for target_table in result.target_tables:
-                create_lineage(intermediate_table, target_table, query_info, metadata)
-
-        if not result.intermediate_tables:
-            for target_table in result.target_tables:
-                for source_table in result.source_tables:
-                    create_lineage(source_table, target_table, query_info, metadata)
-    except Exception as err:
-        logger.error(str(err))
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:

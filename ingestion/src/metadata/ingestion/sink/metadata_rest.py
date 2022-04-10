@@ -222,6 +222,13 @@ class MetadataRestSink(Sink[Entity]):
                     table_queries=db_schema_and_table.table.tableQueries,
                 )
 
+            if db_schema_and_table.table.viewDefinition is not None:
+                self.metadata.ingest_lineage_by_query(
+                    query=db_schema_and_table.table.viewDefinition.__root__,
+                    service_name=db.service.name,
+                    database=db_schema_and_table.database.name.__root__,
+                )
+
             logger.info(
                 "Successfully ingested table {}.{}".format(
                     db_schema_and_table.database.name.__root__,

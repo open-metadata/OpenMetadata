@@ -4,15 +4,28 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import logging
+import traceback
+from logging.config import DictConfigurator
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import get_entity_type
+from metadata.ingestion.ometa.utils import _get_formmated_table_name, get_entity_type
 
 logger = logging.getLogger(__name__)
+
+# Prevent sqllineage from modifying the logger config
+def configure(self):
+    pass
+
+
+DictConfigurator.configure = configure
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
@@ -114,3 +127,63 @@ class OMetaLineageMixin(Generic[T]):
                 + f"{entity.__name__} and {path}"
             )
             return None
+
+    def _create_lineage_by_table_name(
+        self, from_table: str, to_table: str, service_name: str, database: str
+    ):
+        """
+        This method is to create a lineage between two tables
+        """
+        try:
+            from_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(from_table))}"
+            from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
+
+            to_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(to_table))}"
+            to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
+            if not from_entity or not to_entity:
+                return None
+
+            lineage = AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(
+                        id=from_entity.id.__root__,
+                        type="table",
+                    ),
+                    toEntity=EntityReference(
+                        id=to_entity.id.__root__,
+                        type="table",
+                    ),
+                )
+            )
+            created_lineage = self.add_lineage(lineage)
+            logger.info(f"Successfully added Lineage {created_lineage}")
+
+        except Exception as err:
+            logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def ingest_lineage_by_query(self, query: str, database: str, service_name: str):
+        """
+        This method parses the query to get source, target and intermediate table names to create lineage
+        """
+        from sqllineage.runner import LineageRunner
+
+        try:
+            result = LineageRunner(query)
+            for intermediate_table in result.intermediate_tables:
+                for source_table in result.source_tables:
+                    self._create_lineage_by_table_name(
+                        source_table, intermediate_table, service_name, database
+                    )
+                for target_table in result.target_tables:
+                    self._create_lineage_by_table_name(
+                        intermediate_table, target_table, service_name, database
+                    )
+            if not result.intermediate_tables:
+                for target_table in result.target_tables:
+                    for source_table in result.source_tables:
+                        self._create_lineage_by_table_name(
+                            source_table, target_table, service_name, database
+                        )
+        except Exception as err:
+            logger.error(str(err))
