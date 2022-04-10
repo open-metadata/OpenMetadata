@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../enums/service.enum';
-// import { DataObj } from '../../interface/service.interface';
+import { StepperStepType } from 'Models';
+import { PatternType } from '../components/AddIngestion/addIngestion.interface';
 
-export interface AddServiceProps {
-  serviceCategory: ServiceCategory;
-  // uncomment below at the time of API intigration
-  // onSave: (service: DataObj) => void;
-}
+export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
+  { name: 'Configure Ingestion', step: 1 },
+  { name: 'Schedule Interval', step: 2 },
+];
+
+export const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
+
+export const INITIAL_FILTER_PATTERN: PatternType = {
+  include: [],
+  exclude: [],
+};

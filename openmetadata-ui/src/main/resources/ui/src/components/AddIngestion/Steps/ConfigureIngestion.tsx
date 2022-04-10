@@ -11,128 +11,37 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import React, { useState } from 'react';
+import React from 'react';
 import { FilterPatternType } from '../../../enums/filterPattern.enum';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
 import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
-import { ConfigureIngestionStep, PatternType } from '../addIngestion.interface';
-
-type ConfigureIngestionProps = {
-  initialData?: ConfigureIngestionStep;
-  ingestionName: string;
-  onCancel: () => void;
-  onNext: (data: ConfigureIngestionStep) => void;
-};
-
-const isFilterPatternPresent = (data?: PatternType) => {
-  return (
-    !isUndefined(data) && (data.exclude.length > 0 || data.include.length > 0)
-  );
-};
-
-const INITIAL_FILTER_PATTERN: PatternType = {
-  include: [],
-  exclude: [],
-};
+import { ConfigureIngestionProps } from '../addIngestion.interface';
 
 const ConfigureIngestion = ({
-  initialData,
+  databaseFilterPattern,
+  schemaFilterPattern,
+  tableFilterPattern,
+  viewFilterPattern,
+  includeView,
+  enableDataProfiler,
+  ingestSampleData,
   ingestionName,
+  showDatabaseFilter,
+  showSchemaFilter,
+  showTableFilter,
+  showViewFilter,
+  getExcludeValue,
+  getIncludeValue,
+  handleShowFilter,
+  handleEnableDataProfiler,
+  handleIncludeView,
+  handleIngestSampleData,
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
-  const [showDatabaseFilter, setShowDatabaseFilter] = useState(
-    isFilterPatternPresent(initialData?.databaseFilterPattern)
-  );
-  const [showSchemaFilter, setShowSchemaFilter] = useState(
-    isFilterPatternPresent(initialData?.schemaFilterPattern)
-  );
-  const [showTableFilter, setShowTableFilter] = useState(
-    isFilterPatternPresent(initialData?.tableFilterPattern)
-  );
-  const [showViewFilter, setShowViewFilter] = useState(
-    isFilterPatternPresent(initialData?.viewFilterPattern)
-  );
-  const [includeView, setIncludeView] = useState(
-    initialData?.includeView ?? false
-  );
-  const [enableDataProfiler, setEnableDataProfiler] = useState(
-    initialData?.enableDataProfiler ?? true
-  );
-  const [ingestSampleData, setIngestSampleData] = useState(
-    initialData?.ingestSampleData ?? true
-  );
-  const [databaseFilterPattern, setDatabaseFilterPattern] =
-    useState<PatternType>(
-      initialData?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
-    );
-  const [schemaFilterPattern, setSchemaFilterPattern] = useState<PatternType>(
-    initialData?.schemaFilterPattern ?? INITIAL_FILTER_PATTERN
-  );
-  const [tableFilterPattern, setTableFilterPattern] = useState<PatternType>(
-    initialData?.tableFilterPattern ?? INITIAL_FILTER_PATTERN
-  );
-  const [viewFilterPattern, setViewFilterPattern] = useState<PatternType>(
-    initialData?.viewFilterPattern ?? INITIAL_FILTER_PATTERN
-  );
-
-  const getIncludeValue = (value: Array<string>, type: FilterPatternType) => {
-    switch (type) {
-      case FilterPatternType.DATABASE:
-        setDatabaseFilterPattern({ ...databaseFilterPattern, include: value });
-
-        break;
-      case FilterPatternType.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, include: value });
-
-        break;
-      case FilterPatternType.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, include: value });
-
-        break;
-      case FilterPatternType.VIEW:
-        setViewFilterPattern({ ...viewFilterPattern, include: value });
-
-        break;
-    }
-  };
-  const getExcludeValue = (value: Array<string>, type: FilterPatternType) => {
-    switch (type) {
-      case FilterPatternType.DATABASE:
-        setDatabaseFilterPattern({ ...databaseFilterPattern, exclude: value });
-
-        break;
-      case FilterPatternType.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, exclude: value });
-
-        break;
-      case FilterPatternType.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, exclude: value });
-
-        break;
-      case FilterPatternType.VIEW:
-        setViewFilterPattern({ ...viewFilterPattern, exclude: value });
-
-        break;
-    }
-  };
-
-  const handleNextClick = () => {
-    onNext({
-      databaseFilterPattern,
-      schemaFilterPattern,
-      tableFilterPattern,
-      viewFilterPattern,
-      includeView,
-      enableDataProfiler,
-      ingestSampleData,
-    });
-  };
-
   return (
     <div className="tw-px-2">
       <Field>
@@ -147,7 +56,9 @@ const ConfigureIngestion = ({
           excludePattern={databaseFilterPattern.exclude}
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
-          handleChecked={(value) => setShowDatabaseFilter(value)}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternType.DATABASE)
+          }
           includePattern={databaseFilterPattern.include}
           type={FilterPatternType.DATABASE}
         />
@@ -156,7 +67,9 @@ const ConfigureIngestion = ({
           excludePattern={schemaFilterPattern.exclude}
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
-          handleChecked={(value) => setShowSchemaFilter(value)}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternType.SCHEMA)
+          }
           includePattern={schemaFilterPattern.include}
           type={FilterPatternType.SCHEMA}
         />
@@ -165,7 +78,9 @@ const ConfigureIngestion = ({
           excludePattern={tableFilterPattern.exclude}
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
-          handleChecked={(value) => setShowTableFilter(value)}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternType.TABLE)
+          }
           includePattern={tableFilterPattern.include}
           type={FilterPatternType.TABLE}
         />
@@ -174,7 +89,9 @@ const ConfigureIngestion = ({
           excludePattern={viewFilterPattern.exclude}
           getExcludeValue={getExcludeValue}
           getIncludeValue={getIncludeValue}
-          handleChecked={(value) => setShowViewFilter(value)}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternType.VIEW)
+          }
           includePattern={viewFilterPattern.include}
           showSeparator={false}
           type={FilterPatternType.VIEW}
@@ -187,7 +104,7 @@ const ConfigureIngestion = ({
             <label>Include views</label>
             <ToggleSwitchV1
               checked={includeView}
-              handleCheck={() => setIncludeView((pre) => !pre)}
+              handleCheck={handleIncludeView}
             />
           </div>
           <p className="tw-text-grey-muted tw-mt-3">
@@ -200,7 +117,7 @@ const ConfigureIngestion = ({
             <label>Enable Data Profiler</label>
             <ToggleSwitchV1
               checked={enableDataProfiler}
-              handleCheck={() => setEnableDataProfiler((pre) => !pre)}
+              handleCheck={handleEnableDataProfiler}
             />
           </div>
           <p className="tw-text-grey-muted tw-mt-3">
@@ -214,7 +131,7 @@ const ConfigureIngestion = ({
             <label>Ingest Sample Data</label>
             <ToggleSwitchV1
               checked={ingestSampleData}
-              handleCheck={() => setIngestSampleData((pre) => !pre)}
+              handleCheck={handleIngestSampleData}
             />
           </div>
           <p className="tw-text-grey-muted tw-mt-3">
@@ -240,7 +157,7 @@ const ConfigureIngestion = ({
           size="regular"
           theme="primary"
           variant="contained"
-          onClick={handleNextClick}>
+          onClick={onNext}>
           <span>Next</span>
         </Button>
       </Field>

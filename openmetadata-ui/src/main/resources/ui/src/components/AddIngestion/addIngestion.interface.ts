@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterPatternType } from '../../enums/filterPattern.enum';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
@@ -23,7 +24,8 @@ export type PatternType = {
   exclude: Array<string>;
 };
 
-export type ConfigureIngestionStep = {
+export interface ConfigureIngestionProps {
+  ingestionName: string;
   databaseFilterPattern: PatternType;
   schemaFilterPattern: PatternType;
   tableFilterPattern: PatternType;
@@ -31,4 +33,27 @@ export type ConfigureIngestionStep = {
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
+  showDatabaseFilter: boolean;
+  showSchemaFilter: boolean;
+  showTableFilter: boolean;
+  showViewFilter: boolean;
+  handleIncludeView: () => void;
+  handleEnableDataProfiler: () => void;
+  handleIngestSampleData: () => void;
+  getIncludeValue: (value: string[], type: FilterPatternType) => void;
+  getExcludeValue: (value: string[], type: FilterPatternType) => void;
+  handleShowFilter: (value: boolean, type: FilterPatternType) => void;
+  onCancel: () => void;
+  onNext: () => void;
+}
+
+export type ScheduleIntervalProps = {
+  repeatFrequency: string;
+  handleRepeatFrequencyChange: (value: string) => void;
+  startDate: string;
+  handleStartDateChange: (value: string) => void;
+  endDate: string;
+  handleEndDateChange: (value: string) => void;
+  onBack: () => void;
+  onDeloy: () => void;
 };

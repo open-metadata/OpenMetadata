@@ -1,11 +1,25 @@
-import { DynamicFormFieldType, StepperStepType } from 'Models';
-import React, { useState } from 'react';
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { DynamicFormFieldType } from 'Models';
+import React, { Fragment, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   getAddServicePath,
   ONLY_NUMBER_REGEX,
   ROUTES,
 } from '../../constants/constants';
+import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
@@ -16,8 +30,8 @@ import {
   getIsIngestionEnable,
   getKeyValueObject,
 } from '../../utils/ServiceUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { Button } from '../buttons/Button/Button';
+import AddIngestion from '../AddIngestion/AddIngestion.component';
+import SuccessScreen from '../common/add-service-success-screen/SuccessScreen';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddServiceProps } from './AddService.interface';
@@ -25,18 +39,10 @@ import ConfigureService from './Steps/ConfigureService';
 import ConnectionDetails from './Steps/ConnectionDetails';
 import SelectServiceType from './Steps/SelectServiceType';
 
-const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  { name: 'Select Service Type', step: 1 },
-  { name: 'Configure Service', step: 2 },
-  { name: 'Connection Details', step: 3 },
-];
-
-const AddService = ({
-  serviceCategory,
-  onSave,
-  handleAddIngestion,
-}: AddServiceProps) => {
+const AddService = ({ serviceCategory }: AddServiceProps) => {
   const history = useHistory();
+  const [addIngestion, setAddIngestion] = useState(false);
+  const [serviceData, setServiceData] = useState<DataObj>();
   const [showErrorMessage, setShowErrorMessage] = useState({
     serviceType: false,
     name: false,
@@ -103,6 +109,10 @@ const AddService = ({
     } else {
       setShowErrorMessage({ ...showErrorMessage, name: true });
     }
+  };
+
+  const handleAddIngestion = (value: boolean) => {
+    setAddIngestion(value);
   };
 
   const handleSubmit = () => {
@@ -199,7 +209,8 @@ const AddService = ({
       default:
         break;
     }
-    onSave(dataObj);
+    setServiceData(dataObj);
+    // onSave(dataObj);
     setActiveStepperStep(4);
   };
 
@@ -357,6 +368,92 @@ const AddService = ({
     );
   };
 
+  const addNewService = () => {
+    return (
+      <Fragment>
+        <h6 className="tw-heading tw-text-base">Add New Service</h6>
+        <IngestionStepper
+          activeStep={activeStepperStep}
+          stepperLineClassName="add-service-line"
+          steps={STEPS_FOR_ADD_SERVICE}
+        />
+        <div className="tw-pt-5">
+          {activeStepperStep === 1 && (
+            <SelectServiceType
+              handleServiceTypeClick={handleServiceTypeClick}
+              selectServiceType={selectServiceType}
+              serviceCategory={serviceCategory}
+              serviceCategoryHandler={serviceCategoryHandler}
+              showError={showErrorMessage.serviceType}
+              onCancel={handleSelectServiceCancel}
+              onNext={handleSelectServiceNextClick}
+            />
+          )}
+
+          {activeStepperStep === 2 && (
+            <ConfigureService
+              description={description}
+              handleValidation={handleValidation}
+              serviceName={serviceName}
+              showError={{
+                name: showErrorMessage.name,
+                duplicateName: showErrorMessage.duplicateName,
+              }}
+              onBack={handleConfigureServiceBackClick}
+              onNext={handleConfigureServiceNextClick}
+            />
+          )}
+
+          {activeStepperStep === 3 && (
+            <ConnectionDetails
+              account={account}
+              addConnectionArgumentFields={addConnectionArgumentFields}
+              addConnectionOptionFields={addConnectionOptionFields}
+              apiKey={apiKey}
+              apiVersion={apiVersion}
+              brokers={brokers}
+              connectionArguments={connectionArguments}
+              connectionOptions={connectionOptions}
+              dashboardUrl={dashboardUrl}
+              database={database}
+              env={env}
+              handleConnectionArgumentFieldsChange={
+                handleConnectionArgumentFieldsChange
+              }
+              handleConnectionOptionFieldsChange={
+                handleConnectionOptionFieldsChange
+              }
+              handleValidation={handleValidation}
+              password={password}
+              pipelineUrl={pipelineUrl}
+              port={port}
+              removeConnectionArgumentFields={removeConnectionArgumentFields}
+              removeConnectionOptionFields={removeConnectionOptionFields}
+              schemaRegistry={schemaRegistry}
+              selectedService={selectServiceType}
+              server={server}
+              serviceCategory={serviceCategory}
+              siteName={siteName}
+              url={url}
+              username={username}
+              warehouse={warehouse}
+              onBack={handleConnectionDetailsBackClick}
+              onSubmit={handleConnectionDetailsSubmitClick}
+            />
+          )}
+
+          {activeStepperStep > 3 && (
+            <SuccessScreen
+              handleIngestionClick={() => handleAddIngestion(true)}
+              name={serviceName}
+              showIngestionButton={isIngestionSupported()}
+            />
+          )}
+        </div>
+      </Fragment>
+    );
+  };
+
   const fetchRightPanel = () => {
     return (
       <>
@@ -378,120 +475,14 @@ const AddService = ({
       classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">Add New Service</h6>
-      <IngestionStepper
-        activeStep={activeStepperStep}
-        stepperLineClassName="add-service-line"
-        steps={STEPS_FOR_ADD_SERVICE}
-      />
-      <div className="tw-pt-5">
-        {activeStepperStep === 1 && (
-          <SelectServiceType
-            handleServiceTypeClick={handleServiceTypeClick}
-            selectServiceType={selectServiceType}
-            serviceCategory={serviceCategory}
-            serviceCategoryHandler={serviceCategoryHandler}
-            showError={showErrorMessage.serviceType}
-            onCancel={handleSelectServiceCancel}
-            onNext={handleSelectServiceNextClick}
-          />
-        )}
-
-        {activeStepperStep === 2 && (
-          <ConfigureService
-            description={description}
-            handleValidation={handleValidation}
-            serviceName={serviceName}
-            showError={{
-              name: showErrorMessage.name,
-              duplicateName: showErrorMessage.duplicateName,
-            }}
-            onBack={handleConfigureServiceBackClick}
-            onNext={handleConfigureServiceNextClick}
-          />
-        )}
-
-        {activeStepperStep === 3 && (
-          <ConnectionDetails
-            account={account}
-            addConnectionArgumentFields={addConnectionArgumentFields}
-            addConnectionOptionFields={addConnectionOptionFields}
-            apiKey={apiKey}
-            apiVersion={apiVersion}
-            brokers={brokers}
-            connectionArguments={connectionArguments}
-            connectionOptions={connectionOptions}
-            dashboardUrl={dashboardUrl}
-            database={database}
-            env={env}
-            handleConnectionArgumentFieldsChange={
-              handleConnectionArgumentFieldsChange
-            }
-            handleConnectionOptionFieldsChange={
-              handleConnectionOptionFieldsChange
-            }
-            handleValidation={handleValidation}
-            password={password}
-            pipelineUrl={pipelineUrl}
-            port={port}
-            removeConnectionArgumentFields={removeConnectionArgumentFields}
-            removeConnectionOptionFields={removeConnectionOptionFields}
-            schemaRegistry={schemaRegistry}
-            selectedService={selectServiceType}
-            server={server}
-            serviceCategory={serviceCategory}
-            siteName={siteName}
-            url={url}
-            username={username}
-            warehouse={warehouse}
-            onBack={handleConnectionDetailsBackClick}
-            onSubmit={handleConnectionDetailsSubmitClick}
-          />
-        )}
-
-        {activeStepperStep > 3 && (
-          <div className="tw-flex tw-flex-col tw-items-center tw-mt-14 tw-mb-24">
-            <div className="tw-mb-7">
-              <SVGIcons
-                alt="success"
-                className="tw-w-10 tw-h-10"
-                icon={Icons.CIRCLE_CHECKBOX}
-              />
-            </div>
-            <p className="tw-mb-7">
-              <span className="tw-mr-1 tw-font-semibold">
-                &quot;{serviceName}&quot;
-              </span>
-              <span>has been successfuly created</span>
-            </p>
-
-            <div>
-              <Button
-                data-testid="view-service-button"
-                size="regular"
-                theme="primary"
-                variant="outlined"
-                // this will be implementd once api integration is done, as we need FQN to re-direct
-                // onClick={handleViewServiceClick}
-              >
-                <span>View Service</span>
-              </Button>
-
-              {isIngestionSupported() && (
-                <Button
-                  className="tw-ml-3.5"
-                  data-testid="add-ingestion-button"
-                  size="regular"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => handleAddIngestion(true)}>
-                  <span>Add Ingestion</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {addIngestion ? (
+        <AddIngestion
+          handleAddIngestion={handleAddIngestion}
+          serviceData={serviceData as DataObj}
+        />
+      ) : (
+        addNewService()
+      )}
     </PageLayout>
   );
 };
