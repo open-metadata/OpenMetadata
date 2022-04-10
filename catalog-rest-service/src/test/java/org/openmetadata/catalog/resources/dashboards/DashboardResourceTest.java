@@ -113,7 +113,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
-        String expectedFQN = FullyQualifiedName.add(service.getName(), db.getName());
+        String expectedFQN = FullyQualifiedName.add(service.getFullyQualifiedName(), db.getName());
         assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }

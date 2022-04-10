@@ -577,7 +577,7 @@ public abstract class EntityRepository<T> {
   }
 
   /** Validate given list of tags and add derived tags to it */
-  public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) throws IOException {
+  public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
     if (tagLabels == null || tagLabels.isEmpty()) {
       return tagLabels;
     }
@@ -605,7 +605,7 @@ public abstract class EntityRepository<T> {
   }
 
   /** Get tags associated with a given set of tags */
-  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) throws IOException {
+  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
       Tag tempTag = daoCollection.tagDAO().findEntityByName(fqn);
@@ -662,7 +662,7 @@ public abstract class EntityRepository<T> {
     List<EntityReference> followers = findFrom(entityInterface.getId(), entityType, Relationship.FOLLOWS);
     for (EntityReference follower : followers) {
       User user = daoCollection.userDAO().findEntityById(follower.getId(), ALL);
-      follower.withName(user.getName()).withDeleted(user.getDeleted());
+      follower.withName(user.getName()).withDeleted(user.getDeleted()).withFullyQualifiedName(user.getName());
     }
     return followers;
   }
@@ -776,7 +776,11 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
-        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+        entityReference
+            .withType(ref.getType())
+            .withName(ref.getName())
+            .withDisplayName(ref.getDisplayName())
+            .withFullyQualifiedName(ref.getFullyQualifiedName());
       }
     }
   }
@@ -786,7 +790,11 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
-        entityReference.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+        entityReference
+            .withType(ref.getType())
+            .withName(ref.getName())
+            .withDisplayName(ref.getDisplayName())
+            .withFullyQualifiedName(ref.getFullyQualifiedName());
       }
     }
   }

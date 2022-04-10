@@ -242,7 +242,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -280,7 +280,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(queryUsageConfig, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -313,7 +313,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -482,7 +482,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             OK,
             ADMIN_AUTH_HEADERS);
 
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestionPipeline);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());

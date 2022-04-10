@@ -228,7 +228,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withPipelineUrl(pipelineURI).withConcurrency(pipelineConcurrency).withStartDate(startDate),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(AIRFLOW_REFERENCE.getName(), pipeline.getName());
+    String expectedFQN = FullyQualifiedName.add(AIRFLOW_REFERENCE.getFullyQualifiedName(), pipeline.getName());
     assertEquals(pipelineURI, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
