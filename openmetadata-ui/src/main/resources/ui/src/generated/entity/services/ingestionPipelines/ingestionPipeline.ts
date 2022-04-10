@@ -204,10 +204,14 @@ export interface FieldChange {
  */
 export interface OpenMetadataServerConfig {
   /**
+   * OpenMetadata server API version to use.
+   */
+  apiVersion?: string;
+  /**
    * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
    * the one configured on OpenMetadaata server.
    */
-  authProvider: AuthProvider;
+  authProvider?: AuthProvider;
   /**
    * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */
@@ -224,6 +228,7 @@ export interface OpenMetadataServerConfig {
  */
 export enum AuthProvider {
   Auth0 = 'auth0',
+  CustomOidc = 'custom-oidc',
   Google = 'google',
   NoAuth = 'no-auth',
   Okta = 'okta',
@@ -237,18 +242,28 @@ export enum AuthProvider {
  * Okta SSO client security configs.
  *
  * Auth0 SSO client security configs.
+ *
+ * Custom OIDC SSO client security configs.
  */
 export interface SsoConfig {
+  /**
+   * Google SSO audience URL
+   */
+  audience?: string;
   /**
    * Google SSO client secret key path or contents.
    *
    * Auth0 Client Secret Key.
+   *
+   * Custom OIDC Client Secret Key.
    */
   secretKey?: string;
   /**
    * Okta Client ID.
    *
    * Auth0 Client ID.
+   *
+   * Custom OIDC Client ID.
    */
   clientId?: string;
   /**
@@ -271,6 +286,10 @@ export interface SsoConfig {
    * Auth0 Domain.
    */
   domain?: string;
+  /**
+   * Custom OIDC token endpoint.
+   */
+  tokenEndpoint?: string;
 }
 
 /**
@@ -368,6 +387,8 @@ export interface ServiceConnection {
  * Superset Connection Config
  *
  * Tableau Connection Config
+ *
+ * Google BigQuery Connection Config
  *
  * AWS Athena Connection Config
  *
@@ -538,12 +559,17 @@ export interface Connection {
    * username to connect  to the Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    *
+   * username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
+   *
    * username to connect  to the Vertica. This user should have privileges to read all the
    * metadata in Vertica.
    */
   username?: string;
   /**
    * Host and Port of Metabase instance.
+   *
+   * BigQuery APIs URL
    *
    * Host and port of the Athena
    *
@@ -638,13 +664,7 @@ export interface Connection {
    * Tableau Site URL
    */
   siteURL?: string;
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -712,7 +732,7 @@ export interface Connection {
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Trino.
+   * attempts to scan all the databases in the selected catalog in Trino.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -720,13 +740,31 @@ export interface Connection {
    */
   database?: string;
   /**
-   * S3 Staging Directory.
+   * Enable importing policy tags of BigQuery into OpenMetadata
    */
-  s3StagingDir?: string;
+  enablePolicyTagImport?: boolean;
+  /**
+   * Google BigQuery project id.
+   */
+  projectID?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
+  /**
+   * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
+   */
+  tagCategoryName?: string;
+  /**
+   * AWS Athena AWS Region.
+   *
+   * AWS Region Name.
+   */
+  awsRegion?: string;
+  /**
+   * S3 Staging Directory.
+   */
+  s3StagingDir?: string;
   /**
    * Service Type
    */
@@ -765,7 +803,13 @@ export interface Connection {
    */
   authOptions?: string;
   /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
    * Presto catalog
+   *
+   * Catalog of the data source.
    */
   catalog?: string;
   /**
@@ -789,6 +833,14 @@ export interface Connection {
    */
   warehouse?: string;
   /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: any };
+  /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: any };
+  /**
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
   bootstrapServers?: string;
@@ -799,10 +851,22 @@ export interface Connection {
 }
 
 /**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
   AwsathenaREST = 'awsathena+rest',
+  Bigquery = 'bigquery',
   ClickhouseHTTP = 'clickhouse+http',
   DatabricksConnector = 'databricks+connector',
   Db2IBMDB = 'db2+ibm_db',
@@ -855,6 +919,7 @@ export enum AthenaType {
  */
 export enum Type {
   AzureSQL = 'AzureSQL',
+  BigQuery = 'BigQuery',
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
@@ -909,6 +974,10 @@ export interface ConfigClass {
    * Option to turn on/off generating sample data during metadata extraction.
    */
   generateSampleData?: boolean;
+  /**
+   * Optional configuration to turn off fetching metadata for tables.
+   */
+  includeTables?: boolean;
   /**
    * Optional configuration to turn off fetching metadata for views.
    */

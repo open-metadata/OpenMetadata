@@ -77,7 +77,6 @@ const TableDataCard: FunctionComponent<Props> = ({
 
   const OtherDetails: Array<ExtraInfo> = [
     { key: 'Owner', value: owner },
-    // { key: 'Service', value: serviceType },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -96,6 +95,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
+  OtherDetails.push({ key: 'Service', value: serviceType, showLabel: true });
   if (database) {
     OtherDetails.push({
       key: 'Database',

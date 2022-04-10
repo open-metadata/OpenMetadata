@@ -93,6 +93,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/react-draft-wysiwyg'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
+          path.resolve(__dirname, 'node_modules/react-toastify'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)

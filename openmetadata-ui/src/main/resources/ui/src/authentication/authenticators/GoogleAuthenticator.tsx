@@ -22,13 +22,13 @@ import {
   useGoogleLogin,
   useGoogleLogout,
 } from 'react-google-login';
+import { oidcTokenKey } from '../../constants/constants';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../auth-provider/AuthProvider.interface';
 import { refreshTokenSetup } from '../auth-provider/refreshToken';
-import { oidcTokenKey } from '../constants/constants';
 
 interface Props {
   children: ReactNode;

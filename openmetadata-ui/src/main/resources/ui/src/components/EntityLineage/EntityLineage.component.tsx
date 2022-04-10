@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
 import { LoadingState } from 'Models';
@@ -37,9 +37,8 @@ import ReactFlow, {
   ReactFlowProvider,
   removeElements,
 } from 'react-flow-renderer';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
@@ -49,7 +48,6 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import {
   dragHandle,
   getDataLabel,
@@ -65,6 +63,7 @@ import {
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
@@ -93,7 +92,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   removeLineageHandler,
   entityLineageHandler,
 }: EntityLineageProp) => {
-  const showToast = useToastContext();
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -172,7 +170,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const getNodeLable = (node: EntityReference) => {
     return (
-      <>
+      <Fragment>
         {node.type === 'table' && !isEditMode ? (
           <button
             className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
@@ -192,15 +190,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(
-            node.displayName,
-            node.name,
-            FQN_SEPARATOR_CHAR,
-            false,
-            node.type
-          )}
+          {getDataLabel(node.displayName, node.name, false, node.type)}
         </p>
-      </>
+      </Fragment>
     );
   };
 
@@ -545,16 +537,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           const { columns } = res.data;
           setTableColumns(columns);
         })
-        .catch(() => {
-          showToast({
-            variant: 'error',
-            body: `Error while fetching ${getDataLabel(
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            `Error while fetching ${getDataLabel(
               expandNode.displayName,
               expandNode.name,
-              FQN_SEPARATOR_CHAR,
               true
-            )} columns`,
-          });
+            )} columns`
+          );
         });
     }
   };

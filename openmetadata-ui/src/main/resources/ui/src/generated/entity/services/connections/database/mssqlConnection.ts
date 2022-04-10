@@ -16,7 +16,7 @@
  * Mssql Database Connection Config
  */
 export interface MssqlConnection {
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
@@ -45,10 +45,25 @@ export interface MssqlConnection {
    */
   type?: MssqlType;
   /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
    * username to connect  to the MsSQL. This user should have privileges to read all the
    * metadata in MsSQL.
    */
   username?: string;
+}
+
+/**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
 }
 
 /**

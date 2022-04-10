@@ -67,7 +67,8 @@ public abstract class EntityInterface<T> {
   public final EntityReference getEntityReference() {
     return new EntityReference()
         .withId(getId())
-        .withName(getFullyQualifiedName())
+        .withName(getName())
+        .withFullyQualifiedName(getFullyQualifiedName())
         .withDescription(getDescription())
         .withDisplayName(getDisplayName())
         .withType(entityType)

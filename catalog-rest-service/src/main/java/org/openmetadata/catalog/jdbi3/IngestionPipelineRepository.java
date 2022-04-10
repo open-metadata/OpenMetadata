@@ -50,7 +50,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public static String getFQN(IngestionPipeline ingestionPipeline) {
     return (ingestionPipeline != null && ingestionPipeline.getService() != null)
-        ? FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName())
+        ? FullyQualifiedName.add(ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName())
         : null;
   }
 

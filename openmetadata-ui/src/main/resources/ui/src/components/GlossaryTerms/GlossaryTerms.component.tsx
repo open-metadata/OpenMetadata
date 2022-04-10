@@ -404,6 +404,7 @@ const GlossaryTerms = ({
               {activeTab === 2 && (
                 <AssetsTabs
                   assetData={{} as GlossaryTermAssets}
+                  currentPage={1}
                   onAssetPaginate={() => {
                     return;
                   }}

@@ -28,18 +28,13 @@
       "type": "string",
       "format": "password"
     },
-    "url": {
+    "hostPort": {
       "description": "URL to Looker instance.",
       "type": "string",
       "format": "uri"
     },
-    "platformName": {
-      "description": "Looker Platform Name",
-      "type": "string",
-      "default": "looker"
-    },
-    "actor": {
-      "description": "Looker actor.",
+    "env": {
+      "description": "Looker Environment",
       "type": "string"
     },
     "supportedPipelineTypes": {

@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -60,6 +60,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 
 const mockProps = {
   assetData: mockedAssetData,
+  currentPage: 1,
   isHasAccess: true,
   glossaryTerm: mockedGlossaryTerms[0],
   handleGlossaryTermUpdate: jest.fn(),

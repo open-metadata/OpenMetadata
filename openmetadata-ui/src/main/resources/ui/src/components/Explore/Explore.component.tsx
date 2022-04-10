@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  faSortAmountDownAlt,
+  faSortAmountUpAlt,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -49,6 +54,7 @@ import {
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
+  UPDATABLE_AGGREGATION,
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -59,15 +65,14 @@ import {
 } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
+import {
+  getFilterCount,
+  getFilterString,
+  prepareQueryParams,
+} from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
-import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -171,8 +176,8 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
-  const paginate = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const paginate = (pageNumber: string | number) => {
+    setCurrentPage(pageNumber as number);
   };
 
   const updateAggregationCount = useCallback(
@@ -181,21 +186,25 @@ const Explore: React.FC<ExploreProps> = ({
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            const buckets = cloneDeep(oldAgg.buckets)
-              .map((item) => {
-                // eslint-disable-next-line @typescript-eslint/camelcase
-                return { ...item, doc_count: 0 };
-              })
-              .concat(newAgg.buckets);
-            const bucketHashmap = buckets.reduce((obj, item) => {
-              obj[item.key]
-                ? // eslint-disable-next-line @typescript-eslint/camelcase
-                  (obj[item.key].doc_count += item.doc_count)
-                : (obj[item.key] = { ...item });
+            if (UPDATABLE_AGGREGATION.includes(newAgg.title)) {
+              const buckets = cloneDeep(oldAgg.buckets)
+                .map((item) => {
+                  // eslint-disable-next-line @typescript-eslint/camelcase
+                  return { ...item, doc_count: 0 };
+                })
+                .concat(newAgg.buckets);
+              const bucketHashmap = buckets.reduce((obj, item) => {
+                obj[item.key]
+                  ? // eslint-disable-next-line @typescript-eslint/camelcase
+                    (obj[item.key].doc_count += item.doc_count)
+                  : (obj[item.key] = { ...item });
 
-              return obj;
-            }, {} as { [key: string]: Bucket });
-            oldAgg.buckets = Object.values(bucketHashmap);
+                return obj;
+              }, {} as { [key: string]: Bucket });
+              oldAgg.buckets = Object.values(bucketHashmap);
+            } else {
+              oldAgg.buckets = newAgg.buckets;
+            }
           }
         }
       }
@@ -450,6 +459,21 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  /**
+   * on filter change , change the route
+   * @param filtersObj - filter object
+   */
+  const handleFilterChange = (filtersObj: FilterObject) => {
+    const params = prepareQueryParams(filtersObj);
+
+    const explorePath = getExplorePathWithSearch(searchQuery);
+
+    history.push({
+      pathname: explorePath,
+      search: params,
+    });
+  };
+
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
@@ -536,6 +560,9 @@ const Explore: React.FC<ExploreProps> = ({
       getData();
     } else {
       setCurrentPage(1);
+    }
+    if (!isMounting.current) {
+      handleFilterChange(filters);
     }
   }, [filters]);
 

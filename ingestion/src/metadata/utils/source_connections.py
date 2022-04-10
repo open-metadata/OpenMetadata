@@ -22,11 +22,29 @@ from metadata.generated.schema.entity.services.connections.database.clickhouseCo
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    DB2Connection,
+)
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveSQLConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -56,12 +74,11 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
-        if connection.password:
-            url += (
-                f":{quote_plus(connection.password.get_secret_value())}"
-                if connection
-                else ""
-            )
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
         url += "@"
 
     url += connection.hostPort
@@ -85,12 +102,15 @@ def get_connection_url(connection):
     )
 
 
+@get_connection_url.register(MariaDBConnection)
+@get_connection_url.register(PostgresConnection)
 @get_connection_url.register(RedshiftConnection)
 @get_connection_url.register(MysqlConnection)
 @get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
+@get_connection_url.register(DB2Connection)
 def _(connection):
     return get_connection_url_common(connection)
 
@@ -100,6 +120,15 @@ def _(connection: MssqlConnection):
     if connection.scheme.value == connection.scheme.mssql_pyodbc:
         return f"{connection.scheme.value}://{connection.uriString}"
     return get_connection_url_common(connection)
+
+
+@get_connection_url.register
+def _(connection: OracleConnection):
+    url = get_connection_url_common(connection)
+    if connection.oracleServiceName:
+        assert not connection.database
+        url = f"{url}/?service_name={connection.oracleServiceName}"
+    return url
 
 
 @get_connection_url.register
@@ -141,6 +170,21 @@ def _(connection: DatabricksConnection):
     return url
 
 
+@get_connection_url.register
+def _(connection: PrestoConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.username:
+        url += f"{quote_plus(connection.username)}"
+        if connection.password:
+            url += f":{quote_plus(connection.password.get_secret_value())}"
+        url += "@"
+    url += f"{connection.hostPort}"
+    url += f"/{connection.catalog}"
+    if connection.database:
+        url += f"?schema={quote_plus(connection.database)}"
+    return url
+
+
 @singledispatch
 def get_connection_args(connection):
     if connection.connectionArguments:
@@ -162,7 +206,7 @@ def _(connection: TrinoConnection):
         return connection.connectionArguments
 
 
-@get_connection_args.register
+@get_connection_url.register
 def _(connection: SnowflakeConnection):
 
     url = f"{connection.scheme.value}://"
@@ -191,5 +235,12 @@ def _(connection: SnowflakeConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
+    return url
 
+
+@get_connection_url.register
+def _(connection: HiveSQLConnection):
+    url = get_connection_url_common(connection)
+    if connection.authOptions:
+        return f"{url};{connection.authOptions}"
     return url

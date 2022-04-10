@@ -311,9 +311,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // TODO
   }
 
-  /** Validate returned fields GET .../policies/{id}?fields="..." or GET .../policies/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
+  public EntityInterface<Policy> validateGetWithDifferentFields(Policy policy, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     policy =
         byName
@@ -329,6 +329,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
             : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     // Field location is set during creation - tested elsewhere
     assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(policy);
   }
 
   public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {

@@ -31,30 +31,28 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import appState from '../AppState';
-import Auth0Callback from '../authentication/callbacks/Auth0Callback/Auth0Callback';
-import Auth0Authenticator from '../authenticators/Auth0Authenticator';
-import MsalAuthenticator from '../authenticators/MsalAuthenticator';
-import OidcAuthenticator from '../authenticators/OidcAuthenticator';
-import OktaAuthenticator from '../authenticators/OktaAuthenticator';
-import axiosClient from '../axiosAPIs';
+import appState from '../../AppState';
+import axiosClient from '../../axiosAPIs';
 import {
   fetchAuthenticationConfig,
   getLoggedInUserPermissions,
-} from '../axiosAPIs/miscAPI';
+} from '../../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
   getUserByName,
   updateUser,
-} from '../axiosAPIs/userAPI';
-import Loader from '../components/Loader/Loader';
-import { NO_AUTH } from '../constants/auth.constants';
-import { isAdminUpdated, oidcTokenKey, ROUTES } from '../constants/constants';
-import { ClientErrors } from '../enums/axios.enum';
-import { AuthTypes } from '../enums/signin.enum';
-import { User } from '../generated/entity/teams/user';
-import useToastContext from '../hooks/useToastContext';
-import jsonData from '../jsons/en';
+} from '../../axiosAPIs/userAPI';
+import Loader from '../../components/Loader/Loader';
+import { NO_AUTH } from '../../constants/auth.constants';
+import {
+  isAdminUpdated,
+  oidcTokenKey,
+  ROUTES,
+} from '../../constants/constants';
+import { ClientErrors } from '../../enums/axios.enum';
+import { AuthTypes } from '../../enums/signin.enum';
+import { User } from '../../generated/entity/teams/user';
+import jsonData from '../../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
@@ -63,10 +61,15 @@ import {
   isTourRoute,
   msalInstance,
   setMsalInstance,
-} from '../utils/AuthProvider.util';
-import { getImages } from '../utils/CommonUtils';
-import { getErrorText } from '../utils/StringsUtils';
-import { fetchAllUsers } from '../utils/UsedDataUtils';
+} from '../../utils/AuthProvider.util';
+import { getImages } from '../../utils/CommonUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { fetchAllUsers } from '../../utils/UsedDataUtils';
+import Auth0Authenticator from '../authenticators/Auth0Authenticator';
+import MsalAuthenticator from '../authenticators/MsalAuthenticator';
+import OidcAuthenticator from '../authenticators/OidcAuthenticator';
+import OktaAuthenticator from '../authenticators/OktaAuthenticator';
+import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import OktaAuthProvider from './okta-auth-provider';
 
@@ -84,7 +87,6 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
-  const showToast = useToastContext();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
@@ -98,13 +100,6 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const onLoginHandler = () => {
     authenticatorRef.current?.invokeLogin();
@@ -147,12 +142,10 @@ export const AuthProvider = ({
         appState.updateUserPermissions(res.data.metadataOperations);
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-user-permission-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => setLoading(false));
   };
@@ -203,11 +196,11 @@ export const AuthProvider = ({
           appState.updateUserDetails(res.data);
           localStorage.setItem(isAdminUpdated, 'true');
         })
-        .catch(() => {
-          showToast({
-            variant: 'error',
-            body: 'Error while updating admin user profile',
-          });
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-admin-profile-error']
+          );
         });
     }
   };
@@ -290,26 +283,25 @@ export const AuthProvider = ({
         // Before adding token to the Header, check its expiry
         // If the token will expire within the next time or has already expired
         // renew the token using silent renewal for a smooth UX
-        const { exp } = jwtDecode<JwtPayload>(token);
-        if (exp) {
-          // Renew token 50 seconds before expiry
-          if (Date.now() >= (exp - 50) * 1000) {
-            // Token expired, renew it before sending request
-            token = await renewIdToken().catch((error) => {
-              showToast({
-                variant: 'error',
-                body: error,
+        try {
+          const { exp } = jwtDecode<JwtPayload>(token);
+          if (exp) {
+            // Renew token 50 seconds before expiry
+            if (Date.now() >= (exp - 50) * 1000) {
+              // Token expired, renew it before sending request
+              token = await renewIdToken().catch((error) => {
+                showErrorToast(error);
               });
+            }
+          } else {
+            // Renew token since expiry is not set
+            token = await renewIdToken().catch((error) => {
+              showErrorToast(error);
             });
           }
-        } else {
-          // Renew token since expiry is not set
-          token = await renewIdToken().catch((error) => {
-            showToast({
-              variant: 'error',
-              body: error,
-            });
-          });
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error parsing id token.', error);
         }
 
         config.headers['Authorization'] = `Bearer ${token}`;
@@ -327,10 +319,7 @@ export const AuthProvider = ({
           if (status === ClientErrors.UNAUTHORIZED) {
             resetUserDetails(true);
           } else if (status === ClientErrors.FORBIDDEN) {
-            showToast({
-              variant: 'error',
-              body: 'You do not have permission for this action!',
-            });
+            showErrorToast(jsonData['api-error-messages']['forbidden-error']);
           }
         }
 
@@ -367,10 +356,9 @@ export const AuthProvider = ({
           } else {
             // provider is either null or not supported
             setLoading(false);
-            showToast({
-              variant: 'error',
-              body: `The configured SSO Provider "${provider}" is not supported. Please check the authentication configuration in the server.`,
-            });
+            showErrorToast(
+              `The configured SSO Provider "${provider}" is not supported. Please check the authentication configuration in the server.`
+            );
           }
         } else {
           setLoading(false);
@@ -379,10 +367,11 @@ export const AuthProvider = ({
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body: `Error occurred while fetching auth config: ${err.message}`,
-        });
+        setLoading(false);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-auth-config-error']
+        );
       });
   };
 

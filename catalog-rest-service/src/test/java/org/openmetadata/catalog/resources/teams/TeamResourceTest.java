@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.teams.Role;
@@ -337,9 +338,15 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateEntityReferences(team.getOwns());
   }
 
-  /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
+  public EntityInterface<Team> validateGetWithDifferentFields(Team expectedTeam, boolean byName)
+      throws HttpResponseException {
+    if (expectedTeam.getUsers() == null) {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
+      userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
     String fields = "";
     Team getTeam =
@@ -349,15 +356,16 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), null, null, null, updatedBy);
     assertNull(getTeam.getOwns());
 
-    fields = "users,owns,profile,defaultRoles";
+    fields = "users,owns,profile,defaultRoles,owner";
     getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(expectedTeam.getId(), fields, ADMIN_AUTH_HEADERS);
     assertNotNull(getTeam.getProfile());
     validateEntityReferences(getTeam.getOwns());
-    validateEntityReferences(getTeam.getUsers());
+    validateEntityReferences(getTeam.getUsers(), true);
     validateEntityReferences(getTeam.getDefaultRoles());
+    return getEntityInterface(getTeam);
   }
 
   @Override

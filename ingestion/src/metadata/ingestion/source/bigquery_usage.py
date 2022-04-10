@@ -29,7 +29,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.helpers import get_start_and_end, ingest_lineage
+from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
 
@@ -130,15 +130,6 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 service_name=self.config.service_name,
                             )
                             yield tq
-
-                            query_info = {
-                                "sql": tq.sql,
-                                "from_type": "table",
-                                "to_type": "table",
-                                "service_name": self.config.service_name,
-                            }
-
-                            ingest_lineage(query_info, self.metadata_config)
 
         except Exception as err:
             logger.error(repr(err))

@@ -51,7 +51,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public static String getFQN(DatabaseSchema schema) {
-    return (schema != null) ? FullyQualifiedName.add(schema.getDatabase().getName(), schema.getName()) : null;
+    return schema != null
+        ? FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName())
+        : null;
   }
 
   @Override
@@ -92,7 +94,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema == null) {
       return null;
     }
-    List<String> tableIds = findTo(schema.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.TABLE);
+    List<String> tableIds = findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 

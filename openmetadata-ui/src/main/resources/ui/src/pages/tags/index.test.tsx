@@ -23,7 +23,7 @@ import TagsPage from '.';
 import { updateTagCategory } from '../../axiosAPIs/tagAPI';
 import { getTagCategories } from '../../utils/TagsUtils';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

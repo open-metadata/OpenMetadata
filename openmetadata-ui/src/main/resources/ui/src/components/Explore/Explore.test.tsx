@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

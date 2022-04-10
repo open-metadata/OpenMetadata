@@ -13,10 +13,10 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import React, { VFC } from 'react';
-import { useAuthContext } from '../../../auth-provider/AuthProvider';
-import { OidcUser } from '../../../auth-provider/AuthProvider.interface';
 import { oidcTokenKey } from '../../../constants/constants';
 import jsonData from '../../../jsons/en';
+import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { OidcUser } from '../../auth-provider/AuthProvider.interface';
 
 const Auth0Callback: VFC = () => {
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();

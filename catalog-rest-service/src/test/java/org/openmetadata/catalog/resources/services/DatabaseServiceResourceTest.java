@@ -170,7 +170,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(1, updatedService.getPipelines().size());
     EntityReference expectedPipeline = updatedService.getPipelines().get(0);
     assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
-    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getName());
+    assertEquals(ingestionPipeline.getName(), expectedPipeline.getName());
+    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getFullyQualifiedName());
   }
 
   @Override
@@ -207,12 +208,9 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     return new DatabaseServiceEntityInterface(entity);
   }
 
-  /**
-   * Validate returned fields GET .../databaseServices/{id}?fields="..." or GET
-   * .../databaseServices/name/{fqn}?fields="..."
-   */
   @Override
-  public void validateGetWithDifferentFields(DatabaseService service, boolean byName) throws HttpResponseException {
+  public EntityInterface<DatabaseService> validateGetWithDifferentFields(DatabaseService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
@@ -225,7 +223,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(service);
   }
 
   @Override

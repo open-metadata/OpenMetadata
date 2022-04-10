@@ -22,6 +22,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
   getGlossaryPath,
   getPipelineDetailsPath,
@@ -215,6 +216,9 @@ export const getEntityLink = (
 
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:

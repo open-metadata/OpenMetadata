@@ -5,6 +5,32 @@
   "description": "OpenMetadata Ingestion Framework definition.",
   "type": "object",
   "definitions": {
+    "azureSSOConfig": {
+      "description": "Azure SSO client security configs.",
+      "type": "object",
+      "properties": {
+        "clientSecret": {
+          "description": "Azure SSO client secret key",
+          "type": "string"
+        },
+        "authority": {
+          "description": "Azure SSO Authority",
+          "type": "string"
+        },
+        "clientId": {
+          "description": "Azure Client ID.",
+          "type": "string"
+        },
+        "scopes": {
+          "description": "Azure Client ID.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientSecret", "clientId", "authority", "scopes"]
+    },
     "googleSSOConfig": {
       "description": "Google SSO client security configs.",
       "type": "object",
@@ -119,6 +145,9 @@
             },
             {
               "$ref": "#/definitions/auth0SSOConfig"
+            },
+            {
+              "$ref": "#/definitions/azureSSOConfig"
             },
             {
               "$ref": "#/definitions/customOidcSSOConfig"

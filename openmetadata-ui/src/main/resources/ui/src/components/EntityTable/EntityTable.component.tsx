@@ -37,7 +37,7 @@ import {
 } from '../../interface/dataQuality.interface';
 import {
   getHtmlForNonAdminAction,
-  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
@@ -681,12 +681,12 @@ const EntityTable = ({
                                           getTableFQNFromColumnFQN(
                                             columnJoin?.fullyQualifiedName as string
                                           ),
-                                          getPartialNameFromFQN(
+                                          getPartialNameFromTableFQN(
                                             columnJoin?.fullyQualifiedName as string,
                                             ['column']
                                           )
                                         )}>
-                                        {getPartialNameFromFQN(
+                                        {getPartialNameFromTableFQN(
                                           columnJoin?.fullyQualifiedName as string,
                                           ['database', 'table', 'column'],
                                           FQN_SEPARATOR_CHAR
@@ -713,12 +713,12 @@ const EntityTable = ({
                                                   getTableFQNFromColumnFQN(
                                                     columnJoin?.fullyQualifiedName as string
                                                   ),
-                                                  getPartialNameFromFQN(
+                                                  getPartialNameFromTableFQN(
                                                     columnJoin?.fullyQualifiedName as string,
                                                     ['column']
                                                   )
                                                 )}>
-                                                {getPartialNameFromFQN(
+                                                {getPartialNameFromTableFQN(
                                                   columnJoin?.fullyQualifiedName as string,
                                                   [
                                                     'database',

@@ -18,10 +18,10 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
+import { oidcTokenKey } from '../../constants/constants';
+import { AuthTypes } from '../../enums/signin.enum';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
-import { oidcTokenKey } from '../constants/constants';
-import { AuthTypes } from '../enums/signin.enum';
 
 interface Props {
   children: ReactNode;
@@ -53,33 +53,27 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           return new Promise((resolve, reject) => {
             const { provider } = authConfig;
             if (provider === AuthTypes.AUTH0) {
-              try {
-                getAccessTokenSilently()
-                  .then(() => {
-                    getIdTokenClaims()
-                      .then((token) => {
-                        if (token !== undefined) {
-                          idToken = token.__raw;
-                          localStorage.setItem(oidcTokenKey, idToken);
-                          resolve(idToken);
-                        }
-                      })
-                      .catch((err) => {
-                        reject(
-                          `Error while renewing id token from Auth0 SSO: ${err.message}`
-                        );
-                      });
-                  })
-                  .catch((err) => {
-                    reject(
-                      `Error while renewing id token from Auth0 SSO: ${err.message}`
-                    );
-                  });
-              } catch (error) {
-                reject(
-                  `Error while renewing id token from Auth0 SSO: ${error}`
-                );
-              }
+              getAccessTokenSilently()
+                .then(() => {
+                  getIdTokenClaims()
+                    .then((token) => {
+                      if (token !== undefined) {
+                        idToken = token.__raw;
+                        localStorage.setItem(oidcTokenKey, idToken);
+                        resolve(idToken);
+                      }
+                    })
+                    .catch((err) => {
+                      reject(
+                        `Error while renewing id token from Auth0 SSO: ${err.message}`
+                      );
+                    });
+                })
+                .catch((err) => {
+                  reject(
+                    `Error while renewing id token from Auth0 SSO: ${err.message}`
+                  );
+                });
             } else {
               reject(
                 `Auth Provider ${provider} not supported for renewing tokens.`

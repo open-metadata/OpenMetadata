@@ -17,17 +17,20 @@ import classNames from 'classnames';
 import cronstrue from 'cronstrue';
 import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { Fragment, useCallback, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import {
+  PAGE_SIZE,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import {
   AirflowPipeline,
   ConfigClass,
   PipelineType,
 } from '../../generated/operations/pipelines/airflowPipeline';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import { getAirflowPipelineTypes } from '../../utils/ServiceUtils';
+import { showInfoToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -50,10 +53,10 @@ const Ingestion: React.FC<Props> = ({
   updateIngestion,
   paging,
   pagingHandler,
+  currrentPage,
 }: Props) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const showToast = useToastContext();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -188,10 +191,9 @@ const Ingestion: React.FC<Props> = ({
 
   const handleAddIngestionClick = () => {
     if (!getAirflowPipelineTypeOption().length) {
-      showToast({
-        variant: 'info',
-        body: `${serviceName} already has all the supported ingestion jobs added.`,
-      });
+      showInfoToast(
+        `${serviceName} already has all the supported ingestion jobs added.`
+      );
     } else {
       setIsAdding(true);
     }
@@ -411,7 +413,13 @@ const Ingestion: React.FC<Props> = ({
               </tbody>
             </table>
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
+              <NextPrevious
+                currentPage={currrentPage}
+                pageSize={PAGE_SIZE}
+                paging={paging}
+                pagingHandler={pagingHandler}
+                totalCount={paging.total}
+              />
             )}
           </div>
         ) : (

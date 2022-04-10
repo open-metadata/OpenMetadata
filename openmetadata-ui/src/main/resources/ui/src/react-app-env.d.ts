@@ -14,7 +14,6 @@
 /* eslint-disable */
 /// <reference types="react-scripts" />
 declare module 'classnames';
-declare module 'react-js-pagination';
 declare module 'draft-js';
 declare module 'react-draft-wysiwyg';
 declare module 'markdown-draft-js';

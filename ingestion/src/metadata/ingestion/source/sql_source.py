@@ -63,7 +63,7 @@ from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
+from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -248,7 +248,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status.scanned(fqn)
 
     # TODO centralize me
-    def get_table_fqn(self, service_name, db_name, schema_name, table_name) -> str:
+    @staticmethod
+    def get_table_fqn(service_name, db_name, schema_name, table_name) -> str:
         return ".".join((service_name, db_name, schema_name, table_name))
 
     def next_record(self) -> Iterable[Entity]:
@@ -257,21 +258,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
-                self.database_source_state.clear()
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name=schema
-                ):
-                    self.status.filter(schema, "Schema pattern not allowed")
-                    continue
+                try:
+                    self.database_source_state.clear()
+                    if filter_by_schema(
+                        self.source_config.schemaFilterPattern, schema_name=schema
+                    ):
+                        self.status.filter(schema, "Schema pattern not allowed")
+                        continue
 
-                if self.source_config.includeTables:
-                    yield from self.fetch_tables(inspector, schema)
+                    if self.source_config.includeTables:
+                        yield from self.fetch_tables(inspector, schema)
 
-                if self.source_config.includeViews:
-                    yield from self.fetch_views(inspector, schema)
-                if self.source_config.markDeletedTables:
-                    schema_fqdn = f"{self.config.serviceName}.{schema}"
-                    yield from self.delete_tables(schema_fqdn)
+                    if self.source_config.includeViews:
+                        yield from self.fetch_views(inspector, schema)
+                    if self.source_config.markDeletedTables:
+                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        yield from self.delete_tables(schema_fqdn)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -388,8 +393,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = self.get_table_fqn(self.config.serviceName, schema, view_name)
-                self.database_source_state.add(fqn)
+
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
@@ -400,16 +404,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     columns=self._get_columns(schema, view_name, inspector),
                     viewDefinition=view_definition,
                 )
-                if table.viewDefinition:
-                    query_info = {
-                        "sql": table.viewDefinition.__root__,
-                        "from_type": "table",
-                        "to_type": "table",
-                        "service_name": self.config.serviceName,
-                    }
-                    ingest_lineage(
-                        query_info=query_info, metadata_config=self.metadata_config
-                    )
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
@@ -546,6 +540,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return columns
 
     def _get_database(self, database: str) -> Database:
+        if not database:
+            database = "default"
         return Database(
             name=database,
             service=EntityReference(
