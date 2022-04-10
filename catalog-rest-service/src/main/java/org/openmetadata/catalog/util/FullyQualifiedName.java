@@ -66,7 +66,7 @@ public class FullyQualifiedName {
   public static String getTableFQN(String columnFQN) {
     // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
     String[] split = split(columnFQN);
-    if (split.length < 5) {
+    if (split.length != 5) {
       throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
     }
     // Return table FQN of format databaseService.tableName

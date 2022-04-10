@@ -51,7 +51,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public static String getFQN(DatabaseSchema schema) {
-    return (schema != null) ? FullyQualifiedName.add(schema.getDatabase().getName(), schema.getName()) : null;
+    return schema != null
+        ? FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName())
+        : null;
   }
 
   @Override

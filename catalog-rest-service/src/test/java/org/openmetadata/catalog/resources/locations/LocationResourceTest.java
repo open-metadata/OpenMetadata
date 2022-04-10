@@ -143,7 +143,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     LocationList allLocations =
         listPrefixes(
             null,
-            FullyQualifiedName.add(AWS_STORAGE_SERVICE_REFERENCE.getName(), locationName),
+            FullyQualifiedName.add(AWS_STORAGE_SERVICE_REFERENCE.getFullyQualifiedName(), locationName),
             1000000,
             null,
             null,

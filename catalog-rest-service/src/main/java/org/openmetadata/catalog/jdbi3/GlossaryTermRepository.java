@@ -103,10 +103,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // Validate parent
     if (entity.getParent() == null) {
-      entity.setFullyQualifiedName(FullyQualifiedName.add(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.add(entity.getGlossary().getFullyQualifiedName(), entity.getName()));
     } else {
       EntityReference parent = Entity.getEntityReference(entity.getParent());
-      entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getName(), entity.getName()));
+      entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
       entity.setParent(parent);
     }
 

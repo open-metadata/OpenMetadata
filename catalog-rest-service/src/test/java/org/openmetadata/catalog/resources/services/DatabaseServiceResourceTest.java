@@ -170,7 +170,8 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(1, updatedService.getPipelines().size());
     EntityReference expectedPipeline = updatedService.getPipelines().get(0);
     assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
-    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getName());
+    assertEquals(ingestionPipeline.getName(), expectedPipeline.getName());
+    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getFullyQualifiedName());
   }
 
   @Override

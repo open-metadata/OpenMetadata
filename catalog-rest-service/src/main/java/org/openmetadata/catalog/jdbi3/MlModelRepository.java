@@ -91,7 +91,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlSources.forEach(
         s -> {
           if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(FullyQualifiedName.add(s.getDataSource().getName(), s.getName()));
+            s.setFullyQualifiedName(FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
           } else {
             s.setFullyQualifiedName(s.getName());
           }

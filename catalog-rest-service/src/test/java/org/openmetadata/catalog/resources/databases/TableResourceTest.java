@@ -35,7 +35,6 @@ import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
-import static org.openmetadata.catalog.util.FullyQualifiedName.add;
 import static org.openmetadata.catalog.util.FullyQualifiedName.build;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -1349,54 +1348,36 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // GET .../tables?fields=columns,tableConstraints
     final String fields = "tableConstraints";
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields);
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields);
-            put("database", DATABASE.getFullyQualifiedName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
     // GET .../tables?fields=usageSummary,owner
     final String fields1 = "usageSummary,owner";
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields1);
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
-      assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
-      assertEquals(table.getDatabase().getId(), DATABASE.getId());
-      assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
+      assertEquals(USER_OWNER1, table.getOwner());
+      assertReference(DATABASE_REFERENCE, table.getDatabase());
     }
 
     // List tables with databaseFQN as filter
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields1);
-            put("database", DATABASE.getFullyQualifiedName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields1);
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
@@ -2012,7 +1993,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
     assertEquals(
-        add(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
+        FullyQualifiedName.add(createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
   }
 
@@ -2050,7 +2031,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
     assertEquals(
-        FullyQualifiedName.add(patched.getDatabaseSchema().getName(), patched.getName()),
+        FullyQualifiedName.add(patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
         patched.getFullyQualifiedName());
   }
 

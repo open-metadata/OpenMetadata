@@ -132,7 +132,8 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
     assertEquals(
-        FullyQualifiedName.add(schema.getDatabase().getName(), schema.getName()), schema.getFullyQualifiedName());
+        FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()),
+        schema.getFullyQualifiedName());
   }
 
   @Override
@@ -145,7 +146,8 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(
-        FullyQualifiedName.add(updated.getDatabase().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.add(updated.getDatabase().getFullyQualifiedName(), updated.getName()),
+        updated.getFullyQualifiedName());
   }
 
   @Override
