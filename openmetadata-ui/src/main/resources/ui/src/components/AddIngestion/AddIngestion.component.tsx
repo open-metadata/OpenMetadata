@@ -2,9 +2,12 @@ import { StepperStepType } from 'Models';
 import React, { useState } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { PipelineType } from '../../generated/api/operations/pipelines/createAirflowPipeline';
-import { DataObj } from '../../interface/service.interface';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
+import {
+  AddIngestionProps,
+  ConfigureIngestionStep,
+} from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 
 const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
@@ -12,15 +15,25 @@ const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   { name: 'Schedule Interval', step: 2 },
 ];
 
-type AddIngestionProps = {
-  serviceData: DataObj;
-};
-
-const AddIngestion = ({ serviceData }: AddIngestionProps) => {
+const AddIngestion = ({
+  serviceData,
+  handleAddIngestion,
+}: AddIngestionProps) => {
   const [activeStepperStep, setActiveStepperStep] = useState(1);
   const [ingestionName] = useState(
     `${serviceData.name}_${PipelineType.Metadata}`
   );
+  const [configureIngestionState, setConfigureIngestionState] =
+    useState<ConfigureIngestionStep>();
+
+  const handleConfigureIngestionCancelClick = () => {
+    handleAddIngestion(false);
+  };
+
+  const handleConfigureIngestionNextClick = (data: ConfigureIngestionStep) => {
+    setConfigureIngestionState(data);
+    setActiveStepperStep(2);
+  };
 
   const fetchRightPanel = () => {
     return (
@@ -54,7 +67,12 @@ const AddIngestion = ({ serviceData }: AddIngestionProps) => {
 
       <div className="tw-pt-7">
         {activeStepperStep === 1 && (
-          <ConfigureIngestion ingestionName={ingestionName} />
+          <ConfigureIngestion
+            ingestionName={ingestionName}
+            initialData={configureIngestionState}
+            onCancel={handleConfigureIngestionCancelClick}
+            onNext={handleConfigureIngestionNextClick}
+          />
         )}
         {activeStepperStep === 2 && <div>step 2</div>}
       </div>

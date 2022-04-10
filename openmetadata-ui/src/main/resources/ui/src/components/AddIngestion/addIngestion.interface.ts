@@ -11,11 +11,24 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../enums/service.enum';
 import { DataObj } from '../../interface/service.interface';
 
-export interface AddServiceProps {
-  serviceCategory: ServiceCategory;
-  onSave: (service: DataObj) => void;
+export interface AddIngestionProps {
+  serviceData: DataObj;
   handleAddIngestion: (value: boolean) => void;
 }
+
+export type PatternType = {
+  include: Array<string>;
+  exclude: Array<string>;
+};
+
+export type ConfigureIngestionStep = {
+  databaseFilterPattern: PatternType;
+  schemaFilterPattern: PatternType;
+  tableFilterPattern: PatternType;
+  viewFilterPattern: PatternType;
+  includeView: boolean;
+  enableDataProfiler: boolean;
+  ingestSampleData: boolean;
+};

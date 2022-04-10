@@ -11,11 +11,23 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../enums/service.enum';
-import { DataObj } from '../../interface/service.interface';
+import classNames from 'classnames';
+import React from 'react';
 
-export interface AddServiceProps {
-  serviceCategory: ServiceCategory;
-  onSave: (service: DataObj) => void;
-  handleAddIngestion: (value: boolean) => void;
+interface ToggleSwitchV1 {
+  checked: boolean;
+  handleCheck: () => void;
 }
+
+const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1) => {
+  return (
+    <div
+      className={classNames('toggle-switch', checked ? 'open' : null)}
+      data-testid="include-views"
+      onClick={handleCheck}>
+      <div className="switch" />
+    </div>
+  );
+};
+
+export default ToggleSwitchV1;

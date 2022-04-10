@@ -484,7 +484,7 @@ const AddService = ({
                   size="regular"
                   theme="primary"
                   variant="contained"
-                  onClick={handleAddIngestion}>
+                  onClick={() => handleAddIngestion(true)}>
                   <span>Add Ingestion</span>
                 </Button>
               )}
