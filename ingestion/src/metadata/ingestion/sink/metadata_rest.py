@@ -46,6 +46,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
@@ -128,6 +129,8 @@ class MetadataRestSink(Sink[Entity]):
             self.delete_table(record)
         elif isinstance(record, OMetaTableTest):
             self.write_table_tests(record)
+        elif isinstance(record, OMetaPipelineStatus):
+            self.write_pipeline_status(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -526,6 +529,24 @@ class MetadataRestSink(Sink[Entity]):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
+            logger.error(err)
+
+    def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
+        """
+        Use the /status endpoint to add PipelineStatus
+        data to a Pipeline Entity
+        """
+        try:
+            pipeline = self.metadata.get_by_name(
+                entity=Pipeline, fqdn=record.pipeline_fqdn
+            )
+            self.metadata.add_pipeline_status(
+                pipeline=pipeline, status=record.pipeline_status
+            )
+            self.status.records_written(f"Pipeline Status: {record.pipeline_fqdn}")
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
             logger.error(err)
 
     def get_status(self):
