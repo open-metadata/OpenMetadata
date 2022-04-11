@@ -15,7 +15,7 @@
         "scheme": "mysql+pymysql",
         "username": "openmetadata_user",
         "password": "openmetadata_password",
-        "hostPort": "136.243.150.188:3306",
+        "hostPort": "localhost:3306",
         "database": null,
         "connectionOptions": null,
         "connectionArguments": null,
