@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -63,6 +64,7 @@ from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -237,7 +239,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Mark the record as scanned and update the database_source_state
         """
-        fqn = self.get_table_fqn(
+        fqn = get_fqdn(
+            Table,
             self.config.serviceName,
             str(table_schema_and_db.database.name.__root__),
             str(table_schema_and_db.database_schema.name.__root__),
@@ -246,11 +249,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         self.database_source_state.add(fqn)
         self.status.scanned(fqn)
-
-    # TODO centralize me
-    @staticmethod
-    def get_table_fqn(service_name, db_name, schema_name, table_name) -> str:
-        return ".".join((service_name, db_name, schema_name, table_name))
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -491,8 +489,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table_fqn = self.get_table_fqn(
-                        self.config.serviceName, database, table
+                    table_fqn = get_fqdn(
+                        Table,
+                        service_name=self.config.serviceName,
+                        dashboard_name=database,
+                        table_name=table,
                     ).lower()
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
@@ -734,7 +735,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             if column["policy_tags"] and self.config.enable_policy_tags:
                                 col_dict.tags = [
                                     TagLabel(
-                                        tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
+                                        tagFQN=get_fqdn(
+                                            Tag,
+                                            self.config.tag_category_name,
+                                            column["policy_tags"],
+                                        ),
                                         labelType="Automated",
                                         state="Suggested",
                                         source="Tag",
