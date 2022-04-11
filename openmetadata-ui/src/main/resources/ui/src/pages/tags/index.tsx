@@ -69,6 +69,19 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 
+type DeleteTagsType = {
+  data:
+    | {
+        id: string;
+        name: string;
+        categoryName?: string;
+        isCategory: boolean;
+        status?: LoadingState;
+      }
+    | undefined;
+  state: boolean;
+};
+
 const TagsPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -83,18 +96,10 @@ const TagsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
-  const [deleteTags, setDeleteTags] = useState<{
-    data:
-      | {
-          id: string;
-          name: string;
-          categoryName?: string;
-          isCategory: boolean;
-          status?: LoadingState;
-        }
-      | undefined;
-    state: boolean;
-  }>({ data: undefined, state: false });
+  const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
+    data: undefined,
+    state: false,
+  });
 
   const getTags = useCallback(() => {
     const filteredTags = getTaglist(categories).filter(
@@ -203,7 +208,7 @@ const TagsPage = () => {
   };
 
   /**
-   * It will set current team for delete
+   * It will set current tag category for delete
    */
   const deleteTagHandler = () => {
     if (currentCategory) {
