@@ -1099,7 +1099,7 @@ public class TableRepository extends EntityRepository<Table> {
         updateColumnDataLength(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), "tags"),
+            FullyQualifiedName.build(fieldName, updated.getName(), "tags"),
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
