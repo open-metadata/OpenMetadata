@@ -79,6 +79,7 @@ def get_table_names(self, connection, schema=None, **kw):
 
 
 HiveDialect.get_columns = get_columns
+HiveDialect.get_table_names = get_table_names
 
 
 class HiveConfig(SQLConnectionConfig):
