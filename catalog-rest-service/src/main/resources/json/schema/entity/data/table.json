@@ -138,7 +138,7 @@
           "enum": [
             "TIME-UNIT",
             "INTEGER-RANGE",
-            "INTGESTION-TIME",
+            "INGESTION-TIME",
             "COLUMN-VALUE"
           ]
         },
