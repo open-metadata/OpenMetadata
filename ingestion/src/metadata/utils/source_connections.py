@@ -16,6 +16,9 @@ from urllib.parse import quote_plus
 
 from requests import Session
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -244,3 +247,10 @@ def _(connection: HiveSQLConnection):
     if connection.authOptions:
         return f"{url};{connection.authOptions}"
     return url
+
+
+@get_connection_url.register
+def _(connection: BigQueryConnection):
+    if connection.projectID:
+        return f"{connection.scheme.value}://{connection.projectID}"
+    return f"{connection.scheme.value}://"
