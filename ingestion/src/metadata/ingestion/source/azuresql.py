@@ -16,14 +16,11 @@ from metadata.generated.schema.entity.services.connections.database.azureSQLConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-
-class AzuresqlConfig(AzureSQLConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        url = super().get_connection_url()
-        return f"{url}DRIVER={self.driver}"
 
 
 class AzuresqlSource(SQLSource):
@@ -36,6 +33,11 @@ class AzuresqlSource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        """Create class instance"""
-        config = AzuresqlConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: AzureSQLConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, AzureSQLConnection):
+            raise InvalidSourceException(
+                f"Expected AzureSQLConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
