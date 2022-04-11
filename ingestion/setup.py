@@ -46,6 +46,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
+    "antlr4-python3-runtime==4.9.2",
 }
 
 report_requirements = {

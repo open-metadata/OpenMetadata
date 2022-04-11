@@ -85,7 +85,7 @@ ingestion/venv2/**
 mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
 
-# Antlr
+# Antlr js
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.interp
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
