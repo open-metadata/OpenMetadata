@@ -31,7 +31,7 @@
       "default": "http://localhost:8081"
     },
     "supportsMetadataExtraction": {
-      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

@@ -53,13 +53,13 @@
       "default": "{ODBC Driver 17 for SQL Server}"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
-      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

@@ -18,16 +18,6 @@
           "$ref": "../messagingService.json#/definitions/messagingConnection"
         }
       ]
-    },
-    "supportsMetadataExtraction": {
-      "description": "Supports Metadata Extraction.",
-      "type": "boolean",
-      "default": "true"
-    },
-    "supportsUsageExtraction": {
-      "description": "Supports Usage Extraction.",
-      "type": "boolean",
-      "default": "true"
     }
   },
   "properties": {

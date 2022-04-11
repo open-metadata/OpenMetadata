@@ -20,8 +20,6 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -66,6 +64,7 @@ from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from pydantic import ValidationError
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -343,7 +342,11 @@ class SampleDataSource(Source[Entity]):
             )
         )
         self.pipeline_status = json.load(
-            open(self.config.sample_data_folder + "/pipelines/pipelineStatus.json", "r")
+            open(
+                self.service_connection.sampleDataFolder
+                + "/pipelines/pipelineStatus.json",
+                "r",
+            )
         )
 
     @classmethod
@@ -353,7 +356,7 @@ class SampleDataSource(Source[Entity]):
         connection: SampleDataConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SampleDataConnection):
             raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
+                f"Expected SampleDataConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
