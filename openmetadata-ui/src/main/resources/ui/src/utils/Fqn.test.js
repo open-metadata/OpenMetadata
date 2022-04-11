@@ -15,14 +15,16 @@ import Fqn from './Fqn';
 
 describe('Test FQN', () => {
   it('should split and build', () => {
-    let fqn = "foo.bar"
-    let xs = Fqn.split(fqn);
-    expect(xs).toStrictEqual(["foo", "bar"]);
+    const fqn = 'foo.bar';
+    const xs = Fqn.split(fqn);
+
+    expect(xs).toStrictEqual(['foo', 'bar']);
     expect(Fqn.build(...xs)).toStrictEqual(fqn);
   });
 
   it('should quote and unquote', () => {
-    let xs = ['foo"bar', 'foo.bar']
+    const xs = ['foo"bar', 'foo.bar'];
+
     expect(Fqn.split(Fqn.build(...xs))).toStrictEqual(xs);
   });
 });

@@ -1,11 +1,10 @@
-import FqnListener from "./FqnListener";
-import Fqn from "../utils/Fqn";
+import FqnListener from './FqnListener';
+import Fqn from '../utils/Fqn';
 
 export default class SplitListener extends FqnListener {
-
   constructor() {
     super();
-    this.xs = []
+    this.xs = [];
   }
 
   // Enter a parse tree produced by FqnParser#unquotedName.

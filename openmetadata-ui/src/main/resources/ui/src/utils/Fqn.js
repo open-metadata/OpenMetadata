@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import antlr4 from "antlr4";
-import FqnLexer from "../antlr/FqnLexer";
-import FqnParser from "../antlr/FqnParser";
-import SplitListener from "../antlr/SplitListner";
-import {ParseTreeWalker} from "antlr4/src/antlr4/tree";
+import antlr4 from 'antlr4';
+import FqnLexer from '../antlr/FqnLexer';
+import FqnParser from '../antlr/FqnParser';
+import SplitListener from '../antlr/SplitListner';
+import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
 
 export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#split
@@ -24,25 +24,27 @@ export default class Fqn {
     const lexer = new FqnLexer(chars);
     const tokens = new antlr4.CommonTokenStream(lexer);
     const parser = new FqnParser(tokens);
-    const tree = parser.fqn()
+    const tree = parser.fqn();
     const splitter = new SplitListener();
     ParseTreeWalker.DEFAULT.walk(splitter, tree);
+
     return splitter.split();
   }
 
   // Equivalent of Java's FullyQualifiedName#build
   static build(...xs) {
-    let result = [];
+    const result = [];
     for (const x of xs) {
       result.push(this.quoteName(x));
     }
+
     return result.join('.');
   }
 
   // Equivalent of Java's FullyQualifiedName#quoteName
   static quoteName(name) {
     if (/[.|"]/.test(name)) {
-      return '"' + name.replace(/"/g, '""') + '"'
+      return '"' + name.replace(/"/g, '""') + '"';
     } else {
       return name;
     }
