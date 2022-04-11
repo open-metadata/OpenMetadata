@@ -349,7 +349,7 @@
       <plugin>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-maven-plugin</artifactId>
-        <version>4.7.1</version>
+        <version>${antlr.version}</version>
         <executions>
           <execution>
             <goals>
