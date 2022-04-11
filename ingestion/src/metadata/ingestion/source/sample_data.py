@@ -20,6 +20,8 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -64,7 +66,6 @@ from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
-from pydantic import ValidationError
 
 logger: logging.Logger = logging.getLogger(__name__)
 
