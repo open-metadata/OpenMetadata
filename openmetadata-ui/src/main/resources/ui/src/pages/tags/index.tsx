@@ -69,16 +69,16 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 
+type DeleteTagDetailsType = {
+  id: string;
+  name: string;
+  categoryName?: string;
+  isCategory: boolean;
+  status?: LoadingState;
+};
+
 type DeleteTagsType = {
-  data:
-    | {
-        id: string;
-        name: string;
-        categoryName?: string;
-        isCategory: boolean;
-        status?: LoadingState;
-      }
-    | undefined;
+  data: DeleteTagDetailsType | undefined;
   state: boolean;
 };
 
