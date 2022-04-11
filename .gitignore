@@ -84,3 +84,9 @@ ingestion/venv2/**
 # MLFlow
 mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
+
+# Ignore antlr intermediate files
+/ingestion/src/metadata/antlr/Fqn.interp
+/ingestion/src/metadata/antlr/Fqn.tokens
+/ingestion/src/metadata/antlr/FqnLexer.interp
+/ingestion/src/metadata/antlr/FqnLexer.tokens

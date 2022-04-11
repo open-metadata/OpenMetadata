@@ -3,13 +3,13 @@ from metadata.antlr.FqnParser import FqnParser
 
 
 class SplitListener(FqnListener):
-    xs = []
-
     def __init__(self):
-        pass
+        self.xs = []
 
     def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
-        self.xs.append(ctx.getText())
+        # to avoid circular import
+        from metadata.utils.fqn import unquote_name
+        self.xs.append(unquote_name(ctx.getText()))
 
     def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
         self.xs.append(ctx.getText())

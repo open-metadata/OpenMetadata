@@ -9,3 +9,7 @@ class Fqn(TestCase):
         expected_xs = ["foo", "bar"]
         self.assertEqual(xs, expected_xs)
         self.assertEqual(build(*xs), fqn)
+
+    def test_build(self):
+        names = ["foo.bar", 'bar"baz']
+        self.assertEqual(names, split(build(*names)))

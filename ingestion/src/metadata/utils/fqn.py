@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 from antlr4 import *
@@ -20,9 +21,21 @@ def split(s: str) -> List[str]:
     return splitter.split()
 
 
-def build(*args):
+def build(*args: List[str]) -> str:
     """Equivalent of Java's FulliQualifiedName#build"""
     result = []
     for name in args:
-        result.append(name)
+        result.append(quote_name(name))
     return FQDN_SEPARATOR.join(result)
+
+
+def unquote_name(name: str) -> str:
+    tmp_name = re.sub(r'^"|"$', "", name)
+    return re.sub(r'""', '"', tmp_name)
+
+
+def quote_name(name: str) -> str:
+    if bool(re.search(r'[.|"]', name)):
+        return '"' + re.sub(r'"', '""', name) + '"'
+    else:
+        return name
