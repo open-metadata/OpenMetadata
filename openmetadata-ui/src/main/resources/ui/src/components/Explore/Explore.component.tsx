@@ -51,6 +51,7 @@ import {
   getCurrentIndex,
   getCurrentTab,
   getQueryParam,
+  INITIAL_FILTERS,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
@@ -96,7 +97,7 @@ const Explore: React.FC<ExploreProps> = ({
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], tier: [], database: [] },
+    ...INITIAL_FILTERS,
     ...getQueryParam(location.search),
   };
   const [data, setData] = useState<Array<FormatedTableData>>([]);
@@ -291,6 +292,24 @@ const Explore: React.FC<ExploreProps> = ({
         from: currentPage,
         size: ZERO_SIZE,
         filters: getFilterString(filters, ['database']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['databaseschema']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: ZERO_SIZE,
+        filters: getFilterString(filters, ['servicename']),
         sortField: sortField,
         sortOrder: sortOrder,
         searchIndex: searchIndex,
@@ -539,12 +558,22 @@ const Explore: React.FC<ExploreProps> = ({
           searchResult.resAggDatabase.data.aggregations,
           'database'
         );
+        const aggDatabaseSchema = getAggregationList(
+          searchResult.resAggDatabaseSchema.data.aggregations,
+          'databaseschema'
+        );
+        const aggServiceName = getAggregationList(
+          searchResult.resAggServiceName.data.aggregations,
+          'servicename'
+        );
 
         updateAggregationCount([
           ...aggServiceType,
           ...aggTier,
           ...aggTag,
           ...aggDatabase,
+          ...aggDatabaseSchema,
+          ...aggServiceName,
         ]);
       }
       setIsEntityLoading(false);
@@ -573,7 +602,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
+      <Fragment>
         {!error && (
           <FacetFilter
             aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
@@ -583,7 +612,7 @@ const Explore: React.FC<ExploreProps> = ({
             onSelectHandler={handleSelectedFilter}
           />
         )}
-      </>
+      </Fragment>
     );
   };
 
