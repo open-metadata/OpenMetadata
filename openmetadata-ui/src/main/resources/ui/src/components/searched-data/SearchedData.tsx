@@ -118,6 +118,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
         <div className="tw-mb-3" key={index}>
           <TableDataCard
             database={table.database}
+            databaseSchema={table.databaseSchema}
             deleted={table.deleted}
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
@@ -126,6 +127,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             matches={matches}
             name={name}
             owner={getOwnerFromId(table.owner)?.name}
+            service={table.service}
             serviceType={table.serviceType || '--'}
             tableType={table.tableType as TableType}
             tags={table.tags}

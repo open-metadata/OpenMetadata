@@ -57,6 +57,21 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
       "type": "string"
     },
+    "partitionQueryDuration": {
+      "description": "Duration for partitioning bigquery tables",
+      "type": "integer",
+      "default": 1
+    },
+    "partitionQuery": {
+      "description": "Partitioning query for bigquery tables",
+      "type": "string",
+      "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
+    },
+    "partitionField": {
+      "description": "Column name on which bigquery table will be partitioned",
+      "type": "string",
+      "default": "_PARTITIONTIME"
+    },
     "connectionOptions": {
       "$ref": "connectionBasicType.json#/definitions/connectionOptions"
     },

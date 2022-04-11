@@ -17,6 +17,10 @@ clean_env37:
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
 
+.PHONY: install_apis
+install_apis:  ## Install the REST APIs module to the current environment
+	python -m pip install openmetadata-airflow-apis/
+
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
@@ -41,15 +45,15 @@ lint: ## Run pylint on the Python sources to analyze the codebase
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	pycln ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --profile black --multi-line 3
-	black ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	isort ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
+	black ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln ingestion/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort --check-only ingestion/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
-	black --check --diff ingestion/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
+	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
 
 ## Ingestion models generation
 .PHONY: generate
