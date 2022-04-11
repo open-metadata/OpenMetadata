@@ -23,6 +23,9 @@ on:
       - "catalog-rest-service/**"
       - "openmetadata-ui/**"
 
+concurrency: 
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ${{matrix.os}}
