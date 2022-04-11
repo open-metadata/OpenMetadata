@@ -115,7 +115,6 @@ Note: The `source.config` field in the configuration JSON will include the major
       "password": "strong_password",
       "database": "athena_db",
       "service_name": "athena",
-      "service_type": "Athena"
       "data_profiler_enabled": "false",
       "table_filter_pattern": {
         "excludes": ["[\\w]*event_vw.*"]

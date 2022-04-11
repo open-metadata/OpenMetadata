@@ -73,33 +73,33 @@ Add a new Run/Debug configuration like the below screenshot.
 2. Click on "Edit Configurations"
 3. Click + sign and Select Application and make sure your config looks similar to the below image
 
-![Intellij Runtime Configuration](<../../../.gitbook/assets/Intellij-Runtime Config.png>)
+![Intellij Runtime Configuration](<../../.gitbook/assets/Intellij-Runtime Config.png>)
 
 ## Add missing dependency
 
 Right-click on catalog-rest-service
 
-![](../../../../.gitbook/assets/image-1-.png)
+![](../../../.gitbook/assets/image-1-.png)
 
 Click on "Open Module Settings"
 
-![](../../../../.gitbook/assets/image-2-.png)
+![](../../../.gitbook/assets/image-2-.png)
 
 Go to "Dependencies"
 
-![](../../../../.gitbook/assets/image-3-.png)
+![](../../../.gitbook/assets/image-3-.png)
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-![](../../../../.gitbook/assets/image-4-.png)
+![](../../../.gitbook/assets/image-4-.png)
 
 Click on Library
 
-![](../../../../.gitbook/assets/image-5-.png)
+![](../../../.gitbook/assets/image-5-.png)
 
 In that list look for "jersey-client:2.25.1"
 
-![](../../../../.gitbook/assets/image-6-.png)
+![](../../../.gitbook/assets/image-6-.png)
 
 Select it and click "OK". Now run/debug the application.
 

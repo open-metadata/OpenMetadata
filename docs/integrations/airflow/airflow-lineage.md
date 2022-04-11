@@ -25,7 +25,7 @@ The Lineage Backend can be directly installed to the Airflow instances as part o
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install openmetadata-ingestion
+pip install "openmetadata-ingestion[airflow-container]"
 ```
 {% endtab %}
 {% endtabs %}
@@ -82,7 +82,7 @@ t1 >> [t2, t3]
 
 Will capture this information as well, therefore showing how the DAG contains three tasks `t1`, `t2` and `t3`; and `t1` having `t2` and `t3` as downstream tasks.
 
-![Pipeline and Tasks example](<../../../.gitbook/assets/image (13).png>)
+![Pipeline and Tasks example](<../../.gitbook/assets/image (13).png>)
 
 ### Adding Lineage
 

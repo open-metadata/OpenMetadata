@@ -4,7 +4,9 @@ description: >-
   Connectors.
 ---
 
-# Airflow Metadata Ingestion
+# Example Metadata Ingestion
+
+This is an example of how to create an Airflow DAG to ingest the sample data provided in the git [repository](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/sample\_data).
 
 ## Airflow Example for Sample Data
 
@@ -90,4 +92,4 @@ def metadata_ingestion_workflow():
     workflow.stop
 ```
 
-Create a Workflow instance and pass a sample-data configuration which will read metadata from Json files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../).
+Create a Workflow instance and pass a sample-data configuration that will read metadata from JSON files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../connectors/).

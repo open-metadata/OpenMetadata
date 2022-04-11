@@ -4,9 +4,9 @@ description: >-
   wrapper for the OpenMetadata backend.
 ---
 
-# Python API
+# Python
 
-In the [Solution Design](solution-design.md), we have been dissecting the internals of OpenMetadata. The main conclusion here is twofold:
+In the [OpenMetadata Design](../architecture/solution-design.md), we have been dissecting the internals of OpenMetadata. The main conclusion here is twofold:
 
 * **Everything** is handled via the API, and
 * **Data structures** (Entity definitions) are at the heart of the solution.
