@@ -26,7 +26,7 @@ FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
-RUN pip install ".[all]"
+RUN pip install ".[mysql]" # TODO CHANGEME TO ALL - this is just for local testing
 
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg

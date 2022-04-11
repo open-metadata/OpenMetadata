@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import logging
+import traceback
 from pathlib import Path
 from typing import Dict
 
@@ -31,6 +32,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 
 
+class DeployDagException(Exception):
+    """
+    Error when deploying the DAG
+    """
+
+
 class DagDeployer:
     """
     Helper class to store DAG config
@@ -46,28 +53,15 @@ class DagDeployer:
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_bag = dag_bag
 
-    def store_airflow_pipeline_config(self) -> Dict[str, str]:
+    def store_airflow_pipeline_config(
+        self, dag_config_file_path: Path
+    ) -> Dict[str, str]:
         """
         Validate if we need to force deploy the DAG.
 
         Store the airflow pipeline config in a JSON file and
-        return the path.
+        return the path for the Jinja rendering.
         """
-        dag_config_file_path = (
-            Path(DAG_GENERATED_CONFIGS)
-            / f"{self.ingestion_pipeline.name.__root__}.json"
-        )
-
-        logging.info(dag_config_file_path)
-        # Check if the file already exists.
-        if (
-            dag_config_file_path.is_file()
-            and not self.ingestion_pipeline.airflowConfig.forceDeploy
-        ):
-            logging.warning("File to upload already exists and forceDeploy is false")
-            return ApiResponse.bad_request(
-                f"The file {dag_config_file_path} already exists on host {HOSTNAME}."
-            )
 
         logging.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
@@ -99,25 +93,13 @@ class DagDeployer:
             f.write(rendered_dag)
 
         try:
-            dag_file = import_path(dag_py_file)
-        except Exception as e:
-            logging.error(e)
-            logging.warning("Failed to import dag_file")
-            return ApiResponse.server_error("Failed to import {}".format(dag_py_file))
+            dag_file = import_path(str(dag_py_file))
+        except Exception as exc:
+            logging.error(f"Failed to import dag_file {dag_py_file} due to {exc}")
+            raise exc
 
-        try:
-            if dag_file is None:
-                warning = "Failed to get dag"
-                logging.warning(warning)
-                return ApiResponse.server_error(
-                    "DAG File [{}] has been uploaded".format(dag_file)
-                )
-        except Exception:  # pylint: disable=broad-except
-            warning = "Failed to get dag from dag_file"
-            logging.warning(warning)
-            return ApiResponse.server_error(
-                "Failed to get dag from DAG File [{}]".format(dag_file)
-            )
+        if dag_file is None:
+            raise DeployDagException(f"Failed to import dag_file {dag_py_file}")
 
         return str(dag_py_file)
 
@@ -126,14 +108,15 @@ class DagDeployer:
         Get the stored python DAG file and update the
         Airflow DagBag and sync it to the db
         """
-
         # Refresh dag into session
         session = settings.Session()
         try:
             logging.info("dagbag size {}".format(self.dag_bag.size()))
             found_dags = self.dag_bag.process_file(dag_py_file)
             logging.info("processed dags {}".format(found_dags))
-            dag = self.dag_bag.get_dag(self.ingestion_pipeline.name, session=session)
+            dag = self.dag_bag.get_dag(
+                self.ingestion_pipeline.name.__root__, session=session
+            )
             SerializedDagModel.write_dag(dag)
             dag.sync_to_db(session=session)
             dag_model = (
@@ -142,23 +125,18 @@ class DagDeployer:
                 .first()
             )
             logging.info("dag_model:" + str(dag_model))
-            dag_model.set_is_paused(
-                is_paused=self.ingestion_pipeline.airflowConfig.pausePipeline
-            )
+
             return ApiResponse.success(
                 {
-                    "message": "Workflow [{}] has been created".format(
-                        self.ingestion_pipeline.name
-                    )
+                    "message": f"Workflow [{self.ingestion_pipeline.name.__root__}] has been created"
                 }
             )
-        except Exception as e:
-            logging.info(f"Failed to serialize the dag {e}")
+        except Exception as exc:
+            logging.info(f"Failed to serialize the dag {exc}")
             return ApiResponse.server_error(
                 {
-                    "message": "Workflow [{}] failed to deploy due to [{}]".format(
-                        self.ingestion_pipeline.name.__root__, e
-                    )
+                    "message": f"Workflow [{self.ingestion_pipeline.name.__root__}] failed to refresh due to [{exc}] "
+                    + f"- {traceback.format_exc()}"
                 }
             )
 
@@ -166,6 +144,24 @@ class DagDeployer:
         """
         Run all methods to deploy the DAG
         """
-        dag_runner_config = self.store_airflow_pipeline_config()
+        dag_config_file_path = (
+            Path(DAG_GENERATED_CONFIGS)
+            / f"{self.ingestion_pipeline.name.__root__}.json"
+        )
+        logging.info(f"Config file under {dag_config_file_path}")
+
+        # Check if the file already exists.
+        if (
+            dag_config_file_path.is_file()
+            and not self.ingestion_pipeline.airflowConfig.forceDeploy
+        ):
+            logging.warning("File to upload already exists and forceDeploy is false")
+            return ApiResponse.bad_request(
+                f"The file {dag_config_file_path} already exists on host {HOSTNAME}."
+            )
+
+        dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)
-        self.refresh_session_dag(dag_py_file)
+        response = self.refresh_session_dag(dag_py_file)
+
+        return response

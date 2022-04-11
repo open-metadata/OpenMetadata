@@ -11,6 +11,7 @@
 """
 Metadata DAG common functions
 """
+import json
 from datetime import datetime
 from typing import Any, Dict
 
@@ -30,11 +31,13 @@ from airflow_provider_openmetadata.lineage.callback import (
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
-from metadata.generated.schema.metadataIngestion.workflow import ComponentConfig, Sink
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.workflow import Workflow
 
 
-def metadata_ingestion_workflow(workflow_config: Dict[str, Any]):
+def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -43,25 +46,13 @@ def metadata_ingestion_workflow(workflow_config: Dict[str, Any]):
 
     This is the callable used to create the PythonOperator
     """
-    workflow = Workflow.create(workflow_config)
+    config = json.loads(workflow_config.json())
+
+    workflow = Workflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
-
-
-def build_workflow_sink(ingestion_pipeline: IngestionPipeline) -> Sink:
-    """
-    Given the ingestion_pipeline, build the metadata rest Sink
-    """
-    return Sink(
-        type="metadata-rest",
-        config=ComponentConfig(
-            api_endpoint=ingestion_pipeline.openMetadataServerConnection.hostPort,
-            auth_provider_type=ingestion_pipeline.openMetadataServerConnection.authProvider,
-            security_config=ingestion_pipeline.openMetadataServerConnection.securityConfig,
-        ),
-    )
 
 
 def get_start_date(ingestion_pipeline: IngestionPipeline) -> datetime:
@@ -71,7 +62,7 @@ def get_start_date(ingestion_pipeline: IngestionPipeline) -> datetime:
     """
     basic_date: basic.Date = ingestion_pipeline.airflowConfig.startDate
 
-    return datetime.strptime(str(basic_date), "%Y-%m-%d")
+    return datetime.strptime(str(basic_date.__root__), "%Y-%m-%d")
 
 
 def build_default_args() -> Dict[str, Any]:
@@ -101,7 +92,7 @@ def build_ingestion_dag(
         default_args=build_default_args(),
         description=ingestion_pipeline.description,
         start_date=get_start_date(ingestion_pipeline),
-        is_paused_upon_creation=ingestion_pipeline.airflowConfig.pausePipeline,
+        is_paused_upon_creation=ingestion_pipeline.airflowConfig.pausePipeline or False,
         catchup=ingestion_pipeline.airflowConfig.pipelineCatchup or False,
     ) as dag:
 

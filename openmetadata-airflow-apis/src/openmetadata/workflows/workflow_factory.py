@@ -45,8 +45,8 @@ class WorkflowFactory:
     def create(cls, config: str):
         config_file = pathlib.Path(config)
         workflow_config_dict = load_config_file(config_file)
-        workflow_config = IngestionPipeline(**workflow_config_dict)
-        return cls(workflow_config)
+        airflow_pipeline = IngestionPipeline(**workflow_config_dict)
+        return cls(airflow_pipeline)
 
     def build_dag(self) -> DAG:
         """Build Workflow using the configuration"""
@@ -56,7 +56,7 @@ class WorkflowFactory:
             workflow = workflow_builder.build()
         except Exception as err:
             raise Exception(
-                f"Failed to generate workflow {self.airflow_pipeline.name}. verify config is correct"
+                f"Failed to generate workflow {self.airflow_pipeline.name.__root__}. verify config is correct"
             ) from err
         return workflow
 

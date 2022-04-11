@@ -11,8 +11,6 @@
 """
 Metadata DAG function builder
 """
-import json
-from typing import Any, Dict
 
 from airflow import DAG
 from openmetadata.workflows.ingestion.common import build_ingestion_dag
@@ -26,29 +24,29 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    MetadataWorkflow,
     OpenMetadataWorkflowConfig,
     Sink,
+    WorkflowConfig,
 )
 
 
 def build_metadata_workflow_config(
     ingestion_pipeline: IngestionPipeline,
-) -> Dict[str, Any]:
+) -> OpenMetadataWorkflowConfig:
     """
     Given an airflow_pipeline, prepare the workflow config JSON
     """
-    metadata_workflow = MetadataWorkflow(
-        name=ingestion_pipeline.name,
-        openMetadataWorkflowConfig=OpenMetadataWorkflowConfig(
-            source=ingestion_pipeline.source,
-            sink=Sink(
-                type="metadata-rest",
-            ),
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=ingestion_pipeline.source,
+        sink=Sink(
+            type="metadata-rest",
+        ),
+        workflowConfig=WorkflowConfig(
+            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
         ),
     )
 
-    return json.loads(metadata_workflow.json())
+    return workflow_config
 
 
 def build_metadata_dag(ingestion_pipeline: IngestionPipeline) -> DAG:

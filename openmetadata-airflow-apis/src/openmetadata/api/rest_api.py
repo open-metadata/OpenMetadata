@@ -13,6 +13,7 @@ Airflow REST API definition
 """
 
 import logging
+import traceback
 
 from airflow import settings
 from airflow.api.common.experimental.trigger_dag import trigger_dag
@@ -134,20 +135,16 @@ class REST_API(AppBuilderBaseView):
             ingestion_pipeline = IngestionPipeline(**json_request)
 
             deployer = DagDeployer(ingestion_pipeline, self.get_dagbag())
-            deployer.deploy()
+            response = deployer.deploy()
 
-            return ApiResponse.success(
-                {
-                    "message": f"DAG {ingestion_pipeline.name.__root__} deployed successfully!"
-                }
-            )
+            return response
 
         except ValidationError as err:
             msg = f"Request Validation Error parsing payload {json_request} - {err}"
             return ApiResponse.error(status=ApiResponse.STATUS_BAD_REQUEST, error=msg)
 
         except Exception as err:
-            msg = f"Internal error deploying {json_request} - {err}"
+            msg = f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}"
             return ApiResponse.error(status=ApiResponse.STATUS_SERVER_ERROR, error=msg)
 
     @staticmethod
