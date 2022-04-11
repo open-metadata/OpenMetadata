@@ -173,6 +173,7 @@ def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
+    return url
 
 
 @get_connection_url.register
