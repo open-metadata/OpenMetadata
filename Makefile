@@ -156,3 +156,7 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 		python setup.py install sdist bdist_wheel; \
 		twine check dist/*; \
 		twine upload -r testpypi dist/*
+
+.PHONY: py_antlr
+py_antlr:  ## Generate the Python code for parsing FQNs. The code is committed
+	antlr -Dlanguage=Python3 -o ingestion/src/metadata/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
