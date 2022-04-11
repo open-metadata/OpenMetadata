@@ -21,6 +21,10 @@ export interface SupersetConnection {
    */
   connectionOptions?: { [key: string]: any };
   /**
+   * Database Service to create lineage
+   */
+  dbServiceConnection?: string;
+  /**
    * password for the Superset
    */
   password?: string;

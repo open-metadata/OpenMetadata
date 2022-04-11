@@ -136,6 +136,8 @@ export interface DatabaseConnection {
  *
  * DB2 Connection Config
  *
+ * DeltaLake Database Connection Config
+ *
  * Druid Connection Config
  *
  * DynamoDB Connection Config
@@ -219,6 +221,10 @@ export interface Connection {
    * attempts to scan all the databases in SingleStore.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   *
+   * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
    * attempts to scan all the databases in Oracle.
    *
@@ -266,11 +272,15 @@ export interface Connection {
    *
    * Host and port of the DynamoDB
    *
+   * Host and port of the Glue
+   *
    * Host and port of the Hive.
    *
    * Host and port of the data source.
    *
    * Host and port of the MsSQL.
+   *
+   * Host and port of the data source. Blank for in-memory database.
    *
    * Host and port of the Oracle.
    *
@@ -330,6 +340,8 @@ export interface Connection {
    * username to connect  to the SingleStore. This user should have privileges to read all the
    * metadata in SingleStore.
    *
+   * username to connect  to the SQLite. Blank for in-memory database.
+   *
    * username to connect  to the Oracle. This user should have privileges to read all the
    * metadata in Oracle.
    *
@@ -377,6 +389,8 @@ export interface Connection {
    *
    * password to connect  to the SingleStore.
    *
+   * password to connect to SQLite. Blank for in-memory database.
+   *
    * password to connect  to the Oracle.
    *
    * password to connect  to the Postgres.
@@ -414,6 +428,18 @@ export interface Connection {
   duration?: number;
   token?: string;
   /**
+   * pySpark App Name
+   */
+  appName?: string;
+  /**
+   * File path of local Hive Metastore.
+   */
+  metastoreFilePath?: string;
+  /**
+   * Host and port of remote Hive Metastore.
+   */
+  metastoreHostPort?: string;
+  /**
    * AWS Access key ID.
    */
   awsAccessKeyId?: any;
@@ -427,8 +453,18 @@ export interface Connection {
   awsSessionToken?: string;
   /**
    * EndPoint URL for the Dynamo DB
+   *
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
@@ -437,6 +473,15 @@ export interface Connection {
    * Connection URI In case of pyodbc
    */
   uriString?: string;
+  /**
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
   /**
    * Presto catalog
    *
@@ -530,6 +575,7 @@ export enum Type {
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
@@ -574,6 +620,12 @@ export interface EntityReference {
    */
   displayName?: string;
   /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -582,8 +634,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**

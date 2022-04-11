@@ -13,49 +13,23 @@
  */
 
 /**
- * Glue Connection Config
+ * DeltaLake Database Connection Config
  */
-export interface GlueConnection {
+export interface DeltaLakeConnection {
   /**
-   * AWS Access key ID.
+   * pySpark App Name
    */
-  awsAccessKeyId?: string;
-  /**
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  /**
-   * AWS Secret Access Key.
-   */
-  awsSecretAccessKey?: string;
-  /**
-   * AWS Session Token.
-   */
-  awsSessionToken?: string;
+  appName?: string;
   connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Glue.
+   * File path of local Hive Metastore.
    */
-  database?: string;
+  metastoreFilePath?: string;
   /**
-   * EndPoint URL for the Glue
+   * Host and port of remote Hive Metastore.
    */
-  endPointURL?: string;
-  /**
-   * Host and port of the Glue
-   */
-  hostPort?: string;
-  /**
-   * AWS pipelineServiceName Name.
-   */
-  pipelineServiceName?: string;
-  /**
-   * AWS storageServiceName Name.
-   */
-  storageServiceName?: string;
+  metastoreHostPort?: string;
   /**
    * Supported Metadata Extraction Pipelines.
    */
@@ -63,7 +37,7 @@ export interface GlueConnection {
   /**
    * Service Type
    */
-  type?: GlueType;
+  type?: DeltaLakeType;
 }
 
 /**
@@ -82,6 +56,6 @@ export interface ConnectionArguments {
  *
  * Service type.
  */
-export enum GlueType {
-  Glue = 'Glue',
+export enum DeltaLakeType {
+  DeltaLake = 'DeltaLake',
 }
