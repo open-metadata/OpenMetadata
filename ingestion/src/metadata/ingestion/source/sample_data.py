@@ -33,7 +33,7 @@ from metadata.generated.schema.api.tests.createTableTest import CreateTableTestR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -53,6 +53,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
@@ -303,6 +304,9 @@ class SampleDataSource(Source[Entity]):
         self.table_tests = json.load(
             open(self.config.sample_data_folder + "/datasets/tableTests.json", "r")
         )
+        self.pipeline_status = json.load(
+            open(self.config.sample_data_folder + "/pipelines/pipelineStatus.json", "r")
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config):
@@ -324,6 +328,7 @@ class SampleDataSource(Source[Entity]):
         yield from self.ingest_dashboards()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
+        yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
 
     def ingest_locations(self) -> Iterable[Location]:
@@ -497,6 +502,18 @@ class SampleDataSource(Source[Entity]):
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage
+
+    def ingest_pipeline_status(self) -> Iterable[OMetaPipelineStatus]:
+        """
+        Ingest sample pipeline status
+        """
+        for status_data in self.pipeline_status:
+            pipeline_fqdn = status_data["pipeline"]
+            for status in status_data["pipelineStatus"]:
+                yield OMetaPipelineStatus(
+                    pipeline_fqdn=pipeline_fqdn,
+                    pipeline_status=PipelineStatus(**status),
+                )
 
     def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
         """

@@ -1,0 +1,105 @@
+[
+  {
+    "pipeline": "sample_airflow.dim_address_etl",
+    "pipelineStatus": [
+      {
+        "executionDate": 1649582444,
+        "executionStatus": "Failed",
+        "taskStatus": [
+          {
+            "executionStatus": "Failed",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Failed",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669589,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669394,
+        "executionStatus": "Failed",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Failed",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669174,
+        "executionStatus": "Failed",
+        "taskStatus": [
+          {
+            "executionStatus": "Failed",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669274,
+        "executionStatus": "Pending",
+        "taskStatus": [
+          {
+            "executionStatus": "Pending",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669374,
+        "executionStatus": "Pending",
+        "taskStatus": [
+          {
+            "executionStatus": "Failed",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Pending",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionDate": 1649669474,
+        "executionStatus": "Pending",
+        "taskStatus": [
+          {
+            "executionStatus": "Pending",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Pending",
+            "name": "assert_table_exists"
+          }
+        ]
+      }
+    ]
+  }
+]
