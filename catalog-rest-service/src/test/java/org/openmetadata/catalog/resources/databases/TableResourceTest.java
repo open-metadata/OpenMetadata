@@ -1476,10 +1476,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Column c3 tags were removed
     change
         .getFieldsDeleted()
-        .add(
-            new FieldChange()
-                .withName(build("columns", "c.3", "tags"))
-                .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
+        .add(new FieldChange().withName(build("columns", "c.3", "tags")).withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
