@@ -58,8 +58,8 @@ import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
 
 export const getHeaderLabel = (
-  v = '',
-  fqn: string,
+  name = '',
+  fqn = '',
   type: string,
   isMainNode: boolean
 ) => {
@@ -69,14 +69,14 @@ export const getHeaderLabel = (
         <span
           className="tw-break-words description-text tw-self-center tw-font-medium"
           data-testid="lineage-entity">
-          {prepareLabel(type, v, false)}
+          {name || prepareLabel(type, fqn, false)}
         </span>
       ) : (
         <span
           className="tw-break-words description-text tw-self-center link-text tw-font-medium"
           data-testid="lineage-entity">
           <Link to={getEntityLink(type, fqn)}>
-            {prepareLabel(type, v, false)}
+            {name || prepareLabel(type, fqn, false)}
           </Link>
         </span>
       )}
@@ -421,18 +421,18 @@ export const getLineageData = (
 
 export const getDataLabel = (
   displayName?: string,
-  name = '',
+  fqn = '',
   isTextOnly = false,
   type?: string
 ) => {
-  const databaseName = getPartialNameFromTableFQN(name, ['database']);
-  const schemaName = getPartialNameFromTableFQN(name, ['schema']);
+  const databaseName = getPartialNameFromTableFQN(fqn, ['database']);
+  const schemaName = getPartialNameFromTableFQN(fqn, ['schema']);
 
   let label = '';
   if (displayName) {
     label = displayName;
   } else {
-    label = prepareLabel(type as string, name);
+    label = prepareLabel(type as string, fqn);
   }
 
   if (isTextOnly) {

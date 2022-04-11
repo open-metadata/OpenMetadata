@@ -57,7 +57,7 @@ const EntityInfoDrawer = ({
     switch (selectedNode.type) {
       case EntityType.TABLE: {
         setIsLoading(true);
-        getTableDetailsByFQN(selectedNode.name, [
+        getTableDetailsByFQN(selectedNode.fqn, [
           'tags',
           'owner',
           'columns',
@@ -80,7 +80,7 @@ const EntityInfoDrawer = ({
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(selectedNode.name, ['tags', 'owner'])
+        getPipelineByFqn(selectedNode.fqn, ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('pipelineServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
@@ -106,7 +106,7 @@ const EntityInfoDrawer = ({
       }
       case EntityType.DASHBOARD: {
         setIsLoading(true);
-        getDashboardByFqn(selectedNode.name, ['tags', 'owner'])
+        getDashboardByFqn(selectedNode.fqn, ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('dashboardServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
@@ -147,7 +147,7 @@ const EntityInfoDrawer = ({
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
           {getHeaderLabel(
             selectedNode.displayName ?? selectedNode.name,
-            selectedNode.name,
+            selectedNode.fqn,
             selectedNode.type,
             isMainNode
           )}
