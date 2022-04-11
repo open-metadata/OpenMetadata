@@ -1,12 +1,13 @@
 # Generated from /Users/amiorin/code/OpenMetadata/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4 by ANTLR 4.9.3
-from antlr4 import *
-from io import StringIO
 import sys
+from io import StringIO
+
+from antlr4 import *
+
 if sys.version_info[1] > 5:
     from typing import TextIO
 else:
     from typing.io import TextIO
-
 
 
 def serializedATN():
@@ -25,8 +26,8 @@ def serializedATN():
         buf.write("\2\2\2\26\32\5\t\5\2\27\31\5\13\6\2\30\27\3\2\2\2\31\34")
         buf.write("\3\2\2\2\32\30\3\2\2\2\32\33\3\2\2\2\33$\3\2\2\2\34\32")
         buf.write("\3\2\2\2\35!\5\r\7\2\36 \5\13\6\2\37\36\3\2\2\2 #\3\2")
-        buf.write("\2\2!\37\3\2\2\2!\"\3\2\2\2\"%\3\2\2\2#!\3\2\2\2$\35\3")
-        buf.write("\2\2\2%&\3\2\2\2&$\3\2\2\2&\'\3\2\2\2\'(\3\2\2\2()\5\t")
+        buf.write('\2\2!\37\3\2\2\2!"\3\2\2\2"%\3\2\2\2#!\3\2\2\2$\35\3')
+        buf.write("\2\2\2%&\3\2\2\2&$\3\2\2\2&'\3\2\2\2'(\3\2\2\2()\5\t")
         buf.write("\5\2)\b\3\2\2\2*+\7$\2\2+\n\3\2\2\2,-\n\2\2\2-\f\3\2\2")
         buf.write("\2.\62\7\60\2\2/\60\7$\2\2\60\62\7$\2\2\61.\3\2\2\2\61")
         buf.write("/\3\2\2\2\62\16\3\2\2\2\b\2\24\32!&\61\2")
@@ -37,7 +38,7 @@ class FqnLexer(Lexer):
 
     atn = ATNDeserializer().deserialize(serializedATN())
 
-    decisionsToDFA = [ DFA(ds, i) for i, ds in enumerate(atn.decisionToState) ]
+    decisionsToDFA = [DFA(ds, i) for i, ds in enumerate(atn.decisionToState)]
 
     T__0 = 1
     NAME = 2
@@ -46,26 +47,37 @@ class FqnLexer(Lexer):
     NON_RESERVED = 5
     RESERVED = 6
 
-    channelNames = [ u"DEFAULT_TOKEN_CHANNEL", u"HIDDEN" ]
+    channelNames = [u"DEFAULT_TOKEN_CHANNEL", u"HIDDEN"]
 
-    modeNames = [ "DEFAULT_MODE" ]
+    modeNames = ["DEFAULT_MODE"]
 
-    literalNames = [ "<INVALID>",
-            "'.'", "'\"'" ]
+    literalNames = ["<INVALID>", "'.'", "'\"'"]
 
-    symbolicNames = [ "<INVALID>",
-            "NAME", "NAME_WITH_RESERVED", "QUOTE", "NON_RESERVED", "RESERVED" ]
+    symbolicNames = [
+        "<INVALID>",
+        "NAME",
+        "NAME_WITH_RESERVED",
+        "QUOTE",
+        "NON_RESERVED",
+        "RESERVED",
+    ]
 
-    ruleNames = [ "T__0", "NAME", "NAME_WITH_RESERVED", "QUOTE", "NON_RESERVED", 
-                  "RESERVED" ]
+    ruleNames = [
+        "T__0",
+        "NAME",
+        "NAME_WITH_RESERVED",
+        "QUOTE",
+        "NON_RESERVED",
+        "RESERVED",
+    ]
 
     grammarFileName = "Fqn.g4"
 
-    def __init__(self, input=None, output:TextIO = sys.stdout):
+    def __init__(self, input=None, output: TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.9.3")
-        self._interp = LexerATNSimulator(self, self.atn, self.decisionsToDFA, PredictionContextCache())
+        self._interp = LexerATNSimulator(
+            self, self.atn, self.decisionsToDFA, PredictionContextCache()
+        )
         self._actions = None
         self._predicates = None
-
-

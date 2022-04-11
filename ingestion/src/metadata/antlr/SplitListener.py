@@ -9,6 +9,7 @@ class SplitListener(FqnListener):
     def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
         # to avoid circular import
         from metadata.utils.fqn import unquote_name
+
         self.xs.append(unquote_name(ctx.getText()))
 
     def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
@@ -16,4 +17,3 @@ class SplitListener(FqnListener):
 
     def split(self):
         return self.xs
-

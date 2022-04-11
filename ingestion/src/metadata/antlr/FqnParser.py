@@ -1,12 +1,14 @@
 # Generated from /Users/amiorin/code/OpenMetadata/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4 by ANTLR 4.9.3
 # encoding: utf-8
-from antlr4 import *
-from io import StringIO
 import sys
+from io import StringIO
+
+from antlr4 import *
+
 if sys.version_info[1] > 5:
-	from typing import TextIO
+    from typing import TextIO
 else:
-	from typing.io import TextIO
+    from typing.io import TextIO
 
 
 def serializedATN():
@@ -22,56 +24,63 @@ def serializedATN():
         return buf.getvalue()
 
 
-class FqnParser ( Parser ):
+class FqnParser(Parser):
 
     grammarFileName = "Fqn.g4"
 
     atn = ATNDeserializer().deserialize(serializedATN())
 
-    decisionsToDFA = [ DFA(ds, i) for i, ds in enumerate(atn.decisionToState) ]
+    decisionsToDFA = [DFA(ds, i) for i, ds in enumerate(atn.decisionToState)]
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = [ "<INVALID>", "'.'", "<INVALID>", "<INVALID>", "'\"'" ]
+    literalNames = ["<INVALID>", "'.'", "<INVALID>", "<INVALID>", "'\"'"]
 
-    symbolicNames = [ "<INVALID>", "<INVALID>", "NAME", "NAME_WITH_RESERVED", 
-                      "QUOTE", "NON_RESERVED", "RESERVED" ]
+    symbolicNames = [
+        "<INVALID>",
+        "<INVALID>",
+        "NAME",
+        "NAME_WITH_RESERVED",
+        "QUOTE",
+        "NON_RESERVED",
+        "RESERVED",
+    ]
 
     RULE_fqn = 0
     RULE_name = 1
 
-    ruleNames =  [ "fqn", "name" ]
+    ruleNames = ["fqn", "name"]
 
     EOF = Token.EOF
-    T__0=1
-    NAME=2
-    NAME_WITH_RESERVED=3
-    QUOTE=4
-    NON_RESERVED=5
-    RESERVED=6
+    T__0 = 1
+    NAME = 2
+    NAME_WITH_RESERVED = 3
+    QUOTE = 4
+    NON_RESERVED = 5
+    RESERVED = 6
 
-    def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
+    def __init__(self, input: TokenStream, output: TextIO = sys.stdout):
         super().__init__(input, output)
         self.checkVersion("4.9.3")
-        self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
+        self._interp = ParserATNSimulator(
+            self, self.atn, self.decisionsToDFA, self.sharedContextCache
+        )
         self._predicates = None
 
-
-
-
     class FqnContext(ParserRuleContext):
-        __slots__ = 'parser'
+        __slots__ = "parser"
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(
+            self, parser, parent: ParserRuleContext = None, invokingState: int = -1
+        ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
-        def name(self, i:int=None):
+        def name(self, i: int = None):
             if i is None:
                 return self.getTypedRuleContexts(FqnParser.NameContext)
             else:
-                return self.getTypedRuleContext(FqnParser.NameContext,i)
-
+                return self.getTypedRuleContext(FqnParser.NameContext, i)
 
         def EOF(self):
             return self.getToken(FqnParser.EOF, 0)
@@ -79,22 +88,19 @@ class FqnParser ( Parser ):
         def getRuleIndex(self):
             return FqnParser.RULE_fqn
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterFqn" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterFqn"):
                 listener.enterFqn(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitFqn" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitFqn"):
                 listener.exitFqn(self)
-
-
-
 
     def fqn(self):
 
         localctx = FqnParser.FqnContext(self, self._ctx, self.state)
         self.enterRule(localctx, 0, self.RULE_fqn)
-        self._la = 0 # Token type
+        self._la = 0  # Token type
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 4
@@ -102,7 +108,7 @@ class FqnParser ( Parser ):
             self.state = 9
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while _la==FqnParser.T__0:
+            while _la == FqnParser.T__0:
                 self.state = 5
                 self.match(FqnParser.T__0)
                 self.state = 6
@@ -121,60 +127,56 @@ class FqnParser ( Parser ):
             self.exitRule()
         return localctx
 
-
     class NameContext(ParserRuleContext):
-        __slots__ = 'parser'
+        __slots__ = "parser"
 
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+        def __init__(
+            self, parser, parent: ParserRuleContext = None, invokingState: int = -1
+        ):
             super().__init__(parent, invokingState)
             self.parser = parser
-
 
         def getRuleIndex(self):
             return FqnParser.RULE_name
 
-     
-        def copyFrom(self, ctx:ParserRuleContext):
+        def copyFrom(self, ctx: ParserRuleContext):
             super().copyFrom(ctx)
 
-
-
     class QuotedNameContext(NameContext):
-
-        def __init__(self, parser, ctx:ParserRuleContext): # actually a FqnParser.NameContext
+        def __init__(
+            self, parser, ctx: ParserRuleContext
+        ):  # actually a FqnParser.NameContext
             super().__init__(parser)
             self.copyFrom(ctx)
 
         def NAME_WITH_RESERVED(self):
             return self.getToken(FqnParser.NAME_WITH_RESERVED, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterQuotedName" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterQuotedName"):
                 listener.enterQuotedName(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitQuotedName" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitQuotedName"):
                 listener.exitQuotedName(self)
 
-
     class UnquotedNameContext(NameContext):
-
-        def __init__(self, parser, ctx:ParserRuleContext): # actually a FqnParser.NameContext
+        def __init__(
+            self, parser, ctx: ParserRuleContext
+        ):  # actually a FqnParser.NameContext
             super().__init__(parser)
             self.copyFrom(ctx)
 
         def NAME(self):
             return self.getToken(FqnParser.NAME, 0)
 
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterUnquotedName" ):
+        def enterRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "enterUnquotedName"):
                 listener.enterUnquotedName(self)
 
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitUnquotedName" ):
+        def exitRule(self, listener: ParseTreeListener):
+            if hasattr(listener, "exitUnquotedName"):
                 listener.exitUnquotedName(self)
-
-
 
     def name(self):
 
@@ -206,8 +208,3 @@ class FqnParser ( Parser ):
         finally:
             self.exitRule()
         return localctx
-
-
-
-
-
