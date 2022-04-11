@@ -82,7 +82,7 @@
     <dropwizard-metrics.version>4.2.9</dropwizard-metrics.version>
     <fernet.version>1.5.0</fernet.version>
     <guava.version>31.1-jre</guava.version>
-    <aws-java-sdk-cloudwatch.version>1.10.57</aws-java-sdk-cloudwatch.version>
+    <aws-java-sdk-cloudwatch.version>2.17.167</aws-java-sdk-cloudwatch.version>
     <antlr.version>4.10.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
@@ -341,7 +341,7 @@
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>cloudwatch</artifactId>
-        <version>2.17.167</version>
+        <version>${aws-java-sdk-cloudwatch.version}</version>
       </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
