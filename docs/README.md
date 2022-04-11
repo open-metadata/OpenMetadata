@@ -4,7 +4,7 @@ OpenMetadata is an open standard with a centralized metadata store and ingestion
 
 OpenMetadata enables metadata management end-to-end, giving you the ability to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration.
 
-{% embed url="https://www.youtube.com/watch?v=pF8L_mAtexo" %}
+{% embed url="https://youtu.be/pF8L_mAtexo" %}
 
 ## Connectors
 

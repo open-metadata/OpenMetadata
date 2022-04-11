@@ -6,14 +6,14 @@ We want our users to get the experience of OpenMetadata with the least effort ðŸ
 
 ### 1. Login using your Google credentials
 
-![](../.gitbook/assets/welcome.png)
+![](../../../.gitbook/assets/welcome.png)
 
 ### 2. Add yourself as a user. Pick a few teams to be part of because data is a team game.
 
-![](../.gitbook/assets/create-user.png)
+![](../../../.gitbook/assets/create-user.png)
 
 ### 3. Try out few things
 
 Don't limit yourself to just the callouts. Try other things too. We would love to get your feedback.
 
-![](../.gitbook/assets/openmetadata-sandbox.png)
+![](../../../.gitbook/assets/openmetadata-sandbox.png)

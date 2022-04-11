@@ -10,8 +10,8 @@ Follow the sections in this guide to set up Okta SSO.
 [okta-config.md](okta-config.md)
 {% endcontent-ref %}
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="../../../deploy-on-bare-metal/enable-security/okta-sso/create-ingestion-service-account.md" %}
+[create-ingestion-service-account.md](../../../deploy-on-bare-metal/enable-security/okta-sso/create-ingestion-service-account.md)
 {% endcontent-ref %}
 
 {% content-ref url="../../../deploy-on-bare-metal/enable-security/okta-sso/configure-security-ingestion.md" %}

@@ -339,7 +339,7 @@ If you already have a production Airflow instance on which you would like to sch
 
 To view the metadata ingested from Glue, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Glue service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
 
-![](<../../../.gitbook/assets/next\_steps (1).png>)
+![](../../../.gitbook/assets/explore.png)
 
 ## **6. Troubleshooting**
 
