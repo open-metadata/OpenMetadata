@@ -459,7 +459,9 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
   const fetchRightPanel = () => {
     return (
       <>
-        <h6 className="tw-heading tw-text-base">Add Service</h6>
+        <h6 className="tw-heading tw-text-base">
+          {addIngestion ? 'Configure Ingestion' : 'Configure Service'}
+        </h6>
         <div className="tw-mb-5">
           Lorem ipsum dolor sit amet consectetur adipisicing elit. Facilis eum
           eveniet est? Aperiam perspiciatis est quis saepe optio fugiat
