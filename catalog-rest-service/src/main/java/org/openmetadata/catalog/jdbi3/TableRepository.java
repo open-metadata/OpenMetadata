@@ -19,6 +19,7 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
+import static org.openmetadata.catalog.util.FullyQualifiedName.quoteName;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -1099,7 +1100,7 @@ public class TableRepository extends EntityRepository<Table> {
         updateColumnDataLength(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            FullyQualifiedName.build(fieldName, updated.getName(), "tags"),
+            EntityUtil.getFieldName(fieldName, quoteName(updated.getName()), "tags"),
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
