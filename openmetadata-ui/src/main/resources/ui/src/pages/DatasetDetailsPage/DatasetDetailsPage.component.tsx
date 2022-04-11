@@ -313,12 +313,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getPartialNameFromTableFQN(database.name, ['database']),
-              url: getDatabaseDetailsPath(database.name),
+              name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
+                'database',
+              ]),
+              url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
             {
-              name: getPartialNameFromTableFQN(databaseSchema.name, ['schema']),
-              url: getDatabaseSchemaDetailsPath(databaseSchema.name),
+              name: getPartialNameFromTableFQN(
+                databaseSchema.fullyQualifiedName,
+                ['schema']
+              ),
+              url: getDatabaseSchemaDetailsPath(
+                databaseSchema.fullyQualifiedName
+              ),
             },
             {
               name: name,

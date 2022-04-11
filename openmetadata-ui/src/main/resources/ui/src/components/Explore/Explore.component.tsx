@@ -466,7 +466,7 @@ const Explore: React.FC<ExploreProps> = ({
   const handleFilterChange = (filtersObj: FilterObject) => {
     const params = prepareQueryParams(filtersObj);
 
-    const explorePath = getExplorePathWithSearch(searchQuery);
+    const explorePath = getExplorePathWithSearch(searchQuery, tab);
 
     history.push({
       pathname: explorePath,

@@ -257,8 +257,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: getPartialNameFromTableFQN(database.name, ['database']),
-              url: getDatabaseDetailsPath(database.name),
+              name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
+                'database',
+              ]),
+              url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
             {
               name: name,
