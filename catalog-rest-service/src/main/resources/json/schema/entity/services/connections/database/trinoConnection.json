@@ -65,14 +65,8 @@
       "description": "URL parameters for connection to the Trino data source",
       "type": "object"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+    "supportsMetadataExtraction": {
+      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

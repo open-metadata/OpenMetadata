@@ -65,8 +65,8 @@
     "connectionArguments": {
       "$ref": "connectionBasicType.json#/definitions/connectionArguments"
     },
-    "supportedPipelineTypes": {
-      "$ref": "../serviceConnection.json#/definitions/supportedPipelineTypes"
+    "supportsMetadataExtraction": {
+      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false
