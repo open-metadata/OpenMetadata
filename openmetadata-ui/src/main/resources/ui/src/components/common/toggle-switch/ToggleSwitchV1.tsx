@@ -14,12 +14,12 @@
 import classNames from 'classnames';
 import React from 'react';
 
-interface ToggleSwitchV1 {
+interface ToggleSwitchV1Props {
   checked: boolean;
   handleCheck: () => void;
 }
 
-const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1) => {
+const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1Props) => {
   return (
     <div
       className={classNames('toggle-switch', checked ? 'open' : null)}

@@ -102,8 +102,8 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
     setActiveStepperStep(1);
   };
 
-  const handleConfigureServiceNextClick = (description: string) => {
-    setDescription(description);
+  const handleConfigureServiceNextClick = (descriptionValue: string) => {
+    setDescription(descriptionValue);
     if (serviceName.trim()) {
       setActiveStepperStep(3);
     } else {
@@ -363,7 +363,7 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
 
   const isIngestionSupported = () => {
     return (
-      getIsIngestionEnable(serviceCategory as ServiceCategory) &&
+      getIsIngestionEnable(serviceCategory) &&
       (getAirflowPipelineTypes(selectServiceType, true) || []).length > 0
     );
   };

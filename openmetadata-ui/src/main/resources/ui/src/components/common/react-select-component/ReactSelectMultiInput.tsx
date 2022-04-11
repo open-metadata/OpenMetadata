@@ -48,8 +48,8 @@ const ReactSelectMultiInput = ({
   const [inputValue, setinputValue] = useState('');
   const [values, setValues] = useState<Option[]>(getInitialValue(initialData));
 
-  const handleInputChange = (inputValue: string) => {
-    setinputValue(inputValue);
+  const handleInputChange = (input: string) => {
+    setinputValue(input);
   };
 
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
