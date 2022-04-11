@@ -1,0 +1,47 @@
+{
+	"name": "om_metadata_sample_data",
+	"forceDeploy": "true",
+	"pauseWorkflow": "false",
+	"description": "this is an example dag!",
+	"concurrency": 1,
+	"maxActiveRuns": 1,
+	"workflowTimeout": 60,
+	"workflowDefaultView": "tree",
+	"orientation": "LR",
+	"owner": "harsha",
+	"startDate": "2021-10-31T15:00:00.000Z",
+	"endDate": "2021-11-05T00:00:00.000Z",
+	"retries": 1,
+	"retryDelay": 300,
+	"schedule_interval": "0 3 * * *",
+	"tasks": [{
+		"name": "task_1",
+		"operator": "airflow.operators.python_operator.PythonOperator",
+		"config": {
+			"python_callable_name": "metadata_ingestion_workflow",
+			"python_callable_file": "metadata_ingestion.py",
+			"op_kwargs": {
+				"workflow_config": {
+					"source": {
+						"type": "sample-data",
+						"config": {
+							"sample_data_folder": "/Users/harsha/Code/openmetadata/ingestion/examples/sample_data"
+						}
+					},
+					"sink": {
+						"type": "metadata-rest",
+						"config": {}
+					},
+					"metadata_server": {
+						"type": "metadata-server",
+						"config": {
+							"api_endpoint": "http://localhost:8585/api",
+							"auth_provider_type": "no-auth"
+						}
+					}
+				}
+			}
+		},
+		"dependencies": []
+	}]
+}

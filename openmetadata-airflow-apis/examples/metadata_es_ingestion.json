@@ -1,0 +1,63 @@
+{
+	"workflow": {
+		"name": "test_ingestion_x_44",
+		"force": "true",
+		"pause": "false",
+		"unpause": "true",
+		"dag_config": {
+			"test_ingestion_x_44": {
+				"default_args": {
+					"owner": "harsha",
+					"start_date": "2021-10-31T15:00:00.000Z",
+					"end_date": "2021-11-05T00:00:00.000Z",
+					"retries": 1,
+					"retry_delay_sec": 300
+				},
+				"schedule_interval": "0 3 * * *",
+				"concurrency": 1,
+				"max_active_runs": 1,
+				"dagrun_timeout_sec": 60,
+				"default_view": "tree",
+				"orientation": "LR",
+				"description": "this is an example dag!",
+				"tasks": {
+					"task_1": {
+						"operator": "airflow.operators.python_operator.PythonOperator",
+						"python_callable_name": "metadata_ingestion_workflow",
+						"python_callable_file": "/Users/harsha/Code/airflow/managed_dags/metadata_ingestion.py",
+						"op_kwargs": {
+							"workflow_config": {
+								"metadata_server": {
+									"config": {
+										"api_endpoint": "http://localhost:8585/api",
+										"auth_provider_type": "no-auth"
+									},
+									"type": "metadata-server"
+								},
+								"sink": {
+									"config": {
+										"es_host": "localhost",
+										"es_port": 9200,
+										"index_dashboards": "true",
+										"index_tables": "true",
+										"index_topics": "true"
+									},
+									"type": "elasticsearch"
+								},
+								"source": {
+									"config": {
+										"include_dashboards": "true",
+										"include_tables": "true",
+										"include_topics": "true",
+										"limit_records": 10
+									},
+									"type": "metadata"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
