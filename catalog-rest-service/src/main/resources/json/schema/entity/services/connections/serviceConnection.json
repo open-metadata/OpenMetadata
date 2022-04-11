@@ -18,6 +18,14 @@
           "$ref": "../messagingService.json#/definitions/messagingConnection"
         }
       ]
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata", "Usage"]
+      }
     }
   },
   "properties": {

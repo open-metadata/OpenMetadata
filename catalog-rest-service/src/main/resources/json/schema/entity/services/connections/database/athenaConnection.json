@@ -66,13 +66,7 @@
       "$ref": "connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+      "$ref": "../serviceConnection.json#/definitions/supportedPipelineTypes"
     }
   },
   "additionalProperties": false

@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -189,6 +190,18 @@ public class ElasticSearchIndexDefinition {
   }
 }
 
+@Getter
+@Setter
+@Builder
+class ESEntityReference {
+  String id;
+  String name;
+  String fullyQualifiedName;
+  String description;
+  Boolean deleted;
+  String href;
+}
+
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
@@ -214,7 +227,7 @@ class ElasticSearchIndex {
   String description;
   String tier;
   List<String> tags;
-  String owner;
+  EntityReference owner;
   List<String> followers;
 
   @JsonProperty("last_updated_timestamp")
@@ -380,7 +393,7 @@ class TableESIndex extends ElasticSearchIndex {
     }
 
     if (table.getOwner() != null) {
-      tableESIndexBuilder.owner(table.getOwner().getId().toString());
+      tableESIndexBuilder.owner(table.getOwner());
     }
 
     return tableESIndexBuilder;
@@ -460,7 +473,7 @@ class TopicESIndex extends ElasticSearchIndex {
     }
 
     if (topic.getOwner() != null) {
-      topicESIndexBuilder.owner(topic.getOwner().getId().toString());
+      topicESIndexBuilder.owner(topic.getOwner());
     }
     return topicESIndexBuilder;
   }
@@ -554,7 +567,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       dashboardESIndexBuilder.followers(Collections.emptyList());
     }
     if (dashboard.getOwner() != null) {
-      dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
+      dashboardESIndexBuilder.owner(dashboard.getOwner());
     }
     return dashboardESIndexBuilder;
   }
@@ -623,7 +636,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
 
     if (pipeline.getOwner() != null) {
-      pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
+      pipelineESIndexBuilder.owner(pipeline.getOwner());
     }
     return pipelineESIndexBuilder;
   }
