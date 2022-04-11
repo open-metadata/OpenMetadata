@@ -20,16 +20,20 @@ export interface SqliteConnection {
   connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in SingleStore.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Host and port of the data source. Blank for in-memory database.
    */
   hostPort?: string;
   /**
-   * password to connect  to the SingleStore.
+   * password to connect to SQLite. Blank for in-memory database.
    */
   password?: string;
   /**
@@ -45,8 +49,7 @@ export interface SqliteConnection {
    */
   type?: SQLiteType;
   /**
-   * username to connect  to the SingleStore. This user should have privileges to read all the
-   * metadata in SingleStore.
+   * username to connect  to the SQLite. Blank for in-memory database.
    */
   username?: string;
 }
