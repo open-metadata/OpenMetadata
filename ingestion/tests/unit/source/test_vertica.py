@@ -51,9 +51,7 @@ CONFIG = """
         "enableDataProfiler": false,
         "schemaFilterPattern":{
           "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
-        },
-      "dbtManifestFilePath": "./examples/sample_data/dbt/manifest_1.0.json",
-      "dbtCatalogFilePath": "./examples/sample_data/dbt/catalog_1.0.json"
+        }
         }
       }
     },
@@ -195,7 +193,7 @@ class VerticaIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_pk_constraint")
     @patch("sqlalchemy.engine.reflection.Inspector.get_columns")
     @patch("sqlalchemy.engine.base.Engine.connect")
-    def test_mysql_ingestion(
+    def test_vertica_ingestion(
         self,
         mock_connect,
         get_columns,
