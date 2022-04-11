@@ -140,6 +140,7 @@ export const ROUTES = {
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -222,6 +223,13 @@ export const getServiceDetailsPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getAddServicePath = (serviceCategory: string) => {
+  let path = ROUTES.ADD_SERVICE;
+  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
 
   return path;
 };
