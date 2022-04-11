@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.events;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
@@ -322,7 +323,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       @Context SecurityContext securityContext,
       @Parameter(description = "webhook Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException, InterruptedException {
-    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Response response = delete(uriInfo, securityContext, id, false, true, ADMIN);
     dao.deleteWebhookPublisher(UUID.fromString(id));
     return response;

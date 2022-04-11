@@ -70,8 +70,12 @@
       <artifactId>metrics-graphite</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.github.azagniotov</groupId>
-      <artifactId>dropwizard-metrics-cloudwatch</artifactId>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-cloudwatch</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>cloudwatch</artifactId>
     </dependency>
     <dependency>
       <groupId>mysql</groupId>

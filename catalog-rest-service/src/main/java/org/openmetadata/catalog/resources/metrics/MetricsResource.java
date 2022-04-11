@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.metrics;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;

@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.databases;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+
 import com.codahale.metrics.annotation.ExceptionMetered;
 import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
@@ -122,7 +123,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     List<String> list = new ArrayList<>(Entity.getEntityFields(Table.class));
     list.add("tests"); // Add a field parameter called tests that represent the fields - tableTests and columnTests
     list.add("customMetrics"); // Add a field parameter to add customMetrics information to the columns
-    ALLOWED_FIELDS = Collections.unmodifiableList(list);
   }
 
   @Timed

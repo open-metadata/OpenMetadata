@@ -81,8 +81,8 @@
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
     <dropwizard-metrics.version>4.2.9</dropwizard-metrics.version>
     <fernet.version>1.5.0</fernet.version>
-    <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
-    <!--  upgrade only when we find how to import esnext modules in nodejs  -->
+    <guava.version>31.1-jre</guava.version>
+    <aws-java-sdk-cloudwatch.version>1.10.57</aws-java-sdk-cloudwatch.version>
     <antlr.version>4.10.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
@@ -332,6 +332,16 @@
         <groupId>org.springframework</groupId>
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-cloudwatch</artifactId>
+        <version>${aws-java-sdk-cloudwatch.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>cloudwatch</artifactId>
+        <version>2.17.167</version>
       </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
