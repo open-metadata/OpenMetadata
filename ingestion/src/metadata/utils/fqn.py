@@ -10,7 +10,7 @@ from metadata.config.common import FQDN_SEPARATOR
 
 
 def split(s: str) -> List[str]:
-    """Equivalent of Java's FulliQualifiedName#split"""
+    """Equivalent of Java's FullyQualifiedName#split"""
     lexer = FqnLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = FqnParser(stream)
@@ -22,7 +22,7 @@ def split(s: str) -> List[str]:
 
 
 def build(*args: List[str]) -> str:
-    """Equivalent of Java's FulliQualifiedName#build"""
+    """Equivalent of Java's FullyQualifiedName#build"""
     result = []
     for name in args:
         result.append(quote_name(name))
@@ -30,11 +30,13 @@ def build(*args: List[str]) -> str:
 
 
 def unquote_name(name: str) -> str:
+    """Equivalent of Java's FullyQualifiedName#unquoteName"""
     tmp_name = re.sub(r'^"|"$', "", name)
     return re.sub(r'""', '"', tmp_name)
 
 
 def quote_name(name: str) -> str:
+    """Equivalent of Java's FullyQualifiedName#quoteName"""
     if bool(re.search(r'[.|"]', name)):
         return '"' + re.sub(r'"', '""', name) + '"'
     else:

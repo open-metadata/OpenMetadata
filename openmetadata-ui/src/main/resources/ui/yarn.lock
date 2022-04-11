@@ -2930,6 +2930,11 @@ ansi-styles@^4.0.0, ansi-styles@^4.1.0:
   dependencies:
     color-convert "^2.0.1"
 
+antlr4@^4.9.3:
+  version "4.9.3"
+  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.9.3.tgz#268b844ff8ce97d022399a05d4b37aa6ab4047b2"
+  integrity sha512-qNy2odgsa0skmNMCuxzXhM4M8J1YDaPv3TI+vCdnOAanu0N982wBrSqziDKRDctEZLZy9VffqIZXc0UGjjSP/g==
+
 anymatch@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/anymatch/-/anymatch-2.0.0.tgz#bcb24b4f37934d9aa7ac17b4adaf89e7c76ef2eb"

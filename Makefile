@@ -160,3 +160,7 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs. The code is committed
 	antlr -Dlanguage=Python3 -o ingestion/src/metadata/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: js_antlr
+js_antlr:  ## Generate the Python code for parsing FQNs. The code is committed
+	antlr -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
