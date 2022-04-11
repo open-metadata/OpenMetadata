@@ -36,15 +36,8 @@
       "description": "Database Service Name for creation of lineage",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

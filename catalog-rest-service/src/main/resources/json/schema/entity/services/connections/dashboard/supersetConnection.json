@@ -48,15 +48,8 @@
       "description": "Additional connection options that can be sent to service during the connection.",
       "type": "object"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

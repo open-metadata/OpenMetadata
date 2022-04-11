@@ -30,15 +30,8 @@
       "format": "uri",
       "default": "http://localhost:8081"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false
