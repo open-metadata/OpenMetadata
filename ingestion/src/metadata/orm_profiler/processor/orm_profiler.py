@@ -471,7 +471,7 @@ class OrmProfilerProcessor(Processor[Table]):
             entity=Database, entity_id=record.database.id
         )
         orm_table = ometa_to_orm(
-            table=record, database=database, dialect=self.session.bind.dialect.name
+            table=record, schema=database, dialect=self.session.bind.dialect.name
         )
 
         entity_profile = self.profile_entity(orm_table, record)

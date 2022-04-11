@@ -53,7 +53,7 @@ def test_simple_conversion():
         ],
     )
 
-    orm_table = ometa_to_orm(table=table, database=database)
+    orm_table = ometa_to_orm(table=table, schema=database)
 
     assert orm_table.__tablename__ == "table1"
     assert orm_table.__table_args__.get("schema") == "one_db"
