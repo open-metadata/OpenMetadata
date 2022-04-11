@@ -7,17 +7,17 @@
     "connectionOptions": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
       "description": "Additional connection options that can be sent to service during the connection.",
-      "type": "object"
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "connectionArguments": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
       "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
       "type": "object",
-      "properties": {
-        "http_path": {
-          "description": "HTTP path of databricks cluster",
-          "type": "string"
-        }
+      "additionalProperties": {
+        "type": "string"
       }
     }
   }

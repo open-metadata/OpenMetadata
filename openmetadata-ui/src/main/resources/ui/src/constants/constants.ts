@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const FOLLOWERS_VIEW_CAP = 20;
@@ -21,7 +22,7 @@ export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
-export const LOCALSTORAGE_RECENTLY_SEARCHED = 'recentlySearchedData';
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
 export const isAdminUpdated = 'isAdminUpdated';
 export const imageTypes = {
@@ -140,6 +141,7 @@ export const ROUTES = {
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -222,6 +224,13 @@ export const getServiceDetailsPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getAddServicePath = (serviceCategory: string) => {
+  let path = ROUTES.ADD_SERVICE;
+  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
 
   return path;
 };

@@ -26,6 +26,7 @@ import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
+import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
@@ -251,6 +252,7 @@ export const Icons = {
   EDITLINEAGE: 'icon-edit-lineage',
   REQUEST: 'icon-request',
   CHECKBOX_PRIMARY: 'icon-checkbox-primary',
+  CIRCLE_CHECKBOX: 'icon-circle-checkbox',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
@@ -701,6 +703,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDITLINEAGECOLOR:
       IconComponent = IconEditLineageColor;
+
+      break;
+    case Icons.CIRCLE_CHECKBOX:
+      IconComponent = IconCircleCheckbox;
 
       break;
     case Icons.CHECKBOX_PRIMARY:

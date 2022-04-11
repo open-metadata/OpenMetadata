@@ -19,7 +19,7 @@ export interface GlueConnection {
   /**
    * AWS Access key ID.
    */
-  awsAccessKeyId?: any;
+  awsAccessKeyId?: string;
   /**
    * AWS Region Name.
    */
@@ -41,13 +41,21 @@ export interface GlueConnection {
    */
   database?: string;
   /**
-   * EndPoint URL for the Dynamo DB
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
   /**
-   * Host and port of the DynamoDB
+   * Host and port of the Glue
    */
   hostPort?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Supported Metadata Extraction Pipelines.
    */

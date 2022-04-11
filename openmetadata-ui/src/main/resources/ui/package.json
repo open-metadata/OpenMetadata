@@ -70,7 +70,7 @@
     "react-oidc": "^1.0.3",
     "react-quill": "^1.3.5",
     "react-router-dom": "^5.2.0",
-    "react-select": "^3.1.1",
+    "react-select": "^5.2.2",
     "react-slick": "^0.28.1",
     "react-table": "^7.7.0",
     "react-tippy": "^1.4.0",

@@ -60,6 +60,8 @@ export interface ServiceConnectionClass {
  *
  * DB2 Connection Config
  *
+ * DeltaLake Database Connection Config
+ *
  * Druid Connection Config
  *
  * DynamoDB Connection Config
@@ -100,9 +102,49 @@ export interface ServiceConnectionClass {
  */
 export interface Connection {
   /**
-   * Looker actor.
+   * Looker Environment
+   *
+   * Tableau Environment Name
    */
-  actor?: string;
+  env?: string;
+  /**
+   * URL to Looker instance.
+   *
+   * Host and Port of Metabase instance.
+   *
+   * Tableau Server
+   *
+   * BigQuery APIs URL
+   *
+   * Host and port of the Athena
+   *
+   * Host and port of the Clickhouse
+   *
+   * Host and port of the Databricks
+   *
+   * Host and port of the DB2
+   *
+   * Host and port of the Druid
+   *
+   * Host and port of the DynamoDB
+   *
+   * Host and port of the Glue
+   *
+   * Host and port of the Hive.
+   *
+   * Host and port of the data source.
+   *
+   * Host and port of the MsSQL.
+   *
+   * Host and port of the data source. Blank for in-memory database.
+   *
+   * Host and port of the Oracle.
+   *
+   * Host and port of the Postgres.
+   *
+   * Host and port of the Redshift.
+   */
+  hostPort?: string;
   /**
    * password to connect  to the Looker.
    *
@@ -130,6 +172,8 @@ export interface Connection {
    *
    * password to connect  to the SingleStore.
    *
+   * password to connect to SQLite. Blank for in-memory database.
+   *
    * password to connect  to the Oracle.
    *
    * password to connect  to the Postgres.
@@ -146,10 +190,6 @@ export interface Connection {
    */
   password?: string;
   /**
-   * Looker Platform Name
-   */
-  platformName?: string;
-  /**
    * Supported Metadata Extraction Pipelines.
    */
   supportedPipelineTypes?: string;
@@ -157,10 +197,6 @@ export interface Connection {
    * Service Type
    */
   type?: Type;
-  /**
-   * URL to Looker instance.
-   */
-  url?: string;
   /**
    * username to connect  to the Looker. This user should have privileges to read all the
    * metadata in Looker.
@@ -204,6 +240,8 @@ export interface Connection {
    * username to connect  to the SingleStore. This user should have privileges to read all the
    * metadata in SingleStore.
    *
+   * username to connect  to the SQLite. Blank for in-memory database.
+   *
    * username to connect  to the Oracle. This user should have privileges to read all the
    * metadata in Oracle.
    *
@@ -227,35 +265,9 @@ export interface Connection {
    */
   username?: string;
   /**
-   * Host and Port of Metabase instance.
-   *
-   * BigQuery APIs URL
-   *
-   * Host and port of the Athena
-   *
-   * Host and port of the Clickhouse
-   *
-   * Host and port of the Databricks
-   *
-   * Host and port of the DB2
-   *
-   * Host and port of the Druid
-   *
-   * Host and port of the DynamoDB
-   *
-   * Host and port of the Hive.
-   *
-   * Host and port of the data source.
-   *
-   * Host and port of the MsSQL.
-   *
-   * Host and port of the Oracle.
-   *
-   * Host and port of the Postgres.
-   *
-   * Host and port of the Redshift.
+   * Database Service Name for creation of lineage
    */
-  hostPort?: string;
+  dbServiceName?: string;
   /**
    * client_id for the PowerBI.
    */
@@ -293,6 +305,10 @@ export interface Connection {
    */
   connectionOptions?: { [key: string]: any };
   /**
+   * Database Service to create lineage
+   */
+  dbServiceConnection?: string;
+  /**
    * authenticaiton provider for the Superset
    */
   provider?: string;
@@ -313,17 +329,9 @@ export interface Connection {
    */
   personalAccessTokenSecret?: string;
   /**
-   * Tableau Server
-   */
-  server?: string;
-  /**
    * Tableau Site Name
    */
   siteName?: string;
-  /**
-   * Tableau Site URL
-   */
-  siteURL?: string;
   connectionArguments?: ConnectionArguments;
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
@@ -369,6 +377,10 @@ export interface Connection {
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
    * attempts to scan all the databases in SingleStore.
+   *
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -443,6 +455,18 @@ export interface Connection {
   duration?: number;
   token?: string;
   /**
+   * pySpark App Name
+   */
+  appName?: string;
+  /**
+   * File path of local Hive Metastore.
+   */
+  metastoreFilePath?: string;
+  /**
+   * Host and port of remote Hive Metastore.
+   */
+  metastoreHostPort?: string;
+  /**
    * AWS Access key ID.
    */
   awsAccessKeyId?: any;
@@ -456,8 +480,18 @@ export interface Connection {
   awsSessionToken?: string;
   /**
    * EndPoint URL for the Dynamo DB
+   *
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
@@ -466,6 +500,15 @@ export interface Connection {
    * Connection URI In case of pyodbc
    */
   uriString?: string;
+  /**
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
   /**
    * Presto catalog
    *
@@ -583,6 +626,7 @@ export enum Type {
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
