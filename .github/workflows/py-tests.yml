@@ -23,6 +23,9 @@ on:
       - ingestion/**
       - catalog-rest-service/**
 
+concurrency: 
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
