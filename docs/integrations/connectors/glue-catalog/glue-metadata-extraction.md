@@ -494,7 +494,7 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (69).png>)
 
 ### 2. Initiate a new service creation
 
@@ -1009,7 +1009,7 @@ metadata ingest -c ./glue.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Glue, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Glue service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../../.gitbook/assets/next\_steps (1).png>)
+![](../../../.gitbook/assets/explore.png)
 
 ## **Troubleshooting**
 

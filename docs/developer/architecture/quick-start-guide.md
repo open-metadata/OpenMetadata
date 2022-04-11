@@ -1,4 +1,4 @@
-# Quick Start Guide
+# Understand Code Layout
 
 Use this document as a quick start guide to begin developing in OpenMetdata. Below, we address the following topics:
 
@@ -37,7 +37,7 @@ OpenMetadata uses the [Dropwizard](https://www.dropwizard.io) Java framework to 
 
 ## System and Components
 
-![Overview of the OpenMetadata components and high-level interactions.](../../.gitbook/assets/quickstart-guide.drawio.png)
+![Overview of the OpenMetadata components and high-level interactions.](<../../.gitbook/assets/quickstart-guide.drawio (2).png>)
 
 ### Events
 

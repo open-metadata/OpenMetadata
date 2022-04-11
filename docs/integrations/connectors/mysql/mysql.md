@@ -313,7 +313,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/sample-data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -339,7 +339,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -505,7 +505,7 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (69).png>)
+![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
 
 ### 2. Initiate a new service creation
 
@@ -944,7 +944,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/sample-data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -970,7 +970,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -1039,7 +1039,7 @@ metadata ingest -c ./mysql.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from MySQL, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MySQL service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../../.gitbook/assets/next\_steps (1).png>)
+![](../../../.gitbook/assets/explore.png)
 
 ## Troubleshooting
 

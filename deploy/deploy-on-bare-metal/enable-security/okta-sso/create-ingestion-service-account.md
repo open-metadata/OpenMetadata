@@ -76,7 +76,7 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 * Click on **Applications -> Applications** in the left navigation bar.
 * You should see your service account in the list.
 
-![](<../../../../docs/.gitbook/assets/image (35) (1) (1).png>)
+![](<../../../../docs/.gitbook/assets/image (35) (1) (1) (1).png>)
 
 ## Step 4: Grant Allowed Scopes
 

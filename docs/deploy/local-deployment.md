@@ -247,7 +247,7 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../.gitbook/assets/om-homepage.png)
+![](<../.gitbook/assets/om-homepage (1).png>)
 
 ### Next Steps
 

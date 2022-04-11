@@ -62,7 +62,7 @@ Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases
 
 For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
 
-![](<../../docs/.gitbook/assets/image (4) (2).png>)
+![](<../../docs/.gitbook/assets/image (31) (1) (1).png>)
 
 ### 2. Untar the release download
 

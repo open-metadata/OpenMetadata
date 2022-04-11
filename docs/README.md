@@ -4,7 +4,7 @@ OpenMetadata is an open standard with a centralized metadata store and ingestion
 
 OpenMetadata enables metadata management end-to-end, giving you the ability to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration.
 
-{% embed url="https://youtu.be/3xaHf3A2PgU" %}
+{% embed url="https://www.youtube.com/watch?v=pF8L_mAtexo" %}
 
 ## Connectors
 
@@ -40,7 +40,7 @@ The key components of OpenMetadata include the following:
 * **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
 * **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. See the [Schema Concepts](openmetadata-apis/schemas/overview.md) section to learn more about metadata schemas.
 
-![](<../.gitbook/assets/openmetadata-overview (1).png>)
+![](<.gitbook/assets/openmetadata-overview (1).png>)
 
 ## License
 

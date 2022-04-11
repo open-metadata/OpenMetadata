@@ -10,8 +10,8 @@ Follow the sections in this guide to set up Okta SSO.
 [okta-config.md](okta-config.md)
 {% endcontent-ref %}
 
-{% content-ref url="create-ingestion-service-account.md" %}
-[create-ingestion-service-account.md](create-ingestion-service-account.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
 {% content-ref url="configure-security-ingestion.md" %}

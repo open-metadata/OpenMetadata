@@ -226,7 +226,7 @@
 
 ***
 
-* [👩💻 Developer](developer/README.md)
+* [👩💻 👩💻 Developer](developer/README.md)
   * [Architecture](developer/architecture/README.md)
     * [Design](developer/architecture/solution-design.md)
     * [Understand Code Layout](developer/architecture/quick-start-guide.md)
