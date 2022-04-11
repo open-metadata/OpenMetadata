@@ -176,13 +176,6 @@ def _(connection: DatabricksConnection):
 
 
 @get_connection_url.register
-def _(connection: AzureSQLConnection):
-    url = get_connection_url_common(connection)
-    url += f"DRIVER={connection.driver}"
-    return url
-
-
-@get_connection_url.register
 def _(connection: PrestoConnection):
     url = f"{connection.scheme.value}://"
     if connection.username:
