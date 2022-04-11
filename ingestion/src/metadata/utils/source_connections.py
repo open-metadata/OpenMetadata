@@ -263,3 +263,32 @@ def _(connection: BigQueryConnection):
     if connection.projectID:
         return f"{connection.scheme.value}://{connection.projectID}"
     return f"{connection.scheme.value}://"
+
+
+@get_connection_url.register
+def _(connection: AzureSQLConnection):
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        url += f":{connection.password.get_secret_value()}" if connection else ""
+        url += "@"
+
+    url += f"{connection.hostPort}"
+    url += f"/{quote_plus(connection.database)}" if connection.database else ""
+    url += f"?driver={quote_plus(connection.driver)}"
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+
+    return url

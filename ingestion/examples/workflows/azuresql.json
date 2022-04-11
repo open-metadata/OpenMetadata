@@ -9,7 +9,7 @@
         "database": "database_name",
         "username": "username",
         "password": " password",
-        "driver":"{ODBC Driver 13 for SQL Server}"
+        "driver":"ODBC Driver 17 for SQL Server"
       }
       },
       "sourceConfig": {
