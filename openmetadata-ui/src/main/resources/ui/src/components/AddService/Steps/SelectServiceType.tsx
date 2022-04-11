@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { serviceTypes } from '../../../constants/services.const';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -53,7 +54,7 @@ const SelectServiceType = ({
           }>
           {Object.values(ServiceCategory).map((option, i) => (
             <option key={i} value={option}>
-              {option}
+              {startCase(option)}
             </option>
           ))}
         </select>

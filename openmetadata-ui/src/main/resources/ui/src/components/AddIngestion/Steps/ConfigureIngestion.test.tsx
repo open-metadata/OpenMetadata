@@ -71,7 +71,7 @@ describe('Test ConfigureIngestion component', () => {
       container,
       'configure-ingestion-container'
     );
-    const ingestionName = await findByTestId(container, 'ingestion-name');
+
     const backButton = await findByTestId(container, 'back-button');
     const nextButton = await findByTestId(container, 'next-button');
     const filterPatternComponents = await findAllByText(
@@ -84,7 +84,6 @@ describe('Test ConfigureIngestion component', () => {
     );
 
     expect(configureIngestionContainer).toBeInTheDocument();
-    expect(ingestionName).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(4);

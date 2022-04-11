@@ -28,7 +28,6 @@ const ConfigureIngestion = ({
   includeView,
   enableDataProfiler,
   ingestSampleData,
-  ingestionName,
   showDatabaseFilter,
   showSchemaFilter,
   showTableFilter,
@@ -44,13 +43,7 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   return (
     <div className="tw-px-2" data-testid="configure-ingestion-container">
-      <Field>
-        <p data-testid="ingestion-name">
-          Ingestion Name{' '}
-          <span className="tw-font-semibold">{ingestionName}</span>
-        </p>
-      </Field>
-      <div className="tw-pt-2">
+      <div>
         <FilterPattern
           checked={showDatabaseFilter}
           excludePattern={databaseFilterPattern.exclude}
