@@ -29,6 +29,11 @@ export interface OracleConnection {
    */
   hostPort?: string;
   /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
+  /**
    * password to connect  to the Oracle.
    */
   password?: string;

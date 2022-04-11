@@ -205,6 +205,7 @@ declare module 'Models' {
     };
     index: string;
     database?: string;
+    databaseSchema?: string;
     deleted?: boolean;
     entityType?: string;
   };

@@ -1,0 +1,74 @@
+{
+  "id": null,
+  "name": "my_pipeline",
+  "displayName": "MyPipeline",
+  "description": "My Description",
+  "pipelineType": "metadata",
+  "owner": null,
+  "fullyQualifiedName": "service.my_pipeline",
+  "source": {
+    "type": "mysql",
+    "serviceName": "my_sql_test",
+    "serviceConnection": {
+      "config": {
+        "type": "MySQL",
+        "scheme": "mysql+pymysql",
+        "username": "openmetadata_user",
+        "password": "openmetadata_password",
+        "hostPort": "localhost:3306",
+        "database": null,
+        "connectionOptions": null,
+        "connectionArguments": null,
+        "supportedPipelineTypes": [
+          "Metadata"
+        ]
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "markDeletedTables": true,
+        "includeViews": true,
+        "generateSampleData": true,
+        "sampleDataQuery": "select * from {}.{} limit 50",
+        "enableDataProfiler": false,
+        "schemaFilterPattern": null,
+        "tableFilterPattern": null,
+        "dbtCatalogFilePath": null,
+        "dbtManifestFilePath": null
+      }
+    }
+  },
+  "openMetadataServerConnection": {
+    "hostPort": "http://openmetadata_server.ometa_network:8585/api",
+    "authProvider": "no-auth",
+    "securityConfig": null
+  },
+  "airflowConfig": {
+    "forceDeploy": true,
+    "pausePipeline": false,
+    "concurrency": 1,
+    "startDate": "2022-04-04",
+    "endDate": null,
+    "nextExecutionDate": null,
+    "pipelineTimezone": "UTC",
+    "retries": 3,
+    "retryDelay": 300,
+    "pipelineCatchup": false,
+    "scheduleInterval": null,
+    "pipelineTimeout": 60,
+    "maxActiveRuns": 1,
+    "workflowTimeout": 60,
+    "workflowDefaultView": "tree",
+    "workflowDefaultViewOrientation": "LR",
+    "pythonOperatorLocation": null,
+    "slaMissCallback": null,
+    "email": null
+  },
+  "service": null,
+  "href": null,
+  "version": null,
+  "updatedAt": null,
+  "updatedBy": null,
+  "changeDescription": null,
+  "deleted": false
+}

@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { lowerCase } from 'lodash';
+import { toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
@@ -35,6 +35,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
   const [showAllTier, setShowAllTier] = useState<boolean>(false);
   const [showAllDatabase, setShowAllDatabase] = useState<boolean>(false);
+  const [showAllDatabaseSchema, setShowAllDatabaseSchema] =
+    useState<boolean>(false);
+  const [showAllServiceName, setShowAllServiceName] = useState<boolean>(false);
+
   const getLinkText = (
     length: number,
     state: boolean,
@@ -87,6 +91,18 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getLinkText(bucketLength, showAllTier, setShowAllTier);
       case 'Database':
         return getLinkText(bucketLength, showAllDatabase, setShowAllDatabase);
+      case 'DatabaseSchema':
+        return getLinkText(
+          bucketLength,
+          showAllDatabaseSchema,
+          setShowAllDatabaseSchema
+        );
+      case 'ServiceName':
+        return getLinkText(
+          bucketLength,
+          showAllServiceName,
+          setShowAllServiceName
+        );
       default:
         return null;
     }
@@ -103,6 +119,10 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getBuckets(buckets, showAllTier);
       case 'Database':
         return getBuckets(buckets, showAllDatabase, true);
+      case 'DatabaseSchema':
+        return getBuckets(buckets, showAllDatabaseSchema, true);
+      case 'ServiceName':
+        return getBuckets(buckets, showAllServiceName, true);
       default:
         return [];
     }
@@ -115,11 +135,11 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
             <FilterContainer
               count={bucket.doc_count}
               isSelected={filters[
-                lowerCase(aggregation.title) as keyof FilterObject
+                toLower(aggregation.title) as keyof FilterObject
               ].includes(bucket.key)}
               key={index}
               name={bucket.key}
-              type={lowerCase(aggregation.title) as keyof FilterObject}
+              type={toLower(aggregation.title) as keyof FilterObject}
               onSelect={onSelectHandler}
             />
           )
@@ -132,7 +152,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const isClearFilter = (aggregation: AggregationType) => {
     const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
     const flag = buckets.some((bucket) =>
-      filters[lowerCase(aggregation.title) as keyof FilterObject].includes(
+      filters[toLower(aggregation.title) as keyof FilterObject].includes(
         bucket.key
       )
     );
@@ -143,7 +163,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const isSelectAllFilter = (aggregation: AggregationType) => {
     const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
     const flag = buckets.every((bucket) =>
-      filters[lowerCase(aggregation.title) as keyof FilterObject].includes(
+      filters[toLower(aggregation.title) as keyof FilterObject].includes(
         bucket.key
       )
     );
@@ -182,7 +202,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return (
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (
-              <>
+              <div data-testid={aggregation.title}>
                 <div className="tw-flex tw-justify-between tw-flex-col">
                   <h6
                     className="tw-heading tw-mb-0"
@@ -200,9 +220,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                         onClick={() => {
                           if (isSelectAllFilter(aggregation)) {
                             onSelectAllFilter(
-                              lowerCase(
-                                aggregation.title
-                              ) as keyof FilterObject,
+                              toLower(aggregation.title) as keyof FilterObject,
                               aggregation.buckets.map((b) => b.key)
                             );
                           }
@@ -218,9 +236,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                           onClick={() => {
                             if (isClearFilter(aggregation)) {
                               onClearFilter(
-                                lowerCase(
-                                  aggregation.title
-                                ) as keyof FilterObject
+                                toLower(aggregation.title) as keyof FilterObject
                               );
                             }
                           }}>
@@ -236,7 +252,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                   {getFilterItems(aggregation)}
                 </div>
                 {getSeparator(aggregations.length, index)}
-              </>
+              </div>
             ) : null}
           </Fragment>
         );

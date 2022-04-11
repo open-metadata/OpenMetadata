@@ -17,6 +17,10 @@
  */
 export interface MetabaseConnection {
   /**
+   * Database Service Name for creation of lineage
+   */
+  dbServiceName?: string;
+  /**
    * Host and Port of Metabase instance.
    */
   hostPort?: string;

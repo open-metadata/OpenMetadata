@@ -20,6 +20,7 @@ import {
 export interface SelectedNode {
   name: string;
   type: string;
+  fqn: string;
   displayName?: string;
   id?: string;
   entityId: string;

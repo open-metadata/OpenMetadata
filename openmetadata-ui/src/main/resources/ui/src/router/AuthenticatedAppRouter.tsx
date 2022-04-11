@@ -20,6 +20,7 @@ import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
+import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
@@ -60,6 +61,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
+      <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>

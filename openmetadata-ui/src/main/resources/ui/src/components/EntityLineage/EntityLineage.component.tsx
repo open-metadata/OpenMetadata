@@ -190,7 +190,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ) : null}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
-          {getDataLabel(node.displayName, node.name, false, node.type)}
+          {getDataLabel(
+            node.displayName,
+            node.fullyQualifiedName,
+            false,
+            node.type
+          )}
         </p>
       </Fragment>
     );
@@ -480,6 +485,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     if (!expandButton.current) {
       selectNodeHandler(true, {
         name: node?.name as string,
+        fqn: node?.fullyQualifiedName as string,
         id: el.id,
         displayName: node?.displayName,
         type: node?.type as string,
@@ -846,12 +852,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               </ReactFlow>
             </ReactFlowProvider>
           </div>
-          <EntityInfoDrawer
-            isMainNode={selectedNode.name === lineageData.entity?.name}
-            selectedNode={selectedNode}
-            show={isDrawerOpen && !isEditMode}
-            onCancel={closeDrawer}
-          />
+          {!isEmpty(selectedNode) ? (
+            <EntityInfoDrawer
+              isMainNode={selectedNode.name === lineageData.entity?.name}
+              selectedNode={selectedNode}
+              show={isDrawerOpen && !isEditMode}
+              onCancel={closeDrawer}
+            />
+          ) : null}
           <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
           {showdeleteModal ? (
             <ConfirmationModal

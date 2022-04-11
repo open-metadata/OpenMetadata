@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/deltaLakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeltaLakeConnection",
+  "description": "DeltaLake Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DeltaLakeConnection",
+  "definitions": {
+    "deltaLakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["DeltaLake"],
+      "default": "DeltaLake"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/deltaLakeType",
+      "default": "DeltaLake"
+    },
+    "metastoreHostPort": {
+      "description": "Host and port of remote Hive Metastore.",
+      "type": "string"
+    },
+    "metastoreFilePath": {
+      "description": "File path of local Hive Metastore.",
+      "type": "string"
+    },
+    "appName": {
+      "description": "pySpark App Name",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportedPipelineTypes": {
+      "description": "Supported Metadata Extraction Pipelines.",
+      "type": "string",
+      "items": {
+        "type": "string",
+        "enum": ["Metadata"]
+      },
+      "default": ["Metadata"]
+    }
+  },
+  "additionalProperties": false
+}
