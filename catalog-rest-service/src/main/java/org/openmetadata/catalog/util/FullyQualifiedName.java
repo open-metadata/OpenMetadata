@@ -78,7 +78,7 @@ public class FullyQualifiedName {
   }
 
   public static String unquoteName(String name) {
-    return name.replaceAll("^\"|\"$", "").replace("\"\"", "\"");
+    return name.replaceAll("^\"", "").replaceAll("\"$", "").replace("\"\"", "\"");
   }
 
   public static String getTableFQN(String columnFQN) {
