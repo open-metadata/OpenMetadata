@@ -68,13 +68,13 @@ def get_table_names(self, connection, schema=None, **kw):
             # check number of columns in result
             # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
             # else it is hive with 1 column in the result
-            util.info("SHOW TABLES IN lenght is %s" % len(row))
+            util.warn("SHOW TABLES IN lenght is %s" % len(row))
             if len(row) > 1:
                 tables.append(row[1])
-                util.info("Add table to list: %s" % row[1])
+                util.warn("Add table to list: %s" % row[1])
             else:
                 tables.append(row[0])
-                util.info("Add table to list: %s" % row[0])
+                util.warn("Add table to list: %s" % row[0])
         return tables
 
 
