@@ -272,6 +272,9 @@ class TableESIndex extends ElasticSearchIndex {
 
   String database;
 
+  @JsonProperty("database_schema")
+  String databaseSchema;
+
   @JsonProperty("table_type")
   String tableType;
 
@@ -348,14 +351,11 @@ class TableESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (table.getDatabase() != null) {
-      String databaseFQN = table.getDatabase().getName();
-      // TODO fix this code
-      String[] databaseFQNSplit = FullyQualifiedName.split(databaseFQN);
-      if (databaseFQNSplit.length == 2) {
-        tableESIndexBuilder.database(databaseFQNSplit[1]);
-      } else {
-        tableESIndexBuilder.database(databaseFQNSplit[0]);
-      }
+      tableESIndexBuilder.database(table.getDatabase().getName());
+    }
+
+    if (table.getDatabaseSchema() != null) {
+      tableESIndexBuilder.databaseSchema(table.getDatabaseSchema().getName());
     }
 
     if (table.getService() != null) {

@@ -68,6 +68,9 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "database": {
               "type": "keyword"
             },
+            "database_schema": {
+              "type": "keyword"
+            },
             "suggest": {
               "type": "completion"
             },

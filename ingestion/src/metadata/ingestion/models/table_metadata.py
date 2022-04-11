@@ -56,6 +56,7 @@ class TableESDocument(BaseModel):
     table_id: str
     deleted: bool
     database: str
+    database_schema: str
     service: str
     service_type: str
     service_category: str
