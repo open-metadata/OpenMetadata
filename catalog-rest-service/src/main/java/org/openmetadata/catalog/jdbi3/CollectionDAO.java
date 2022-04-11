@@ -782,7 +782,7 @@ public interface CollectionDAO {
         value =
             "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
                 + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
-                + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET EXCLUDED.json",
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void upsert(
         @Bind("fromFQN") String fromFQN,

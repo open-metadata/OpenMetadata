@@ -113,10 +113,10 @@ public interface EntityDAO<T> {
 
   default String getCondition(Include include) {
     if (include == null || include == Include.NON_DELETED) {
-      return "AND deleted = false";
+      return "AND deleted = FALSE";
     }
     if (include == Include.DELETED) {
-      return " AND deleted = true";
+      return " AND deleted = TRUE";
     }
     return "";
   }
