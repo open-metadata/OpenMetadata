@@ -814,7 +814,9 @@ const TagsPage = () => {
                     } "${deleteTags.data?.name}"?`}
                     cancelText="Cancel"
                     confirmText="Confirm"
-                    header="Delete Team"
+                    header={`Delete Tag ${
+                      deleteTags.data?.isCategory ? 'Category' : ''
+                    }`}
                     onCancel={() =>
                       setDeleteTags({ data: undefined, state: false })
                     }
