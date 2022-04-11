@@ -42,7 +42,7 @@ import org.openmetadata.catalog.type.TagLabel.State;
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ChangeEventParserTest extends CatalogApplicationTest {
+public class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   Object TABLE;
 

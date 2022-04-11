@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.AuthorizationException;
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +48,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
           .entity(new ErrorMessage(response.getStatus(), ex.getLocalizedMessage()))
           .build();
     } else if (ex instanceof UnableToExecuteStatementException) {
-      // TODO remove this
-      if (ex.getCause() instanceof SQLIntegrityConstraintViolationException) {
+      // TODO This is a complete hack, there needs to be a better way to do this
+      if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
+          || ex.getCause() instanceof PSQLException && ex.getCause().getMessage().contains("duplicate")) {
         return Response.status(CONFLICT)
             .type(MediaType.APPLICATION_JSON_TYPE)
             .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))

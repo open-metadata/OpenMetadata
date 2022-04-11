@@ -83,6 +83,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -1312,10 +1313,18 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
-    @SqlQuery(
-        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' "
-            + "AS description FROM tag_usage tu "
-            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' "
+                + "AS description FROM tag_usage tu "
+                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> 'description' "
+                + "AS description FROM tag_usage tu "
+                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
+        connectionType = POSTGRES)
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")

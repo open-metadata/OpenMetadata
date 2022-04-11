@@ -54,17 +54,17 @@ public class ListFilter {
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database);
+    return database == null ? "" : getFqnPrefixCondition(tableName, escape(database));
   }
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, service);
+    return service == null ? "" : getFqnPrefixCondition(tableName, escape(service));
   }
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
-    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, escape(parentFqn));
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
@@ -81,5 +81,9 @@ public class ListFilter {
       return condition1;
     }
     return condition1 + " AND " + condition2;
+  }
+
+  private String escape(String name) {
+    return name.replace("'", "''");
   }
 }

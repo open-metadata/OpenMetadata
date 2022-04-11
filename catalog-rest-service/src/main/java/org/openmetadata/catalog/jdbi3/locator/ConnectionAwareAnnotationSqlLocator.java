@@ -18,8 +18,8 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
   private final ConnectionType connectionType;
   private final ConcurrentMap<Method, String> located = new ConcurrentHashMap<>();
 
-  public ConnectionAwareAnnotationSqlLocator(ConnectionType connectionType) {
-    this.connectionType = requireNonNull(connectionType, "Connection type is null");
+  public ConnectionAwareAnnotationSqlLocator(String jdbcDriverClass) {
+    this.connectionType = ConnectionType.from(requireNonNull(jdbcDriverClass, "Connection type is null"));
   }
 
   @Override
@@ -32,7 +32,7 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
                     () ->
                         new IllegalStateException(
                             format(
-                                "Method %s is missing SQL annotation for connection type %s or ALL",
+                                "Method %s is missing SQL annotation for connection type %s",
                                 method, connectionType))));
   }
 

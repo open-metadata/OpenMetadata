@@ -143,8 +143,14 @@ public final class TablesInitializer {
       System.out.println("Disabling validation on schema migrate");
     }
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
-    String dbSubType = config.getMigrationConfiguration().getConnectionType().label;
-    Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, dbSubType, !disableValidateOnMigrate);
+    Flyway flyway =
+        get(
+            jdbcUrl,
+            user,
+            password,
+            scriptRootPath,
+            config.getDataSourceFactory().getDriverClass(),
+            !disableValidateOnMigrate);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
       execute(flyway, client, schemaMigrationOptionSpecified);

@@ -7,8 +7,8 @@ import java.util.Map;
 
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum ConnectionType {
-  MYSQL("mysql"),
-  POSTGRES("postgres");
+  MYSQL("com.mysql.cj.jdbc.Driver"),
+  POSTGRES("org.postgresql.Driver");
 
   public final String label;
 
@@ -34,5 +34,10 @@ public enum ConnectionType {
       throw new IllegalArgumentException(
           String.format("Cannot create %s from value [%s]", ConnectionType.class.getName(), value), e);
     }
+  }
+
+  @Override
+  public String toString() {
+    return "ConnectionType{" + "name='" + name() + '\'' + "driver='" + label + '\'' + '}';
   }
 }

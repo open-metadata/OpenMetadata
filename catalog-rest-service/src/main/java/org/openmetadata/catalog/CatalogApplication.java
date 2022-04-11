@@ -100,8 +100,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(catalogConfig.getMigrationConfiguration().getConnectionType()));
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
