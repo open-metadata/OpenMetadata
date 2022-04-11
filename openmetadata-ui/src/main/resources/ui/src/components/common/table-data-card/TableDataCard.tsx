@@ -46,6 +46,7 @@ type Props = {
     value: number;
   }[];
   database?: string;
+  databaseSchema?: string;
   deleted?: boolean;
 };
 
@@ -62,6 +63,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
   database,
+  databaseSchema,
   tableType,
   deleted = false,
 }: Props) => {
@@ -100,6 +102,13 @@ const TableDataCard: FunctionComponent<Props> = ({
     OtherDetails.push({
       key: 'Database',
       value: database,
+      showLabel: true,
+    });
+  }
+  if (databaseSchema) {
+    OtherDetails.push({
+      key: 'Schema',
+      value: databaseSchema,
       showLabel: true,
     });
   }

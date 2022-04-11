@@ -43,6 +43,7 @@ export const formatDataResponse = (hits) => {
     newData.highlight = hit.highlight;
 
     newData.database = hit._source.database;
+    newData.databaseSchema = hit._source.database_schema;
 
     newData.entityType = hit._source.entity_type;
     newData.changeDescriptions = hit._source.change_descriptions;
