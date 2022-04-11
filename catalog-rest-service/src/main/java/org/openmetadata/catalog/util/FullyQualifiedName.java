@@ -18,7 +18,7 @@ import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
 public class FullyQualifiedName {
 
   // Match any reserved char
-  private static final Pattern reserved = Pattern.compile("[\\.\"]");
+  private static final Pattern reserved = Pattern.compile("[.\"]");
 
   /** Add to an existing valid FQN the given string */
   public static String add(String fqn, String part) {
