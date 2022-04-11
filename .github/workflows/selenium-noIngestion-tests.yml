@@ -26,6 +26,9 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
 
+concurrency: 
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
 jobs:
   build:
 
