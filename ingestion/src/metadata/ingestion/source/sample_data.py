@@ -35,8 +35,8 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
+    SampleDataConnection,
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -51,7 +51,7 @@ from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
@@ -108,17 +108,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     :return:
     """
     return TableKey(schema=row["schema"], table_name=row["table_name"])
-
-
-class SampleDataSourceConfig(WorkflowSource):
-    service_type = DatabaseServiceType.BigQuery.value
-    sample_data_folder: str = "./examples/sample_data"
-
-    def get_sample_data_folder(self):
-        return self.sample_data_folder
-
-    def get_service_type(self):
-        return self.service_type
 
 
 @dataclass
@@ -188,37 +177,54 @@ class SampleDataSource(Source[Entity]):
     """
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: OpenMetadataServerConfig
+        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
+        self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.storage_service_json = json.load(
-            open(self.config.sample_data_folder + "/locations/service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/locations/service.json",
+                "r",
+            )
         )
         self.locations = json.load(
-            open(self.config.sample_data_folder + "/locations/locations.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/locations/locations.json",
+                "r",
+            )
         )
         self.storage_service = get_storage_service_or_create(
             service_json=self.storage_service_json,
             metadata_config=metadata_config,
         )
         self.glue_storage_service_json = json.load(
-            open(self.config.sample_data_folder + "/glue/storage_service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/glue/storage_service.json",
+                "r",
+            )
         )
         self.glue_database_service_json = json.load(
-            open(self.config.sample_data_folder + "/glue/database_service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder
+                + "/glue/database_service.json",
+                "r",
+            )
         )
         self.glue_database = json.load(
-            open(self.config.sample_data_folder + "/glue/database.json", "r")
+            open(self.service_connection.sampleDataFolder + "/glue/database.json", "r")
         )
         self.glue_database_schema = json.load(
-            open(self.config.sample_data_folder + "/glue/database_schema.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/glue/database_schema.json",
+                "r",
+            )
         )
         self.glue_tables = json.load(
-            open(self.config.sample_data_folder + "/glue/tables.json", "r")
+            open(self.service_connection.sampleDataFolder + "/glue/tables.json", "r")
         )
         self.glue_database_service = get_database_service_or_create_v2(
             service_json=self.glue_database_service_json,
@@ -229,25 +235,36 @@ class SampleDataSource(Source[Entity]):
             metadata_config,
         )
         self.database_service_json = json.load(
-            open(self.config.sample_data_folder + "/datasets/service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            )
         )
         self.database = json.load(
-            open(self.config.sample_data_folder + "/datasets/database.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/database.json",
+                "r",
+            )
         )
         self.database_schema = json.load(
-            open(self.config.sample_data_folder + "/datasets/database_schema.json", "r")
+            open(
+                self.service_connection.sampleDataFolder
+                + "/datasets/database_schema.json",
+                "r",
+            )
         )
         self.tables = json.load(
-            open(self.config.sample_data_folder + "/datasets/tables.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/tables.json", "r"
+            )
         )
         self.database_service = get_database_service_or_create(
             config=config, metadata_config=self.metadata_config
         )
         self.kafka_service_json = json.load(
-            open(self.config.sample_data_folder + "/topics/service.json", "r")
+            open(self.service_connection.sampleDataFolder + "/topics/service.json", "r")
         )
         self.topics = json.load(
-            open(self.config.sample_data_folder + "/topics/topics.json", "r")
+            open(self.service_connection.sampleDataFolder + "/topics/topics.json", "r")
         )
         kafka_config = {
             "config": {
@@ -266,13 +283,23 @@ class SampleDataSource(Source[Entity]):
             metadata_config=self.metadata_config,
         )
         self.dashboard_service_json = json.load(
-            open(self.config.sample_data_folder + "/dashboards/service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/dashboards/service.json",
+                "r",
+            )
         )
         self.charts = json.load(
-            open(self.config.sample_data_folder + "/dashboards/charts.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/dashboards/charts.json",
+                "r",
+            )
         )
         self.dashboards = json.load(
-            open(self.config.sample_data_folder + "/dashboards/dashboards.json", "r")
+            open(
+                self.service_connection.sampleDataFolder
+                + "/dashboards/dashboards.json",
+                "r",
+            )
         )
         self.dashboard_service = get_dashboard_service_or_create(
             service_name=self.dashboard_service_json.get("name"),
@@ -281,33 +308,49 @@ class SampleDataSource(Source[Entity]):
             metadata_config=metadata_config,
         )
         self.pipeline_service_json = json.load(
-            open(self.config.sample_data_folder + "/pipelines/service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/pipelines/service.json",
+                "r",
+            )
         )
         self.pipelines = json.load(
-            open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/pipelines/pipelines.json",
+                "r",
+            )
         )
         self.pipeline_service = get_pipeline_service_or_create(
             service_json=self.pipeline_service_json,
             metadata_config=metadata_config,
         )
         self.lineage = json.load(
-            open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/lineage/lineage.json", "r"
+            )
         )
         self.users = json.load(
-            open(self.config.sample_data_folder + "/users/users.json", "r")
+            open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
         )
         self.models = json.load(
-            open(self.config.sample_data_folder + "/models/models.json", "r")
+            open(self.service_connection.sampleDataFolder + "/models/models.json", "r")
         )
         self.user_entity = {}
         self.table_tests = json.load(
-            open(self.config.sample_data_folder + "/datasets/tableTests.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/tableTests.json",
+                "r",
+            )
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config):
-        config = SampleDataSourceConfig.parse_obj(config_dict)
-        metadata_config = OpenMetadataServerConfig.parse_obj(metadata_config)
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+        """Create class instance"""
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: SampleDataConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SampleDataConnection):
+            raise InvalidSourceException(
+                f"Expected MssqlConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -396,7 +439,7 @@ class SampleDataSource(Source[Entity]):
             name=self.database["name"],
             description=self.database["description"],
             service=EntityReference(
-                id=self.database_service.id, type=self.config.service_type
+                id=self.database_service.id, type=self.service_connection.type.value
             ),
         )
         schema = DatabaseSchema(
@@ -404,7 +447,7 @@ class SampleDataSource(Source[Entity]):
             name=self.database_schema["name"],
             description=self.database_schema["description"],
             service=EntityReference(
-                id=self.database_service.id, type=self.config.service_type
+                id=self.database_service.id, type=self.service_connection.type.value
             ),
             database=EntityReference(id=db.id, type="database"),
         )
