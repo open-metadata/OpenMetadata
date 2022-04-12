@@ -14,12 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  EntityThread,
-  TableDetail,
-} from 'Models';
+import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -77,7 +72,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
+  const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
@@ -517,7 +512,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           followers={followers}
           isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
-          owner={owner}
+          owner={owner as EntityReference}
           paging={paging}
           partitions={partitions}
           postFeedHandler={postFeedHandler}

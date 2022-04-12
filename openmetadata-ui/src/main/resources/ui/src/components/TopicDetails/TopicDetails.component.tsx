@@ -23,7 +23,11 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getEntityPlaceHolder,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
@@ -195,7 +199,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
           : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+      placeholderText: getEntityPlaceHolder(
+        owner?.displayName || owner?.name || '',
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },

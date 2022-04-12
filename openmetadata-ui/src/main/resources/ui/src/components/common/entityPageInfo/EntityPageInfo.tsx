@@ -15,13 +15,7 @@ import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import {
-  EntityFieldThreads,
-  EntityTags,
-  ExtraInfo,
-  TableDetail,
-  TagOption,
-} from 'Models';
+import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
@@ -56,7 +50,7 @@ interface Props {
   tier: TagLabel;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
-  owner?: TableDetail['owner'];
+  owner?: EntityReference;
   hasEditAccess?: boolean;
   followersList: Array<EntityReference>;
   entityName: string;

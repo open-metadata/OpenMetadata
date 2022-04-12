@@ -22,7 +22,6 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -92,7 +91,7 @@ const PipelineDetailsPage = () => {
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
+  const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
@@ -664,7 +663,7 @@ const PipelineDetailsPage = () => {
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
-          owner={owner}
+          owner={owner as EntityReference}
           paging={paging}
           pipelineDetails={pipelineDetails}
           pipelineFQN={pipelineFQN}

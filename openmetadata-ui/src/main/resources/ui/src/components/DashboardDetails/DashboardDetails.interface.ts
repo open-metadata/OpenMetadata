@@ -19,7 +19,6 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
@@ -49,7 +48,7 @@ export interface DashboardDetailsProps {
   dashboardDetails: Dashboard;
   entityName: string;
   activeTab: number;
-  owner: TableDetail['owner'];
+  owner: EntityReference;
   description: string;
   tier: TagLabel;
   followers: Array<EntityReference>;

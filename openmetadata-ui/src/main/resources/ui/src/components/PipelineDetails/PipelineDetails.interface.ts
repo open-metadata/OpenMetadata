@@ -19,7 +19,6 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
@@ -42,7 +41,7 @@ export interface PipeLineDetailsProp {
   users: Array<User>;
   pipelineDetails: Pipeline;
   activeTab: number;
-  owner: TableDetail['owner'];
+  owner: EntityReference;
   description: string;
   tier: TagLabel;
   followers: Array<EntityReference>;

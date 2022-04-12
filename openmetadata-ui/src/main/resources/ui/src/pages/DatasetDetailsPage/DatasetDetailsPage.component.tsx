@@ -127,9 +127,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     rows: [],
   });
   const [tableTags, setTableTags] = useState<Array<EntityTags>>([]);
-  const [owner, setOwner] = useState<
-    Table['owner'] & { displayName?: string }
-  >();
+  const [owner, setOwner] = useState<EntityReference>();
   const [joins, setJoins] = useState<TableJoins>({
     startDate: new Date(),
     dayCount: 0,
@@ -1003,7 +1001,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
-          owner={owner as Table['owner'] & { displayName: string }}
+          owner={owner as EntityReference}
           paging={paging}
           postFeedHandler={postFeedHandler}
           qualityTestFormHandler={qualityTestFormHandler}

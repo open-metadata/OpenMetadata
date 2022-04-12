@@ -30,6 +30,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
@@ -193,7 +194,10 @@ const PipelineDetails = ({
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
           : owner?.displayName || owner?.name || '',
-      placeholderText: owner?.displayName || owner?.name || '',
+      placeholderText: getEntityPlaceHolder(
+        owner?.displayName || owner?.name || '',
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
