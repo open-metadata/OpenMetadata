@@ -59,7 +59,6 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
@@ -81,7 +80,6 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private AirflowRESTClient airflowRESTClient;
-  private OpenMetadataServerConfig serverConfig;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -96,11 +94,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public void initialize(CatalogApplicationConfig config) {
     this.airflowRESTClient = new AirflowRESTClient(config);
-    this.serverConfig =
-        new OpenMetadataServerConfig()
-            .withHostPort(config.getAirflowConfiguration().getApiEndpoint())
-            .withAuthProvider(
-                OpenMetadataServerConfig.AuthProvider.valueOf(config.getAirflowConfiguration().getAuthProvider()));
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -413,7 +406,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
-        .withOpenMetadataServerConnection(serverConfig)
+        .withOpenMetadataServerConnection(airflowRESTClient.buildOpenMetadataServerConfig())
         .withSource(source)
         .withOwner(create.getOwner())
         .withService(create.getService())
