@@ -331,3 +331,6 @@ class SampleEntitySource(Source[Entity]):
 
     def get_status(self):
         return self.status
+
+    def test_connection(self) -> None:
+        pass

@@ -181,3 +181,6 @@ class KafkaSource(Source[CreateTopicRequest]):
 
     def close(self):
         pass
+
+    def test_connection(self) -> None:
+        pass
