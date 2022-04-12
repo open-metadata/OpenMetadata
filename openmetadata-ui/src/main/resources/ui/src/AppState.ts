@@ -30,6 +30,7 @@ class AppState {
     client_id: '',
     signingIn: false,
   };
+  nonSecureUserDetails: User = {} as User;
   userDetails: User = {} as User;
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
@@ -61,6 +62,7 @@ class AppState {
   }
   updateUsers(data: Array<User>) {
     this.users = data;
+    this.nonSecureUserDetails = data[0];
   }
   updateUserTeam(data: Array<UserTeams>) {
     this.userTeams = data;

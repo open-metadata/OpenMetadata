@@ -41,6 +41,8 @@ const jsonData = {
     'delete-team-error': 'Error while deleting team!',
     'delete-test-error': 'Error while deleting test!',
     'delete-user-error': 'Error while deleting user!',
+    'delete-tag-category-error': 'Error while deleting tag category!',
+    'delete-tag-error': 'Error while deleting tag!',
 
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
