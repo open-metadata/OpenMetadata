@@ -134,8 +134,10 @@ const Users = ({ userData }: Props) => {
           {' '}
           {data?.map((dataset, index) => {
             const Dataset = {
-              description: dataset.name || '',
-              name: dataset.type,
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName as string,
+              id: dataset.id,
             };
 
             return (

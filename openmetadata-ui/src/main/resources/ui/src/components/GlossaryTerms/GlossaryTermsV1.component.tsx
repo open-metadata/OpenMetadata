@@ -349,9 +349,10 @@ const GlossaryTermsV1 = ({
             isActionVisible
             isIconVisible
             item={{
-              name: term.name || '',
-              description: term.displayName || '',
+              fqn: term.fullyQualifiedName || '',
+              displayName: term.displayName || term.name || '',
               id: term.id,
+              type: term.type,
             }}
             key={term.name}
             onRemove={handleRemoveReviewer}

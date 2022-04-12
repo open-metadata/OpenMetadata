@@ -60,9 +60,10 @@ const AddUsersModal = ({
       })
       .map((user, index) => {
         const User = {
-          description: user.displayName || user.description || '',
-          name: user.name || '',
+          displayName: user.displayName || user.name || '',
+          fqn: user.fullyQualifiedName || '',
           id: user.id,
+          type: user.type,
         };
 
         return (

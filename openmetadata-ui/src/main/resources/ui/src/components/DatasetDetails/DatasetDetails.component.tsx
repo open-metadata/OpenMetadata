@@ -27,7 +27,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -176,7 +176,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );

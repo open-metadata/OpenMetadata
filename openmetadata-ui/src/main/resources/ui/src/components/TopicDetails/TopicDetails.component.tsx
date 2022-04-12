@@ -19,7 +19,7 @@ import { getTeamDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -101,7 +101,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );

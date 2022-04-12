@@ -31,7 +31,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
 type Props = {
-  item: { description: string; name: string; id?: string };
+  item: { fqn: string; type: string; displayName: string; id?: string };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
@@ -144,9 +144,9 @@ const UserCard = ({
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
+          <Avatar name={item.displayName} />
         ) : (
-          <>{getDatasetIcon(item.name)}</>
+          <>{getDatasetIcon(item.type)}</>
         )}
 
         <div
@@ -155,7 +155,7 @@ const UserCard = ({
           })}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
+            <>{getDatasetTitle(item.type, item.fqn)}</>
           ) : (
             <>
               <p
@@ -163,16 +163,16 @@ const UserCard = ({
                   'tw-font-normal',
                   isActionVisible ? 'tw-truncate tw-w-32' : null
                 )}
-                title={item.description}>
-                {item.description}
+                title={item.displayName}>
+                {item.displayName}
               </p>
-              {item.name && (
+              {item.type && (
                 <p
                   className={classNames(
                     isActionVisible ? 'tw-truncate tw-w-32' : null
                   )}
-                  title={isIconVisible ? item.name : capitalize(item.name)}>
-                  {isIconVisible ? item.name : capitalize(item.name)}
+                  title={isIconVisible ? item.type : capitalize(item.type)}>
+                  {isIconVisible ? item.type : capitalize(item.type)}
                 </p>
               )}
             </>

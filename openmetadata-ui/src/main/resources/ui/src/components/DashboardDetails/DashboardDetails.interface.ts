@@ -52,7 +52,7 @@ export interface DashboardDetailsProps {
   owner: TableDetail['owner'];
   description: string;
   tier: TagLabel;
-  followers: Array<User>;
+  followers: Array<EntityReference>;
   dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: EntityThread[];

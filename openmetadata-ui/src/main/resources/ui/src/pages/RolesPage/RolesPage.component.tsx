@@ -657,9 +657,10 @@ const RolesPage = () => {
           <UserCard
             isIconVisible
             item={{
-              description: (user.displayName ?? user.name) as string,
-              name: user.name as string,
+              displayName: (user.displayName ?? user.name) as string,
+              fqn: user.fullyQualifiedName as string,
               id: user.id,
+              type: user.type,
             }}
             key={user.id}
           />
@@ -709,9 +710,10 @@ const RolesPage = () => {
           data-testid="teams-card">
           {teams.map((team, i) => {
             const teamData = {
-              description: team.displayName || team.name || '',
-              name: team.name as string,
+              displayName: team.displayName || team.name || '',
+              fqn: team.name as string,
               id: team.id,
+              type: team.type,
             };
 
             return <UserCard isIconVisible item={teamData} key={i} />;

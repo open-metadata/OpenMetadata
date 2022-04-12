@@ -12,12 +12,13 @@
  */
 
 import React, { useState } from 'react';
+import { EntityReference } from '../../../generated/type/entityReference';
 import UserCard from '../../../pages/teams/UserCard';
 import Searchbar from '../searchbar/Searchbar';
 
 type Props = {
   header: string | React.ReactElement;
-  list: Array<{ displayName: string; name: string; id: string }>;
+  list: EntityReference[];
   onCancel: () => void;
 };
 
@@ -29,14 +30,15 @@ const FollowersModal = ({ header, list, onCancel }: Props) => {
       .filter((user) => {
         return (
           user.displayName?.includes(searchText) ||
-          user.name.includes(searchText)
+          user.name?.includes(searchText)
         );
       })
       .map((user, index) => {
         const User = {
-          description: user.displayName,
-          name: user.name,
+          displayName: user.displayName || user.name || '',
+          fqn: user.fullyQualifiedName || '',
           id: user.id,
+          type: user.type,
         };
 
         return <UserCard isIconVisible item={User} key={index} />;

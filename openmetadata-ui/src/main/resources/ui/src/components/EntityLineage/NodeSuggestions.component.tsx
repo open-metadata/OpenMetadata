@@ -105,10 +105,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   setIsOpen(false);
                   onSelectHandler?.({
                     description: entity.description,
-                    displayName: entity.name,
+                    displayName: entity.displayName,
                     id: entity.id,
                     type: entity.entityType as string,
-                    name: entity.fullyQualifiedName,
+                    name: entity.name,
+                    fullyQualifiedName: entity.fullyQualifiedName,
                   });
                 }}>
                 <img

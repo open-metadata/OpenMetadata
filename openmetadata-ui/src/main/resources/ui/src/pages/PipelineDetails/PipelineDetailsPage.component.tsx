@@ -57,13 +57,9 @@ import {
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  EntityReference,
-  Pipeline,
-  Task,
-} from '../../generated/entity/data/pipeline';
-import { User } from '../../generated/entity/teams/user';
+import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -95,7 +91,7 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
@@ -467,10 +463,16 @@ const PipelineDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.name, node.type)
+    getLineageByFQN(node.fullyQualifiedName, node.type)
       .then((res: AxiosResponse) => {
-        setLeafNode(res.data, pos);
-        setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        if (res.data) {
+          setLeafNode(res.data, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
         setTimeout(() => {
           setNodeLoading((prev) => ({ ...prev, state: false }));
         }, 500);

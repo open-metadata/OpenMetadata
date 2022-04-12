@@ -48,7 +48,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -76,7 +76,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [topicId, setTopicId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<TagLabel>();
   const [schemaType, setSchemaType] = useState<string>('');

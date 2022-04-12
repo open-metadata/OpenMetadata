@@ -464,8 +464,9 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {sortedUser.map((user, index) => {
             const User = {
-              description: user.displayName || user.name || '',
-              name: user.name || '',
+              displayName: user.displayName || user.name || '',
+              fqn: user.name || '',
+              type: user.type,
               id: user.id,
             };
 
@@ -515,8 +516,10 @@ const TeamsPage = () => {
           {' '}
           {currentTeam?.owns?.map((dataset, index) => {
             const Dataset = {
-              description: dataset.name || '',
-              name: dataset.type,
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName as string,
+              id: dataset.id,
             };
 
             return (
@@ -547,8 +550,9 @@ const TeamsPage = () => {
         data-testid="teams-card">
         {currentTeam?.defaultRoles?.map((role, i) => {
           const roleData = {
-            description: role.displayName || role.name || '',
-            name: role.name as string,
+            displayName: role.displayName || role.name || '',
+            fqn: role.fullyQualifiedName as string,
+            type: role.type,
             id: role.id,
           };
 
