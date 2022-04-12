@@ -32,7 +32,8 @@
         "SingleStore",
         "SQLite",
         "DeltaLake",
-        "Salesforce"
+        "Salesforce",
+        "SampleData"
       ],
       "javaEnums": [
         {
@@ -106,6 +107,9 @@
         },
         {
           "name": "Salesforce"
+        },
+        {
+          "name": "SampleData"
         }
       ]
     },

@@ -10,16 +10,16 @@
 #  limitations under the License.
 
 """
-Clickhouse unit test
+Vertica unit test
 """
-
 import json
 from unittest import TestCase
 from unittest.mock import patch
 
 from sqlalchemy.types import (
-    BIGINT,
     CHAR,
+    DATE,
+    FLOAT,
     INTEGER,
     JSON,
     SMALLINT,
@@ -34,18 +34,18 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
-    "source": {
-      "type": "clickhouse",
-      "serviceName": "local_clickhouse",
-      "serviceConnection": {
-        "config": {
-          "type": "ClickHouse",
-          "username":"default",
-          "password":"",
-          "hostPort": "localhost:8123",
-          "database": "default" 
-        }
-      },
+  "source": {
+    "type": "vertica",
+    "serviceName": "local_vertica",
+    "serviceConnection": {
+      "config": {
+        "type": "Vertica",
+        "username": "openmetadata_user",
+        "password": "",
+        "hostPort": "localhost:5433",
+        "database": "custom_database_name"
+      }
+    },
       "sourceConfig": {
         "config": {
         "enableDataProfiler": false,
@@ -55,116 +55,119 @@ CONFIG = """
         }
       }
     },
-    "sink": {
-      "type": "file",
-      "config": {
-          "filename": "/var/tmp/datasets.json"
-      }
-    },
-    "workflowConfig": {
-      "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "no-auth"
-      }
+  "sink": {
+    "type": "file",
+    "config": {
+        "filename": "/var/tmp/datasets.json"
+    }
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
+}
+
 """
 
+
 MOCK_GET_TABLE_NAMES = [
-    "accounts",
-    "binary_log_transaction_compression_stats",
-    "test_table",
+    "airflow_pipeline_entity",
+    "bot_entity",
+    "change_event",
+    "chart_entity",
+    "dashboard_entity",
 ]
 
 GET_TABLE_DESCRIPTIONS = {"text": "Test Description"}
-MOCK_GET_SCHEMA_NAMES = ["information_schema", "openmetadata_db"]
+
+MOCK_GET_SCHEMA_NAMES = ["test_openmetadata_db"]
 
 MOCK_UNIQUE_CONSTRAINTS = [
-    {
-        "name": "OBJECT",
-        "column_names": ["OBJECT_TYPE", "OBJECT_SCHEMA", "OBJECT_NAME"],
-        "duplicates_index": "OBJECT",
-    }
+    {"name": "unique_name", "column_names": ["name"], "duplicates_index": "unique_name"}
 ]
 
-
-MOCK_PK_CONSTRAINT = {
-    "constrained_columns": ["TRANSACTION_COUNTER"],
-    "name": "NOT_NULL",
-}
+MOCK_PK_CONSTRAINT = {"constrained_columns": ["id"], "name": "NOT_NULL"}
 
 MOCK_GET_COLUMN = [
     {
-        "name": "OBJECT_TYPE",
-        "type": VARCHAR(length=64),
-        "default": None,
-        "comment": None,
-        "nullable": True,
-    },
-    {
-        "name": "MAXLEN",
-        "type": INTEGER,
-        "default": None,
-        "comment": None,
-        "nullable": True,
-        "autoincrement": False,
-    },
-    {
-        "name": "TRANSACTION_COUNTER",
-        "type": BIGINT,
-        "default": None,
-        "comment": "Number of transactions written to the log",
-        "nullable": False,
-        "autoincrement": False,
-    },
-    {
-        "name": "COMPRESSION_PERCENTAGE",
+        "name": "deleted",
         "type": SMALLINT(),
         "default": None,
-        "comment": "The compression ratio as a percentage.",
-        "nullable": False,
+        "comment": None,
+        "nullable": True,
         "autoincrement": False,
+        "computed": {
+            "sqltext": "(json_extract(`json`,_utf8mb4'$.deleted'))",
+            "persisted": False,
+        },
     },
     {
-        "name": "FIRST_TRANSACTION_ID",
-        "type": TEXT(),
+        "name": "json",
+        "type": JSON(),
         "default": None,
-        "comment": "The first transaction written.",
-        "nullable": True,
-    },
-    {
-        "name": "FIRST_TRANSACTION_TIMESTAMP",
-        "type": TIMESTAMP(),
-        "default": None,
-        "comment": "When the first transaction was written.",
-        "nullable": True,
-    },
-    {
-        "name": "LAST_TRANSACTION_ID",
-        "type": JSON,
-        "default": None,
-        "comment": "The last transaction written.",
-        "nullable": True,
-    },
-    {
-        "name": "LAST_TRANSACTION_COMPRESSED_BYTES",
-        "type": BIGINT,
-        "default": None,
-        "comment": "Last transaction written compressed bytes.",
-        "nullable": False,
-        "autoincrement": False,
-    },
-    {
-        "name": "Db",
-        "type": CHAR(collation="utf8_bin", length=64),
-        "default": "''",
         "comment": None,
         "nullable": False,
+    },
+    {
+        "name": "date",
+        "type": DATE(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "weekday_indicator",
+        "type": CHAR(length=7),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "ts",
+        "type": TIMESTAMP(),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "symbol",
+        "type": VARCHAR(length=8),
+        "nullable": True,
+        "default": "",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "bid",
+        "type": FLOAT(),
+        "nullable": True,
+        "default": "1.00",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
+    },
+    {
+        "name": "test_col",
+        "type": INTEGER(),
+        "nullable": True,
+        "default": "20",
+        "autoincrement": False,
+        "comment": None,
+        "primary_key": False,
     },
 ]
 
-MOCK_GET_VIEW_NAMES = ["ADMINISTRABLE_ROLE_AUTHORIZATIONS", "APPLICABLE_ROLES"]
 
+MOCK_GET_VIEW_NAMES = ["test_view"]
 MOCK_GET_VIEW_DEFINITION = """
 CREATE VIEW test_view AS
           SELECT * FROM accounts
@@ -180,7 +183,7 @@ def execute_workflow():
     workflow.stop()
 
 
-class ClickhouseIngestionTest(TestCase):
+class VerticaIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_definition")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_names")
     @patch("sqlalchemy.engine.reflection.Inspector.get_table_comment")
@@ -190,7 +193,7 @@ class ClickhouseIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_pk_constraint")
     @patch("sqlalchemy.engine.reflection.Inspector.get_columns")
     @patch("sqlalchemy.engine.base.Engine.connect")
-    def test_clickhouse_ingestion(
+    def test_vertica_ingestion(
         self,
         mock_connect,
         get_columns,
