@@ -55,6 +55,7 @@ import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -464,7 +465,7 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {sortedUser.map((user, index) => {
             const User = {
-              displayName: user.displayName || user.name || '',
+              displayName: getEntityName(user),
               fqn: user.fullyQualifiedName || '',
               type: user.type,
               id: user.id,

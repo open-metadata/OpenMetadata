@@ -25,6 +25,7 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityName,
   getEntityPlaceHolder,
   getUserTeams,
 } from '../../utils/CommonUtils';
@@ -198,9 +199,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
+          : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
-        owner?.displayName || owner?.name || '',
+        getEntityName(owner),
         owner?.deleted
       ),
       isLink: owner?.type === 'team',

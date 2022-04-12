@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { EntityReference } from '../../../generated/type/entityReference';
 import UserCard from '../../../pages/teams/UserCard';
+import { getEntityName } from '../../../utils/CommonUtils';
 import Searchbar from '../searchbar/Searchbar';
 
 type Props = {
@@ -35,7 +36,7 @@ const FollowersModal = ({ header, list, onCancel }: Props) => {
       })
       .map((user, index) => {
         const User = {
-          displayName: user.displayName || user.name || '',
+          displayName: getEntityName(user),
           fqn: user.fullyQualifiedName || '',
           id: user.id,
           type: user.type,

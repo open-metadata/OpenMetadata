@@ -581,3 +581,12 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
     return value;
   }
 };
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity: EntityReference) => {
+  return entity.displayName || entity.name || '';
+};

@@ -53,6 +53,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
+  getEntityName,
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -657,7 +658,7 @@ const RolesPage = () => {
           <UserCard
             isIconVisible
             item={{
-              displayName: user.displayName || user.name || '',
+              displayName: getEntityName(user),
               fqn: user.fullyQualifiedName || '',
               id: user.id,
               type: user.type,

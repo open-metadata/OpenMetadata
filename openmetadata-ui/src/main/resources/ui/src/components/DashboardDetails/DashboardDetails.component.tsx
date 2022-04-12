@@ -29,6 +29,7 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   getUserTeams,
@@ -200,9 +201,9 @@ const DashboardDetails = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.displayName || owner?.name || '',
+          : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
-        owner?.displayName || owner?.name || '',
+        getEntityName(owner),
         owner?.deleted
       ),
       isLink: owner?.type === 'team',
