@@ -270,3 +270,6 @@ class AmundsenSource(Source[Entity]):
                 CreateDatabaseServiceRequest(**service)
             )
             return created_service
+
+    def test_connection(self) -> None:
+        pass

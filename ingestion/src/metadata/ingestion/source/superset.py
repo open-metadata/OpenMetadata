@@ -366,3 +366,6 @@ class SupersetSource(Source[Entity]):
 
     def close(self):
         pass
+
+    def test_connection(self) -> None:
+        pass
