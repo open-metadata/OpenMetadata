@@ -44,7 +44,7 @@ def start_docker(docker, start_time, file_path, skip_sample_data):
         while True:
             try:
                 resp = ometa_client.get_by_name(
-                    entity=Table, fqdn="bigquery_gcp.shopify.dim_customer"
+                    entity=Table, fqdn="sample_data.ecommerce_db.shopify.dim_customer"
                 )
                 if not resp:
                     raise Exception("Error")

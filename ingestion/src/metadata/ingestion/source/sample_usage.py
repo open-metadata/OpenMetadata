@@ -14,18 +14,21 @@ import json
 from datetime import datetime
 from typing import Iterable
 
+from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
+    SampleDataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.sample_data import (
-    SampleDataSourceConfig,
-    SampleDataSourceStatus,
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
 )
+from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.source.sample_data import SampleDataSourceStatus
 from metadata.utils.helpers import get_database_service_or_create
 
 
@@ -34,16 +37,21 @@ class SampleUsageSource(Source[TableQuery]):
     service_type = DatabaseServiceType.BigQuery.value
 
     def __init__(
-        self, config: SampleDataSourceConfig, metadata_config: OpenMetadataServerConfig
+        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
+        self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.service_json = json.load(
-            open(config.sample_data_folder + "/datasets/service.json", "r")
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            )
         )
-        self.query_log_csv = config.sample_data_folder + "/datasets/query_log"
+        self.query_log_csv = (
+            self.service_connection.sampleDataFolder + "/datasets/query_log"
+        )
         with open(self.query_log_csv, "r") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
         self.service = get_database_service_or_create(
@@ -52,7 +60,13 @@ class SampleUsageSource(Source[TableQuery]):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = SampleDataSourceConfig.parse_obj(config_dict)
+        """Create class instance"""
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: SampleDataConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SampleDataConnection):
+            raise InvalidSourceException(
+                f"Expected MssqlConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):

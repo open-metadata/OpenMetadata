@@ -35,11 +35,20 @@ from metadata.ingestion.ometa.client import APIError
 
 logger = logging.getLogger(__name__)
 
+ACCESS_TOKEN = "access_token"
+EXPIRY = "expires_in"
+
+
+class AuthenticationException(Exception):
+    """
+    Error trying to get the token from the provider
+    """
+
 
 @dataclass(init=False)  # type: ignore[misc]
 class AuthenticationProvider(metaclass=ABCMeta):
     """
-    Interface definition for an Authentification provider
+    Interface definition for an Authentication provider
     """
 
     @classmethod
@@ -177,7 +186,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "aud": self.security_config.orgURL,
                 "jti": generated_jwt_id,
             }
-            token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
+            jwt_token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
             config = {
                 "client": {
                     "orgUrl": self.security_config.orgURL,
@@ -185,7 +194,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                     "rateLimit": {},
                     "privateKey": self.security_config.privateKey,
                     "clientId": self.security_config.clientId,
-                    "token": token,
+                    "token": jwt_token,
                     "scopes": self.security_config.scopes,
                 }
             }
@@ -196,7 +205,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "grant_type": "client_credentials",
                 "scope": " ".join(config["client"]["scopes"]),
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-                "client_assertion": token,
+                "client_assertion": jwt_token,
             }
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
@@ -216,8 +225,16 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             if err:
                 raise APIError(f"{err}")
             response_dict = json.loads(res_json)
-            self.generated_auth_token = response_dict.get("access_token")
-            self.expiry = response_dict.get("expires_in")
+
+            token = response_dict.get(ACCESS_TOKEN)
+            if not token:
+                raise AuthenticationException(
+                    f"Error getting access token: {response_dict}"
+                )
+
+            self.generated_auth_token = token
+            self.expiry = response_dict.get(EXPIRY)
+
         except Exception as err:
             logger.debug(traceback.print_exc())
             logger.error(err)
@@ -261,10 +278,14 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
             "POST", f"/{self.security_config.domain}/oauth/token", payload, headers
         )
         res = conn.getresponse()
-        data = res.read()
-        token = json.loads(data.decode("utf-8"))
-        self.generated_auth_token = token["access_token"]
-        self.expiry = token["expires_in"]
+        data = json.loads(res.read().decode("utf-8"))
+
+        token = data.get(ACCESS_TOKEN)
+        if not token:
+            raise AuthenticationException(f"Error getting access token: {data}")
+
+        self.generated_auth_token = token
+        self.expiry = data[EXPIRY]
 
     def get_access_token(self):
         self.auth_token()
@@ -297,16 +318,14 @@ class AzureAuthenticationProvider(AuthenticationProvider):
             client_credential=self.security_config.clientSecret,
             authority=self.security_config.authority,
         )
-        token = app.acquire_token_for_client(scopes=self.security_config.scopes)
-        try:
-            self.generated_auth_token = token["access_token"]
-            self.expiry = token["expires_in"]
+        data = app.acquire_token_for_client(scopes=self.security_config.scopes)
 
-        except KeyError as err:
-            logger.error(f"Invalid Credentials - {err}")
-            logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
-            sys.exit(1)
+        token = data.get(ACCESS_TOKEN)
+        if not token:
+            raise AuthenticationException(f"Error getting access token: {data}")
+
+        self.generated_auth_token = token
+        self.expiry = data.get(EXPIRY)
 
     def get_access_token(self):
         self.auth_token()
@@ -349,8 +368,15 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         )
         if response.ok:
             response_json = response.json()
-            self.generated_auth_token = response_json["access_token"]
-            self.expiry = response_json["expires_in"]
+
+            token = response_json.get(ACCESS_TOKEN)
+            if not token:
+                raise AuthenticationException(
+                    f"Error getting access token: {response_json}"
+                )
+
+            self.generated_auth_token = token
+            self.expiry = response_json.get(EXPIRY)
         else:
             raise APIError(
                 error={"message": response.text}, http_error=response.status_code

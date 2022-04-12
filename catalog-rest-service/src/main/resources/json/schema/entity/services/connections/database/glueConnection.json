@@ -58,19 +58,13 @@
       "default": "Glue"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

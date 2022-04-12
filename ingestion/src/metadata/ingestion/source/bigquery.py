@@ -32,8 +32,11 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.helpers import get_start_and_end
 
@@ -76,29 +79,19 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigQueryConfig(BigQueryConnection, SQLConnectionConfig):
-    duration: int = 1
-    partition_query: str = 'select * from {}.{} WHERE {} = "{}" LIMIT 1000'
-    partition_field: Optional[str] = "_PARTITIONTIME"
-
-    def get_connection_url(self):
-        if self.projectID:
-            return f"{self.scheme}://{self.projectID}"
-        return f"{self.scheme}://"
-
-
-class BigquerySource(SQLSource, BigQueryConfig):
+class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
+        self.connection_config = self.config.serviceConnection.__root__.config
         self.temp_credentials = None
 
     #  and "policy_tags" in column and column["policy_tags"]
     def prepare(self):
         try:
-            if self.enablePolicyTagImport:
+            if self.connection_config.enablePolicyTagImport:
                 self.metadata.create_tag_category(
                     CreateTagCategoryRequest(
-                        name=self.tagCategoryName,
+                        name=self.connection_config.tagCategoryName,
                         description="",
                         categoryType="Classification",
                     )
@@ -108,18 +101,25 @@ class BigquerySource(SQLSource, BigQueryConfig):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        options = connection.connectionOptions.dict()
+        if not isinstance(connection, BigQueryConnection):
+            raise InvalidSourceException(
+                f"Expected BigQueryConnection, but got {connection}"
+            )
         if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            if config.options.get("credentials_path"):
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+            if options.get("credentials_path"):
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options[
                     "credentials_path"
                 ]
-            elif config.options.get("credentials"):
+                del connection.connectionOptions.credentials_path
+            elif options.get("credentials"):
                 cls.temp_credentials = cls.create_credential_temp_file(
-                    credentials=config.options.get("credentials")
+                    credentials=options["credentials"]
                 )
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
-                del config.options["credentials"]
+                del connection.connectionOptions.credentials
             else:
                 logger.warning(
                     "Please refer to the BigQuery connector documentation, especially the credentials part "
@@ -150,12 +150,15 @@ class BigquerySource(SQLSource, BigQueryConfig):
             try:
                 logger.info("Using Query for Partitioned Tables")
                 partition_details = self.inspector.get_indexes(table, schema)
-                start, end = get_start_and_end(self.config.duration)
+                start, end = get_start_and_end(
+                    self.connection_config.partitionQueryDuration
+                )
 
-                query = self.partition_query.format(
+                query = self.connection_config.partitionQuery.format(
                     schema,
                     table,
-                    partition_details[0]["column_names"][0] or self.partition_field,
+                    partition_details[0]["column_names"][0]
+                    or self.connection_config.partitionField,
                     start.strftime("%Y-%m-%d"),
                 )
                 logger.info(query)

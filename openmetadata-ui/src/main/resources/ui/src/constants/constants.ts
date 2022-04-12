@@ -78,7 +78,14 @@ export const versionTypes = [
 
 export const DESCRIPTIONLENGTH = 100;
 
-export const visibleFilters = ['service', 'tier', 'tags', 'database'];
+export const visibleFilters = [
+  'service',
+  'tier',
+  'tags',
+  'database',
+  'databaseschema',
+  'servicename',
+];
 
 export const tableSortingFields = [
   {
@@ -118,6 +125,14 @@ export const facetFilterPlaceholder = [
   {
     name: 'Database',
     value: 'Database',
+  },
+  {
+    name: 'DatabaseSchema',
+    value: 'Schema',
+  },
+  {
+    name: 'ServiceName',
+    value: 'Service Name',
   },
 ];
 

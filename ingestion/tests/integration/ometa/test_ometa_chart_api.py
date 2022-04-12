@@ -57,9 +57,7 @@ class OMetaChartTest(TestCase):
     service = CreateDashboardServiceRequest(
         name="test-service-chart",
         serviceType=DashboardServiceType.Superset,
-        connection=DashboardConnection(
-            config=LookerConnection(url="https://localhost:1000")
-        ),
+        connection=DashboardConnection(config=LookerConnection()),
     )
     service_type = "dashboardService"
 

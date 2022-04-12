@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { lowerCase } from 'lodash';
+import { toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
@@ -25,6 +25,24 @@ export const ZERO_SIZE = 0;
 export const emptyValue = '';
 
 export const UPDATABLE_AGGREGATION = ['Service', 'Tier', 'Tags'];
+
+export const FACET_FILTER_SORTING_ORDER = [
+  'Service',
+  'ServiceName',
+  'Tier',
+  'Tags',
+  'Database',
+  'DatabaseSchema',
+];
+
+export const INITIAL_FILTERS = {
+  tags: [],
+  service: [],
+  tier: [],
+  database: [],
+  databaseschema: [],
+  servicename: [],
+};
 
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];
@@ -71,7 +89,7 @@ export const getAggrWithDefaultValue = (
     (aggregation) => aggregation.title === 'Tier'
   );
 
-  const allowedAgg = visibleAgg.map((item) => lowerCase(item));
+  const allowedAgg = visibleAgg.map((item) => toLower(item));
 
   if (aggregation) {
     const index = aggregations.indexOf(aggregation);
@@ -80,17 +98,29 @@ export const getAggrWithDefaultValue = (
 
   const visibleAggregations = !allowedAgg.length
     ? aggregations
-    : aggregations.filter((item) => allowedAgg.includes(lowerCase(item.title)));
+    : aggregations.filter((item) => allowedAgg.includes(toLower(item.title)));
 
-  return allowedAgg
+  const sortedAgg = allowedAgg
     .map((agg) => {
       const aggregation = visibleAggregations.find(
-        (a) => lowerCase(a.title) === agg
+        (a) => toLower(a.title) === agg
       );
 
       return aggregation;
     })
-    .filter(Boolean) as Array<AggregationType>;
+    .filter(Boolean)
+    .sort((aggA, aggB) => {
+      if (
+        FACET_FILTER_SORTING_ORDER.indexOf(aggA?.title as string) >
+        FACET_FILTER_SORTING_ORDER.indexOf(aggB?.title as string)
+      ) {
+        return 1;
+      } else {
+        return -1;
+      }
+    });
+
+  return sortedAgg as Array<AggregationType>;
 };
 
 export const getCurrentIndex = (tab: string) => {

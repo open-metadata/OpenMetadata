@@ -62,9 +62,9 @@ class SnowflakeSource(SQLSource):
                     format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption(),
                 )
-            config.serviceConnection.__root__.config.connectionArguments.private_key = (
-                pkb
-            )
+                config.serviceConnection.__root__.config.connectionArguments.private_key = (
+                    pkb
+                )
 
         super().__init__(config, metadata_config)
 
