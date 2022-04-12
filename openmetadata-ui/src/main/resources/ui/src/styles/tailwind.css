@@ -365,7 +365,7 @@
   /* react tostify */
 
   .Toastify__toast-container {
-    @apply tw-font-sans tw-break-all;
+    @apply tw-font-sans tw-break-words;
   }
 
   .Toastify__toast-body {
