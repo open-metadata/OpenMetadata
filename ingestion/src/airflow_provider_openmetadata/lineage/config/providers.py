@@ -20,6 +20,7 @@ from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from metadata.generated.schema.metadataIngestion.workflow import (
     Auth0SSOConfig,
     AuthProvider,
+    AzureSSOConfig,
     GoogleSSOConfig,
     OktaSSOConfig,
 )
@@ -71,4 +72,17 @@ def load_auth0_auth() -> Auth0SSOConfig:
         clientId=conf.get(LINEAGE, "client_id"),
         secretKey=conf.get(LINEAGE, "secret_key"),
         domain=conf.get(LINEAGE, "domain"),
+    )
+
+
+@provider_config_registry.add(AuthProvider.azure.value)
+def load_azure_auth() -> AzureSSOConfig:
+    """
+    Load config for Azure Auth
+    """
+    return AzureSSOConfig(
+        clientSecret=conf.get(LINEAGE, "client_secret"),
+        authority=conf.get(LINEAGE, "authority"),
+        clientId=conf.get(LINEAGE, "client_id"),
+        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
     )
