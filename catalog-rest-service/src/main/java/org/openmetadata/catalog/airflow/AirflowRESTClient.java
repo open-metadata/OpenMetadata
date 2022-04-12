@@ -28,7 +28,6 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -45,7 +44,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class AirflowRESTClient {
-  private final URL url;
+  private final URL airflowURL;
+  private final URL openMetadataURL;
   private final String username;
   private final String password;
   private final HttpClient client;
@@ -56,10 +56,10 @@ public class AirflowRESTClient {
   private static final String CONTENT_HEADER = "Content-Type";
   private static final String CONTENT_TYPE = "application/json";
 
-  public AirflowRESTClient(CatalogApplicationConfig config) {
-    AirflowConfiguration airflowConfig = config.getAirflowConfiguration();
+  public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     try {
-      this.url = new URL(airflowConfig.getApiEndpoint());
+      this.airflowURL = new URL(airflowConfig.getApiEndpoint());
+      this.openMetadataURL = new URL(airflowConfig.getMetadataApiEndpoint());
     } catch (MalformedURLException e) {
       throw new AirflowException(airflowConfig.getApiEndpoint() + " Malformed.");
     }
@@ -76,7 +76,7 @@ public class AirflowRESTClient {
 
   private String authenticate() throws InterruptedException, IOException {
     String authEndpoint = "%s/api/v1/security/login";
-    String authUrl = String.format(authEndpoint, url);
+    String authUrl = String.format(authEndpoint, airflowURL);
     AirflowAuthRequest authRequest =
         AirflowAuthRequest.builder().username(this.username).password(this.password).build();
     String authPayload = JsonUtils.pojoToJson(authRequest);
@@ -99,7 +99,7 @@ public class AirflowRESTClient {
       String authToken = String.format(AUTH_TOKEN, token);
       String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
       String deployEndPoint = "%s/rest_api/api?api=deploy_dag";
-      String deployUrl = String.format(deployEndPoint, url);
+      String deployUrl = String.format(deployEndPoint, airflowURL);
 
       HttpRequest request =
           HttpRequest.newBuilder(URI.create(deployUrl))
@@ -125,7 +125,7 @@ public class AirflowRESTClient {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
       String triggerEndPoint = "%s/rest_api/api?api=delete_delete&dag_id=%s";
-      String triggerUrl = String.format(triggerEndPoint, url, pipelineName);
+      String triggerUrl = String.format(triggerEndPoint, airflowURL, pipelineName);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
       HttpRequest request =
@@ -147,7 +147,7 @@ public class AirflowRESTClient {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
       String triggerEndPoint = "%s/rest_api/api?api=trigger_dag";
-      String triggerUrl = String.format(triggerEndPoint, url);
+      String triggerUrl = String.format(triggerEndPoint, airflowURL);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
       HttpRequest request =
@@ -218,17 +218,19 @@ public class AirflowRESTClient {
             new CustomOIDCSSOClientConfig()
                 .withClientId(authConfig.get("clientId"))
                 .withSecretKey(authConfig.get("secretKey"))
-                .withTokenEndpoint(authConfig.get("tokenEndPoint"));
+                .withTokenEndpoint(authConfig.get("tokenEndpoint"));
         openMetadataServerConnection.setSecurityConfig(customOIDCSSOClientConfig);
+        break;
+      case NO_AUTH:
         break;
       default:
         throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
     }
-    openMetadataServerConnection.setHostPort(url.toString());
+    openMetadataServerConnection.setHostPort(openMetadataURL.toString());
     return openMetadataServerConnection;
   }
 
-  private List<String> getSecurityScopes(String scopes) {
+  protected List<String> getSecurityScopes(String scopes) {
     if (scopes != null && !scopes.isEmpty()) {
       return Arrays.asList(scopes.split("\\s*,\\s*"));
     }

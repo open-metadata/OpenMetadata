@@ -93,7 +93,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public void initialize(CatalogApplicationConfig config) {
-    this.airflowRESTClient = new AirflowRESTClient(config);
+    this.airflowRESTClient = new AirflowRESTClient(config.getAirflowConfiguration());
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
