@@ -36,6 +36,7 @@ from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
 from openmetadata.operations.deploy import DagDeployer
 from openmetadata.operations.test_connection import test_source_connection
+from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
 
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -196,15 +197,9 @@ class REST_API(AppBuilderBaseView):
 
         try:
             run_id = request_json.get("run_id")
-            dag_run = trigger_dag(
-                dag_id=dag_id,
-                run_id=run_id,
-                conf=None,
-                execution_date=timezone.utcnow(),
-            )
-            return ApiResponse.success(
-                {"message": f"Workflow [{dag_id}] has been triggered {dag_run}"}
-            )
+            response = trigger(dag_id, run_id)
+
+            return response
 
         except Exception as exc:
             logging.info(f"Failed to trigger dag {dag_id}")
