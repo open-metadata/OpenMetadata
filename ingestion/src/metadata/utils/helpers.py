@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import tempfile
-import traceback
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
@@ -159,7 +158,6 @@ def get_dashboard_service_or_create(
         return service
     else:
         dashboard_config = {"config": config}
-        print(dashboard_config)
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
                 name=service_name,
@@ -226,18 +224,16 @@ def create_credential_temp_file(credentials: dict) -> str:
         return fp.name
 
 
-def store_gcs_credentials(config: SQLConnectionConfig) -> bool:
+def store_gcs_credentials(options) -> bool:
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        if config.gcs_options.get("credentials_path"):
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.gcs_options[
-                "credentials_path"
-            ]
-        elif config.gcs_options.get("credentials"):
+        if options.get("credentials_path"):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options["credentials_path"]
+        elif options.get("credentials"):
             temp_credentials = create_credential_temp_file(
-                credentials=config.gcs_options.get("credentials")
+                credentials=options.get("credentials")
             )
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_credentials
-            del config.gcs_options["credentials"]
+            del options["credentials"]
         else:
             logger.warning(
                 "Please refer to the Google Cloud Storage documentation, especially the credentials part"

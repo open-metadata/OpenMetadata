@@ -42,6 +42,14 @@
       "description": "Regex exclude tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
+    "dbtMethod": {
+      "description": "Method from which the DBT files will be fetched",
+      "type": "string"
+    },
+    "dbtOptions": {
+      "description": "Config options for the DBT files",
+      "type": "object"
+    },
     "dbtCatalogFilePath": {
       "description": "DBT catalog file to extract dbt models with their column schemas.",
       "type": "string"

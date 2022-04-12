@@ -66,12 +66,7 @@ from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
-from metadata.utils.helpers import get_database_service_or_create
-from metadata.utils.helpers import (
-    get_database_service_or_create,
-    ingest_lineage,
-    store_gcs_credentials,
-)
+from metadata.utils.helpers import get_database_service_or_create, store_gcs_credentials
 
 logger = ometa_logger()
 
@@ -108,45 +103,36 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     return description
 
 
-def _get_private_key_config(config: SQLConnectionConfig) -> SQLConnectionConfig:
-    new_config = copy.deepcopy(config)
-    if new_config.connect_args.get("private_key"):
-        new_config.connect_args["private_key"] = str(
-            new_config.connect_args["private_key"]
-        )
-        return new_config
-    return config
-
-
-def get_dbt_details(config: SQLConnectionConfig):
-    dbt_catalog = ""
-    dbt_manifest = ""
+def get_dbt_details(config):
+    dbt_catalog = "{}"
+    dbt_manifest = "{}"
     if config.dbtMethod == "s3":
-        from metadata.utils.aws_client import AWSClient
+        from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
 
-        aws_client = AWSClient(config).get_resource("s3")
+        aws_config = AWSClientConfigModel(
+            awsAccessKeyId=config.dbtOptions["awsAccessKeyId"],
+            awsSecretAccessKey=config.dbtOptions["awsSecretAccessKey"],
+            awsRegion=config.dbtOptions["awsRegion"],
+        )
+        aws_client = AWSClient(aws_config).get_resource("s3")
         buckets = aws_client.buckets.all()
         for bucket in buckets:
             for bucket_object in bucket.objects.all():
                 if "manifest_1.0" in bucket_object.key:
-                    dbt_manifest = json.loads(
-                        bucket_object.get()["Body"].read().decode()
-                    )
+                    dbt_manifest = bucket_object.get()["Body"].read().decode()
                 if "catalog_1.0" in bucket_object.key:
-                    dbt_catalog = json.loads(
-                        bucket_object.get()["Body"].read().decode()
-                    )
+                    dbt_catalog = bucket_object.get()["Body"].read().decode()
     elif config.dbtMethod == "gcs":
-        if store_gcs_credentials(config):
+        if store_gcs_credentials(config.dbtOptions):
             from google.cloud import storage
 
             client = storage.Client()
             for bucket in client.list_buckets():
                 for blob in client.list_blobs(bucket.name):
                     if "manifest_1.0" in blob.name:
-                        dbt_manifest = blob.download_as_string()
+                        dbt_manifest = blob.download_as_string().decode()
                     if "catalog_1.0" in blob.name:
-                        dbt_catalog = blob.download_as_string()
+                        dbt_catalog = blob.download_as_string().decode()
         else:
             exit()
     elif config.dbtMethod == "http":
@@ -154,16 +140,16 @@ def get_dbt_details(config: SQLConnectionConfig):
 
         catalog_file = urllib.request.urlopen(config.dbtCatalogFilePath)
         manifest_file = urllib.request.urlopen(config.dbtManifestFilePath)
-        dbt_catalog = catalog_file.read()
-        dbt_manifest = manifest_file.read()
+        dbt_catalog = catalog_file.read().decode()
+        dbt_manifest = manifest_file.read().decode()
     else:
         if config.dbtCatalogFilePath is not None:
             with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
-                dbt_catalog = json.load(catalog)
+                dbt_catalog = catalog.read()
         if config.dbtManifestFilePath is not None:
             with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
-                dbt_manifest = json.load(manifest)
-    return dbt_catalog, dbt_manifest
+                dbt_manifest = manifest.read()
+    return json.loads(dbt_catalog), json.loads(dbt_manifest)
 
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
@@ -207,7 +193,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.dbt_catalog, self.dbt_manifest = get_dbt_details(self.config)
+        self.dbt_catalog, self.dbt_manifest = get_dbt_details(
+            self.config.sourceConfig.config
+        )
         self.profile_date = datetime.now()
 
     def test_connection(self) -> None:
@@ -505,10 +493,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Get all the DBT information and feed it to the Table Entity
         """
-        if (
-            self.source_config.dbtManifestFilePath
-            and self.source_config.dbtCatalogFilePath
-        ):
+        if self.source_config.dbtMethod:
             logger.info("Parsing Data Models")
             manifest_entities = {
                 **self.dbt_manifest["nodes"],
@@ -561,7 +546,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_fqn = get_fqdn(
                         Table,
                         service_name=self.config.serviceName,
-                        dashboard_name=database,
                         table_name=table,
                     ).lower()
                     upstream_nodes.append(table_fqn)
