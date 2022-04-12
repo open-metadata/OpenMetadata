@@ -40,7 +40,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 logger = logging.getLogger(__name__)
 
