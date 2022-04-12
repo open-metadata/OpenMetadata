@@ -111,10 +111,10 @@ public class AirflowRESTClient {
       if (response.statusCode() == 200) {
         return response.body();
       }
-      throw IngestionPipelineDeploymentException.byMessage(
-          ingestionPipeline.getName(),
-          "Failed to deploy Ingestion Pipeline",
-          Response.Status.fromStatusCode(response.statusCode()));
+      throw new AirflowException(
+          String.format(
+              "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
+              ingestionPipeline.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
@@ -137,9 +137,8 @@ public class AirflowRESTClient {
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       return response.body();
     } catch (Exception e) {
-      LOG.error("Failed to delete Airflow Pipeline from Airflow DAGS");
+      throw new AirflowException(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
     }
-    return null;
   }
 
   public String runPipeline(String pipelineName) {
