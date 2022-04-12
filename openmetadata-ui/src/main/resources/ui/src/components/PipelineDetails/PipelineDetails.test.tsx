@@ -147,6 +147,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getHtmlForNonAdminAction: jest.fn(),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
 }));
 
 describe('Test PipelineDetails component', () => {
