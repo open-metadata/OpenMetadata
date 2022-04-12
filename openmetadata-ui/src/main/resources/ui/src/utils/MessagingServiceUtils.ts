@@ -12,6 +12,7 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   MessagingConnection,
   MessagingServiceType,
@@ -31,10 +32,7 @@ export const getBrokers = (config: MessagingConnection['config']) => {
 
 export const getMessagingConfig = (config: MessagingConnection['config']) => {
   let schema = {};
-  const uiSchema = {
-    supportedPipelineTypes: { 'ui:widget': 'hidden' },
-    type: { 'ui:widget': 'hidden' },
-  };
+  const uiSchema = { ...COMMON_UI_SCHEMA };
   if (config?.type === MessagingServiceType.Kafka) {
     schema = kafkaConnection;
   }

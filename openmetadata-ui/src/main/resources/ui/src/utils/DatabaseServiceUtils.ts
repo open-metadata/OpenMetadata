@@ -12,6 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   DatabaseConnection,
   DatabaseServiceType,
@@ -22,6 +23,7 @@ import bigQueryConnection from '../jsons/connectionSchemas/connections/database/
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
 import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
+import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
@@ -33,6 +35,8 @@ import oracleConnection from '../jsons/connectionSchemas/connections/database/or
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
+import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sampleDataConnection from '../jsons/connectionSchemas/connections/database/sampleDataConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
@@ -41,10 +45,7 @@ import verticaConnection from '../jsons/connectionSchemas/connections/database/v
 
 export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
   let schema = {};
-  const uiSchema = {
-    supportedPipelineTypes: { 'ui:widget': 'hidden' },
-    type: { 'ui:widget': 'hidden' },
-  };
+  const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (config?.type as unknown as DatabaseServiceType) {
     case DatabaseServiceType.Athena: {
       schema = athenaConnection;
@@ -73,6 +74,11 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
     }
     case DatabaseServiceType.Db2: {
       schema = db2Connection;
+
+      break;
+    }
+    case DatabaseServiceType.DeltaLake: {
+      schema = deltaLakeConnection;
 
       break;
     }
@@ -131,8 +137,11 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
 
       break;
     }
-    // To be added
-    // case DatabaseServiceType.: {schema = salesforceConnection;break;}
+    case DatabaseServiceType.Salesforce: {
+      schema = salesforceConnection;
+
+      break;
+    }
     case DatabaseServiceType.SingleStore: {
       schema = singleStoreConnection;
 
@@ -155,6 +164,11 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
     }
     case DatabaseServiceType.Vertica: {
       schema = verticaConnection;
+
+      break;
+    }
+    default: {
+      schema = sampleDataConnection;
 
       break;
     }

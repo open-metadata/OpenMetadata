@@ -12,6 +12,7 @@
  */
 
 import { cloneDeep, isUndefined } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   DashboardConnection,
   DashboardServiceType,
@@ -63,10 +64,7 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
 
 export const getDashboardConfig = (config?: DashboardConnection['config']) => {
   let schema = {};
-  const uiSchema = {
-    supportedPipelineTypes: { 'ui:widget': 'hidden' },
-    type: { 'ui:widget': 'hidden' },
-  };
+  const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (config?.type) {
     case DashboardServiceType.Looker: {
       schema = lookerConnection;

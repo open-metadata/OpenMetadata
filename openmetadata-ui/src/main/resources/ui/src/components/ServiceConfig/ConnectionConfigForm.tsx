@@ -13,6 +13,7 @@
  */
 
 import { ISubmitEvent } from '@rjsf/core';
+import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -42,6 +43,14 @@ interface Props {
   onSave: (data: ISubmitEvent<Record<string, any>>) => void;
 }
 
+type ConfigData =
+  | DatabaseService['connection']
+  | MessagingService['connection']
+  | DashboardService['connection']
+  | {
+      pipelineUrl: string;
+    };
+
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   serviceCategory,
@@ -50,28 +59,42 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 }: Props) => {
   /* eslint-disable-next-line no-prototype-builtins */
   const config = data.hasOwnProperty('connection')
-    ? (data as DatabaseService | MessagingService | DashboardService).connection
-        .config
-    : { pipelineUrl: (data as PipelineService).pipelineUrl };
+    ? ((data as DatabaseService | MessagingService | DashboardService)
+        .connection.config as ConfigData)
+    : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData);
   const getDatabaseFields = () => {
     let connSch = {
       schema: {},
       uiSchema: {},
     };
 
+    const validConfig = cloneDeep(config || {});
+
+    for (const [key, value] of Object.entries(validConfig)) {
+      if (isNil(value)) {
+        delete validConfig[key as keyof ConfigData];
+      }
+    }
+
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        connSch = getDatabaseConfig(config as DatabaseConnection['config']);
+        connSch = getDatabaseConfig(
+          validConfig as DatabaseConnection['config']
+        );
 
         break;
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = getMessagingConfig(config as MessagingConnection['config']);
+        connSch = getMessagingConfig(
+          validConfig as MessagingConnection['config']
+        );
 
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = getDashboardConfig(config as DashboardConnection['config']);
+        connSch = getDashboardConfig(
+          validConfig as DashboardConnection['config']
+        );
 
         break;
       }
@@ -84,7 +107,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     return (
       <FormBuilder
-        formData={config as Record<string, any>}
+        formData={validConfig as Record<string, any>}
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}

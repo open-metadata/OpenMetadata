@@ -33,15 +33,10 @@
       "description": "API key of the redash instance to access.",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": "true"
     }
   },
   "additionalProperties": false

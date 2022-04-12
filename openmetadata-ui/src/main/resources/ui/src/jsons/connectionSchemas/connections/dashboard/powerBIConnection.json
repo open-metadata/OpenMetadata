@@ -25,7 +25,8 @@
     },
     "clientSecret": {
       "description": "clientSecret for the PowerBI.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "credentials": {
       "description": "Credentials for the PowerBI.",
@@ -49,15 +50,10 @@
       },
       "default": null
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": "true"
     }
   },
   "additionalProperties": false

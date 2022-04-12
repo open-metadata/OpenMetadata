@@ -19,15 +19,10 @@
       "$ref": "#/definitions/pulsarType",
       "default": "Pulsar"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": "true"
     }
   },
   "additionalProperties": false
