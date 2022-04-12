@@ -19,6 +19,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Loader from '../Loader/Loader';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
@@ -561,7 +562,7 @@ const ServiceConfig = ({
               theme="primary"
               variant="contained"
               onClick={addConnectionOptionFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
 
@@ -628,7 +629,7 @@ const ServiceConfig = ({
               theme="primary"
               variant="contained"
               onClick={addConnectionArgumentFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
           {connectionArguments.map((value, i) => (
@@ -1081,7 +1082,7 @@ const ServiceConfig = ({
               size="regular"
               theme="primary"
               variant="contained">
-              <i aria-hidden="true" className="fa fa-check" />
+              <FontAwesomeIcon icon="check" />
             </Button>
           ) : (
             <Button

@@ -17,6 +17,8 @@ import React, { FC, HTMLAttributes } from 'react';
 import { FlowElement } from 'react-flow-renderer';
 import { entityData } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
+import { faGripVertical } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
   show: boolean;
@@ -54,7 +56,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           <SVGIcons alt={type} icon={`${type}-grey`} width="14" />
         </span>
         <span>
-          <i className="fas fa-grip-vertical" style={{ color: '#7147E8' }} />
+          <FontAwesomeIcon icon={faGripVertical} style={{ color: '#7147E8' }} />
         </span>
       </div>
       <p className="tw-text-grey-body tw-text-center tw-text-xs tw-pt-1.5">

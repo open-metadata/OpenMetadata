@@ -15,9 +15,20 @@ import React, { FunctionComponent } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './auth-provider/AuthProvider';
 import { ToastContextProvider } from './contexts/ToastContext';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import {
+  faTimes,
+  faCheck,
+  faSearch,
+  faPlus,
+  faCheckSquare,
+  faCheckCircle,
+} from '@fortawesome/free-solid-svg-icons';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
+  library.add(faTimes, faCheck, faSearch, faPlus, faCheckSquare, faCheckCircle);
+
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">

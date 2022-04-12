@@ -36,6 +36,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -326,7 +327,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
           {failingTests.length ? (
             <div className="tw-flex">
               <p className="tw-mr-2">
-                <i className="fas fa-times tw-text-status-failed" />
+                <FontAwesomeIcon
+                  className="tw-text-status-failed"
+                  icon="times"
+                />
               </p>
               <p>{`${failingTests.length}/${tableTestLength} tests failing`}</p>
             </div>
@@ -335,7 +339,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
               {passingTests.length ? (
                 <div className="tw-flex">
                   <div className="tw-mr-2">
-                    <i className="fas fa-check-square tw-text-status-success" />
+                    <FontAwesomeIcon
+                      className="tw-text-status-success"
+                      icon="check-square"
+                    />
                   </div>
                   <p>{`${passingTests.length} tests`}</p>
                 </div>

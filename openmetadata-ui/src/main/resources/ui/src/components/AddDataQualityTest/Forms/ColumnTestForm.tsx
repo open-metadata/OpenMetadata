@@ -35,6 +35,7 @@ import SVGIcons from '../../../utils/SvgUtils';
 import { getDataTypeString } from '../../../utils/TableUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   data: ColumnTest;
@@ -455,7 +456,7 @@ const ColumnTestForm = ({
               theme="primary"
               variant="contained"
               onClick={addMatchFields}>
-              <i aria-hidden="true" className="fa fa-plus" />
+              <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
 
@@ -525,7 +526,7 @@ const ColumnTestForm = ({
             theme="primary"
             variant="contained"
             onClick={addValueFields}>
-            <i aria-hidden="true" className="fa fa-plus" />
+            <FontAwesomeIcon icon="plus" />
           </Button>
         </div>
 

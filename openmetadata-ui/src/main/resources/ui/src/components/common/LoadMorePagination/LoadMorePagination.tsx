@@ -15,6 +15,7 @@ import { LoadingState } from 'Models';
 import React from 'react';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type LoadMorePaginationProps = {
   isLoading: boolean;
@@ -50,7 +51,7 @@ const LoadMorePagination = ({
           size="regular"
           theme="primary"
           variant="contained">
-          <i aria-hidden="true" className="fa fa-check" />
+          <FontAwesomeIcon icon="check" />
         </Button>
       ) : (
         <Button

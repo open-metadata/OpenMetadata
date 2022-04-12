@@ -43,6 +43,8 @@ import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowLeft, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -422,7 +424,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <i aria-hidden="true" className="fa fa-check" />
+            <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
           <Button
@@ -749,7 +751,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                         {generatingSecret ? (
                           <Loader size="small" type="default" />
                         ) : (
-                          <i className="fas fa-sync-alt" />
+                          <FontAwesomeIcon icon={faSyncAlt} />
                         )}
                       </Button>
                       {secretKey ? (
@@ -827,7 +829,10 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 theme="primary"
                 variant="outlined"
                 onClick={onCancel}>
-                <i className="fas fa-arrow-left tw-text-sm tw-align-middle tw-pr-1.5" />{' '}
+                <FontAwesomeIcon
+                  className="tw-text-sm tw-align-middle tw-pr-1.5"
+                  icon={faArrowLeft}
+                />{' '}
                 <span>Back</span>
               </Button>
               <div className="tw-flex tw-justify-end">

@@ -17,6 +17,7 @@ import SVGIcons from '../../../utils/SvgUtils';
 import './Toast.css';
 import { ToastBg } from './Toast.styles';
 import { ToastProps } from './ToastTypes';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 const Toast = (props: ToastProps) => {
   const { body, position, autoDelete, dismissTime, variant } = props;
   const [show, setShow] = useState<boolean>(true);
@@ -56,7 +57,7 @@ const Toast = (props: ToastProps) => {
             className="tw-font-semibold"
             data-testid="dismiss"
             onClick={() => setShow(false)}>
-            <i aria-hidden="true" className="fa fa-times" />
+            <FontAwesomeIcon icon="times" />
           </button>
         </div>
       )}

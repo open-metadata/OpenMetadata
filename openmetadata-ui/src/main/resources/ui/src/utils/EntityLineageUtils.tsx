@@ -46,6 +46,11 @@ import { EntityReference } from '../generated/type/entityReference';
 import { getPartialNameFromFQN } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
 import { getEntityLink } from './TableUtils';
+import {
+  faChevronLeft,
+  faChevronRight,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export const getHeaderLabel = (
   v = '',
@@ -337,7 +342,10 @@ export const getLineageData = (
                       node?.id as string,
                       'from'
                     ) && !up.id.includes(isNodeLoading.id as string) ? (
-                      <i className="fas fa-chevron-left tw-text-primary tw-mr-2" />
+                      <FontAwesomeIcon
+                        className="tw-text-primary tw-mr-2"
+                        icon={faChevronLeft}
+                      />
                     ) : null}
                     {isNodeLoading.state &&
                     up.id.includes(isNodeLoading.id as string) ? (
@@ -377,7 +385,10 @@ export const getLineageData = (
                     }}>
                     {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
                     !down.id.includes(isNodeLoading.id as string) ? (
-                      <i className="fas fa-chevron-right tw-text-primary tw-ml-2" />
+                      <FontAwesomeIcon
+                        className="tw-text-primary tw-ml-2"
+                        icon={faChevronRight}
+                      />
                     ) : null}
                     {isNodeLoading.state &&
                     down.id.includes(isNodeLoading.id as string) ? (

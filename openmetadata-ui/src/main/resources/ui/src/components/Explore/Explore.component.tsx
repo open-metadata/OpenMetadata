@@ -63,6 +63,11 @@ import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
+import {
+  faSortAmountDownAlt,
+  faSortAmountUpAlt,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -338,20 +343,18 @@ const Explore: React.FC<ExploreProps> = ({
         <div className="tw-mt-2 tw-flex tw-gap-2">
           {sortOrder === 'asc' ? (
             <button onClick={() => handleOrder('desc')}>
-              <i
-                className={classNames(
-                  'fas fa-sort-amount-down-alt tw-text-base tw-text-primary'
-                )}
+              <FontAwesomeIcon
+                className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
+                icon={faSortAmountDownAlt}
               />
             </button>
           ) : (
             <button onClick={() => handleOrder('asc')}>
-              <i
-                className={classNames(
-                  'fas fa-sort-amount-up-alt tw-text-base tw-text-primary'
-                )}
+              <FontAwesomeIcon
+                className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
+                icon={faSortAmountUpAlt}
               />
             </button>
           )}
