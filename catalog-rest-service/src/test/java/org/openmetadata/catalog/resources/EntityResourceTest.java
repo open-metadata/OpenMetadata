@@ -593,11 +593,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), ADMIN_AUTH_HEADERS))
+          getEntityInterface(
+                  createEntity(createRequest(getEntityName(test, i + 1), null, null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test, 0), null, null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> deleted = getEntityInterface(entity);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
@@ -2070,7 +2071,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return String.format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
+  /**
+   * Generates and entity name by adding a char from a-z to ensure alphanumeric ordering In alphanumeric ordering using
+   * numbers can be counterintuitive (e.g :entity_0_test < entity_10_test < entity_1_test is the correct ordering of
+   * these 3 strings)
+   */
   public final String getEntityName(TestInfo test, int index) {
-    return String.format("%s_%d_%s", entityType, index, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return String.format(
+        "%s_%s_%s", entityType, (char) ('a' + index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 }

@@ -493,4 +493,3 @@ CREATE TABLE IF NOT EXISTS database_schema_entity
     PRIMARY KEY (id),
     UNIQUE (fullyQualifiedName)
 );
-

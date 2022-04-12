@@ -18,9 +18,12 @@ import static java.lang.String.format;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.openmetadata.catalog.fernet.Fernet;
@@ -57,7 +60,10 @@ public abstract class CatalogApplicationTest {
         ResourceHelpers.resourceFilePath("db/sql/" + SQL_CONTAINER.getDriverClassName());
     Flyway flyway =
         Flyway.configure()
-            .dataSource(SQL_CONTAINER.getJdbcUrl(), SQL_CONTAINER.getUsername(), SQL_CONTAINER.getPassword())
+            .dataSource(
+                SQL_CONTAINER.getJdbcUrl().replace("172.17.0.1", "host.docker.internal"),
+                SQL_CONTAINER.getUsername(),
+                SQL_CONTAINER.getPassword())
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
@@ -71,7 +77,8 @@ public abstract class CatalogApplicationTest {
             CONFIG_PATH,
             // Database overrides
             ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),
-            ConfigOverride.config("database.url", SQL_CONTAINER.getJdbcUrl()),
+            ConfigOverride.config(
+                "database.url", SQL_CONTAINER.getJdbcUrl().replace("172.17.0.1", "host.docker.internal")),
             ConfigOverride.config("database.user", SQL_CONTAINER.getUsername()),
             ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
             // Migration overrides
@@ -91,11 +98,18 @@ public abstract class CatalogApplicationTest {
     }
   }
 
+  public static Client getClient() {
+    return APP.client()
+        .property(ClientProperties.CONNECT_TIMEOUT, 0)
+        .property(ClientProperties.READ_TIMEOUT, 0)
+        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+  }
+
   public static WebTarget getResource(String collection) {
-    return APP.client().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+    return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return APP.client().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
+    return getClient().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
   }
 }

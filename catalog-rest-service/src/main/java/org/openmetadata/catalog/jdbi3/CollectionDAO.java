@@ -1426,37 +1426,64 @@ public interface CollectionDAO {
 
   @RegisterRowMapper(UsageDetailsMapper.class)
   interface UsageDAO {
-    @SqlUpdate(
-        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-            + "SELECT :date, :id, :entityType, :count1, "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 6 DAY)), "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 29 DAY))")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY))",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT (:date :: date), :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days'))",
+        connectionType = POSTGRES)
     void insert(
         @Bind("date") String date,
         @Bind("id") String id,
         @Bind("entityType") String entityType,
         @Bind("count1") int count1);
 
-    @SqlUpdate(
-        "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-            + "SELECT :date, :id, :entityType, :count1, "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 6 DAY)), "
-            + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
-            + "INTERVAL 29 DAY)) "
-            + "ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7 = count7 + :count1, count30 = count30 + :count1")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY)) "
+                + "ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7 = count7 + :count1, count30 = count30 + :count1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT (:date :: date), :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days')) "
+                + "ON CONFLICT (usageDate, id) DO UPDATE SET count1 = entity_usage.count1 + :count1, count7 = entity_usage.count7 + :count1, count30 = entity_usage.count30 + :count1",
+        connectionType = POSTGRES)
     void insertOrUpdateCount(
         @Bind("date") String date,
         @Bind("id") String id,
         @Bind("entityType") String entityType,
         @Bind("count1") int count1);
 
-    @SqlQuery(
-        "SELECT id, usageDate, entityType, count1, count7, count30, "
-            + "percentile1, percentile7, percentile30 FROM entity_usage "
-            + "WHERE id = :id AND usageDate >= :date - INTERVAL :days DAY AND usageDate <= :date ORDER BY usageDate DESC")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, usageDate, entityType, count1, count7, count30, "
+                + "percentile1, percentile7, percentile30 FROM entity_usage "
+                + "WHERE id = :id AND usageDate >= :date - INTERVAL :days DAY AND usageDate <= :date ORDER BY usageDate DESC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, usageDate, entityType, count1, count7, count30, "
+                + "percentile1, percentile7, percentile30 FROM entity_usage "
+                + "WHERE id = :id AND usageDate >= (:date :: date) - make_interval(days => :days) AND usageDate <= (:date :: date) ORDER BY usageDate DESC",
+        connectionType = POSTGRES)
     List<UsageDetails> getUsageById(@Bind("id") String id, @Bind("date") String date, @Bind("days") int days);
 
     /** Get latest usage record */
@@ -1470,23 +1497,41 @@ public interface CollectionDAO {
     int delete(@Bind("id") String id);
 
     /**
+     * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
      * Note not using in following percentile computation PERCENT_RANK function as unit tests use mysql5.7, and it does
      * not have window function
      */
-    @SqlUpdate(
-        "UPDATE entity_usage u JOIN ( "
-            + "SELECT u1.id, "
-            + "(SELECT COUNT(*) FROM entity_usage as u2 WHERE u2.count1 <  u1.count1 AND u2.entityType = :entityType "
-            + "AND u2.usageDate = :date) as p1, "
-            + "(SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 <  u1.count7 AND u3.entityType = :entityType "
-            + "AND u3.usageDate = :date) as p7, "
-            + "(SELECT COUNT(*) FROM entity_usage as u4 WHERE u4.count30 <  u1.count30 AND u4.entityType = :entityType "
-            + "AND u4.usageDate = :date) as p30, "
-            + "(SELECT COUNT(*) FROM entity_usage WHERE entityType = :entityType AND usageDate = :date) as total "
-            + "FROM entity_usage u1 WHERE u1.entityType = :entityType AND u1.usageDate = :date"
-            + ") vals ON u.id = vals.id AND usageDate = :date "
-            + "SET u.percentile1 = ROUND(100 * p1/total, 2), u.percentile7 = ROUND(p7 * 100/total, 2), u.percentile30 ="
-            + " ROUND(p30*100/total, 2)")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_usage u JOIN ( "
+                + "SELECT u1.id, "
+                + "(SELECT COUNT(*) FROM entity_usage as u2 WHERE u2.count1 <  u1.count1 AND u2.entityType = :entityType "
+                + "AND u2.usageDate = :date) as p1, "
+                + "(SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 <  u1.count7 AND u3.entityType = :entityType "
+                + "AND u3.usageDate = :date) as p7, "
+                + "(SELECT COUNT(*) FROM entity_usage as u4 WHERE u4.count30 <  u1.count30 AND u4.entityType = :entityType "
+                + "AND u4.usageDate = :date) as p30, "
+                + "(SELECT COUNT(*) FROM entity_usage WHERE entityType = :entityType AND usageDate = :date) as total "
+                + "FROM entity_usage u1 WHERE u1.entityType = :entityType AND u1.usageDate = :date"
+                + ") vals ON u.id = vals.id AND usageDate = :date "
+                + "SET u.percentile1 = ROUND(100 * p1/total, 2), u.percentile7 = ROUND(p7 * 100/total, 2), u.percentile30 ="
+                + " ROUND(p30*100/total, 2)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_usage u "
+                + "SET percentile1 = ROUND(100 * p1 / total, 2), percentile7 = ROUND(p7 * 100 / total, 2), percentile30 = ROUND(p30 * 100 / total, 2) "
+                + "FROM ("
+                + "   SELECT u1.id, "
+                + "       (SELECT COUNT(*) FROM entity_usage as u2 WHERE u2.count1 < u1.count1 AND u2.entityType = :entityType AND u2.usageDate = (:date :: date)) as p1, "
+                + "       (SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 < u1.count7 AND u3.entityType = :entityType AND u3.usageDate = (:date :: date)) as p7, "
+                + "       (SELECT COUNT(*) FROM entity_usage as u4 WHERE u4.count30 < u1.count30 AND u4.entityType = :entityType AND u4.usageDate = (:date :: date)) as p30, "
+                + "       (SELECT COUNT(*) FROM entity_usage WHERE entityType = :entityType AND usageDate = (:date :: date)"
+                + "   ) as total FROM entity_usage u1 "
+                + "   WHERE u1.entityType = :entityType AND u1.usageDate = (:date :: date)"
+                + ") vals "
+                + "WHERE u.id = vals.id AND usageDate = (:date :: date);",
+        connectionType = POSTGRES)
     void computePercentile(@Bind("entityType") String entityType, @Bind("date") String date);
 
     class UsageDetailsMapper implements RowMapper<UsageDetails> {
