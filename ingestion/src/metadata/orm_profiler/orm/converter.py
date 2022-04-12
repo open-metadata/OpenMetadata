@@ -19,10 +19,9 @@ from typing import Optional, Union
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.orm_profiler.orm.registry import CustomTypes, Dialects
+from metadata.orm_profiler.orm.registry import CustomTypes
 
 Base = declarative_base()
 
@@ -111,7 +110,7 @@ def ometa_to_orm(
         {
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
-                "schema": get_schema_name(schema, dialect),
+                "schema": get_schema_name(schema),
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
             },
             **cols,
@@ -133,7 +132,7 @@ def get_schema_name(arg, *_) -> str:
     :param arg: Database or str
     :return: db name
     """
-    raise NotImplementedError(f"Cannot extract db name from {arg}")
+    raise NotImplementedError(f"Cannot extract schema name from {type(arg)}: {arg}")
 
 
 @get_schema_name.register
