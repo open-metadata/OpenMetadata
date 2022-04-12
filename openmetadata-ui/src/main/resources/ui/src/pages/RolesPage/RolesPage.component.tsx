@@ -657,8 +657,8 @@ const RolesPage = () => {
           <UserCard
             isIconVisible
             item={{
-              displayName: (user.displayName ?? user.name) as string,
-              fqn: user.fullyQualifiedName as string,
+              displayName: user.displayName || user.name || '',
+              fqn: user.fullyQualifiedName || '',
               id: user.id,
               type: user.type,
             }}
@@ -711,7 +711,7 @@ const RolesPage = () => {
           {teams.map((team, i) => {
             const teamData = {
               displayName: team.displayName || team.name || '',
-              fqn: team.name as string,
+              fqn: team.fullyQualifiedName || '',
               id: team.id,
               type: team.type,
             };

@@ -136,7 +136,7 @@ const Users = ({ userData }: Props) => {
             const Dataset = {
               displayName: dataset.displayName || dataset.name || '',
               type: dataset.type,
-              fqn: dataset.fullyQualifiedName as string,
+              fqn: dataset.fullyQualifiedName || '',
               id: dataset.id,
             };
 

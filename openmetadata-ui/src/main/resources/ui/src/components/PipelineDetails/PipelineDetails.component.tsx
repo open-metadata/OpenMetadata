@@ -24,7 +24,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';

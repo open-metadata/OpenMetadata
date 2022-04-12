@@ -465,7 +465,7 @@ const TeamsPage = () => {
           {sortedUser.map((user, index) => {
             const User = {
               displayName: user.displayName || user.name || '',
-              fqn: user.name || '',
+              fqn: user.fullyQualifiedName || '',
               type: user.type,
               id: user.id,
             };
@@ -518,7 +518,7 @@ const TeamsPage = () => {
             const Dataset = {
               displayName: dataset.displayName || dataset.name || '',
               type: dataset.type,
-              fqn: dataset.fullyQualifiedName as string,
+              fqn: dataset.fullyQualifiedName || '',
               id: dataset.id,
             };
 
