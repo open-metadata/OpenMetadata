@@ -57,7 +57,7 @@ def auth0_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return Auth0AuthenticationProvider.create(config)
 
 
-@auth_provider_registry.add("azure")  # TODO: update JSON
+@auth_provider_registry.add(AuthProvider.azure.value)
 def azure_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
     return AzureAuthenticationProvider.create(config)
 

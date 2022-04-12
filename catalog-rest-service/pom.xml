@@ -23,6 +23,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr4-runtime</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.macasaet.fernet</groupId>
       <artifactId>fernet-java8</artifactId>
     </dependency>
@@ -342,6 +346,18 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-maven-plugin</artifactId>
+        <version>${antlr.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>com.theoryinpractise</groupId>
         <artifactId>googleformatter-maven-plugin</artifactId>
