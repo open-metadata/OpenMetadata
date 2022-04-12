@@ -329,7 +329,7 @@ const ServiceConfig = ({
         serviceCategory={serviceCategory}
         status={status}
         onSave={(e) => {
-          handleUpdate(e.formData, serviceCategory);
+          handleUpdate(e.formData as ServicesData, serviceCategory);
         }}
       />
     );

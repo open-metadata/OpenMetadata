@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,11 @@ import Form, { FormProps } from '@rjsf/core';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
+import { ConfigData } from '../../../interface/service.interface';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
-interface Props extends FormProps<Record<string, any>> {
+interface Props extends FormProps<ConfigData> {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
@@ -33,7 +33,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   onSubmit,
   ...props
 }: Props) => {
-  let oForm: Form<Record<string, string>> | null;
+  let oForm: Form<ConfigData> | null;
 
   const handleCancel = () => {
     if (onCancel) {

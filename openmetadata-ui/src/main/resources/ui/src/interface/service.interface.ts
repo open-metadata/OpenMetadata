@@ -84,3 +84,11 @@ export interface ServiceResponse {
   data: Array<ServiceDataObj>;
   paging: Paging;
 }
+
+export type ConfigData =
+  | DatabaseService['connection']
+  | MessagingService['connection']
+  | DashboardService['connection']
+  | {
+      pipelineUrl: string;
+    };

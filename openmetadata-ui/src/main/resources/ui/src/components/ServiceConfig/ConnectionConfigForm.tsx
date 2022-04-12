@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +29,7 @@ import {
   MessagingService,
 } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { ConfigData } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
@@ -40,16 +40,8 @@ interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onSave: (data: ISubmitEvent<Record<string, any>>) => void;
+  onSave: (data: ISubmitEvent<ConfigData>) => void;
 }
-
-type ConfigData =
-  | DatabaseService['connection']
-  | MessagingService['connection']
-  | DashboardService['connection']
-  | {
-      pipelineUrl: string;
-    };
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
@@ -109,7 +101,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     return (
       <FormBuilder
-        formData={validConfig as Record<string, any>}
+        formData={validConfig}
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}
