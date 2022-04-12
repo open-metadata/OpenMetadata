@@ -23,6 +23,9 @@ from sqlalchemy.orm.session import Session
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionOptions,
+)
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
 logger = logging.getLogger("Utils")
@@ -39,12 +42,14 @@ def get_engine(service_connection: ServiceConnection, verbose: bool = False) -> 
     Given an SQL configuration, build the SQLAlchemy Engine
     """
     service_connection_config = service_connection.__root__.config
+
     options = service_connection_config.connectionOptions
     if not options:
-        options = {}
+        options = ConnectionOptions()
+
     engine = create_engine(
         get_connection_url(service_connection_config),
-        **options,
+        **options.dict(),
         connect_args=get_connection_args(service_connection_config),
         echo=verbose,
     )
