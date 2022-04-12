@@ -25,6 +25,7 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
@@ -38,19 +39,21 @@ sqlite_shared = "file:cachedb?mode=memory&cache=shared"
 ingestion_config = {
     "source": {
         "type": "sqlite",
-        "config": {
-            "service_name": "test_sqlite",
-            "database": sqlite_shared,  # We need this to share the session
-            "data_profiler_enabled": True,
+        "serviceName": "test_sqlite",
+        "serviceConnection": {
+            "config": {
+                "type": "SQLite",
+                "databaseMode": sqlite_shared,
+                "database": "main",
+            }
         },
+        "sourceConfig": {"config": {"enableDataProfiler": False}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-            "api_endpoint": "http://localhost:8585/api",
-            "auth_provider_type": "no-auth",
-        },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+        }
     },
 }
 
@@ -100,15 +103,34 @@ class ProfilerWorkflowTest(TestCase):
         ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Clean up
+        """
+
+        service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqdn="test_sqlite"
+            ).id.__root__
+        )
+
+        cls.metadata.delete(
+            entity=DatabaseService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
+
     def test_ingestion(self):
         """
         Validate that the ingestion ran correctly
         """
 
         table_entity: Table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite:main:users"
+            entity=Table, fqdn="test_sqlite.main.main.users"
         )
-        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite:main:users"
+        assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
 
     def test_profiler_workflow(self):
         """
@@ -128,7 +150,7 @@ class ProfilerWorkflowTest(TestCase):
                     "name": "My Test Suite",
                     "tests": [
                         {
-                            "table": "test_sqlite:main:users",  # FQDN
+                            "table": "test_sqlite.main.main.users",  # FQDN
                             "profile_sample": 75,
                             "table_tests": [
                                 {
@@ -169,7 +191,7 @@ class ProfilerWorkflowTest(TestCase):
 
         # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite:main:users", fields=["profileSample"]
+            entity=Table, fqdn="test_sqlite.main.main.users", fields=["profileSample"]
         )
         assert table.profileSample == 75.0
 

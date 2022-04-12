@@ -1,21 +1,29 @@
 {
   "source": {
     "type": "redash",
-    "config": {
-      "api_key": "api_key",
-      "uri": "http://localhost:5000",
-      "service_name": "redash"
+    "serviceName": "local_redash",
+    "serviceConnection": {
+      "config": {
+        "type": "Redash",
+        "redashURL": "http://localhost:5000",
+        "apiKey": "api_key"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

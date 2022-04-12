@@ -21,11 +21,14 @@ config = """
 {
   "source": {
     "type": "sample-usage",
-    "config": {
-      "database": "warehouse",
-      "service_name": "bigquery_gcp",
-      "sample_data_folder": "ingestion/tests/unit/resources"
-    }
+    "serviceName": "bigquery_gcp",
+    "serviceConnection": {
+      "config": {
+        "type": "BigQuery",
+        "sampleDataFolder":"./examples/sample_data"
+      }
+    },
+    "sourceConfig": {}
   },
   "processor": {
     "type": "query-parser",
@@ -39,21 +42,19 @@ config = """
       "filename": "/tmp/sample_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/sample_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
-
 """
 
 
@@ -63,28 +64,22 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "dim_address": 100,
-            "dim_shop": 196,
-            "dim_customer": 140,
-            "dim_location": 75,
+            "shopify.dim_address": 100,
+            "shopify.dim_shop": 190,
+            "shopify.dim_customer": 125,
+            "dim_customer": 9,
+            "shopify.dim_location": 75,
             "dim_location.shop_id": 25,
             "dim_shop.shop_id": 105,
-            "dim_product": 130,
+            "shopify.dim_product": 130,
             "dim_product.shop_id": 80,
-            "dim_product_variant": 35,
-            "dim_staff": 75,
-            "fact_line_item": 100,
-            "fact_order": 185,
-            "dim_api_client": 85,
-            "fact_sale": 400,
-            "customer": 4,
-            "orders": 2,
-            "products": 2,
-            "orderdetails": 2,
-            "country": 1,
-            "city": 1,
-            "call": 1,
-            "countries": 1,
+            "shopify.dim_product_variant": 35,
+            "dim_shop": 5,
+            "shopify.dim_staff": 75,
+            "shopify.fact_line_item": 100,
+            "shopify.fact_order": 185,
+            "shopify.dim_api_client": 85,
+            "shopify.fact_sale": 420,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()

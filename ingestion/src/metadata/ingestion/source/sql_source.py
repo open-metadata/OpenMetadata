@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -63,7 +64,8 @@ from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.helpers import get_database_service_or_create, ingest_lineage
+from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -233,8 +235,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
     def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 
-    def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
+    def register_record(self, table_schema_and_db: OMetaDatabaseAndTable) -> None:
+        """
+        Mark the record as scanned and update the database_source_state
+        """
+        fqn = get_fqdn(
+            Table,
+            self.config.serviceName,
+            str(table_schema_and_db.database.name.__root__),
+            str(table_schema_and_db.database_schema.name.__root__),
+            str(table_schema_and_db.table.name.__root__),
+        )
+
+        self.database_source_state.add(fqn)
+        self.status.scanned(fqn)
 
     def next_record(self) -> Iterable[Entity]:
         inspectors = self.get_databases()
@@ -242,21 +256,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
-                self.database_source_state.clear()
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name=schema
-                ):
-                    self.status.filter(schema, "Schema pattern not allowed")
-                    continue
+                try:
+                    self.database_source_state.clear()
+                    if filter_by_schema(
+                        self.source_config.schemaFilterPattern, schema_name=schema
+                    ):
+                        self.status.filter(schema, "Schema pattern not allowed")
+                        continue
 
-                if self.source_config.includeTables:
-                    yield from self.fetch_tables(inspector, schema)
+                    if self.source_config.includeTables:
+                        yield from self.fetch_tables(inspector, schema)
 
-                if self.source_config.includeViews:
-                    yield from self.fetch_views(inspector, schema)
-                if self.source_config.markDeletedTables:
-                    schema_fqdn = f"{self.config.serviceName}.{schema}"
-                    yield from self.delete_tables(schema_fqdn)
+                    if self.source_config.includeViews:
+                        yield from self.fetch_views(inspector, schema)
+                    if self.source_config.markDeletedTables:
+                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        yield from self.delete_tables(schema_fqdn)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
@@ -287,8 +305,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 description = _get_table_description(schema, table_name, inspector)
-                fqn = self.get_table_fqn(self.config.serviceName, schema, table_name)
-                self.database_source_state.add(fqn)
+
                 self.table_constraints = None
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
@@ -326,8 +343,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+
+                self.register_record(table_schema_and_db)
+
                 yield table_schema_and_db
-                self.status.scanned("{}.{}".format(self.config.serviceName, table_name))
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
@@ -372,8 +391,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                 except NotImplementedError:
                     view_definition = ""
-                fqn = self.get_table_fqn(self.config.serviceName, schema, view_name)
-                self.database_source_state.add(fqn)
+
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
@@ -384,16 +402,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     columns=self._get_columns(schema, view_name, inspector),
                     viewDefinition=view_definition,
                 )
-                if table.viewDefinition:
-                    query_info = {
-                        "sql": table.viewDefinition.__root__,
-                        "from_type": "table",
-                        "to_type": "table",
-                        "service_name": self.config.serviceName,
-                    }
-                    ingest_lineage(
-                        query_info=query_info, metadata_config=self.metadata_config
-                    )
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
@@ -404,6 +412,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
+
+                self.register_record(table_schema_and_db)
+
                 yield table_schema_and_db
             # Catch any errors and continue the ingestion
             except Exception as err:  # pylint: disable=broad-except
@@ -478,8 +489,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table_fqn = self.get_table_fqn(
-                        self.config.serviceName, database, table
+                    table_fqn = get_fqdn(
+                        Table,
+                        service_name=self.config.serviceName,
+                        dashboard_name=database,
+                        table_name=table,
                     ).lower()
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
@@ -527,6 +541,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return columns
 
     def _get_database(self, database: str) -> Database:
+        if not database:
+            database = "default"
         return Database(
             name=database,
             service=EntityReference(
@@ -719,7 +735,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             if column["policy_tags"] and self.config.enable_policy_tags:
                                 col_dict.tags = [
                                     TagLabel(
-                                        tagFQN=f"{self.config.tag_category_name}{FQDN_SEPARATOR}{column['policy_tags']}",
+                                        tagFQN=get_fqdn(
+                                            Tag,
+                                            self.config.tag_category_name,
+                                            column["policy_tags"],
+                                        ),
                                         labelType="Automated",
                                         state="Suggested",
                                         source="Tag",

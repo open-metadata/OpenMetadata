@@ -71,3 +71,7 @@ def _(arg) -> str:
     Models with __root__
     """
     return str(arg.__root__)
+
+
+def _get_formmated_table_name(table_name):
+    return table_name.replace("[", "").replace("]", "")

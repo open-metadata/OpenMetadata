@@ -235,7 +235,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public void validateGetWithDifferentFields(PipelineService service, boolean byName) throws HttpResponseException {
+  public EntityInterface<PipelineService> validateGetWithDifferentFields(PipelineService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
@@ -248,7 +249,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(service);
   }
 
   @Override

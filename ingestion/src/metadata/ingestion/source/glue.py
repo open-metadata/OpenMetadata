@@ -16,23 +16,28 @@ from typing import Iterable
 
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.glueConnection import (
+    GlueConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity, IncludeFilterPattern
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source_common import SQLSourceStatus
-from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_pipeline_service_or_create,
@@ -42,23 +47,9 @@ from metadata.utils.helpers import (
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class GlueSourceConfig(AWSClientConfigModel):
-    service_type = DatabaseServiceType.Glue.value
-    service_name: str
-    storage_service_name: str = "S3"
-    pipeline_service_name: str
-    # Glue doesn't have an host_port but the service definition requires it
-    host_port: str = ""
-    table_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    schema_filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.service_type]
-
-
 class GlueSource(Source[Entity]):
     def __init__(
-        self, config: GlueSourceConfig, metadata_config: OpenMetadataServerConfig
+        self, config: GlueConnection, metadata_config: OpenMetadataServerConfig
     ):
         super().__init__()
         self.status = SQLSourceStatus()
@@ -68,30 +59,39 @@ class GlueSource(Source[Entity]):
         self.service = get_database_service_or_create(
             config=config,
             metadata_config=metadata_config,
-            service_name=self.config.service_name,
+            service_name=self.config.serviceName,
         )
+        config_obj = self.config.serviceConnection.__root__.config
         self.storage_service = get_storage_service_or_create(
-            {"name": self.config.storage_service_name, "serviceType": "S3"},
+            {
+                "name": config_obj.storageServiceName,
+                "serviceType": "S3",
+            },
             metadata_config,
         )
         self.task_id_mapping = {}
         self.pipeline_service = get_pipeline_service_or_create(
             {
-                "name": self.config.pipeline_service_name,
+                "name": config_obj.pipelineServiceName,
                 "serviceType": "Glue",
-                "pipelineUrl": self.config.endpoint_url
-                if self.config.endpoint_url is not None
-                else f"https://glue.{self.config.region_name}.amazonaws.com",
+                "pipelineUrl": config_obj.endPointURL
+                if config_obj.endPointURL is not None
+                else f"https://glue.{config_obj.awsRegion}.amazonaws.com",
             },
             metadata_config,
         )
-        self.glue = AWSClient(self.config).get_client("glue")
+        self.glue = AWSClient(config_obj).get_client("glue")
         self.database_name = None
         self.next_db_token = None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = GlueSourceConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: GlueConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, GlueConnection):
+            raise InvalidSourceException(
+                f"Expected GlueConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -116,12 +116,14 @@ class GlueSource(Source[Entity]):
                 glue_db_resp = self.glue.get_databases(ResourceShareType="ALL")
                 self.assign_next_token_db(glue_db_resp)
             for db in glue_db_resp["DatabaseList"]:
-                if not self.config.schema_filter_pattern.included(db["Name"]):
-                    self.status.filter(
-                        "{}".format(db["Name"]),
-                        "Schema pattern not allowed",
-                    )
+
+                if filter_by_schema(
+                    schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
+                    schema_name=db["Name"],
+                ):
+                    self.source_status.filter(db["Name"], "Schema pattern not allowed")
                     continue
+
                 self.database_name = db["Name"]
                 yield from self.ingest_tables()
         yield from self.ingest_pipelines()
@@ -150,17 +152,30 @@ class GlueSource(Source[Entity]):
             else:
                 glue_resp = self.glue.get_tables(DatabaseName=self.database_name)
             for table in glue_resp["TableList"]:
-                if not self.config.table_filter_pattern.included(table["Name"]):
+
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern,
+                    table.get("name"),
+                ):
                     self.status.filter(
-                        "{}".format(table["Name"]),
+                        "{}".format(table["name"]),
                         "Table pattern not allowed",
                     )
                     continue
                 database_entity = Database(
-                    name=table["DatabaseName"],
+                    id=uuid.uuid4(),
+                    name="default",
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{self.database_name}{FQDN_SEPARATOR}{table['Name']}"
+
+                schema_entity = DatabaseSchema(
+                    id=uuid.uuid4(),
+                    name=table["DatabaseName"],
+                    database=EntityReference(id=database_entity.id, type="database"),
+                    service=EntityReference(id=self.service.id, type="databaseService"),
+                )
+                table_name = table["Name"][:255]
+                fqn = f"{self.config.serviceName}{FQDN_SEPARATOR}{self.database_name}{FQDN_SEPARATOR}{table_name}"
                 parameters = table.get("Parameters")
                 location_type = LocationType.Table
                 if parameters:
@@ -189,20 +204,20 @@ class GlueSource(Source[Entity]):
                     table_type = TableType.External
                 elif table["TableType"] == "VIRTUAL_VIEW":
                     table_type = TableType.View
-
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
                     description=table["Description"]
                     if hasattr(table, "Description")
                     else "",
-                    fullyQualifiedName=fqn,
+                    fullyQualifiedName=fqn[:128],
                     columns=table_columns,
                     tableType=table_type,
                 )
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database_entity,
+                    database_schema=schema_entity,
                     location=location_entity,
                 )
                 yield table_and_db

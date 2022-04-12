@@ -19,7 +19,7 @@ export interface GlueConnection {
   /**
    * AWS Access key ID.
    */
-  awsAccessKeyId?: any;
+  awsAccessKeyId?: string;
   /**
    * AWS Region Name.
    */
@@ -32,7 +32,7 @@ export interface GlueConnection {
    * AWS Session Token.
    */
   awsSessionToken?: string;
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
@@ -41,13 +41,21 @@ export interface GlueConnection {
    */
   database?: string;
   /**
-   * EndPoint URL for the Dynamo DB
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
   /**
-   * Host and port of the DynamoDB
+   * Host and port of the Glue
    */
   hostPort?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Supported Metadata Extraction Pipelines.
    */
@@ -56,6 +64,17 @@ export interface GlueConnection {
    * Service Type
    */
   type?: GlueType;
+}
+
+/**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
 }
 
 /**

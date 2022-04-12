@@ -1,24 +1,30 @@
 {
   "source": {
     "type": "superset",
-    "config": {
-      "url": "http://localhost:8080",
-      "username": "admin",
-      "password": "admin",
-      "service_name": "local_superset",
-      "db_service_name": "aws_redshift"
+    "serviceName": "local_superset",
+    "serviceConnection": {
+      "config": {
+        "supersetURL": "http://localhost:8080",
+        "username": "admin",
+        "password": "admin",
+        "type": "Superset"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "chartFilterPattern": {},
+        "dashboardFilterPattern": {}
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {
-    }
+    "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

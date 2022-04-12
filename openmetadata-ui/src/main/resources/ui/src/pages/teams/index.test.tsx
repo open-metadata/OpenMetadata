@@ -22,7 +22,7 @@ import { createTeam, getTeamByName, getTeams } from '../../axiosAPIs/teamsAPI';
 import jsonData from '../../jsons/en';
 import TeamsPage from './index';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

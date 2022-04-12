@@ -18,14 +18,16 @@ type Props = {
   steps: Array<{ name: string; step: number }>;
   activeStep: number;
   stepperLineClassName?: string;
+  className?: string;
 };
 const IngestionStepper = ({
   steps,
   activeStep,
   stepperLineClassName = '',
+  className = '',
 }: Props) => {
   return (
-    <div className="ingestion-content tw-relative">
+    <div className={classNames('ingestion-content tw-relative', className)}>
       {steps.map((step, index) => (
         <Fragment key={index}>
           {index > 0 && index < steps.length && (

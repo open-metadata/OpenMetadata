@@ -14,17 +14,22 @@ MSSQL usage module
 
 from typing import Any, Dict, Iterable
 
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.mssql import MssqlConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
@@ -49,20 +54,32 @@ class MssqlUsageSource(Source[TableQuery]):
         report:
     """
 
-    def __init__(self, config, metadata_config):
+    def __init__(
+        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
+    ):
         super().__init__()
         self.config = config
-        start, end = get_start_and_end(config.duration)
+        self.connection = config.serviceConnection.__root__.config
+        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
         self.analysis_date = start
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.alchemy_helper = SQLAlchemyHelper(
-            config, metadata_config, DatabaseServiceType.MSSQL.value, self.sql_stmt
+            self.connection,
+            metadata_config,
+            DatabaseServiceType.MSSQL.value,
+            self.sql_stmt,
         )
         self.report = SQLSourceStatus()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = MssqlConfig.parse_obj(config_dict)
+        """Create class instance"""
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: MssqlConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, MssqlConnection):
+            raise InvalidSourceException(
+                f"Expected MssqlConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -93,7 +110,7 @@ class MssqlUsageSource(Source[TableQuery]):
                 aborted=row["aborted"],
                 database=row["database_name"],
                 sql=row["query_text"],
-                service_name=self.config.service_name,
+                service_name=self.config.serviceName,
             )
             if row["schema_name"] is not None:
                 self.report.scanned(f"{row['database_name']}.{row['schema_name']}")

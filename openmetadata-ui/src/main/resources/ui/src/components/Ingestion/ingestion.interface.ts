@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'Models';
 import { IngestionType } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 
 export interface ConnectorConfig {
   username: string;
@@ -55,7 +55,8 @@ export interface Props {
   paging: Paging;
   ingestionList: Array<AirflowPipeline>;
   serviceList: Array<DatabaseService>;
-  pagingHandler: (value: string) => void;
+  currrentPage: number;
+  pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   addIngestion: (data: AirflowPipeline, triggerIngestion?: boolean) => void;

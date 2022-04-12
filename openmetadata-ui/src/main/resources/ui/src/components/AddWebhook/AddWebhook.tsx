@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { faArrowLeft, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -30,7 +30,6 @@ import {
 } from '../../generated/api/events/createWebhook';
 import {
   errorMsg,
-  getDocButton,
   getSeparator,
   isValidUrl,
   requiredField,
@@ -454,7 +453,6 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           case. Use advanced configuration to set up a shared secret key to
           verify the webhook events using HMAC signature.
         </div>
-        {getDocButton('Read Webhook Doc', '', 'webhook-doc')}
       </>
     );
   };
@@ -749,7 +747,11 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                         {generatingSecret ? (
                           <Loader size="small" type="default" />
                         ) : (
-                          <FontAwesomeIcon icon={faSyncAlt} />
+                          <SVGIcons
+                            alt="generate"
+                            icon={Icons.SYNC}
+                            width="16"
+                          />
                         )}
                       </Button>
                       {secretKey ? (

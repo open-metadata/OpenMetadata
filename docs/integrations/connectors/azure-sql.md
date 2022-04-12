@@ -112,7 +112,6 @@ Note: The `source.config` field in the configuration JSON will include the major
     "config": {
       "host_port": "hostname.domain.com:1433",
       "scheme": "mssql+pyodbc",
-      "service_type" = "DatabaseServiceType.AzureSQL.value",
       "driver": "{ODBC Driver 17 for SQL Server}",
       "username": "username",
       "password": "strong_password",
@@ -163,14 +162,6 @@ Edit the value for `source.config.scheme` in `azuresql.json` for your Azure SQL 
 
 ```javascript
 "scheme": "mssql+pyodbc"
-```
-
-#### service\_type
-
-Edit the value for `source.config.service_type` as shown in the example below.
-
-```javascript
-"service_type": "DatabaseServiceType.AzureSQL.value"
 ```
 
 #### driver

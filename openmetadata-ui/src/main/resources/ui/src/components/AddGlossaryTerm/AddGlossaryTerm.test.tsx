@@ -20,7 +20,7 @@ import {
 } from '../../mocks/Glossary.mock';
 import AddGlossaryTerm from './AddGlossaryTerm.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

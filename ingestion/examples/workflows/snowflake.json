@@ -10,7 +10,10 @@
         "password": "password",
         "database": "database_name",
         "warehouse": "warehouse_name",
-        "account": "account.region_name.cloud_service"
+        "account": "account.region_name.cloud_service",
+        "connectionArguments": {
+          "private_key": "private_key" 
+        }
       }
     },
     "sourceConfig": {

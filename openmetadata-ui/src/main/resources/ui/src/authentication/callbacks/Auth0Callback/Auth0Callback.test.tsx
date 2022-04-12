@@ -50,7 +50,7 @@ jest.mock('@auth0/auth0-react', () => ({
   useAuth0: jest.fn(),
 }));
 
-jest.mock('../../../auth-provider/AuthProvider', () => {
+jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       authConfig: {},

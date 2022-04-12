@@ -5,17 +5,19 @@ import { Link } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Paging } from '../../../generated/type/paging';
 import { isEven } from '../../../utils/CommonUtils';
 import { getEntityLink, getOwnerFromId } from '../../../utils/TableUtils';
+import NextPrevious from '../../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import Pagination from '../../Pagination';
 
 interface Props {
   assetData: GlossaryTermAssets;
-  onAssetPaginate: (num: number) => void;
+  currentPage: number;
+  onAssetPaginate: (num: string | number, activePage?: number) => void;
 }
 
-const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
+const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
   const getLinkForFqn = (fqn: string, entityType?: EntityType) => {
     switch (entityType) {
       case EntityType.TOPIC:
@@ -88,11 +90,13 @@ const AssetsTabs = ({ assetData, onAssetPaginate }: Props) => {
         </table>
       </div>
       {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
-        <Pagination
-          currentPage={assetData.currPage}
-          paginate={onAssetPaginate}
-          sizePerPage={PAGE_SIZE}
-          totalNumberOfValues={assetData.total}
+        <NextPrevious
+          isNumberBased
+          currentPage={currentPage}
+          pageSize={PAGE_SIZE}
+          paging={{} as Paging}
+          pagingHandler={onAssetPaginate}
+          totalCount={assetData.total}
         />
       )}
     </div>

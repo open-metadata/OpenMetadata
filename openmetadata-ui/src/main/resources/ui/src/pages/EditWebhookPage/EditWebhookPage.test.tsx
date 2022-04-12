@@ -37,7 +37,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => mockAdminData),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => ({
+jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn().mockImplementation(() => mockAuthContext),
 }));
 
@@ -46,10 +46,6 @@ jest.mock('../../axiosAPIs/webhookAPI', () => ({
   updateWebhook: jest.fn(),
   deleteWebhook: jest.fn(),
 }));
-
-jest.mock('../../hooks/useToastContext', () => {
-  return jest.fn().mockImplementation(() => jest.fn());
-});
 
 describe('Test DatasetDetails page', () => {
   it('Component should render', async () => {

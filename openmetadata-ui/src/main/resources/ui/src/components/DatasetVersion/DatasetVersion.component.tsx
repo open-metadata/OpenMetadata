@@ -23,7 +23,7 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
@@ -407,7 +407,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   <div className="tw-col-span-full">
                     <SchemaTab
                       isReadOnly
-                      columnName={getPartialNameFromFQN(
+                      columnName={getPartialNameFromTableFQN(
                         datasetFQN,
                         ['column'],
                         FQN_SEPARATOR_CHAR

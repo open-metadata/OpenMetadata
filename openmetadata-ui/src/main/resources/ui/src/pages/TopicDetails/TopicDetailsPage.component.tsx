@@ -51,7 +51,6 @@ import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
@@ -62,6 +61,7 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
   topicDetailsTabs,
@@ -69,7 +69,6 @@ import {
 
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
-  const showToast = useToastContext();
   const history = useHistory();
 
   const { topicFQN, tab } = useParams() as Record<string, string>;
@@ -119,20 +118,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN))
       .then((res: AxiosResponse) => {
@@ -140,16 +125,16 @@ const TopicDetailsPage: FunctionComponent = () => {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-count-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
       });
   };
 
@@ -162,16 +147,16 @@ const TopicDetailsPage: FunctionComponent = () => {
           setPaging(pagingObj);
           setEntityThread((prevData) => [...prevData, ...data]);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -252,7 +237,7 @@ const TopicDetailsPage: FunctionComponent = () => {
             timestamp: 0,
           });
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-table-details-error']
           );
           setIsError(true);
@@ -262,10 +247,10 @@ const TopicDetailsPage: FunctionComponent = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-topic-details-error'];
-          handleShowErrorToast(errMsg);
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-topic-details-error']
+          );
         }
       })
       .finally(() => {
@@ -281,16 +266,16 @@ const TopicDetailsPage: FunctionComponent = () => {
 
           setFollowers([...followers, ...newValue]);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-entity-follow-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-entity-follow-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-entity-follow-error']
+        );
       });
   };
 
@@ -304,16 +289,16 @@ const TopicDetailsPage: FunctionComponent = () => {
             followers.filter((follower) => follower.id !== oldValue[0].id)
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-entity-unfollow-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-entity-unfollow-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-entity-unfollow-error']
+        );
       });
   };
 
@@ -327,16 +312,16 @@ const TopicDetailsPage: FunctionComponent = () => {
           setDescription(description);
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['update-description-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const msg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-description-error'];
-        handleShowErrorToast(msg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-description-error']
+        );
       });
   };
 
@@ -352,16 +337,16 @@ const TopicDetailsPage: FunctionComponent = () => {
             getEntityFeedCount();
             resolve();
           } else {
-            handleShowErrorToast(
+            showErrorToast(
               jsonData['api-error-messages']['update-entity-error']
             );
           }
         })
         .catch((err: AxiosError) => {
-          const msg =
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['update-entity-error'];
-          handleShowErrorToast(msg);
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-entity-error']
+          );
           reject();
         });
     });
@@ -376,16 +361,14 @@ const TopicDetailsPage: FunctionComponent = () => {
           setTags(getTagsWithoutTier(res.data.tags));
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['update-tags-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['update-tags-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-tags-error']
+        );
       });
   };
 
@@ -417,16 +400,11 @@ const TopicDetailsPage: FunctionComponent = () => {
           });
           getEntityFeedCount();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['add-feed-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['add-feed-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -436,20 +414,20 @@ const TopicDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
           );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg =
-          err.response?.data?.message ||
-          jsonData['api-error-messages']['create-conversation-error'];
-        handleShowErrorToast(errMsg);
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
       });
   };
 
@@ -473,7 +451,7 @@ const TopicDetailsPage: FunctionComponent = () => {
                 });
               });
             } else {
-              handleShowErrorToast(
+              showErrorToast(
                 jsonData['api-error-messages'][
                   'fetch-updated-conversation-error'
                 ]
@@ -481,23 +459,19 @@ const TopicDetailsPage: FunctionComponent = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const message =
-              error?.response?.data?.message ||
-              jsonData['api-error-messages'][
-                'fetch-updated-conversation-error'
-              ];
-            handleShowErrorToast(message);
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message =
-          error?.response?.data?.message ||
-          jsonData['api-error-messages']['delete-message-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
       });
   };
 

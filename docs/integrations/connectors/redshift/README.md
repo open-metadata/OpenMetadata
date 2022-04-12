@@ -9,3 +9,7 @@ description: >-
 {% content-ref url="redshift-metadata-extraction.md" %}
 [redshift-metadata-extraction.md](redshift-metadata-extraction.md)
 {% endcontent-ref %}
+
+{% content-ref url="redshift-usage.md" %}
+[redshift-usage.md](redshift-usage.md)
+{% endcontent-ref %}

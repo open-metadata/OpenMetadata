@@ -13,7 +13,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.9.0
+    image: openmetadata/db:0.9.1
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -40,7 +40,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.9.0
+    image: openmetadata/server:0.9.1
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       AIRFLOW_HOST: ingestion
@@ -72,7 +72,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.9.0
+    image: openmetadata/ingestion:0.9.1
     depends_on:
       - mysql
     expose:

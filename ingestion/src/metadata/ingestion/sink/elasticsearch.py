@@ -344,7 +344,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
-        topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
         topic_followers = []
         if topic.followers:
             for follower in topic.followers.__root__:

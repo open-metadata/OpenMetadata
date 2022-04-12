@@ -118,7 +118,6 @@ Note: The `source.config` field in the configuration JSON will include the major
       "username": "username",
       "password": "strong_password",
       "service_name": "local_oracle",
-      "service_type": "Oracle",
       "query": "select top 50 * from {}.{}",
       "scheme": "oracle+cx_oracle",
       "oracle_service_name": "ORCLPDB1"

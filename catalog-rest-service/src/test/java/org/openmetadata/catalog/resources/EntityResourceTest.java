@@ -43,11 +43,14 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -535,11 +538,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   // Get interface to access all common entity attributes
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
-  // Do some preparation work right before calling validateGetWithDifferentFields.
-  protected void prepareGetWithDifferentFields(T entity) throws HttpResponseException {}
-
-  // Get an entity by ID and name with different fields. See TableResourceTest for example.
-  public abstract void validateGetWithDifferentFields(T entity, boolean byName) throws HttpResponseException;
+  /**
+   * GET by id and GET by name with different `fields` parameter and ensure the requested fields are returned. Common
+   * fields for all entities - `owner`, `followers`, and `tags` need not be tested by implementations as it is done
+   * already in the base class.
+   */
+  public abstract EntityInterface<T> validateGetWithDifferentFields(T entity, boolean byName)
+      throws HttpResponseException;
 
   // Assert field change in an entity recorded during PUT or POST operations
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException;
@@ -771,10 +776,38 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   @Test
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
     K create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
+
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    prepareGetWithDifferentFields(entity);
-    validateGetWithDifferentFields(entity, false);
-    validateGetWithDifferentFields(entity, true);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    if (supportsTags) {
+      String origJson = JsonUtils.pojoToJson(entity);
+      entityInterface.setTags(new ArrayList<>());
+      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
+      entity = patchEntity(entityInterface.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
+    }
+    if (supportsFollowers) {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
+      addFollower(entityInterface.getId(), user1.getId(), CREATED, TEST_AUTH_HEADERS);
+    }
+    entityInterface = validateGetWithDifferentFields(entity, false);
+    validateGetCommonFields(entityInterface);
+
+    entityInterface = validateGetWithDifferentFields(entityInterface.getEntity(), true);
+    validateGetCommonFields(entityInterface);
+  }
+
+  private void validateGetCommonFields(EntityInterface<T> entityInterface) {
+    if (supportsOwner) {
+      validateEntityReference(entityInterface.getOwner());
+    }
+    if (supportsFollowers) {
+      validateEntityReferences(entityInterface.getFollowers(), true);
+    }
+    if (supportsTags) {
+      assertListNotEmpty(entityInterface.getTags());
+    }
   }
 
   @Test
@@ -1936,8 +1969,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public void addAndCheckFollower(
       UUID entityId, UUID userId, Status status, int totalFollowerCount, Map<String, String> authHeaders)
       throws IOException {
-    WebTarget target = getFollowersCollection(entityId);
-    ChangeEvent event = TestUtils.put(target, userId.toString(), ChangeEvent.class, status, authHeaders);
+    ChangeEvent event = addFollower(entityId, userId, status, authHeaders);
 
     // GET .../entity/{entityId} returns newly added follower
     T getEntity = getEntity(entityId, authHeaders);
@@ -1945,7 +1977,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<EntityReference> followers = entityInterface.getFollowers();
 
     assertEquals(totalFollowerCount, followers.size());
-    TestUtils.validateEntityReferences(followers);
+    validateEntityReferences(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, true);
 
     // GET .../users/{userId} shows user as following the entity
@@ -1954,6 +1986,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Validate change events
     validateChangeEvents(
         entityInterface, event.getTimestamp(), EventType.ENTITY_UPDATED, event.getChangeDescription(), authHeaders);
+  }
+
+  public ChangeEvent addFollower(UUID entityId, UUID userId, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getFollowersCollection(entityId);
+    return TestUtils.put(target, userId.toString(), ChangeEvent.class, status, authHeaders);
   }
 
   protected void deleteAndCheckFollower(
@@ -1977,7 +2015,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = getEntity(entityId, authHeaders);
     List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
-    TestUtils.validateEntityReferences(followers);
+    validateEntityReferences(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, false);
     return getEntity;
   }

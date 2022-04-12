@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
@@ -75,7 +77,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     CreateDatabase create = createRequest(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(SNOWFLAKE_REFERENCE.getName(), create.getName());
+    String expectedFQN = FullyQualifiedName.add(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
@@ -114,9 +116,20 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // TODO
   }
 
-  /** Validate returned fields GET .../databases/{id}?fields="..." or GET .../databases/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
+  public EntityInterface<Database> validateGetWithDifferentFields(Database database, boolean byName)
+      throws HttpResponseException {
+    // Add a schema if it already does not exist
+    if (database.getDatabaseSchemas() == null) {
+      EntityInterface<Database> entityInterface = getEntityInterface(database);
+      DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+      CreateDatabaseSchema create =
+          databaseSchemaResourceTest
+              .createRequest("schema", "", "", null)
+              .withDatabase(entityInterface.getEntityReference());
+      databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
     String fields = "";
     database =
         byName
@@ -133,9 +146,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
-    assertListNotNull(
-        database.getOwner(), database.getDatabaseSchemas() /*database.getUsageSummary(), database.getLocation()*/);
-    TestUtils.validateEntityReferences(database.getDatabaseSchemas());
+    TestUtils.validateEntityReferences(database.getDatabaseSchemas(), true);
+    assertListNotEmpty(database.getDatabaseSchemas());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(database);
   }
 
   @Override
@@ -164,7 +178,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.add(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
+        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()),
+        database.getFullyQualifiedName());
   }
 
   @Override
@@ -177,7 +192,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Validate service
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.add(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
+        FullyQualifiedName.add(updated.getService().getFullyQualifiedName(), updated.getName()),
+        updated.getFullyQualifiedName());
   }
 
   @Override

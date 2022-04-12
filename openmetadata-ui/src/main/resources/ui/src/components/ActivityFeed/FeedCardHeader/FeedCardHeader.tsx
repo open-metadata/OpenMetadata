@@ -19,7 +19,10 @@ import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
-import { getPartialNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
@@ -136,6 +139,28 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     );
   };
 
+  const entityDisplayName = () => {
+    let displayName;
+    if (entityType === EntityType.TABLE) {
+      displayName = getPartialNameFromTableFQN(entityFQN, ['table']);
+    } else if (entityType === EntityType.DATABASE_SCHEMA) {
+      displayName = getPartialNameFromTableFQN(entityFQN, ['schema']);
+    } else if (
+      [
+        EntityType.DATABASE_SERVICE,
+        EntityType.DASHBOARD_SERVICE,
+        EntityType.MESSAGING_SERVICE,
+        EntityType.PIPELINE_SERVICE,
+      ].includes(entityType as EntityType)
+    ) {
+      displayName = getPartialNameFromFQN(entityFQN, ['service']);
+    } else {
+      displayName = getPartialNameFromFQN(entityFQN, ['database']);
+    }
+
+    return displayName;
+  };
+
   return (
     <div className={classNames('tw-flex tw-mb-1.5', className)}>
       <PopOver
@@ -183,10 +208,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                       : ''
                   }`}>
                   <button className="link-text" disabled={AppState.isTourOpen}>
-                    {getPartialNameFromFQN(
-                      entityFQN as string,
-                      entityType === 'table' ? ['table'] : ['database']
-                    ) || entityFQN}
+                    {entityDisplayName()}
                   </button>
                 </Link>
               </Fragment>

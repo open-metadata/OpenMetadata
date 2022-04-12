@@ -61,3 +61,38 @@ export const patchDatabaseDetails: Function = (
 
   return APIClient.patch(`/databases/${id}`, data, configOptions);
 };
+
+export const patchDatabaseSchemaDetails: Function = (
+  id: string,
+  data: Database
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/databaseSchemas/${id}`, data, configOptions);
+};
+
+export const getDatabaseSchemas: Function = (
+  databaseName: string,
+  paging: string,
+  arrQueryFields?: string
+): Promise<AxiosResponse> => {
+  const url = `${getURLWithQueryFields(
+    `/databaseSchemas`,
+    arrQueryFields
+  )}&database=${databaseName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};
+export const getDatabaseSchemaDetailsByFQN: Function = (
+  databaseSchemaName: string,
+  arrQueryFields?: string
+): Promise<AxiosResponse> => {
+  const url = `${getURLWithQueryFields(
+    `/databaseSchemas/name/${databaseSchemaName}`,
+    arrQueryFields
+  )}`;
+
+  return APIClient.get(url);
+};

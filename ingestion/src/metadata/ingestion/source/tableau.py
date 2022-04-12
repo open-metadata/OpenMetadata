@@ -14,10 +14,9 @@ Tableau source module
 
 import logging
 import uuid
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
 import dateutil.parser as dateparser
-from pydantic import SecretStr
 from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils.querying import (
     get_views_dataframe,
@@ -31,40 +30,27 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Dashboard_Entity,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
+    TableauConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataServerConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Entity, IncludeFilterPattern
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
-
-
-class TableauSourceConfig(ConfigModel):
-    """Tableau pydantic source model"""
-
-    username: Optional[str] = None
-    password: Optional[SecretStr] = None
-    server: str
-    api_version: str
-    env: Optional[str] = "tableau_prod"
-    site_name: str
-    site_url: str
-    db_service_name: Optional[str] = None
-    service_name: str
-    service_type: str = DashboardServiceType.Tableau.value
-    personal_access_token_name: Optional[str] = None
-    personal_access_token_secret: Optional[str] = None
-    dashboard_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    chart_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
 
 class TableauSource(Source[Entity]):
@@ -83,25 +69,24 @@ class TableauSource(Source[Entity]):
         all_dashboard_details:
     """
 
-    config: TableauSourceConfig
+    config: WorkflowSource
     metadata_config: OpenMetadataServerConfig
     status: SourceStatus
 
     def __init__(
         self,
-        config: TableauSourceConfig,
+        config: WorkflowSource,
         metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.connection_config = self.config.serviceConnection.__root__.config
         self.client = self.tableau_client()
         self.service = get_dashboard_service_or_create(
-            service_name=config.service_name,
+            service_name=config.serviceName,
             dashboard_service_type=DashboardServiceType.Tableau.name,
-            username=config.username,
-            password=config.password.get_secret_value() if config.password else None,
-            dashboard_url=config.server,
+            config=self.config.serviceConnection.__root__.dict(),
             metadata_config=metadata_config,
         )
         self.status = SourceStatus()
@@ -115,31 +100,34 @@ class TableauSource(Source[Entity]):
         Returns:
         """
         tableau_server_config = {
-            f"{self.config.env}": {
-                "server": self.config.server,
-                "api_version": self.config.api_version,
-                "site_name": self.config.site_name,
-                "site_url": self.config.site_url,
+            f"{self.connection_config.env}": {
+                "server": self.connection_config.hostPort,
+                "api_version": self.connection_config.apiVersion,
+                "site_name": self.connection_config.siteName,
+                "site_url": self.connection_config.siteName,
             }
         }
-        if self.config.username and self.config.password:
-            tableau_server_config[self.config.env]["username"] = self.config.username
-            tableau_server_config[self.config.env][
+        if self.connection_config.username and self.connection_config.password:
+            tableau_server_config[self.connection_config.env][
+                "username"
+            ] = self.connection_config.username
+            tableau_server_config[self.connection_config.env][
                 "password"
-            ] = self.config.password.get_secret_value()
+            ] = self.connection_config.password.get_secret_value()
         elif (
-            self.config.personal_access_token_name
-            and self.config.personal_access_token_secret
+            self.connection_config.personalAccessTokenName
+            and self.connection_config.personalAccessTokenSecret
         ):
-            tableau_server_config[self.config.env][
+            tableau_server_config[self.connection_config.env][
                 "personal_access_token_name"
-            ] = self.config.personal_access_token_name
-            tableau_server_config[self.config.env][
+            ] = self.connection_config.personalAccessTokenName
+            tableau_server_config[self.connection_config.env][
                 "personal_access_token_secret"
-            ] = self.config.personal_access_token_secret
+            ] = self.connection_config.personalAccessTokenSecret
         try:
             conn = TableauServerConnection(
-                config_json=tableau_server_config, env=self.config.env
+                config_json=tableau_server_config,
+                env=self.connection_config.env,
             )
             conn.sign_in().json()
         except Exception as err:  # pylint: disable=broad-except
@@ -148,7 +136,12 @@ class TableauSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
-        config = TableauSourceConfig.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: TableauConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, TableauConnection):
+            raise InvalidSourceException(
+                f"Expected TableauConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -182,8 +175,8 @@ class TableauSource(Source[Entity]):
         for datasource in datasource_list:
             try:
                 table_fqdn = datasource.split("(")[1].split(")")[0]
-                dashboard_fqdn = f"{self.config.service_name}.{dashboard_name}"
-                table_fqdn = f"{self.config.db_service_name}.{table_fqdn}"
+                dashboard_fqdn = f"{self.config.serviceName}.{dashboard_name}"
+                table_fqdn = f"{self.config.serviceName}.{table_fqdn}"
                 table_entity = self.metadata_client.get_by_name(
                     entity=Table, fqdn=table_fqdn
                 )
@@ -240,7 +233,7 @@ class TableauSource(Source[Entity]):
                 service=EntityReference(id=self.service.id, type="dashboardService"),
                 last_modified=dateparser.parse(chart["updatedAt"]).timestamp() * 1000,
             )
-            if self.config.db_service_name:
+            if self.config.serviceName:
                 yield from self.get_lineage(datasource_list, dashboard_id)
 
     def _get_tableau_charts(self):
@@ -250,7 +243,7 @@ class TableauSource(Source[Entity]):
             chart_tags = self.all_dashboard_details["tags"][index]
             chart_type = self.all_dashboard_details["sheetType"][index]
             chart_url = (
-                f"{self.config.server}/#/site/{self.config.site_name}"
+                f"{self.connection_config.hostPort}/#/site/{self.connection_config.siteName}"
                 f"{self.all_dashboard_details['contentUrl'][index]}"
             )
             chart_owner = self.all_dashboard_details["owner"][index]

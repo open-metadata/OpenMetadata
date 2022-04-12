@@ -204,10 +204,14 @@ export interface FieldChange {
  */
 export interface OpenMetadataServerConfig {
   /**
+   * OpenMetadata server API version to use.
+   */
+  apiVersion?: string;
+  /**
    * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
    * the one configured on OpenMetadaata server.
    */
-  authProvider: AuthProvider;
+  authProvider?: AuthProvider;
   /**
    * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */
@@ -224,6 +228,7 @@ export interface OpenMetadataServerConfig {
  */
 export enum AuthProvider {
   Auth0 = 'auth0',
+  CustomOidc = 'custom-oidc',
   Google = 'google',
   NoAuth = 'no-auth',
   Okta = 'okta',
@@ -237,18 +242,32 @@ export enum AuthProvider {
  * Okta SSO client security configs.
  *
  * Auth0 SSO client security configs.
+ *
+ * Azure SSO client security configs.
+ *
+ * Custom OIDC SSO client security configs.
  */
 export interface SsoConfig {
+  /**
+   * Google SSO audience URL
+   */
+  audience?: string;
   /**
    * Google SSO client secret key path or contents.
    *
    * Auth0 Client Secret Key.
+   *
+   * Custom OIDC Client Secret Key.
    */
   secretKey?: string;
   /**
    * Okta Client ID.
    *
    * Auth0 Client ID.
+   *
+   * Azure Client ID.
+   *
+   * Custom OIDC Client ID.
    */
   clientId?: string;
   /**
@@ -265,12 +284,26 @@ export interface SsoConfig {
   privateKey?: string;
   /**
    * Okta client scopes.
+   *
+   * Azure Client ID.
    */
-  scopes?: string[];
+  scopes?: string[] | boolean | number | { [key: string]: any } | null | string;
   /**
    * Auth0 Domain.
    */
   domain?: string;
+  /**
+   * Azure SSO Authority
+   */
+  authority?: string;
+  /**
+   * Azure SSO client secret key
+   */
+  clientSecret?: string;
+  /**
+   * Custom OIDC token endpoint.
+   */
+  tokenEndpoint?: string;
 }
 
 /**
@@ -297,6 +330,12 @@ export interface EntityReference {
    */
   displayName?: string;
   /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -305,8 +344,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**
@@ -369,6 +407,8 @@ export interface ServiceConnection {
  *
  * Tableau Connection Config
  *
+ * Google BigQuery Connection Config
+ *
  * AWS Athena Connection Config
  *
  * Azure SQL Connection Config
@@ -378,6 +418,8 @@ export interface ServiceConnection {
  * Databricks Connection Config
  *
  * DB2 Connection Config
+ *
+ * DeltaLake Database Connection Config
  *
  * Druid Connection Config
  *
@@ -419,9 +461,49 @@ export interface ServiceConnection {
  */
 export interface Connection {
   /**
-   * Looker actor.
+   * Looker Environment
+   *
+   * Tableau Environment Name
    */
-  actor?: string;
+  env?: string;
+  /**
+   * URL to Looker instance.
+   *
+   * Host and Port of Metabase instance.
+   *
+   * Tableau Server
+   *
+   * BigQuery APIs URL
+   *
+   * Host and port of the Athena
+   *
+   * Host and port of the Clickhouse
+   *
+   * Host and port of the Databricks
+   *
+   * Host and port of the DB2
+   *
+   * Host and port of the Druid
+   *
+   * Host and port of the DynamoDB
+   *
+   * Host and port of the Glue
+   *
+   * Host and port of the Hive.
+   *
+   * Host and port of the data source.
+   *
+   * Host and port of the MsSQL.
+   *
+   * Host and port of the data source. Blank for in-memory database.
+   *
+   * Host and port of the Oracle.
+   *
+   * Host and port of the Postgres.
+   *
+   * Host and port of the Redshift.
+   */
+  hostPort?: string;
   /**
    * password to connect  to the Looker.
    *
@@ -449,6 +531,8 @@ export interface Connection {
    *
    * password to connect  to the SingleStore.
    *
+   * password to connect to SQLite. Blank for in-memory database.
+   *
    * password to connect  to the Oracle.
    *
    * password to connect  to the Postgres.
@@ -465,10 +549,6 @@ export interface Connection {
    */
   password?: string;
   /**
-   * Looker Platform Name
-   */
-  platformName?: string;
-  /**
    * Supported Metadata Extraction Pipelines.
    */
   supportedPipelineTypes?: string;
@@ -476,10 +556,6 @@ export interface Connection {
    * Service Type
    */
   type?: Type;
-  /**
-   * URL to Looker instance.
-   */
-  url?: string;
   /**
    * username to connect  to the Looker. This user should have privileges to read all the
    * metadata in Looker.
@@ -523,6 +599,8 @@ export interface Connection {
    * username to connect  to the SingleStore. This user should have privileges to read all the
    * metadata in SingleStore.
    *
+   * username to connect  to the SQLite. Blank for in-memory database.
+   *
    * username to connect  to the Oracle. This user should have privileges to read all the
    * metadata in Oracle.
    *
@@ -538,38 +616,17 @@ export interface Connection {
    * username to connect  to the Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    *
+   * username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
+   *
    * username to connect  to the Vertica. This user should have privileges to read all the
    * metadata in Vertica.
    */
   username?: string;
   /**
-   * Host and Port of Metabase instance.
-   *
-   * Host and port of the Athena
-   *
-   * Host and port of the Clickhouse
-   *
-   * Host and port of the Databricks
-   *
-   * Host and port of the DB2
-   *
-   * Host and port of the Druid
-   *
-   * Host and port of the DynamoDB
-   *
-   * Host and port of the Hive.
-   *
-   * Host and port of the data source.
-   *
-   * Host and port of the MsSQL.
-   *
-   * Host and port of the Oracle.
-   *
-   * Host and port of the Postgres.
-   *
-   * Host and port of the Redshift.
+   * Database Service Name for creation of lineage
    */
-  hostPort?: string;
+  dbServiceName?: string;
   /**
    * client_id for the PowerBI.
    */
@@ -607,6 +664,10 @@ export interface Connection {
    */
   connectionOptions?: { [key: string]: any };
   /**
+   * Database Service to create lineage
+   */
+  dbServiceConnection?: string;
+  /**
    * authenticaiton provider for the Superset
    */
   provider?: string;
@@ -627,24 +688,10 @@ export interface Connection {
    */
   personalAccessTokenSecret?: string;
   /**
-   * Tableau Server
-   */
-  server?: string;
-  /**
    * Tableau Site Name
    */
   siteName?: string;
-  /**
-   * Tableau Site URL
-   */
-  siteURL?: string;
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -691,6 +738,10 @@ export interface Connection {
    * attempts to scan all the databases in SingleStore.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   *
+   * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
    * attempts to scan all the databases in Oracle.
    *
@@ -712,7 +763,7 @@ export interface Connection {
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Trino.
+   * attempts to scan all the databases in the selected catalog in Trino.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -720,13 +771,31 @@ export interface Connection {
    */
   database?: string;
   /**
-   * S3 Staging Directory.
+   * Enable importing policy tags of BigQuery into OpenMetadata
    */
-  s3StagingDir?: string;
+  enablePolicyTagImport?: boolean;
+  /**
+   * Google BigQuery project id.
+   */
+  projectID?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
+  /**
+   * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
+   */
+  tagCategoryName?: string;
+  /**
+   * AWS Athena AWS Region.
+   *
+   * AWS Region Name.
+   */
+  awsRegion?: string;
+  /**
+   * S3 Staging Directory.
+   */
+  s3StagingDir?: string;
   /**
    * Service Type
    */
@@ -745,6 +814,18 @@ export interface Connection {
   duration?: number;
   token?: string;
   /**
+   * pySpark App Name
+   */
+  appName?: string;
+  /**
+   * File path of local Hive Metastore.
+   */
+  metastoreFilePath?: string;
+  /**
+   * Host and port of remote Hive Metastore.
+   */
+  metastoreHostPort?: string;
+  /**
    * AWS Access key ID.
    */
   awsAccessKeyId?: any;
@@ -758,14 +839,39 @@ export interface Connection {
   awsSessionToken?: string;
   /**
    * EndPoint URL for the Dynamo DB
+   *
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
   authOptions?: string;
   /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
+  /**
    * Presto catalog
+   *
+   * Catalog of the data source.
    */
   catalog?: string;
   /**
@@ -789,6 +895,14 @@ export interface Connection {
    */
   warehouse?: string;
   /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: any };
+  /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: any };
+  /**
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
   bootstrapServers?: string;
@@ -799,10 +913,22 @@ export interface Connection {
 }
 
 /**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
   AwsathenaREST = 'awsathena+rest',
+  Bigquery = 'bigquery',
   ClickhouseHTTP = 'clickhouse+http',
   DatabricksConnector = 'databricks+connector',
   Db2IBMDB = 'db2+ibm_db',
@@ -855,9 +981,11 @@ export enum AthenaType {
  */
 export enum Type {
   AzureSQL = 'AzureSQL',
+  BigQuery = 'BigQuery',
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
@@ -910,6 +1038,10 @@ export interface ConfigClass {
    */
   generateSampleData?: boolean;
   /**
+   * Optional configuration to turn off fetching metadata for tables.
+   */
+  includeTables?: boolean;
+  /**
    * Optional configuration to turn off fetching metadata for views.
    */
   includeViews?: boolean;
@@ -934,6 +1066,10 @@ export interface ConfigClass {
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */
   queryLogDuration?: number;
+  /**
+   * Configuration to set the limit for query logs
+   */
+  resultLimit?: number;
   /**
    * Temporary file name to store the query logs before processing. Absolute file path
    * required.

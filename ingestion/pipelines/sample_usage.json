@@ -1,10 +1,13 @@
 {
   "source": {
-    "serviceName": "bigquery_gcp",
-    "serviceConnection": "",
     "type": "sample-usage",
-    "sourceConfig": {
-    }
+    "serviceName": "bigquery_gcp",
+    "serviceConnection": {
+      "config": {
+        "type": "BigQuery"
+      }
+    },
+    "sourceConfig": {}
   },
   "processor": {
     "type": "query-parser",
@@ -26,10 +29,8 @@
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    },
-    "config": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

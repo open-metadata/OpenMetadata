@@ -52,10 +52,10 @@
       "type": "string"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "proxies": {
       "description": "Proxies for the connection to Trino data source",
@@ -65,14 +65,8 @@
       "description": "URL parameters for connection to the Trino data source",
       "type": "object"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

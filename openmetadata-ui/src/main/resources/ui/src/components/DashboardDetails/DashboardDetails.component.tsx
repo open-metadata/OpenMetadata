@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { EntityTags, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';

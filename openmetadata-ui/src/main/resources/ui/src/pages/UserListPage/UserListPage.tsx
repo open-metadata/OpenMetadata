@@ -26,25 +26,16 @@ import { ROUTES } from '../../constants/constants';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserListPage = () => {
-  const showToast = useToastContext();
   const history = useHistory();
 
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [allUsers, setAllUsers] = useState<Array<User>>();
-
-  const handleShowErrorToast = (message: string) => {
-    showToast({
-      variant: 'error',
-      body: message,
-    });
-  };
 
   const fetchTeams = () => {
     setIsLoading(true);
@@ -57,8 +48,9 @@ const UserListPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(err, jsonData['api-error-messages']['fetch-teams-error'])
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
         );
       })
       .finally(() => {
@@ -92,8 +84,9 @@ const UserListPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(err, jsonData['api-error-messages']['update-user-error'])
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['update-user-error']
         );
       })
       .finally(() => {
@@ -109,8 +102,9 @@ const UserListPage = () => {
         fetchTeams();
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(err, jsonData['api-error-messages']['delete-user-error'])
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-user-error']
         );
       })
       .finally(() => {

@@ -24,7 +24,7 @@ const mockItem = {
 
 const mockRemove = jest.fn();
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

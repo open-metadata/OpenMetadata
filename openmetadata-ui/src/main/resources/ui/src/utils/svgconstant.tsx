@@ -17,16 +17,17 @@ export const dropdownIcon = ({ style }: { style?: CSSProperties }) => {
   return (
     <svg
       aria-hidden="true"
-      className="tw-inline-block  tw-h-5 tw-w-5"
+      className="tw-inline-block tw-h-4 tw-w-4 tw-ml-0.5"
       fill="currentColor"
       style={style}
-      viewBox="0 0 20 20"
+      viewBox="0 0 16 16"
       xmlns="http://www.w3.org/2000/svg">
       <path
-        clipRule="evenodd"
-        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1
-        0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-        fillRule="evenodd"
+        d="M8.00003 11C7.87216 11 7.74416 10.9511 7.64653 10.8535L2.64653 5.8535C2.45116 5.65813 
+        2.45116 5.34175 2.64653 5.1465C2.84191 4.95125 3.15828 4.95113 3.35353 5.1465L8.00003 
+        9.793L12.6465 5.1465C12.8419 4.95113 13.1583 4.95113 13.3535 5.1465C13.5488 5.34188 
+        13.5489 5.65825 13.3535 5.8535L8.35354 10.8535C8.25591 10.9511 8.12791 11 8.00003 11Z"
+        strokeWidth="0.2"
       />
     </svg>
   );

@@ -11,6 +11,20 @@
  *  limitations under the License.
  */
 
+const prepareModifiedKey = (key, restrictKeyModification = false) => {
+  if (!restrictKeyModification) {
+    if (key === 'service') {
+      return 'service type';
+    } else if (key === 'databaseschema') {
+      return 'database schema';
+    } else if (key === 'servicename') {
+      return 'service';
+    } else {
+      return key;
+    }
+  }
+};
+
 export const getFilterString = (
   filters,
   excludeFilters = [],
@@ -24,8 +38,7 @@ export const getFilterString = (
     const modifiedFilter = [];
     const filter = filters[key];
     filter.forEach((value) => {
-      const modifiedKey =
-        !restrictKeyModification && key === 'service' ? 'service type' : key;
+      const modifiedKey = prepareModifiedKey(key, restrictKeyModification);
       const modifiedValue = key === 'tags' ? `"${value}"` : value;
       modifiedFilter.push(
         `${modifiedKey.split(' ').join('_')}:${modifiedValue}`
@@ -48,4 +61,18 @@ export const getFilterCount = (filterData) => {
 
 export const getFilterKey = (key) => {
   return key === 'service_type' ? 'service' : key;
+};
+
+/**
+ * Check for filters and return the filters in query param format
+ * @param filters - filter object
+ * @returns query param format
+ */
+export const prepareQueryParams = (filters) => {
+  const entries = Object.entries(filters);
+
+  return entries
+    .filter((entry) => entry[1].length)
+    .map((entry) => `${entry[0]}=${entry[1].join(',')}`)
+    .join('&');
 };

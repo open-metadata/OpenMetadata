@@ -113,7 +113,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
-        String expectedFQN = FullyQualifiedName.add(service.getName(), db.getName());
+        String expectedFQN = FullyQualifiedName.add(service.getFullyQualifiedName(), db.getName());
         assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }
@@ -161,9 +161,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // TODO
   }
 
-  /** Validate returned fields GET .../dashboards/{id}?fields="..." or GET .../dashboards/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Dashboard dashboard, boolean byName) throws HttpResponseException {
+  public EntityInterface<Dashboard> validateGetWithDifferentFields(Dashboard dashboard, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     dashboard =
         byName
@@ -184,13 +184,10 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
             ? getEntityByName(dashboard.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboard.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboard.getService(), dashboard.getServiceType());
-    assertListNotNull(
-        dashboard.getOwner(),
-        dashboard.getCharts(),
-        dashboard.getFollowers(),
-        dashboard.getTags(),
-        dashboard.getUsageSummary());
-    TestUtils.validateEntityReferences(dashboard.getCharts());
+    assertListNotNull(dashboard.getUsageSummary());
+    TestUtils.validateEntityReferences(dashboard.getCharts(), true);
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(dashboard);
   }
 
   private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> expectedCharts) {
