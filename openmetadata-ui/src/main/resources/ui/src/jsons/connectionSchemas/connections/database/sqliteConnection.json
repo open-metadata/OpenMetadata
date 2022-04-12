@@ -71,7 +71,7 @@
     "supportsMetadataExtraction": {
       "description": "Supports Metadata Extraction.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     }
   },
   "additionalProperties": false

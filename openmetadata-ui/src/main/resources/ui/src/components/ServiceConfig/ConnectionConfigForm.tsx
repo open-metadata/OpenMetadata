@@ -57,11 +57,13 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onSave,
 }: Props) => {
-  /* eslint-disable-next-line no-prototype-builtins */
-  const config = data.hasOwnProperty('connection')
-    ? ((data as DatabaseService | MessagingService | DashboardService)
-        .connection.config as ConfigData)
-    : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData);
+  const config = !isNil(data)
+    ? /* eslint-disable-next-line no-prototype-builtins */
+      data.hasOwnProperty('connection')
+      ? ((data as DatabaseService | MessagingService | DashboardService)
+          .connection.config as ConfigData)
+      : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
+    : {};
   const getDatabaseFields = () => {
     let connSch = {
       schema: {},

@@ -48,12 +48,12 @@
     "supportsMetadataExtraction": {
       "description": "Supports Metadata Extraction.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "supportsUsageExtraction": {
       "description": "Supports Usage Extraction.",
       "type": "boolean",
-      "default": "true"
+      "default": true
     }
   },
   "additionalProperties": false
