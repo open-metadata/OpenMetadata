@@ -21,11 +21,10 @@ from airflow.api.common.experimental.trigger_dag import trigger_dag
 from airflow.models import DagBag, DagModel
 from airflow.utils import timezone
 from airflow.www.app import csrf
-from flask import request
+from flask import Response, request
 from flask_admin import expose as admin_expose
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose as app_builder_expose
-from openmetadata.airflow.deploy import DagDeployer
 from openmetadata.api.apis_metadata import APIS_METADATA, get_metadata_api
 from openmetadata.api.config import (
     AIRFLOW_VERSION,
@@ -35,8 +34,13 @@ from openmetadata.api.config import (
 )
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
+from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.test_connection import test_source_connection
 from pydantic.error_wrappers import ValidationError
 
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnectionModel,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -115,12 +119,14 @@ class REST_API(AppBuilderBaseView):
             return self.deploy_dag()
         if api == "trigger_dag":
             return self.trigger_dag()
+        if api == "test_connection":
+            return self.test_connection()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
         )
 
-    def deploy_dag(self):
+    def deploy_dag(self) -> Response:
         """Custom Function for the deploy_dag API
         Creates workflow dag based on workflow dag file and refreshes
         the session
@@ -141,7 +147,7 @@ class REST_API(AppBuilderBaseView):
         except ValidationError as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload {json_request} - {err}",
+                error=f"Request Validation Error parsing payload {json_request}. IngestionPipeline expected - {err}",
             )
 
         except Exception as err:
@@ -151,7 +157,33 @@ class REST_API(AppBuilderBaseView):
             )
 
     @staticmethod
-    def trigger_dag():
+    def test_connection() -> Response:
+        """
+        Given a WorkflowSource Schema, create the engine
+        and test the connection
+        """
+        json_request = request.get_json()
+
+        try:
+            service_connection_model = ServiceConnectionModel(**json_request)
+            response = test_source_connection(service_connection_model)
+
+            return response
+
+        except ValidationError as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Request Validation Error parsing payload {json_request}. (Workflow)Source expected - {err}",
+            )
+
+        except Exception as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error testing connection {json_request} - {err} - {traceback.format_exc()}",
+            )
+
+    @staticmethod
+    def trigger_dag() -> Response:
         """
         Trigger a dag run
         """

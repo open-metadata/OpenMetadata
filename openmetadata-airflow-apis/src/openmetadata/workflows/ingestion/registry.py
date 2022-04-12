@@ -19,7 +19,9 @@ from collections import namedtuple
 from openmetadata.workflows.ingestion.metadata import build_metadata_dag
 from openmetadata.workflows.ingestion.usage import build_usage_dag
 
-from metadata.generated.schema.operations.pipelines.airflowPipeline import PipelineType
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 
 
 def register():
@@ -43,4 +45,4 @@ def register():
 build_registry = register()
 
 build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
-build_registry.add(PipelineType.queryUsage.value)(build_usage_dag)
+build_registry.add(PipelineType.usage.value)(build_usage_dag)

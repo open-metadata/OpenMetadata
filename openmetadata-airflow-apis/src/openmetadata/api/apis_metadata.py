@@ -47,8 +47,8 @@ APIS_METADATA = [
         "arguments": [],
         "post_arguments": [
             {
-                "name": "workflow_source",
-                "description": "Workflow Source config to test",
+                "name": "service_connection",
+                "description": "ServiceConnectionModel config to test",
                 "required": True,
             },
         ],
