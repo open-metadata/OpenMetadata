@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/metadataService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metadata Service",
+  "description": "This schema defines the Metadata Service entity, such as OpenMetadata, Atlas and Amundsen",
+  "type": "object",
+  "definitions": {
+    "databaseServiceType": {
+      "description": "This schema defines the Metadata Service entity, such as OpenMetadata, Atlas and Amundsen",
+      "type": "string",
+      "enum": ["OpenMetadata", "Atlas", "Amundsen"],
+      "javaEnums": [
+        { "name": "OpenMetadata" },
+        { "name": "Atlas" },
+        { "name": "Amundsen" }
+      ]
+    },
+    "databaseConnection": {
+      "type": "object",
+      "description": "Metadata Service Connections",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/metadata/openMetadataConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/amundsenConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/atlasConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {},
+  "required": [],
+  "additionalProperties": false
+}

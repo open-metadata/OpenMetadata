@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openmetadataConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "openmetadataConnection",
+  "description": "Openmetadata Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.openmetadataConnection",
+  "definitions": {
+    "openmetadataType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["OpenMetadata"],
+      "default": "OpenMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/openmetadataType",
+      "default": "OpenMetadata"
+    },
+    "include_tables": {
+      "description": "Include Tables",
+      "type": "boolean"
+    },
+    "include_tables": {
+      "description": "Include Tables",
+      "type": "boolean"
+    },
+    "include_tables": {
+      "description": "Include Tables",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
