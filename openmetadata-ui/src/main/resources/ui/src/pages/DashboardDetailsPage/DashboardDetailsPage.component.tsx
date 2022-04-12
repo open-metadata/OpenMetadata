@@ -21,7 +21,6 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -59,7 +58,6 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -96,8 +94,8 @@ const DashboardDetailsPage = () => {
   const [dashboardId, setDashboardId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
+  const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
@@ -249,13 +247,26 @@ const DashboardDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.name, node.type).then((res: AxiosResponse) => {
-      setLeafNode(res.data, pos);
-      setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
-      setTimeout(() => {
-        setNodeLoading((prev) => ({ ...prev, state: false }));
-      }, 500);
-    });
+    getLineageByFQN(node.fullyQualifiedName, node.type)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setLeafNode(res.data, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
+        setTimeout(() => {
+          setNodeLoading((prev) => ({ ...prev, state: false }));
+        }, 500);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
+      });
   };
 
   const getLineageData = () => {
@@ -740,7 +751,7 @@ const DashboardDetailsPage = () => {
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
-          owner={owner}
+          owner={owner as EntityReference}
           paging={paging}
           postFeedHandler={postFeedHandler}
           removeLineageHandler={removeLineageHandler}

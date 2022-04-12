@@ -23,7 +23,6 @@ import { ColumnTestType } from '../../enums/columnTest.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
-  EntityReference,
   Table,
   TableData,
   TableJoins,
@@ -33,6 +32,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -42,10 +42,6 @@ import {
 } from '../../interface/dataQuality.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
-
-export interface DatasetOwner extends EntityReference {
-  displayName?: string;
-}
 
 export interface DatasetDetailsProps {
   isNodeLoading: LoadingNodeState;
@@ -60,7 +56,7 @@ export interface DatasetDetailsProps {
   datasetFQN: string;
   dataModel?: Table['dataModel'];
   activeTab: number;
-  owner: DatasetOwner;
+  owner: EntityReference;
   description: string;
   tableProfile: Table['tableProfile'];
   tableQueries: Table['tableQueries'];
@@ -68,7 +64,7 @@ export interface DatasetDetailsProps {
   tier: TagLabel;
   sampleData: TableData;
   entityLineage: EntityLineage;
-  followers: Array<User>;
+  followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: EntityThread[];

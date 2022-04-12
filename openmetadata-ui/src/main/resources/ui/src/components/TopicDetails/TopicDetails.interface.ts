@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  EntityThread,
-  TableDetail,
-} from 'Models';
+import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -38,10 +34,10 @@ export interface TopicDetailsProps {
   topicDetails: Topic;
   entityName: string;
   activeTab: number;
-  owner: TableDetail['owner'];
+  owner: EntityReference;
   description: string;
   tier: TagLabel;
-  followers: Array<User>;
+  followers: Array<EntityReference>;
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
