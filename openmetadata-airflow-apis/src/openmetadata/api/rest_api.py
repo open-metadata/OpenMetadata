@@ -14,17 +14,17 @@ Airflow REST API definition
 
 import logging
 import traceback
+from typing import Optional
 
 from airflow import settings
 from airflow.api.common.experimental.trigger_dag import trigger_dag
 from airflow.models import DagBag, DagModel
 from airflow.utils import timezone
 from airflow.www.app import csrf
-from flask import request
+from flask import Response, request
 from flask_admin import expose as admin_expose
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose as app_builder_expose
-from openmetadata.airflow.deploy import DagDeployer
 from openmetadata.api.apis_metadata import APIS_METADATA, get_metadata_api
 from openmetadata.api.config import (
     AIRFLOW_VERSION,
@@ -34,8 +34,14 @@ from openmetadata.api.config import (
 )
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
+from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.test_connection import test_source_connection
+from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
 
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnectionModel,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -53,7 +59,7 @@ class REST_API(AppBuilderBaseView):
         return dagbag
 
     @staticmethod
-    def get_request_arg(req, arg):
+    def get_request_arg(req, arg) -> Optional[str]:
         return req.args.get(arg) or req.form.get(arg)
 
     # '/' Endpoint where the Admin page is which allows you to view the APIs available and trigger them
@@ -97,16 +103,16 @@ class REST_API(AppBuilderBaseView):
 
         # Validate that the API is provided
         if not api:
-            logging.warning("api argument not provided")
+            logging.warning("api argument not provided or empty")
             return ApiResponse.bad_request("API should be provided")
 
         api = api.strip().lower()
-        logging.info("REST_API.api() called (api: " + str(api) + ")")
+        logging.info(f"REST_API.api() called (api: {api})")
 
         api_metadata = get_metadata_api(api)
         if api_metadata is None:
-            logging.info("api '" + str(api) + "' not supported")
-            return ApiResponse.bad_request("API '" + str(api) + "' was not found")
+            logging.info(f"api [{api}] not supported")
+            return ApiResponse.bad_request(f"API [{api}] was not found")
 
         # Deciding which function to use based off the API object that was requested.
         # Some functions are custom and need to be manually routed to.
@@ -114,14 +120,14 @@ class REST_API(AppBuilderBaseView):
             return self.deploy_dag()
         if api == "trigger_dag":
             return self.trigger_dag()
-
-        # TODO DELETE, STATUS (pick it up from airflow directly), LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
+        if api == "test_connection":
+            return self.test_connection()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
         )
 
-    def deploy_dag(self):
+    def deploy_dag(self) -> Response:
         """Custom Function for the deploy_dag API
         Creates workflow dag based on workflow dag file and refreshes
         the session
@@ -140,42 +146,64 @@ class REST_API(AppBuilderBaseView):
             return response
 
         except ValidationError as err:
-            msg = f"Request Validation Error parsing payload {json_request} - {err}"
-            return ApiResponse.error(status=ApiResponse.STATUS_BAD_REQUEST, error=msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Request Validation Error parsing payload {json_request}. IngestionPipeline expected - {err}",
+            )
 
         except Exception as err:
-            msg = f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}"
-            return ApiResponse.error(status=ApiResponse.STATUS_SERVER_ERROR, error=msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}",
+            )
 
     @staticmethod
-    def trigger_dag():
+    def test_connection() -> Response:
+        """
+        Given a WorkflowSource Schema, create the engine
+        and test the connection
+        """
+        json_request = request.get_json()
+
+        try:
+            service_connection_model = ServiceConnectionModel(**json_request)
+            response = test_source_connection(service_connection_model)
+
+            return response
+
+        except ValidationError as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Request Validation Error parsing payload {json_request}. (Workflow)Source expected - {err}",
+            )
+
+        except Exception as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error testing connection {json_request} - {err} - {traceback.format_exc()}",
+            )
+
+    @staticmethod
+    def trigger_dag() -> Response:
         """
         Trigger a dag run
         """
         logging.info("Running run_dag method")
+        request_json = request.get_json()
+
+        dag_id = request_json.get("workflow_name")
+        if not dag_id:
+            return ApiResponse.bad_request("workflow_name should be informed")
+
         try:
-            request_json = request.get_json()
-            dag_id = request_json["workflow_name"]
-            run_id = request_json["run_id"] if "run_id" in request_json.keys() else None
-            dag_run = trigger_dag(
-                dag_id=dag_id,
-                run_id=run_id,
-                conf=None,
-                execution_date=timezone.utcnow(),
-            )
-            return ApiResponse.success(
-                {
-                    "message": "Workflow [{}] has been triggered {}".format(
-                        dag_id, dag_run
-                    )
-                }
-            )
-        except Exception as e:
+            run_id = request_json.get("run_id")
+            response = trigger(dag_id, run_id)
+
+            return response
+
+        except Exception as exc:
             logging.info(f"Failed to trigger dag {dag_id}")
             return ApiResponse.error(
-                {
-                    "message": "Workflow {} has filed to trigger due to {}".format(
-                        dag_id, e
-                    )
-                }
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
             )
