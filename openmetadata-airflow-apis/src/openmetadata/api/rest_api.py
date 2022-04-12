@@ -14,6 +14,7 @@ Airflow REST API definition
 
 import logging
 import traceback
+from typing import Optional
 
 from airflow import settings
 from airflow.api.common.experimental.trigger_dag import trigger_dag
@@ -53,7 +54,7 @@ class REST_API(AppBuilderBaseView):
         return dagbag
 
     @staticmethod
-    def get_request_arg(req, arg):
+    def get_request_arg(req, arg) -> Optional[str]:
         return req.args.get(arg) or req.form.get(arg)
 
     # '/' Endpoint where the Admin page is which allows you to view the APIs available and trigger them
@@ -97,16 +98,16 @@ class REST_API(AppBuilderBaseView):
 
         # Validate that the API is provided
         if not api:
-            logging.warning("api argument not provided")
+            logging.warning("api argument not provided or empty")
             return ApiResponse.bad_request("API should be provided")
 
         api = api.strip().lower()
-        logging.info("REST_API.api() called (api: " + str(api) + ")")
+        logging.info(f"REST_API.api() called (api: {api})")
 
         api_metadata = get_metadata_api(api)
         if api_metadata is None:
-            logging.info("api '" + str(api) + "' not supported")
-            return ApiResponse.bad_request("API '" + str(api) + "' was not found")
+            logging.info(f"api [{api}] not supported")
+            return ApiResponse.bad_request(f"API [{api}] was not found")
 
         # Deciding which function to use based off the API object that was requested.
         # Some functions are custom and need to be manually routed to.
@@ -114,8 +115,6 @@ class REST_API(AppBuilderBaseView):
             return self.deploy_dag()
         if api == "trigger_dag":
             return self.trigger_dag()
-
-        # TODO DELETE, STATUS (pick it up from airflow directly), LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -140,12 +139,16 @@ class REST_API(AppBuilderBaseView):
             return response
 
         except ValidationError as err:
-            msg = f"Request Validation Error parsing payload {json_request} - {err}"
-            return ApiResponse.error(status=ApiResponse.STATUS_BAD_REQUEST, error=msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Request Validation Error parsing payload {json_request} - {err}",
+            )
 
         except Exception as err:
-            msg = f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}"
-            return ApiResponse.error(status=ApiResponse.STATUS_SERVER_ERROR, error=msg)
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error deploying {json_request} - {err} - {traceback.format_exc()}",
+            )
 
     @staticmethod
     def trigger_dag():
@@ -153,10 +156,14 @@ class REST_API(AppBuilderBaseView):
         Trigger a dag run
         """
         logging.info("Running run_dag method")
+        request_json = request.get_json()
+
+        dag_id = request_json.get("workflow_name")
+        if not dag_id:
+            return ApiResponse.bad_request("workflow_name should be informed")
+
         try:
-            request_json = request.get_json()
-            dag_id = request_json["workflow_name"]
-            run_id = request_json["run_id"] if "run_id" in request_json.keys() else None
+            run_id = request_json.get("run_id")
             dag_run = trigger_dag(
                 dag_id=dag_id,
                 run_id=run_id,
@@ -164,18 +171,12 @@ class REST_API(AppBuilderBaseView):
                 execution_date=timezone.utcnow(),
             )
             return ApiResponse.success(
-                {
-                    "message": "Workflow [{}] has been triggered {}".format(
-                        dag_id, dag_run
-                    )
-                }
+                {"message": f"Workflow [{dag_id}] has been triggered {dag_run}"}
             )
-        except Exception as e:
+
+        except Exception as exc:
             logging.info(f"Failed to trigger dag {dag_id}")
             return ApiResponse.error(
-                {
-                    "message": "Workflow {} has filed to trigger due to {}".format(
-                        dag_id, e
-                    )
-                }
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
             )
