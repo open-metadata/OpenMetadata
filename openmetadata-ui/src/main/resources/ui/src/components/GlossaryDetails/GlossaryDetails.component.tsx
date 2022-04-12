@@ -220,6 +220,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               displayName: term.displayName || term.name || '',
               id: term.id,
               type: term.type,
+              name: term.name,
             }}
             key={term.name}
             onRemove={handleRemoveReviewer}

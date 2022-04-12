@@ -64,6 +64,7 @@ const AddUsersModal = ({
           fqn: user.fullyQualifiedName || '',
           id: user.id,
           type: user.type,
+          name: user.name,
         };
 
         return (

@@ -468,6 +468,7 @@ const TeamsPage = () => {
               fqn: user.fullyQualifiedName || '',
               type: user.type,
               id: user.id,
+              name: user.name,
             };
 
             return (
@@ -520,6 +521,7 @@ const TeamsPage = () => {
               type: dataset.type,
               fqn: dataset.fullyQualifiedName || '',
               id: dataset.id,
+              name: dataset.name,
             };
 
             return (
@@ -554,6 +556,7 @@ const TeamsPage = () => {
             fqn: role.fullyQualifiedName as string,
             type: role.type,
             id: role.id,
+            name: role.name,
           };
 
           return <UserCard isIconVisible item={roleData} key={i} />;

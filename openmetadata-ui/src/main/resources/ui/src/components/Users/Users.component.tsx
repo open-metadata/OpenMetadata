@@ -138,6 +138,7 @@ const Users = ({ userData }: Props) => {
               type: dataset.type,
               fqn: dataset.fullyQualifiedName || '',
               id: dataset.id,
+              name: dataset.name,
             };
 
             return (

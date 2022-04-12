@@ -39,6 +39,7 @@ const FollowersModal = ({ header, list, onCancel }: Props) => {
           fqn: user.fullyQualifiedName || '',
           id: user.id,
           type: user.type,
+          name: user.name,
         };
 
         return <UserCard isIconVisible item={User} key={index} />;

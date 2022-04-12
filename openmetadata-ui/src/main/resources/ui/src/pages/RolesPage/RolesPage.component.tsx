@@ -661,6 +661,7 @@ const RolesPage = () => {
               fqn: user.fullyQualifiedName || '',
               id: user.id,
               type: user.type,
+              name: user.name,
             }}
             key={user.id}
           />
@@ -714,6 +715,7 @@ const RolesPage = () => {
               fqn: team.fullyQualifiedName || '',
               id: team.id,
               type: team.type,
+              name: team.name,
             };
 
             return <UserCard isIconVisible item={teamData} key={i} />;

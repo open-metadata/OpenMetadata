@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
@@ -30,15 +30,21 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
-type Props = {
-  item: { fqn: string; type: string; displayName: string; id?: string };
+interface Props {
+  item: {
+    fqn: string;
+    type: string;
+    displayName: string;
+    id?: string;
+    name?: string;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
-};
+}
 
 const UserCard = ({
   item,
@@ -146,7 +152,7 @@ const UserCard = ({
         {isIconVisible && !isDataset ? (
           <Avatar name={item.displayName} />
         ) : (
-          <>{getDatasetIcon(item.type)}</>
+          <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
@@ -155,9 +161,9 @@ const UserCard = ({
           })}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.type, item.fqn)}</>
+            <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
-            <>
+            <Fragment>
               <p
                 className={classNames(
                   'tw-font-normal',
@@ -166,16 +172,16 @@ const UserCard = ({
                 title={item.displayName}>
                 {item.displayName}
               </p>
-              {item.type && (
+              {item.name && (
                 <p
                   className={classNames(
                     isActionVisible ? 'tw-truncate tw-w-32' : null
                   )}
-                  title={isIconVisible ? item.type : capitalize(item.type)}>
-                  {isIconVisible ? item.type : capitalize(item.type)}
+                  title={isIconVisible ? item.name : capitalize(item.name)}>
+                  {isIconVisible ? item.name : capitalize(item.name)}
                 </p>
               )}
-            </>
+            </Fragment>
           )}
         </div>
       </div>
