@@ -158,7 +158,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         :return: TableProfile
         """
         try:
-            orm = ometa_to_orm(table=table, database=schema)
+            orm = ometa_to_orm(table=table, schema=schema)
             profiler = DefaultProfiler(
                 session=self.session, table=orm, profile_date=self.profile_date
             )

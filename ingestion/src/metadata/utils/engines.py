@@ -19,6 +19,9 @@ from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionOptions,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -35,7 +38,7 @@ def get_engine(workflow_source: WorkflowSource, verbose: bool = False) -> Engine
     service_connection_config = workflow_source.serviceConnection.__root__.config
     options = service_connection_config.connectionOptions
     if not options:
-        options = {}
+        options = ConnectionOptions()
     engine = create_engine(
         get_connection_url(service_connection_config),
         **options.dict(),
