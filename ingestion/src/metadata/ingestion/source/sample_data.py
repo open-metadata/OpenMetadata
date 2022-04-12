@@ -258,9 +258,17 @@ class SampleDataSource(Source[Entity]):
                 self.service_connection.sampleDataFolder + "/datasets/tables.json", "r"
             )
         )
-        self.database_service = get_database_service_or_create(
-            config=config, metadata_config=self.metadata_config
+        self.database_service_json = json.load(
+            open(
+                self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
+            )
         )
+
+        self.database_service = get_database_service_or_create(
+            config=WorkflowSource(**self.database_service_json),
+            metadata_config=self.metadata_config,
+        )
+
         self.kafka_service_json = json.load(
             open(self.service_connection.sampleDataFolder + "/topics/service.json", "r")
         )
