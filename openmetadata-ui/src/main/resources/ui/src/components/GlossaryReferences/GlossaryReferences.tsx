@@ -16,6 +16,7 @@ import { TermReference } from '../../generated/entity/data/glossaryTerm';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import { Field } from '../Field/Field';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface Props {
   referenceList: TermReference[];
@@ -64,7 +65,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
           theme="primary"
           variant="contained"
           onClick={addReferenceFields}>
-          <i aria-hidden="true" className="fa fa-plus" />
+          <FontAwesomeIcon icon="plus" />
         </Button>
       </div>
 

@@ -30,6 +30,7 @@ import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.i
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
   currentTier?: string;
@@ -351,7 +352,7 @@ const ManageTab: FunctionComponent<Props> = ({
             size="regular"
             theme="primary"
             variant="contained">
-            <i aria-hidden="true" className="fa fa-check" />
+            <FontAwesomeIcon icon="check" />
           </Button>
         ) : (
           <Button
