@@ -493,8 +493,6 @@ const ServicePage: FunctionComponent = () => {
             },
           };
 
-    // console.log(configData);
-
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
         .then((res: AxiosResponse) => {

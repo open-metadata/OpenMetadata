@@ -22,24 +22,6 @@ export interface IngestionSchedule {
   startDate: string;
 }
 
-// export interface DashboardService {
-//   description: string;
-//   href: string;
-//   id: string;
-//   name: string;
-//   serviceType: string;
-//   ingestionSchedule?: IngestionSchedule;
-//   dashboardUrl?: string;
-//   username?: string;
-//   password?: string;
-//   url?: string;
-//   api_key?: string;
-//   site_name?: string;
-//   api_version?: string;
-//   server?: string;
-//   env?: string;
-// }
-
 export interface DatabaseConnection {
   hostPort: string;
   password: string;
