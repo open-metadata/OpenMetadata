@@ -35,7 +35,8 @@ def start_docker(docker, start_time, file_path, skip_sample_data):
     logger.info("Ran docker compose for OpenMetadata successfully.")
     if not skip_sample_data:
         logger.info("Waiting for ingestion to complete..")
-        ingest_sample_data(docker)
+        wait_for_containers(docker)
+        ingest_sample_data()
         metadata_config = OpenMetadataServerConfig(
             hostPort="http://localhost:8585/api", authProvider="no-auth"
         )
@@ -208,28 +209,43 @@ def reset_db_om(docker):
         click.secho("OpenMetadata Instance is not up and running", fg="yellow")
 
 
-def ingest_sample_data(docker):
-    if docker.container.inspect("openmetadata_server").state.running:
-        base_url = "http://localhost:8080/api"
-        dags = ["sample_data", "sample_usage", "index_metadata"]
-
-        client_config = ClientConfig(
-            base_url=base_url,
-            auth_header="Authorization",
-            auth_token_mode="Basic",
-            access_token=to_native_string(
-                b64encode(b":".join(("admin".encode(), "admin".encode()))).strip()
-            ),
+def wait_for_containers(docker) -> None:
+    """
+    Wait until docker containers are running
+    """
+    while True:
+        running = (
+            docker.container.inspect("openmetadata_server").state.running
+            and docker.container.inspect("openmetadata_ingestion").state.running
         )
-        client = REST(client_config)
+        if running:
+            break
+        else:
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(5)
 
-        for dag in dags:
-            json_sample_data = {
-                "dag_run_id": "{}_{}".format(dag, datetime.now()),
-            }
-            client.post(
-                "/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data)
-            )
 
-    else:
-        click.secho("OpenMetadata Instance is not up and running", fg="yellow")
+def ingest_sample_data() -> None:
+    """
+    Trigger sample data DAGs
+    """
+
+    base_url = "http://localhost:8080/api"
+    dags = ["sample_data", "sample_usage", "index_metadata"]
+
+    client_config = ClientConfig(
+        base_url=base_url,
+        auth_header="Authorization",
+        auth_token_mode="Basic",
+        access_token=to_native_string(
+            b64encode(b":".join(("admin".encode(), "admin".encode()))).strip()
+        ),
+    )
+    client = REST(client_config)
+
+    for dag in dags:
+        json_sample_data = {
+            "dag_run_id": "{}_{}".format(dag, datetime.now()),
+        }
+        client.post("/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data))

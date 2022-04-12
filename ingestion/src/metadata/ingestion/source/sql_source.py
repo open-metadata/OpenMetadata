@@ -129,7 +129,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.service = get_database_service_or_create(config, metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
-        self.engine = get_engine(workflow_source=self.config)
+        self.engine = get_engine(service_connection=self.config.serviceConnection)
         self._session = None  # We will instantiate this just if needed
         self._connection = None  # Lazy init as well
         self.data_profiler = None

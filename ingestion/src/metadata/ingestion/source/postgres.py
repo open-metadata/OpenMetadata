@@ -71,7 +71,7 @@ class PostgresSource(SQLSource):
 
                     logger.info(f"Ingesting from database: {row[0]}")
                     self.config.database = row[0]
-                    self.engine = get_engine(self.config)
+                    self.engine = get_engine(self.config.serviceConnection)
                     self.connection = self.engine.connect()
                     yield inspect(self.engine)
 

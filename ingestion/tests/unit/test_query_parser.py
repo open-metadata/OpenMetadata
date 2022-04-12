@@ -21,11 +21,11 @@ config = """
 {
   "source": {
     "type": "sample-usage",
-    "serviceName": "bigquery_gcp",
+    "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "BigQuery",
-        "sampleDataFolder":"./examples/sample_data"
+        "type": "SampleData",
+        "sampleDataFolder": "./examples/sample_data"
       }
     },
     "sourceConfig": {}
