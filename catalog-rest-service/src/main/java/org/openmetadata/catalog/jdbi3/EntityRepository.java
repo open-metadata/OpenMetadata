@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -72,7 +71,6 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -219,8 +217,8 @@ public abstract class EntityRepository<T> {
    * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
-    Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityType));
-    List<String> jsonDataFiles = CommonUtil.getResources(pattern);
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", entityType));
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {

@@ -74,7 +74,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
-    Entity.withHref(uriInfo, role.getPolicy());
+    Entity.withHref(uriInfo, role.getPolicies());
     Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
     return role;
@@ -98,7 +98,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     }
   }
 
-  public static final String FIELDS = "policy,teams,users";
+  public static final String FIELDS = "policies,teams,users";
 
   @GET
   @Valid
@@ -362,6 +362,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {
+    if (cr.getPolicies() == null || cr.getPolicies().isEmpty()) {
+      throw new IllegalArgumentException("At least one policy is required to create a role");
+    }
     return new Role()
         .withId(UUID.randomUUID())
         .withName(cr.getName())
