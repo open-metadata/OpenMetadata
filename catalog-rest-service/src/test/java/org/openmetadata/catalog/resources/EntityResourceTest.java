@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
+import static java.lang.String.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -899,7 +900,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
-    String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
+    String name = format("%s_%s_foo.bar", entityType, test.getDisplayName());
     final K request = createRequest(name, null, null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -1665,7 +1666,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     String originalDescription = entityInterface.getDescription();
-    String newDescription = String.format("Description added by %s", userName);
+    String newDescription = format("Description added by %s", userName);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
     change
         .getFieldsUpdated()
@@ -2068,7 +2069,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final String getEntityName(TestInfo test) {
-    return String.format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
   /**
@@ -2077,7 +2078,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
    * these 3 strings)
    */
   public final String getEntityName(TestInfo test, int index) {
-    return String.format(
-        "%s_%s_%s", entityType, (char) ('a' + index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format(
+        "%s_%s_%s", entityType, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+  }
+
+  /**
+   * Transforms a positive integer to base 26 using digits a...z
+   * Alphanumeric ordering of results is equivalent to ordering of inputs
+   */
+  private String getNthAlphanumericString(int index) {
+    final int N_LETTERS = 26;
+    if (index < 0) {
+      throw new IllegalArgumentException(format("Index must be positive, cannot be %d", index));
+    }
+    if (index < 26) {
+      return String.valueOf((char)('a' + index));
+    }
+    return getNthAlphanumericString(index / N_LETTERS) + (char)('a' + (index % N_LETTERS));
   }
 }

@@ -480,8 +480,6 @@
             </goals>
             <id>unit-tests</id>
             <configuration>
-              <parallel>classes</parallel>
-              <threadCount>10</threadCount>
               <excludes>**/*ResourceTest.java</excludes>
             </configuration>
           </execution>

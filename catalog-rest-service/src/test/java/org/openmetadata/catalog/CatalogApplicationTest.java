@@ -61,7 +61,7 @@ public abstract class CatalogApplicationTest {
     Flyway flyway =
         Flyway.configure()
             .dataSource(
-                SQL_CONTAINER.getJdbcUrl().replace("172.17.0.1", "host.docker.internal"),
+                SQL_CONTAINER.getJdbcUrl(),
                 SQL_CONTAINER.getUsername(),
                 SQL_CONTAINER.getPassword())
             .table("DATABASE_CHANGE_LOG")
@@ -78,7 +78,7 @@ public abstract class CatalogApplicationTest {
             // Database overrides
             ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),
             ConfigOverride.config(
-                "database.url", SQL_CONTAINER.getJdbcUrl().replace("172.17.0.1", "host.docker.internal")),
+                "database.url", SQL_CONTAINER.getJdbcUrl()),
             ConfigOverride.config("database.user", SQL_CONTAINER.getUsername()),
             ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
             // Migration overrides
