@@ -176,7 +176,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.OWNER, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.OWNER,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex
@@ -186,7 +190,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.FOLLOWERS,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex

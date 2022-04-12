@@ -316,16 +316,29 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
 
 export const getOwnerIds = (
   filter: Ownership,
-  userDetails: User
+  userDetails: User,
+  nonSecureUserDetails: User
 ): Array<string> => {
-  if (filter === Ownership.OWNER && userDetails.teams) {
-    const userTeams = !isEmpty(userDetails)
-      ? userDetails.teams.map((team) => team.id)
-      : [];
-
-    return [...userTeams, getCurrentUserId()];
+  if (filter === Ownership.OWNER) {
+    if (!isEmpty(userDetails)) {
+      return [
+        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        userDetails.id,
+      ];
+    } else {
+      if (!isEmpty(nonSecureUserDetails)) {
+        return [
+          ...(nonSecureUserDetails.teams?.map(
+            (team) => team.id
+          ) as Array<string>),
+          nonSecureUserDetails.id,
+        ];
+      } else {
+        return [];
+      }
+    }
   } else {
-    return [getCurrentUserId()];
+    return [userDetails.id || nonSecureUserDetails.id];
   }
 };
 
