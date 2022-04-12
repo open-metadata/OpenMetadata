@@ -1,0 +1,700 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testExecutions version="1">
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/MyDataPage.test.tsx">
+    <testCase name="Test MyData page component Component should render" duration="92"/>
+    <testCase name="Test MyData page component Component should render in sandbox mode" duration="21"/>
+    <testCase name="Test MyData page component render Sad Paths show error message on failing of config/sandbox api" duration="8"/>
+    <testCase name="Test MyData page component render Sad Paths show error message on no data from config/sandbox api" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if table count api fails" duration="5"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if table count api has no data" duration="5"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if table count api has no paging" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if topic count api fails" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if topic count api has no data" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if topic count api has no paging" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if dashboard count api fails" duration="5"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if dashboard count api has no data" duration="5"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if dashboard count api has no paging" duration="7"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if pipeline count api fails" duration="6"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if pipeline count api has no data" duration="5"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if pipeline count api has no paging" duration="9"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if service util fails" duration="7"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if service util has no data" duration="10"/>
+    <testCase name="Test MyData page component render Sad Paths should render component if service util has no paging" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/entityPageInfo/EntityPageInfo.test.tsx">
+    <testCase name="Test EntityPageInfo component Check if it has all child elements" duration="117"/>
+    <testCase name="Test EntityPageInfo component Should call version handler on version button click" duration="27"/>
+    <testCase name="Test EntityPageInfo component Should call follow handler on follow button click" duration="39"/>
+    <testCase name="Test EntityPageInfo component Should render all the extra info" duration="42"/>
+    <testCase name="Test EntityPageInfo component Should render all the tags including tier tag" duration="33"/>
+    <testCase name="Test EntityPageInfo component Check if it has isTagEditable as true and deleted as false value" duration="10"/>
+    <testCase name="Test EntityPageInfo component Should render start thread button" duration="17"/>
+    <testCase name="Test EntityPageInfo component Should render tag thread button with count" duration="14"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/MyData/MyData.test.tsx">
+    <testCase name="Test MyData page Check if there is an element in the page" duration="65"/>
+    <testCase name="Test MyData page Should create an observer if IntersectionObserver is available" duration="14"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddWebhook/AddWebhook.test.tsx">
+    <testCase name="Test AddWebhook component Component should render properly" duration="98"/>
+    <testCase name="Test AddWebhook component Input fields should work properly" duration="104"/>
+    <testCase name="Test AddWebhook component onClick of show advance config, appropriate field should be visible" duration="63"/>
+    <testCase name="Test AddWebhook component secret key generation should work properly" duration="105"/>
+    <testCase name="Test AddWebhook component If data is provided, it should work accordingly" duration="117"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/services/index.test.tsx">
+    <testCase name="Test Service page Check if there is an element in the page" duration="83"/>
+    <testCase name="Test Service page On page load database service should be active tab with corresponding data" duration="49"/>
+    <testCase name="Test Service page OnClick tab and data should change" duration="32"/>
+    <testCase name="Test Service page OnClick of add service, AddServiceModal should open" duration="28"/>
+    <testCase name="Test Service page Card details should be display properly" duration="38"/>
+    <testCase name="Test Messaging Service Cards Should render kafka service card with brokers" duration="31"/>
+    <testCase name="Test Messaging Service Cards Should render pulsar service card without brokers" duration="53"/>
+    <testCase name="Test Messaging Service Cards Should render custom service card without brokers" duration="55"/>
+    <testCase name="Test Dashboard Service Cards Should render looker service card with URL" duration="44"/>
+    <testCase name="Test Dashboard Service Cards Should render metabase service card with URL" duration="99"/>
+    <testCase name="Test Dashboard Service Cards Should render powerbi service card with URL" duration="80"/>
+    <testCase name="Test Dashboard Service Cards Should render redash service card with URL" duration="39"/>
+    <testCase name="Test Dashboard Service Cards Should render superset service card with URL" duration="169"/>
+    <testCase name="Test Dashboard Service Cards Should render tableau service card with URL" duration="75"/>
+    <testCase name="Test Dashboard Service Cards Should render custom service card without URL" duration="126"/>
+    <testCase name="Test Service Page Error Handling Should render error placholder if getServiceDetails API fails" duration="36"/>
+    <testCase name="Test Service Page Error Handling Should render page if updateService API fails" duration="25"/>
+    <testCase name="Test Service Page Error Handling Should render services-container if getServices API fails" duration="59"/>
+    <testCase name="Test Service Page Error Handling Should render page if postService API fails" duration="51"/>
+    <testCase name="Test Service Page Error Handling Should render page if deleteService API fails" duration="43"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/DatasetDetailsPage/DatasetDetailsPage.test.tsx">
+    <testCase name="Test DatasetDetails page Component should render properly" duration="84"/>
+    <testCase name="Test DatasetDetails page all CTA should work and it should call respective function and API" duration="122"/>
+    <testCase name="Test DatasetDetails page Tab specific Component should render if tab is &quot;sample data&quot;" duration="18"/>
+    <testCase name="Test DatasetDetails page Tab specific Component should render if tab is &quot;Lineage&quot;" duration="11"/>
+    <testCase name="Test DatasetDetails page Tab specific Component should render if tab is &quot;Queries&quot;" duration="23"/>
+    <testCase name="Test DatasetDetails page onClick of version controal, it should call history.push function" duration="19"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths ErrorPlaceholder should be visible if there is error with status code 404" duration="18"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths ErrorPlaceholder should not visible if status code is other than 404 and message is present" duration="14"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths ErrorPlaceholder should not visible if status code is other than 404 and response message is not present" duration="41"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths show error if getTableDetailsByFQN resolves with empty response data" duration="11"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths show error if getTableDetailsByFQN resolves with empty response" duration="18"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getLineageByFQN api with error message" duration="20"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getLineageByFQN api with empty response" duration="14"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getLineageByFQN api without response" duration="11"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getLineageByFQN api without response data" duration="9"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getAllFeeds api with error message" duration="5"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getAllFeeds api with empty response" duration="8"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getAllFeeds api without response" duration="15"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getAllFeeds api without response data" duration="10"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getFeedCount api with error message" duration="7"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getFeedCount api with empty response" duration="8"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getFeedCount api without response" duration="29"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getFeedCount api without response data" duration="10"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of CTA api with error message" duration="20"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of CTA api with empty response" duration="18"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of CTA api with empty object" duration="20"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of CTA api without response" duration="58"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of CTA api without response data" duration="19"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of deletePost api with error message" duration="8"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of deletePost api with empty response" duration="8"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of deletePost api with empty object" duration="10"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of deletePost api with no response" duration="57"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getUpdatedThread api with error message" duration="27"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getUpdatedThread api with empty response" duration="21"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getUpdatedThread api with empty object" duration="21"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of getUpdatedThread api with no response" duration="25"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of getUpdatedThread api without response data" duration="9"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of addTableTestCase api with error message" duration="10"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of addTableTestCase api with empty response" duration="24"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of addTableTestCase api without response" duration="18"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of addTableTestCase api without response data" duration="21"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of addColumnTestCase api with error message" duration="19"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on fail of addColumnTestCase api with empty response" duration="10"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of addColumnTestCase api without response" duration="23"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on resolve of addColumnTestCase api without response data" duration="19"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/AddServiceModal/AddServiceModal.test.tsx">
+    <testCase name="Test AddServiceModal Component Component should render" duration="55"/>
+    <testCase name="Test AddServiceModal Component onClick of cancel onCancel should be call" duration="19"/>
+    <testCase name="Test AddServiceModal Component form with all the Field should render for databaseServices" duration="291"/>
+    <testCase name="Test AddServiceModal Component form with all the Field should render for dashboardServices" duration="110"/>
+    <testCase name="Test AddServiceModal Component form with all the Field should render for messagingServices" duration="60"/>
+    <testCase name="Test AddServiceModal Component form with all the Field should render for pipelineServices" duration="44"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/database-details/index.test.tsx">
+    <testCase name="Test DatabaseDetails page Component should render" duration="121"/>
+    <testCase name="Test DatabaseDetails page Table and its header should render" duration="32"/>
+    <testCase name="Test DatabaseDetails page Should render error placeholder if getDatabase Details Api fails" duration="18"/>
+    <testCase name="Test DatabaseDetails page Should render database component if patchDatabaseDetails Api fails" duration="25"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/EntityTable/EntityTable.test.tsx">
+    <testCase name="Test EntityTable Component Check if it has all child elements" duration="88"/>
+    <testCase name="Test EntityTable Component should render request description button" duration="54"/>
+    <testCase name="Test EntityTable Component Should render start thread button" duration="69"/>
+    <testCase name="Test EntityTable Component Should render thread button with count" duration="59"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/teams/index.test.tsx">
+    <testCase name="Test Teams page Component should render" duration="41"/>
+    <testCase name="Test Teams page OnClick of assets tab, assets tab should display" duration="40"/>
+    <testCase name="Test Teams page OnClick of add new user, AddUsersModal should display" duration="30"/>
+    <testCase name="Test Teams page Should have 4 tabs in the page" duration="26"/>
+    <testCase name="Test Teams page Description should be in document" duration="41"/>
+    <testCase name="Test Teams page onClick of add team button, FormModal should open" duration="31"/>
+    <testCase name="Test Teams page onClick of delete team button, delete modal should open" duration="38"/>
+    <testCase name="Test Teams page OnClick of manage tab, manage tab content should render" duration="68"/>
+    <testCase name="Test Teams page sad path Should render error placeholder if getTeamByName api fails" duration="18"/>
+    <testCase name="Test Teams page sad path Should render error placeholder if getTeams api fails" duration="19"/>
+    <testCase name="Test Teams page sad path Should render component if createTeam api fails" duration="35"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Ingestion/Ingestion.test.tsx">
+    <testCase name="Test Ingestion page Page Should render" duration="47"/>
+    <testCase name="Test Ingestion page Table should render necessary fields" duration="32"/>
+    <testCase name="Test Ingestion page Pagination should be render if paging is provided" duration="10"/>
+    <testCase name="Test Ingestion page Update button should work" duration="18"/>
+    <testCase name="Test Ingestion page CTA should work" duration="22"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/tags/index.test.tsx">
+    <testCase name="Test TagsPage page Component should render" duration="50"/>
+    <testCase name="Test TagsPage page OnClick of add new tag, AddUsersModal should display" duration="51"/>
+    <testCase name="Test TagsPage page OnClick of add new category, AddUsersModal should display" duration="26"/>
+    <testCase name="Test TagsPage page Description should be in document" duration="17"/>
+    <testCase name="Test TagsPage page Table with respective header should be render" duration="28"/>
+    <testCase name="Test TagsPage page Should render error placeholder if categories api fails" duration="16"/>
+    <testCase name="Test TagsPage page Should render error placeholder if update categories api fails" duration="35"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DatasetDetails/DatasetDetails.test.tsx">
+    <testCase name="Test MyDataDetailsPage page Checks if the page has all the proper components rendered" duration="61"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is schema" duration="18"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is activity feed" duration="21"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is sample data" duration="11"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is queries" duration="14"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is profiler" duration="22"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is data quality" duration="73"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is lineage" duration="10"/>
+    <testCase name="Test MyDataDetailsPage page Check if active tab is manage" duration="19"/>
+    <testCase name="Test MyDataDetailsPage page Should create an observer if IntersectionObserver is available" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedList/FeedListBody.test.tsx">
+    <testCase name="Test FeedListBody Component Check if FeedListBody has all the child elements" duration="12"/>
+    <testCase name="Test FeedListBody Component Check if FeedListBody has message with 0 posts" duration="10"/>
+    <testCase name="Test FeedListBody Component Check if FeedListBody has message with 3 posts" duration="10"/>
+    <testCase name="Test FeedListBody Component Should toggle FeedEditor on reply button click" duration="32"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DashboardVersion/DashboardVersion.test.tsx">
+    <testCase name="Test DashboardVersion page Checks if the page has all the proper components rendered" duration="43"/>
+    <testCase name="Test DashboardVersion page Checks if the page has all the proper components rendered, if change version is related to tags" duration="22"/>
+    <testCase name="Test DashboardVersion page Checks if the page has all the proper components rendered, if the dashboard deleted is undefined" duration="14"/>
+    <testCase name="Test DashboardVersion page If version is loading it should show loading component" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/next-previous/NextPrevious.test.tsx">
+    <testCase name="Test Pagination Component Component should render" duration="6"/>
+    <testCase name="Test Pagination Component Component should be disabled if paging is empty" duration="3"/>
+    <testCase name="Test Pagination Component Left button should be disabled if paging.before is empty" duration="3"/>
+    <testCase name="Test Pagination Component Next button should be disabled if paging.after is empty" duration="6"/>
+    <testCase name="Test Pagination Component Next and Previous should be disable if total is equal to pagesize with isNumberBased as true" duration="4"/>
+    <testCase name="Test Pagination Component Previous should be disable if currentPage is equal to 1 with isNumberBased as true" duration="5"/>
+    <testCase name="Test Pagination Component Next should be disable if currentPage is equal to lastpage with isNumberBased as true" duration="6"/>
+    <testCase name="Test Pagination Component should render proper page indicator" duration="13"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/TopicDetails/TopicDetails.test.tsx">
+    <testCase name="Test TopicDetails component Checks if the TopicDetails component has all the proper components rendered" duration="39"/>
+    <testCase name="Test TopicDetails component Check if active tab is schema" duration="11"/>
+    <testCase name="Test TopicDetails component Check if active tab is activity feed" duration="30"/>
+    <testCase name="Test TopicDetails component Check if active tab is config" duration="19"/>
+    <testCase name="Test TopicDetails component Check if active tab is manage" duration="9"/>
+    <testCase name="Test TopicDetails component Should create an observer if IntersectionObserver is available" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DashboardDetails/DashboardDetails.test.tsx">
+    <testCase name="Test DashboardDetails component Checks if the DashboardDetails component has all the proper components rendered" duration="57"/>
+    <testCase name="Test DashboardDetails component Check if active tab is details" duration="9"/>
+    <testCase name="Test DashboardDetails component Check if active tab is activity feed" duration="7"/>
+    <testCase name="Test DashboardDetails component Check if active tab is lineage" duration="8"/>
+    <testCase name="Test DashboardDetails component Check if active tab is manage" duration="5"/>
+    <testCase name="Test DashboardDetails component Should create an observer if IntersectionObserver is available" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/description/Description.test.tsx">
+    <testCase name="Test Description Component Check if it has all child elements" duration="12"/>
+    <testCase name="Test Description Component Check if it has isReadOnly as true" duration="5"/>
+    <testCase name="Test Description Component Check if it has isEdit as true" duration="4"/>
+    <testCase name="Test Description Component Check if it has isEdit as false" duration="5"/>
+    <testCase name="Test Description Component Check if it has entityFieldThreads" duration="16"/>
+    <testCase name="Test Description Component Check if it has entityFieldThreads as empty list" duration="15"/>
+    <testCase name="Test Description Component Check if it has entityFieldThreads as empty list, description as empty string" duration="25"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/PipelineDetails/PipelineDetails.test.tsx">
+    <testCase name="Test PipelineDetails component Checks if the PipelineDetails component has all the proper components rendered" duration="51"/>
+    <testCase name="Test PipelineDetails component Check if active tab is details" duration="24"/>
+    <testCase name="Test PipelineDetails component Check if active tab is activity feed" duration="9"/>
+    <testCase name="Test PipelineDetails component Check if active tab is lineage" duration="13"/>
+    <testCase name="Test PipelineDetails component Check if active tab is manage" duration="7"/>
+    <testCase name="Test PipelineDetails component Should create an observer if IntersectionObserver is available" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/RolesPage/RolesPage.test.tsx">
+    <testCase name="Test RolesPage component RolesPage component should render properly" duration="112"/>
+    <testCase name="Test RolesPage component Check no rule, no user and no teams behaviour" duration="65"/>
+    <testCase name="Test RolesPage component Check behaviour when there is data in policy and user" duration="59"/>
+    <testCase name="Test RolesPage component CTA should work" duration="73"/>
+    <testCase name="Test RolesPage component Should render error placeholder if roles api fails" duration="14"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityThreadPanel/ActivityThreadList.test.tsx">
+    <testCase name="Test ActivityThreadList Component Check if it has all child elements" duration="5"/>
+    <testCase name="Test ActivityThreadList Component Check if thread1 has 0 posts" duration="6"/>
+    <testCase name="Test ActivityThreadList Component Check if thread2 has 3 posts" duration="6"/>
+    <testCase name="Test ActivityThreadList Component Check if selectedThreadId is equal to thread id" duration="12"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/IngestionModal/IngestionModal.test.tsx">
+    <testCase name="Test Ingestion modal component Component Should render" duration="52"/>
+    <testCase name="Test Ingestion modal component Ingestion journey" duration="112"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/TableQueries/TableQueries.test.tsx">
+    <testCase name="Test TableQueries Component Check if TableQueries component has all child elements" duration="5"/>
+    <testCase name="Test TableQueries Component Check if TableQueries component has n query card" duration="3"/>
+    <testCase name="Test TableQueries Component Check if TableQueries component has queries as undefined" duration="4"/>
+    <testCase name="Test TableQueries Component Check if TableQueries component has queries as empty list" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Users/Users.component.test.tsx">
+    <testCase name="Test User Component Should render user component" duration="10"/>
+    <testCase name="Test User Component Should render non deleted teams" duration="8"/>
+    <testCase name="Test User Component Should not render deleted teams" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/UserPage/UserPage.test.tsx">
+    <testCase name="Test the User Page Should render the user component" duration="13"/>
+    <testCase name="Test the User Page Should render error placeholder if api fails" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/rich-text-editor/BlurLayout.test.tsx">
+    <testCase name="Test BlurLayout Component Should render the Layout Component" duration="4"/>
+    <testCase name="Test BlurLayout Component Should not render the Layout Component if markdown length is less that MAX_LENGTH" duration="1"/>
+    <testCase name="Test BlurLayout Component Should not render the Layout Component if enableSeeMoreVariant is false" duration="2"/>
+    <testCase name="Test BlurLayout Component Should call displayMoreHandler on display button click" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/FeedCardFooter/FeedCardFooter.test.tsx">
+    <testCase name="Test FeedCardFooter component Check if FeedCardFooter has all child elements" duration="19"/>
+    <testCase name="Test FeedCardFooter component Check if FeedCardFooter has isFooterVisible as false" duration="1"/>
+    <testCase name="Test FeedCardFooter component Check if FeedCardFooter has repliedUsers as undefined" duration="2"/>
+    <testCase name="Test FeedCardFooter component Check if FeedCardFooter has replies as undefined" duration="2"/>
+    <testCase name="Test FeedCardFooter component Check if FeedCardFooter has lastReplyTimeStamp as undefined and replies as 0" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/EditWebhookPage/EditWebhookPage.test.tsx">
+    <testCase name="Test DatasetDetails page Component should render" duration="6"/>
+    <testCase name="Test DatasetDetails page Component should render even if auth is not disabled, and user is not admin" duration="2"/>
+    <testCase name="Test DatasetDetails page Component should render even if auth is not disabled, and user is admin" duration="3"/>
+    <testCase name="Test DatasetDetails page Component should render even if auth is disabled, and user is not admin" duration="4"/>
+    <testCase name="Test DatasetDetails page If loading is true, it should render loading component" duration="4"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on failing of getWebhookByName api" duration="3"/>
+    <testCase name="Test DatasetDetails page Render Sad Paths Show error message on failing of deleteWebhook api" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/searched-data/SearchedData.test.tsx">
+    <testCase name="Test SearchedData Component Component should render" duration="4"/>
+    <testCase name="Test SearchedData Component Should display table card according to data provided in props" duration="2"/>
+    <testCase name="Test SearchedData Component If children is provided it should display" duration="2"/>
+    <testCase name="Test SearchedData Component Pagination Should be there if data is more than 10 count" duration="2"/>
+    <testCase name="Test SearchedData Component Onboarding component should display if there is showOnboardingTemplate is true" duration="5"/>
+    <testCase name="Test SearchedData Component ErrorPlaceHolderES component should display if there is no data" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/tags-container/tags-container.test.tsx">
+    <testCase name="Test TagsContainer Component Component should render" duration="9"/>
+    <testCase name="Test TagsContainer Component Should have one input" duration="3"/>
+    <testCase name="Test TagsContainer Component Should have two buttons" duration="7"/>
+    <testCase name="Test TagsContainer Component Should suggest tags on typing" duration="8"/>
+    <testCase name="Test TagsContainer Component Should only exclude Tier tags from suggestions" duration="8"/>
+    <testCase name="Test TagsContainer Component Should not suggest tags on typing unmatched tag name" duration="7"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/service/index.test.tsx">
+    <testCase name="Test ServicePage Component Component should render" duration="83"/>
+    <testCase name="Test ServicePage Component Table should be visible if data is available" duration="26"/>
+    <testCase name="Test ServicePage Component Number of column should be same as data received" duration="15"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelBody.test.tsx">
+    <testCase name="Test FeedPanelBody Component Check if FeedPanelBody has all child elements" duration="5"/>
+    <testCase name="Test FeedPanelBody Component Check if FeedPanelBody has proper reply count" duration="6"/>
+    <testCase name="Test FeedPanelBody Component Check if FeedPanelBody has isLoading as true" duration="4"/>
+    <testCase name="Test FeedPanelBody Component Check if FeedPanelBody has 0 posts" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DataQualityTest/DataQualityTest.test.tsx">
+    <testCase name="Test DataQualityTest component DataQualityTest component should be render properly" duration="20"/>
+    <testCase name="Test DataQualityTest component If data provided respective component should be visible" duration="16"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ManageTab/ManageTab.test.tsx">
+    <testCase name="Test Manage tab Component Component should render" duration="11"/>
+    <testCase name="Test Manage tab Component Number of card visible is same as data" duration="20"/>
+    <testCase name="Test Manage tab Component there should be 2 buttons" duration="6"/>
+    <testCase name="Test Manage tab Component Onclick of save, onSave function also called" duration="20"/>
+    <testCase name="Test Manage tab Component Should render switch if isJoinable is present" duration="23"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/EntityVersionPage/EntityVersionPage.test.tsx">
+    <testCase name="Test EntityVersionPage component Checks if the DatasetVersion component renderst if respective data pass" duration="19"/>
+    <testCase name="Test EntityVersionPage component Checks if the DashboardVersion component renderst if respective data pass" duration="4"/>
+    <testCase name="Test EntityVersionPage component Checks if the PipelineVersion component renderst if respective data pass" duration="2"/>
+    <testCase name="Test EntityVersionPage component Checks if the TopicVersion component renderst if respective data pass" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/EntityLineage/CustomNode.component.test.tsx">
+    <testCase name="Test CustomNode Component Check if CustomNode has all child elements" duration="15"/>
+    <testCase name="Test CustomNode Component Check if CustomNode has data columns as undefined" duration="21"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/authentication/callbacks/Auth0Callback/Auth0Callback.test.tsx">
+    <testCase name="Test Auth0Callback component Check if the Auth0Callback renders error from Auth0" duration="3"/>
+    <testCase name="Test Auth0Callback component Should call successful login handler on Success" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/EntityLineage/Entitylineage.component.test.tsx">
+    <testCase name="Test EntityLineage Component Check if EntityLineage is rendering all the nodes" duration="97"/>
+    <testCase name="Test EntityLineage Component Check if EntityLineage has deleted as true" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedList/ActivityFeedList.test.tsx">
+    <testCase name="Test FeedList Component Check if FeedList has all the child elements" duration="11"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/FeedCardBody/FeedCardBody.test.tsx">
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has all the child elements" duration="23"/>
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has isAuthor as false" duration="1"/>
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has onConfirmation as undefined" duration="2"/>
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has postId as undefined" duration="1"/>
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has threadId as undefined" duration="6"/>
+    <testCase name="Test FeedCardBody component Check if FeedCardBody has postId, threadId and deletePostHandler as undefined and isAuthor as false" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/dropdown/DropDown.test.tsx">
+    <testCase name="Test DropDown Component Component should render" duration="7"/>
+    <testCase name="Test DropDown Component Dropdown menu should not be visible without clicking on it" duration="4"/>
+    <testCase name="Test DropDown Component Dropdown menu should be visible by clicking on it" duration="7"/>
+    <testCase name="Test DropDown Component Dropdown menu should not be visible by on 2nd click" duration="19"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/FeedCardHeader/FeedCardHeader.test.tsx">
+    <testCase name="Test Feedheader Component Checks if the Feedheader component has isEntityFeed as true" duration="29"/>
+    <testCase name="Test Feedheader Component Checks if the Feedheader component has isEntityFeed as false" duration="29"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Explore/Explore.test.tsx">
+    <testCase name="Test Explore component Component should render" duration="71"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/login/index.test.tsx">
+    <testCase name="Test SigninPage Component Component should render" duration="8"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for google" duration="8"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for okta" duration="5"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for auth0" duration="5"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for azure" duration="10"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for custom-oidc" duration="4"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly for unknown-provider" duration="3"/>
+    <testCase name="Test SigninPage Component Sign in button should render correctly with custom provider name" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/ActivityFeedPanel.test.tsx">
+    <testCase name="Test FeedPanel Component Check if Feedpanel has all child elements" duration="62"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/teams/AddUsersModal.test.tsx">
+    <testCase name="Test AddUsersModal component Component should render" duration="25"/>
+    <testCase name="Test AddUsersModal component UserCard should be equal to length of list" duration="5"/>
+    <testCase name="Test AddUsersModal component Onclick of Discard button, onCancel callback should called" duration="4"/>
+    <testCase name="Test AddUsersModal component Onclick of Save button, onSave callback should called" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DataQualityTab/DataQualityTab.test.tsx">
+    <testCase name="Test DataQualityTab component DataQualityTab component should be render properly" duration="3"/>
+    <testCase name="Test DataQualityTab component DataQualityTest component should be visible" duration="3"/>
+    <testCase name="Test DataQualityTab component AddDataQualityTest component should be visible" duration="28"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Glossary/Glossary.test.tsx">
+    <testCase name="Test Glossary component Should render Glossary header" duration="91"/>
+    <testCase name="Test Glossary component Should render Glossary-details" duration="67"/>
+    <testCase name="Test Glossary component Should render Glossary-term" duration="39"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/MyAssetStats/MyAssetStats.test.tsx">
+    <testCase name="Test MyDataHeader Component Component should render" duration="36"/>
+    <testCase name="Test MyDataHeader Component Should have 7 data summary details" duration="21"/>
+    <testCase name="Test MyDataHeader Component OnClick it should redirect to respective page" duration="25"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/teams/UserCard.test.tsx">
+    <testCase name="Test userCard component Component should render" duration="15"/>
+    <testCase name="Test userCard component Data should render" duration="13"/>
+    <testCase name="Test userCard component If isActionVisible is passed it should show delete icon" duration="7"/>
+    <testCase name="Test userCard component If dataset is provided, it should display accordingly" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/FeedEditor/FeedEditor.test.tsx">
+    <testCase name="Test FeedEditor Component Should render FeedEditor Component" duration="4"/>
+    <testCase name="Test FeedEditor Component Should call onSave method on &apos;Enter&apos; keydown" duration="2"/>
+    <testCase name="Test FeedEditor Component Should not call onSave method on &apos;Enter&apos; + &apos;Shift&apos; keydown" duration="34"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/EditSchemaColumnModal/EditSchemaColumnModal.test.tsx">
+    <testCase name="Test EditSchemaColumnModal Component Component should render" duration="13"/>
+    <testCase name="Test EditSchemaColumnModal Component modal should have header &amp; description as provided" duration="12"/>
+    <testCase name="Test EditSchemaColumnModal Component Description box sholud be editable" duration="11"/>
+    <testCase name="Test EditSchemaColumnModal Component on click of cancel button, onCancel callback should call" duration="6"/>
+    <testCase name="Test EditSchemaColumnModal Component on click of save button, onSave callback should call" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel.test.tsx">
+    <testCase name="Test ActivityThreadPanel Component Check if it has all child elements" duration="8"/>
+    <testCase name="Test ActivityThreadPanel Component Should create an observer if IntersectionObserver is available" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelHeader.test.tsx">
+    <testCase name="Test FeedPanelHeader Component Check if FeedPanelHeader has all child elements" duration="18"/>
+    <testCase name="Test FeedPanelHeader Component Check if FeedPanelHeader has onShowNewConversation as undefined" duration="7"/>
+    <testCase name="Test FeedPanelHeader Component Check if FeedPanelHeader has noun as undefined" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddGlossaryTerm/AddGlossaryTerm.test.tsx">
+    <testCase name="Test AddGlossaryTerm component AddGlossaryTerm component should render" duration="26"/>
+    <testCase name="Test AddGlossaryTerm component should be able to cancel" duration="31"/>
+    <testCase name="Test AddGlossaryTerm component should be able to save" duration="12"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/SchemaTab/SchemaTab.test.tsx">
+    <testCase name="Test SchemaTab Component Renders all the parts of the schema tab" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor.test.tsx">
+    <testCase name="Test Activity Feed Editor Component Check if FeedEditor has all child elements" duration="11"/>
+    <testCase name="Test Activity Feed Editor Component should have passed button classes" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddGlossary/AddGlossary.test.tsx">
+    <testCase name="Test AddGlossary component AddGlossary component should render" duration="6"/>
+    <testCase name="Test AddGlossary component should be able to cancel" duration="4"/>
+    <testCase name="Test AddGlossary component should be able to save" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/TableQueries/QueryCard.test.tsx">
+    <testCase name="Test QueryCard Component Check if QueryCard has all child elements" duration="10"/>
+    <testCase name="Test QueryCard Component Should not render header if user is undefined" duration="2"/>
+    <testCase name="Test QueryCard Component Should not render header if duration is undefined" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityThreadPanel/ActivityThread.test.tsx">
+    <testCase name="Test ActivityFeedThread Component Check if ActivityThread has all child component" duration="7"/>
+    <testCase name="Test ActivityFeedThread Component Check if ActivityThread has proper reply count" duration="13"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/CreateUserPage/CreateUserPage.test.tsx">
+    <testCase name="Test AddUserPage component AddUserPage component should render properly" duration="7"/>
+    <testCase name="Test AddUserPage component should create user" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/GlossaryDetails/GlossaryDetails.test.tsx">
+    <testCase name="Test Glossary-details component Should render Glossary-details component" duration="11"/>
+    <testCase name="Test Glossary-details component Should render Tags-container" duration="12"/>
+    <testCase name="Test Glossary-details component Should render Description" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/GlossaryTerms/GlossaryTerms.test.tsx">
+    <testCase name="Test Glossary-term component Should render Glossary-term component" duration="15"/>
+    <testCase name="Test Glossary-term component Should render Tags-container" duration="12"/>
+    <testCase name="Test Glossary-term component Should render Description" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/sort-order-dropdown/SortOrderDropdown.test.js">
+    <testCase name="Test Dropdown Component Renders the dropdown with the options sent to it" duration="12"/>
+    <testCase name="Test Dropdown Component Changes the selected option on change event called" duration="4"/>
+    <testCase name="Test Dropdown Component Calls the callback function on change of the dropdownn value with the proper option selected" duration="7"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/FormModal/index.test.tsx">
+    <testCase name="Test FormModal component Component should render" duration="36"/>
+    <testCase name="Test FormModal component Onclick of Cancel button, onCancel callback should called" duration="11"/>
+    <testCase name="Test FormModal component Onclick of Save button, onSave callback should called" duration="30"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddDataQualityTest/AddDataQualityTest.test.tsx">
+    <testCase name="Test AddDataQualityTest component AddDataQualityTest component should be render properly" duration="3"/>
+    <testCase name="Test AddDataQualityTest component TableTestForm component should be visible" duration="2"/>
+    <testCase name="Test AddDataQualityTest component ColumnTestForm component should be visible" duration="7"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/EntityLineage/CustomEdge.component.test.tsx">
+    <testCase name="Test CustomEdge Component Check if CustomEdge has all child elements" duration="20"/>
+    <testCase name="Test CustomEdge Component Check if CustomEdge has selectedNode as empty object" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/UserDataCard/UserDataCard.test.tsx">
+    <testCase name="Test UserDataCard component Component should render" duration="6"/>
+    <testCase name="Test UserDataCard component Data should render" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCard/ActivityFeedCard.test.tsx">
+    <testCase name="Test ActivityFeedCard Component Check if ActivityFeedCard component has all child components" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/non-admin-action/NonAdminAction.test.tsx">
+    <testCase name="Test AddUsersModal component Component should render" duration="4"/>
+    <testCase name="Test AddUsersModal component Should restrict user if criteria does not match" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/CreateUser/CreateUser.test.tsx">
+    <testCase name="Test CreateUser component CreateUser component should render properly" duration="22"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/table-data-card/TableDataCardBody.test.tsx">
+    <testCase name="Test TableDataCardBody Component Component should render" duration="11"/>
+    <testCase name="Test TableDataCardBody Component Tags should render if provided" duration="6"/>
+    <testCase name="Test TableDataCardBody Component Tags should not render if not provided" duration="4"/>
+    <testCase name="Test TableDataCardBody Component Extra information should not render if value is null or undefined" duration="7"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/tags-viewer/tags-viewer.test.tsx">
+    <testCase name="Test TagsViewer Component Component should render" duration="5"/>
+    <testCase name="Test TagsViewer Component Should render tags" duration="2"/>
+    <testCase name="Test TagsViewer Component Should render tags and terms" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.test.tsx">
+    <testCase name="Test ModalWithMarkdownEditor Component Component should render" duration="8"/>
+    <testCase name="Test ModalWithMarkdownEditor Component Component should have same header as provided" duration="3"/>
+    <testCase name="Test ModalWithMarkdownEditor Component on click of cancel button, onCancel callback should call" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/FrequentlyJoinedTables/FrequentlyJoinedTables.test.tsx">
+    <testCase name="Test QueryDetails Component Renders the proper header sent to the component" duration="9"/>
+    <testCase name="Test QueryDetails Component Renders the proper table list sent to the component" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/dropdown/DropDownList.test.tsx">
+    <testCase name="Test DropDownList Component Component should render" duration="5"/>
+    <testCase name="Test DropDownList Component Number of options should be same as provided" duration="2"/>
+    <testCase name="Test DropDownList Component OnSelect of List item, callback should be called" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/rich-text-editor/RichTextEditor.test.tsx">
+    <testCase name="Test RichText Editor Should render rich text editor" duration="5"/>
+    <testCase name="Test RichText Editor Should render viewer if readOnly is true" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/GlossaryReferenceModal/GlossaryReferenceModal.test.tsx">
+    <testCase name="Test Ingestion modal component Component Should render" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/searchbar/Searchbar.test.js">
+    <testCase name="Test Searchbar Component Renders the searchbar with the search text sent to it" duration="15"/>
+    <testCase name="Test Searchbar Component Renders the searchbar with blank text if the search text is blank or not sent" duration="12"/>
+    <testCase name="Test Searchbar Component Renders the user typed text when a change event is fired" duration="6"/>
+    <testCase name="Test Searchbar Component Calls the callback function on keyup after timer runs out" duration="1006"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.test.tsx">
+    <testCase name="Test Ingestion modal component Component Should render" duration="30"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/facetfilter/FilterContainer.test.tsx">
+    <testCase name="Test FilterContainer Component Component should render" duration="11"/>
+    <testCase name="Test FilterContainer Component onClick of checkbox callback function should call" duration="5"/>
+    <testCase name="Test FilterContainer Component if disable onClick of checkbox callback function should not call" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/toggle-switch/ToggleSwitch.test.tsx">
+    <testCase name="Test Toggle Switch Component Renders the Toggle Switch with the label sent to it" duration="5"/>
+    <testCase name="Test Toggle Switch Component Changes the checked state on click on the toggle switch" duration="5"/>
+    <testCase name="Test Toggle Switch Component Renders the Toggle switch in the enabled state if the state is sent to it" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/title-breadcrumb/title-breadcrumb.component.test.tsx">
+    <testCase name="Test Breadcrumb Component Component should render" duration="4"/>
+    <testCase name="Test Breadcrumb Component Number of link shoub be equal to value provided" duration="2"/>
+    <testCase name="Test Breadcrumb Component Last value should not be link" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/AddGlossaryTermPage/AddGlossaryTermPage.test.tsx">
+    <testCase name="Test AddGlossaryTerm component page AddGlossaryTerm component page should render" duration="17"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedList/FeedListSeparator.test.tsx">
+    <testCase name="Test FeedListSeperator component Check if FeedListSeperator has all child elements" duration="3"/>
+    <testCase name="Test FeedListSeperator component Check if FeedListSeperator has relativeday as empty string" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/table-data-card/TableDataCard.test.tsx">
+    <testCase name="Test TableDataCard Component Component should render" duration="5"/>
+    <testCase name="Test TableDataCard Component Component should render for deleted" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/SampleDataTable/SampleDataTable.test.tsx">
+    <testCase name="Test SampleDataTable Component Renders all the data that was sent to the component" duration="7"/>
+    <testCase name="Test SampleDataTable Component Renders no data if the columns passed are empty" duration="4"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/popover/PopOver.test.js">
+    <testCase name="Test Popover Component Component should render" duration="30"/>
+    <testCase name="Test Popover Component Onclick popover should display title" duration="556"/>
+    <testCase name="Test Popover Component Onclick popover should display html" duration="522"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/WebhooksPage/WebhooksPage.test.tsx">
+    <testCase name="Test WebhooksPage component WebhooksPage component should render properly" duration="5"/>
+    <testCase name="Test WebhooksPage component Should render WebhooksPage component if Api fails" duration="6"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/utils/APIUtils.test.js">
+    <testCase name="Test APIUtils utility Returns the proper formatted data" duration="0"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/facetfilter/FacetFilter.test.tsx">
+    <testCase name="Test FacetFilter Component Component should render" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/card-list/CardListItem/CardWithListItems.test.tsx">
+    <testCase name="Test CardWithListing Component Component should render" duration="7"/>
+    <testCase name="Test CardWithListing Component OnClick callback function should call" duration="12"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/DataQualityTest/Table/DataQualityTable.test.tsx">
+    <testCase name="Test DataQualityTable component DataQualityTable component should be render properly" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/UserListPage/UserListPage.test.tsx">
+    <testCase name="Test UserListPage component UserListPage component should render properly" duration="6"/>
+    <testCase name="Test UserListPage component should delete users" duration="11"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/app-bar/Appbar.test.tsx">
+    <testCase name="Test Appbar Component Component should render" duration="11"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/AddGlossary/AddGlossaryPage.test.tsx">
+    <testCase name="Test AddGlossary component page AddGlossary component page should render" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/GlossaryPage/GlossaryPage.test.tsx">
+    <testCase name="Test GlossaryComponent page GlossaryComponent Page Should render" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/rich-text-editor/RichTextEditorPreviewer.test.tsx">
+    <testCase name="Test RichTextEditor Previewer Component Should render RichTextEditorViewer Component" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/tags/tags.test.tsx">
+    <testCase name="Test tags Component Component should render" duration="3"/>
+    <testCase name="Test tags Component onClick of X callback function should call" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/NoFeedPlaceholder/NoFeedPlaceholder.test.tsx">
+    <testCase name="Test NoFeedPlaceholder Component Should render all child elements" duration="13"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/SendButton.test.tsx">
+    <testCase name="Test SendButton Component Should call onSaveHandler" duration="7"/>
+    <testCase name="Test SendButton Component Button Should be disabled if editorvalue length is 0" duration="8"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/GlossaryTermPage/GlossaryTermPage.test.tsx">
+    <testCase name="Test GlossaryComponent page GlossaryComponent Page Should render" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/DeleteConfirmationModal/DeleteConfirmationModal.test.tsx">
+    <testCase name="Test Delete Confirmation Modal Component Should render confirmation component" duration="17"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/tour-page/TourPage.test.tsx">
+    <testCase name="Test TourPage component TourPage component should render properly" duration="11"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/App.test.js">
+    <testCase name="renders learn react link" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/containers/PageContainer.test.tsx">
+    <testCase name="Test PageContainer Component Component should render" duration="5"/>
+    <testCase name="Test PageContainer Component left panel containt should display if provided" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/authentication/authenticators/Auth0Authenticator.test.tsx">
+    <testCase name="Test Auth0Authenticator component Checks if the Auth0Authenticator renders" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/AddWebhookPage/AddWebhookPage.test.tsx">
+    <testCase name="Test AddWebhookPage component AddWebhookPage component should render properly" duration="111"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/PipelineDetails/PipelineDetailsPage.test.tsx">
+    <testCase name="Test PipelineDetailsPage component PipelineDetailsPage component should render properly" duration="30"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/buttons/CopyToClipboardButton/CopyToClipboardButton.test.tsx">
+    <testCase name="Test CopyToClipboardButton Component Should render all child elements" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddDataQualityTest/Forms/ColumnTestForm.test.tsx">
+    <testCase name="Test ColumnTestForm component ColumnTestForm component should be render properly" duration="26"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/AddDataQualityTest/Forms/TableTestForm.test.tsx">
+    <testCase name="Test TableTestForm component TableTestForm component should be render properly" duration="22"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/KeyHelp.test.tsx">
+    <testCase name="Test KeyHelp Component Should Render KeyHelp Component if editor value length is greater than 2" duration="11"/>
+    <testCase name="Test KeyHelp Component Should Not Render KeyHelp Component if editor value length is less than or equal to 2" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/DashboardDetailsPage/DashboardDetailsPage.test.tsx">
+    <testCase name="Test DashboardDetails page Component should render" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/login/LoginCarousel.test.tsx">
+    <testCase name="Test LoginCarousel component LoginCarousel component should render properly" duration="41"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelOverlay.test.tsx">
+    <testCase name="Test FeedPanelOverlay Component Check if FeedPanelOverlay has all child elements" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/page-not-found/index.test.tsx">
+    <testCase name="Test PageNotFound Component Component should render" duration="6"/>
+    <testCase name="Test PageNotFound Component There should be 2 buttons on the component" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/explore/ExplorePage.test.tsx">
+    <testCase name="Test Explore page Page Should render" duration="5"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/buttons/Button/Button.test.tsx">
+    <testCase name="Test Button Component Component should render" duration="2"/>
+    <testCase name="Test Button Component OnClick callback function should call" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/teams/Form.test.tsx">
+    <testCase name="Test TeamsPage Form component Form component should render properly" duration="10"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/tags/Form.test.tsx">
+    <testCase name="Test TagsPage form component Form component should render properly" duration="9"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/error-with-placeholder/ErrorPlaceHolder.test.tsx">
+    <testCase name="Test Error place holder Component Component should render" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/utils/SvgUtils.test.tsx">
+    <testCase name="Test SVGIcons component Component should render" duration="2"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/pages/TopicDetails/TopicDetailsPage.test.tsx">
+    <testCase name="Test TopicDetailsPage component TopicDetailsPage component should render properly" duration="43"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/common/error/Error.test.tsx">
+    <testCase name="Test Error Component Component should render" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/onboarding/Onboarding.test.tsx">
+    <testCase name="Test Onboarding Component Component should render" duration="3"/>
+  </file>
+  <file path="/Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Loader/Loader.test.tsx">
+    <testCase name="Test Loader Component Component should render" duration="2"/>
+  </file>
+</testExecutions>

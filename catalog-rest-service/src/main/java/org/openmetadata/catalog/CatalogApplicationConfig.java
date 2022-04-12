@@ -25,6 +25,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.catalog.events.AtlasConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
@@ -97,6 +98,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private boolean sandboxModeEnabled;
+
+  @JsonProperty("atlas")
+  @Getter
+  @Setter
+  private AtlasConfiguration atlasConfiguration;
 
   @Override
   public String toString() {

@@ -47,6 +47,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
+import org.openmetadata.catalog.events.AtlasEventPublisher;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
@@ -222,6 +223,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
         EventPubSub.addEventHandler(slackPublisher);
       }
+    }
+
+    if (catalogApplicationConfig.getAtlasConfiguration() != null) {
+      AtlasEventPublisher atlasEventPublisher =
+          new AtlasEventPublisher(catalogApplicationConfig.getAtlasConfiguration());
+      EventPubSub.addEventHandler(atlasEventPublisher);
     }
   }
 
