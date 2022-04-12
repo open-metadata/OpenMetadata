@@ -1,6 +1,6 @@
 {
   "source": {
-    "type": "sample_data",
+    "type": "sample-data",
     "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
