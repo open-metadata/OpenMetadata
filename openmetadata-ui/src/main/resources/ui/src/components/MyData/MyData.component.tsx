@@ -103,7 +103,8 @@ const MyData: React.FC<MyDataProps> = ({
   const getLinkByFilter = (filter: Ownership) => {
     return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
       filter,
-      AppState.userDetails
+      AppState.userDetails,
+      AppState.nonSecureUserDetails
     ).join()}`;
   };
 

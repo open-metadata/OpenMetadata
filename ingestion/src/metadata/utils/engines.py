@@ -38,7 +38,7 @@ def get_engine(workflow_source: WorkflowSource, verbose: bool = False) -> Engine
         options = {}
     engine = create_engine(
         get_connection_url(service_connection_config),
-        **options.dict(),
+        **options,
         connect_args=get_connection_args(service_connection_config),
         echo=verbose,
     )
