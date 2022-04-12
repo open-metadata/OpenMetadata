@@ -17,9 +17,11 @@ import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
+import { getUserPath } from '../../../constants/constants';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
 import {
+  getNonDeletedTeams,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
@@ -58,7 +60,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const getUserData = () => {
     const displayName = userData.displayName ?? '';
     const name = userData.name ?? '';
-    const teams = userData.teams;
+    const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
 
     return (
@@ -76,12 +78,12 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                     <Avatar name={createdBy} type="square" width="30" />
                   </div>
                   <div className="tw-self-center">
-                    <p>
+                    <a href={getUserPath(name)}>
                       <span className="tw-font-medium tw-mr-2">
                         {displayName}
                       </span>
-                      <span className="tw-text-grey-muted">{name}</span>
-                    </p>
+                    </a>
+                    <span className="tw-text-grey-muted">{name}</span>
                   </div>
                 </div>
                 <div className="tw-text-left">

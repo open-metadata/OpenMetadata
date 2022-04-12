@@ -172,3 +172,6 @@ class RedashSource(Source[Entity]):
 
     def close(self):
         self.client.session.close()
+
+    def test_connection(self) -> None:
+        pass

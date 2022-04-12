@@ -12,10 +12,11 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
+import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Topic } from '../../generated/entity/data/topic';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import TopicDetails from './TopicDetails.component';
@@ -62,7 +63,7 @@ const TopicDetailsProps = {
   topicDetails: {} as Topic,
   entityName: '',
   activeTab: 1,
-  owner: {} as TableDetail['owner'],
+  owner: {} as EntityReference,
   description: '',
   tier: {} as TagLabel,
   followers: [],
@@ -144,6 +145,8 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getHtmlForNonAdminAction: jest.fn(),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
+  getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
 describe('Test TopicDetails component', () => {

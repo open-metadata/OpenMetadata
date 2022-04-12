@@ -94,3 +94,6 @@ class LdapUsersSource(Source[OMetaUserProfile]):
 
     def close(self):
         pass
+
+    def test_connection(self) -> None:
+        pass

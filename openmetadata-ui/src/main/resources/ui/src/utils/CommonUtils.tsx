@@ -567,3 +567,26 @@ export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
     return label.replace(/(^"|"$)/g, '');
   }
 };
+
+/**
+ * Check if entity is deleted and return with "(Deactivated) text"
+ * @param value - entity name
+ * @param isDeleted - boolean
+ * @returns - entity placeholder
+ */
+export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
+  if (isDeleted) {
+    return `${value} (Deactivated)`;
+  } else {
+    return value;
+  }
+};
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity: EntityReference) => {
+  return entity.displayName || entity.name || '';
+};

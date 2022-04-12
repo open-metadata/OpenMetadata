@@ -65,3 +65,7 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @abstractmethod
     def get_status(self) -> SourceStatus:
         pass
+
+    @abstractmethod
+    def test_connection(self) -> None:
+        pass

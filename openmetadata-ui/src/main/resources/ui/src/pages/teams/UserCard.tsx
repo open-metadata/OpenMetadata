@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
@@ -30,15 +30,21 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
-type Props = {
-  item: { description: string; name: string; id?: string };
+interface Props {
+  item: {
+    fqn: string;
+    type: string;
+    displayName: string;
+    id?: string;
+    name?: string;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
-};
+}
 
 const UserCard = ({
   item,
@@ -144,9 +150,9 @@ const UserCard = ({
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
+          <Avatar name={item.displayName} />
         ) : (
-          <>{getDatasetIcon(item.name)}</>
+          <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
@@ -155,16 +161,16 @@ const UserCard = ({
           })}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
+            <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
-            <>
+            <Fragment>
               <p
                 className={classNames(
                   'tw-font-normal',
                   isActionVisible ? 'tw-truncate tw-w-32' : null
                 )}
-                title={item.description}>
-                {item.description}
+                title={item.displayName}>
+                {item.displayName}
               </p>
               {item.name && (
                 <p
@@ -175,7 +181,7 @@ const UserCard = ({
                   {isIconVisible ? item.name : capitalize(item.name)}
                 </p>
               )}
-            </>
+            </Fragment>
           )}
         </div>
       </div>

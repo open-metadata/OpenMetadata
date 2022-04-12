@@ -15,18 +15,12 @@ import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import {
-  EntityFieldThreads,
-  EntityTags,
-  ExtraInfo,
-  TableDetail,
-  TagOption,
-} from 'Models';
+import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { User } from '../../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
@@ -56,9 +50,9 @@ interface Props {
   tier: TagLabel;
   tags: Array<EntityTags>;
   isTagEditable?: boolean;
-  owner?: TableDetail['owner'];
+  owner?: EntityReference;
   hasEditAccess?: boolean;
-  followersList: Array<User>;
+  followersList: Array<EntityReference>;
   entityName: string;
   entityType?: string;
   entityFqn?: string;
@@ -97,7 +91,7 @@ const EntityPageInfo = ({
   const tagThread = entityFieldThreads?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
-    useState<Array<User>>(followersList);
+    useState<Array<EntityReference>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
@@ -480,16 +474,7 @@ const EntityPageInfo = ({
               Followers of <span className="tw-text-black">{entityName}</span>{' '}
             </>
           }
-          list={[
-            ...entityFollowers
-              .map((follower) => getFollowerDetail(follower.id))
-              .filter(Boolean)
-              .map((user) => ({
-                displayName: user?.displayName as string,
-                name: user?.name as string,
-                id: user?.id as string,
-              })),
-          ]}
+          list={entityFollowers}
           onCancel={() => setIsViewMore(false)}
         />
       )}

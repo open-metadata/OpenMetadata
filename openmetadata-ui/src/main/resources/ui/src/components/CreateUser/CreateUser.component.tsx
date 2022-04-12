@@ -93,7 +93,7 @@ const CreateUser = ({
     return [
       ...data.map((option) => {
         return {
-          name: option.displayName || '',
+          name: option.displayName || option.name || '',
           value: option.id,
         };
       }),
