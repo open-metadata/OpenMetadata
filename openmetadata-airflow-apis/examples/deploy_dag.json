@@ -18,10 +18,7 @@
         "hostPort": "localhost:3306",
         "database": null,
         "connectionOptions": null,
-        "connectionArguments": null,
-        "supportedPipelineTypes": [
-          "Metadata"
-        ]
+        "connectionArguments": null
       }
     },
     "sourceConfig": {

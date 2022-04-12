@@ -361,4 +361,18 @@
       @apply tw-bg-white;
     }
   }
+
+  /* react tostify */
+
+  .Toastify__toast-container {
+    @apply tw-font-sans tw-break-words;
+  }
+
+  .Toastify__toast-body {
+    @apply tw-items-start;
+  }
+
+  .Toastify__toast-icon {
+    @apply tw-mt-1;
+  }
 }

@@ -82,7 +82,7 @@ class SnowflakeSource(SQLSource):
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_engine(self.config)
+                self.engine = get_engine(self.config.serviceConnection)
                 yield inspect(self.engine)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
