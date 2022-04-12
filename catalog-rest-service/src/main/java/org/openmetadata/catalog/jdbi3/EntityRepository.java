@@ -605,7 +605,7 @@ public abstract class EntityRepository<T> {
   }
 
   /** Get tags associated with a given set of tags */
-  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) throws IOException {
+  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
       Tag tempTag = daoCollection.tagDAO().findEntityByName(fqn);

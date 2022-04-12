@@ -2083,8 +2083,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   /**
-   * Transforms a positive integer to base 26 using digits a...z
-   * Alphanumeric ordering of results is equivalent to ordering of inputs
+   * Transforms a positive integer to base 26 using digits a...z Alphanumeric ordering of results is equivalent to
+   * ordering of inputs
    */
   private String getNthAlphanumericString(int index) {
     final int N_LETTERS = 26;
@@ -2092,8 +2092,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       throw new IllegalArgumentException(format("Index must be positive, cannot be %d", index));
     }
     if (index < 26) {
-      return String.valueOf((char)('a' + index));
+      return String.valueOf((char) ('a' + index));
     }
-    return getNthAlphanumericString(index / N_LETTERS) + (char)('a' + (index % N_LETTERS));
+    return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
   }
 }

@@ -60,10 +60,7 @@ public abstract class CatalogApplicationTest {
         ResourceHelpers.resourceFilePath("db/sql/" + SQL_CONTAINER.getDriverClassName());
     Flyway flyway =
         Flyway.configure()
-            .dataSource(
-                SQL_CONTAINER.getJdbcUrl(),
-                SQL_CONTAINER.getUsername(),
-                SQL_CONTAINER.getPassword())
+            .dataSource(SQL_CONTAINER.getJdbcUrl(), SQL_CONTAINER.getUsername(), SQL_CONTAINER.getPassword())
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
@@ -77,8 +74,7 @@ public abstract class CatalogApplicationTest {
             CONFIG_PATH,
             // Database overrides
             ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),
-            ConfigOverride.config(
-                "database.url", SQL_CONTAINER.getJdbcUrl()),
+            ConfigOverride.config("database.url", SQL_CONTAINER.getJdbcUrl()),
             ConfigOverride.config("database.user", SQL_CONTAINER.getUsername()),
             ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
             // Migration overrides

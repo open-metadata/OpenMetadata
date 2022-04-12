@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.util;
+package org.openmetadata.catalog.resources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -38,11 +38,13 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.TagLabel.State;
+import org.openmetadata.catalog.util.ChangeEventParser;
+import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ChangeEventParserResourceTest extends CatalogApplicationTest {
+class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
   Object TABLE;
 
