@@ -53,7 +53,7 @@
     "oidc-client": "^1.11.5",
     "path-browserify": "^1.0.1",
     "popper.js": "1.16.1",
-    "postcss": "^8.3.2",
+    "postcss": "^8.4.12",
     "process": "^0.11.10",
     "prop-types": "^15.7.2",
     "quill-mention": "^3.1.0",
