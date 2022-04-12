@@ -343,7 +343,11 @@ class SampleDataSource(Source[Entity]):
             )
         )
         self.pipeline_status = json.load(
-            open(self.config.sample_data_folder + "/pipelines/pipelineStatus.json", "r")
+            open(
+                self.service_connection.sampleDataFolder
+                + "/pipelines/pipelineStatus.json",
+                "r",
+            )
         )
 
     @classmethod
@@ -353,7 +357,7 @@ class SampleDataSource(Source[Entity]):
         connection: SampleDataConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SampleDataConnection):
             raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
+                f"Expected SampleDataConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 

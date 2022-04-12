@@ -9,14 +9,14 @@
     "sampledataType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["BigQuery"],
-      "default": "BigQuery"
+      "enum": ["SampleData"],
+      "default": "SampleData"
     },
     "sampledataScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["bigquery"],
-      "default": "bigquery"
+      "enum": ["sampledata"],
+      "default": "sampledata"
     }
   },
   "properties": {
@@ -30,19 +30,16 @@
       "type": "string"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata", "Usage"]
-      },
-      "default": ["Metadata", "Usage"]
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     }
   },
   "additionalProperties": false

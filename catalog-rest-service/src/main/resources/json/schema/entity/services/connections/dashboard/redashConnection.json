@@ -34,7 +34,7 @@
       "type": "string"
     },
     "supportsMetadataExtraction": {
-      "$ref": "../serviceConnection.json#/definitions/supportsMetadataExtraction"
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false
