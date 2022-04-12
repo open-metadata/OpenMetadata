@@ -90,7 +90,6 @@ logging:
   level: INFO
   loggers:
     org.openmetadata.catalog.common: DEBUG
-    org.openmetadata.catalog.elasticsearch: DEBUG
     io.swagger: ERROR
   appenders:
     - type: file
