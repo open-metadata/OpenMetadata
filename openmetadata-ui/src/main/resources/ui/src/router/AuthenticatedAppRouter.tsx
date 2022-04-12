@@ -15,15 +15,17 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import { useAuthContext } from '../auth-provider/AuthProvider';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { ROUTES } from '../constants/constants';
 import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
+import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
+import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
@@ -59,6 +61,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
+      <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
@@ -69,6 +72,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DatabaseDetails}
         path={ROUTES.DATABASE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaPageComponent}
+        path={ROUTES.SCHEMA_DETAILS}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaPageComponent}
+        path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
       />
       <Route exact component={DatasetDetailsPage} path={ROUTES.TABLE_DETAILS} />
       <Route

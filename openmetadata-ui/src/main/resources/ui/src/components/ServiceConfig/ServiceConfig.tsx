@@ -280,10 +280,9 @@ const ServiceConfig = ({
   //           setLoading(false);
   //         })
   //         .catch(() => {
-  //           showToast({
-  //             variant: 'error',
-  //             body: `Error while updating service`,
-  //           });
+  //           showErrorToast(
+  //             jsonData['api-error-messages']['update-service-error']
+  //           );
   //         });
   //     }
   //   }

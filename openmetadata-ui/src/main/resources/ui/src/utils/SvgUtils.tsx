@@ -26,6 +26,7 @@ import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
+import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
@@ -77,6 +78,7 @@ import IconSearch from '../assets/svg/ic-search.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStore from '../assets/svg/ic-store.svg';
+import IconSync from '../assets/svg/ic-sync.svg';
 import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
@@ -250,6 +252,7 @@ export const Icons = {
   EDITLINEAGE: 'icon-edit-lineage',
   REQUEST: 'icon-request',
   CHECKBOX_PRIMARY: 'icon-checkbox-primary',
+  CIRCLE_CHECKBOX: 'icon-circle-checkbox',
   ARROW_RIGHT_PRIMARY: 'icon-arrow-right-primary',
   ARROW_DOWN_PRIMARY: 'icon-arrow-down-primary',
   ANNOUNCEMENT: 'icon-announcement',
@@ -265,6 +268,7 @@ export const Icons = {
   WEBHOOK_GREY: 'icon-webhook-grey',
   WEBHOOK_PRIMARY: 'icon-webhook-primary',
   GITHUB_STAR: 'icon-github-star',
+  SYNC: 'icon-sync',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -701,6 +705,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconEditLineageColor;
 
       break;
+    case Icons.CIRCLE_CHECKBOX:
+      IconComponent = IconCircleCheckbox;
+
+      break;
     case Icons.CHECKBOX_PRIMARY:
       IconComponent = IconCheckboxPrimary;
 
@@ -767,6 +775,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.GITHUB_STAR:
       IconComponent = IconGithubStar;
+
+      break;
+    case Icons.SYNC:
+      IconComponent = IconSync;
 
       break;
 

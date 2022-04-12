@@ -51,9 +51,7 @@ CONFIG = """
         "enableDataProfiler": false,
         "schemaFilterPattern":{
           "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
-        },
-      "dbtManifestFilePath": "./examples/sample_data/dbt/manifest_1.0.json",
-      "dbtCatalogFilePath": "./examples/sample_data/dbt/catalog_1.0.json"
+        }
         }
       }
     },

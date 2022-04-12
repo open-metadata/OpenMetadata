@@ -24,10 +24,10 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import useToastContext from '../../hooks/useToastContext';
 import { getHeaderLabel } from '../../utils/EntityLineageUtils';
 import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import Loader from '../Loader/Loader';
@@ -41,7 +41,6 @@ const EntityInfoDrawer = ({
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const showToast = useToastContext();
   const [entityDetail, setEntityDetail] = useState<
     Partial<Table> & Partial<Pipeline> & Partial<Dashboard> & Partial<Topic>
   >(
@@ -58,7 +57,7 @@ const EntityInfoDrawer = ({
     switch (selectedNode.type) {
       case EntityType.TABLE: {
         setIsLoading(true);
-        getTableDetailsByFQN(selectedNode.name, [
+        getTableDetailsByFQN(selectedNode.fqn, [
           'tags',
           'owner',
           'columns',
@@ -71,69 +70,62 @@ const EntityInfoDrawer = ({
             setServiceType(res.data.serviceType);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(selectedNode.name, ['tags', 'owner'])
+        getPipelineByFqn(selectedNode.fqn, ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('pipelineServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
                 setServiceType(serviceRes.data.serviceType);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ?? `Error while getting ${selectedNode.name} service`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while getting ${selectedNode.name} service`
+                );
               });
             setEntityDetail(res.data);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;
       }
       case EntityType.DASHBOARD: {
         setIsLoading(true);
-        getDashboardByFqn(selectedNode.name, ['tags', 'owner'])
+        getDashboardByFqn(selectedNode.fqn, ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('dashboardServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
                 setServiceType(serviceRes.data.serviceType);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ?? `Error while getting ${selectedNode.name} service`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while getting ${selectedNode.name} service`
+                );
               });
             setEntityDetail(res.data);
             setIsLoading(false);
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while getting ${selectedNode.name} details`,
-            });
+            showErrorToast(
+              err,
+              `Error while getting ${selectedNode.name} details`
+            );
           });
 
         break;
@@ -155,7 +147,7 @@ const EntityInfoDrawer = ({
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
           {getHeaderLabel(
             selectedNode.displayName ?? selectedNode.name,
-            selectedNode.name,
+            selectedNode.fqn,
             selectedNode.type,
             isMainNode
           )}

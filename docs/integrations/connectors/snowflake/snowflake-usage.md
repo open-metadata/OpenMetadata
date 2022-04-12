@@ -8,22 +8,15 @@ description: >-
 
 ## **Requirements**
 
-Using the OpenMetadata Snowflake Usage connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
+Please ensure that your host system meets the requirements listed below.
 
 ### **OpenMetadata (version 0.8.0 or later)**
 
-You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
-
-* OpenMetadata server supporting the metadata APIs and user interface
-* Elasticsearch for metadata search and discovery
-* MySQL as the backing store for all metadata
-* Airflow for metadata ingestion workflows
-
-If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](https://docs.open-metadata.org/install/run-openmetadata) to get up and running.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](https://docs.open-metadata.org/install/run-openmetadata).
 
 ### **Python (version 3.8.0 or later)**
 
-Please use the following command to check the version of Python you have.
+Use the following command to check your Python version.
 
 ```
 python3 --version

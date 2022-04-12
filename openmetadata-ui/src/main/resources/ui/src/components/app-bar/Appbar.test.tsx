@@ -27,7 +27,7 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

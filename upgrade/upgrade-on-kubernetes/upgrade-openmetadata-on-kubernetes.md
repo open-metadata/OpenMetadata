@@ -50,12 +50,24 @@ helm search repo open-metadata --versions
 
 ```
 NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
+open-metadata/openmetadata             	0.0.12       	0.9.0      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.11       	0.8.4      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.10       	0.8.4      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.9        	0.8.3      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.8        	0.8.3      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata             	0.0.7        	0.8.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.6        	0.8.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.5        	0.8.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.4        	0.8.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.3        	0.7.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.2        	0.6.0      	A Helm chart for OpenMetadata on Kubernetes
 open-metadata/openmetadata             	0.0.1        	0.5.0      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata-dependencies	0.0.12       	0.9.0      	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.11       	0.8.4      	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.10       	0.8.4      	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.9        	0.8.3      	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.8        	0.8.3      	Helm Dependencies for OpenMetadata         
+open-metadata/openmetadata-dependencies	0.0.7        	0.8.0      	Helm Dependencies for OpenMetadata         
 open-metadata/openmetadata-dependencies	0.0.6        	0.8.0      	Helm Dependencies for OpenMetadata         
 open-metadata/openmetadata-dependencies	0.0.5        	0.8.0      	Helm Dependencies for OpenMetadata         
 open-metadata/openmetadata-dependencies	0.0.4        	0.8.0      	Helm Dependencies for OpenMetadata         

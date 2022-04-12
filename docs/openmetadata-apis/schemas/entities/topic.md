@@ -12,7 +12,6 @@ This schema does not accept additional properties.
 
 ### Properties
 
-## <<<<<<< HEAD
 
 * **id** `required`
   * Unique identifier that identifies this topic instance.
@@ -187,17 +186,13 @@ This schema does not accept additional properties.
 
 ### Type definitions in this schema
 
-<<<<<<< HEAD
 
 #### topicName
-
-\=======
 
 * Name that identifies a topic.
 * Type: `string`
 * Length: between 1 and 128
 
-> > > > > > > a07bc411 (updated json schema and schema docs (#3219))
 
 * Name that identifies a topic.
 * Type: `string`
@@ -215,7 +210,6 @@ This schema does not accept additional properties.
 
 #### cleanupPolicy
 
-<<<<<<< HEAD
 
 * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
 * The value is restricted to the following:

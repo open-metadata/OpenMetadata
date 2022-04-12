@@ -456,10 +456,7 @@ class RedshiftSource(SQLSource):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
             )
-        if (
-            config.sourceConfig.config.sampleDataQuery
-            == WorkflowSource.sourceConfig.config.sampleDataQuery
-        ):
+        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
             config.sourceConfig.config.sampleDataQuery = 'select * from "{}"."{}"'
         return cls(config, metadata_config)
 

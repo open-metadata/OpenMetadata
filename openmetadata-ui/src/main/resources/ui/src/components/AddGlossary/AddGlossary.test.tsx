@@ -16,7 +16,7 @@ import { LoadingState } from 'Models';
 import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

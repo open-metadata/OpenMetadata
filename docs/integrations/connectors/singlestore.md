@@ -112,7 +112,6 @@ Note: The `source.config` field in the configuration JSON will include the major
     "config": {
       "host_port": "hostname.domain.com:3306",
       "scheme": "mysql+pymysql"
-      "service_type": "DatabaseServiceType.SingleStore.value",
       "connector_type": "mysql",
       "username": "username",
       "password": "strong_password",
@@ -162,14 +161,6 @@ Edit the value for `source.config.scheme` in `singlestore.json` for your SingleS
 
 ```javascript
 "scheme": "mysql+pymysql"
-```
-
-#### service\_type
-
-Edit the value for `source.config.service_type` as shown in the example below.
-
-```javascript
-"service_type": "DatabaseServiceType.SingleStore.value"
 ```
 
 #### connector\_type

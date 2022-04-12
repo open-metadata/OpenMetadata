@@ -4,6 +4,7 @@ import uuid
 from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
@@ -19,15 +20,13 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source_common import SQLSourceStatus
+from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 
 
 class DynamodbSource(Source[Entity]):

@@ -1,4 +1,4 @@
-# Copy of Google SSO
+# Google SSO
 
 Follow the sections in this guide to set up Google SSO.
 
@@ -6,12 +6,12 @@ Follow the sections in this guide to set up Google SSO.
 [google-server-creds.md](../../../deploy-on-bare-metal/enable-security/google-sso/google-server-creds.md)
 {% endcontent-ref %}
 
-{% content-ref url="../../../deploy-on-bare-metal/enable-security/google-sso/create-ingestion-service-account.md" %}
-[create-ingestion-service-account.md](../../../deploy-on-bare-metal/enable-security/google-sso/create-ingestion-service-account.md)
+{% content-ref url="create-ingestion-service-account.md" %}
+[create-ingestion-service-account.md](create-ingestion-service-account.md)
 {% endcontent-ref %}
 
-{% content-ref url="../../../deploy-on-bare-metal/enable-security/google-sso/google-config.md" %}
-[google-config.md](../../../deploy-on-bare-metal/enable-security/google-sso/google-config.md)
+{% content-ref url="google-config.md" %}
+[google-config.md](google-config.md)
 {% endcontent-ref %}
 
 {% content-ref url="../../../deploy-on-bare-metal/enable-security/google-sso/configure-security-ingestion.md" %}

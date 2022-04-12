@@ -19,9 +19,8 @@ import {
   getRecentlySearchedData,
   removeRecentSearchTerm,
 } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const RecentSearchedTerms: FunctionComponent = () => {
   const [recentlySearchedTerms, setRecentlySearchTerms] = useState<
@@ -50,9 +49,10 @@ const RecentSearchedTerms: FunctionComponent = () => {
               data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">
-                <FontAwesomeIcon
-                  className="tw-text-grey-muted tw-pr-2 tw-self-center"
-                  icon="search"
+                <SVGIcons
+                  alt="search"
+                  className="tw-h-4 tw-w-4 tw-mr-2 tw-self-center"
+                  icon={Icons.SEARCHV1}
                 />
                 <div className="tw-flex tw-justify-between">
                   <Link

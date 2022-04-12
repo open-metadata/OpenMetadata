@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ServiceTypes } from 'Models';
+import { ServiceTypes, StepperStepType } from 'Models';
 import noDataFound from '../assets/img/no-data-placeholder.png';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
@@ -116,3 +116,9 @@ export const servicesDisplayName = {
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
 };
+
+export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
+  { name: 'Select Service Type', step: 1 },
+  { name: 'Configure Service', step: 2 },
+  { name: 'Connection Details', step: 3 },
+];

@@ -21,6 +21,14 @@ export interface TableauConnection {
    */
   apiVersion?: string;
   /**
+   * Tableau Environment Name
+   */
+  env?: string;
+  /**
+   * Tableau Server
+   */
+  hostPort?: string;
+  /**
    * password for the Tableau
    */
   password?: string;
@@ -33,17 +41,9 @@ export interface TableauConnection {
    */
   personalAccessTokenSecret?: string;
   /**
-   * Tableau Server
-   */
-  server?: string;
-  /**
    * Tableau Site Name
    */
   siteName?: string;
-  /**
-   * Tableau Site URL
-   */
-  siteURL?: string;
   /**
    * Supported Metadata Extraction Pipelines.
    */

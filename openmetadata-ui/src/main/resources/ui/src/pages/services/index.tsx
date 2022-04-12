@@ -14,10 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
@@ -38,6 +38,7 @@ import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServ
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  PAGE_SIZE,
   pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -53,8 +54,8 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import {
   DataObj,
   EditObj,
@@ -70,6 +71,7 @@ import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type ServiceRecord = {
   databaseServices: Array<DatabaseService>;
@@ -96,7 +98,6 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
-  const showToast = useToastContext();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -132,12 +133,7 @@ const ServicesPage = () => {
     pipelineServices: 0,
   });
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
+  const [currentPage, setCurrentPage] = useState(1);
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -192,13 +188,13 @@ const ServicesPage = () => {
               for (const err of errors) {
                 const errMsg = getErrorText(err, '');
                 if (errMsg) {
-                  handleShowErrorToast(errMsg);
+                  showErrorToast(errMsg);
                 } else {
                   unexpectedResponses++;
                 }
               }
               if (unexpectedResponses > 0) {
-                handleShowErrorToast(
+                showErrorToast(
                   jsonData['api-error-messages']['unexpected-server-response']
                 );
               }
@@ -207,11 +203,10 @@ const ServicesPage = () => {
           setIsLoading(false);
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-services-error']
           );
-          handleShowErrorToast(errMsg);
         });
     }
   };
@@ -313,14 +308,10 @@ const ServicesPage = () => {
           });
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['add-ingestion-error']
           );
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
         });
     } else {
       setIsModalOpen(false);
@@ -357,14 +348,10 @@ const ServicesPage = () => {
         handleServiceSavePromise(serviceRes, ingestionList);
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['add-service-error']
         );
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
       });
   };
 
@@ -392,11 +379,10 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-service-error']
         );
-        handleShowErrorToast(errMsg);
       });
 
     handleCancelConfirmationModal();
@@ -523,7 +509,7 @@ const ServicesPage = () => {
     }
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
@@ -544,16 +530,16 @@ const ServicesPage = () => {
             ...paging,
             [serviceName]: result.data.paging,
           });
+          setCurrentPage(activePage ?? 0);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError | string) => {
-        const msg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
-        handleShowErrorToast(msg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -591,8 +577,11 @@ const ServicesPage = () => {
     return !isNil(paging[serviceName].after) ||
       !isNil(paging[serviceName].before) ? (
       <NextPrevious
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
         paging={paging[serviceName]}
         pagingHandler={pagingHandler}
+        totalCount={paging[serviceName].total}
       />
     ) : null;
   };
@@ -787,13 +776,12 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
         setIsLoading(false);
         setErrorMessage(jsonData['message']['no-services']);
-        handleShowErrorToast(errMsg);
       });
   }, []);
 

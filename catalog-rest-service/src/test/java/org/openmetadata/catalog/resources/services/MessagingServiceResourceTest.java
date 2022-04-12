@@ -203,7 +203,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void validateGetWithDifferentFields(MessagingService service, boolean byName) throws HttpResponseException {
+  public EntityInterface<MessagingService> validateGetWithDifferentFields(MessagingService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
@@ -216,7 +217,8 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(service);
   }
 
   @Override

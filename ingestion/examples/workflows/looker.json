@@ -1,23 +1,31 @@
 {
   "source": {
     "type": "looker",
-    "config": {
-      "username": "username",
-      "password": "password",
-      "url": "http://localhost",
-      "service_name": "looker",
-      "service_type": "Looker",
+    "serviceName": "local_looker",
+    "serviceConnection": {
+      "config": {
+        "type": "Looker",
+        "username": "username",
+        "password": "password",
+        "hostPort": "hostPort",
+        "env": "env"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

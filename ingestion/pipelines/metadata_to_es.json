@@ -1,6 +1,7 @@
 {
   "source": {
     "type": "metadata",
+    "serviceName": "openMetadata",
     "config": {
       "include_tables": "true",
       "include_topics": "true",
@@ -18,11 +19,10 @@
       "es_port": 9200
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

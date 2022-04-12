@@ -34,7 +34,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getPartialNameFromFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import SVGIcons from './SvgUtils';
 import {
   getDataTypeString,
@@ -90,7 +90,7 @@ export const getEntityOverview = (
     case EntityType.TABLE: {
       const { fullyQualifiedName, owner, tags, usageSummary, tableProfile } =
         entityDetail;
-      const [service, database] = getPartialNameFromFQN(
+      const [service, database] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
         ['service', 'database'],
         FQN_SEPARATOR_CHAR
@@ -116,7 +116,7 @@ export const getEntityOverview = (
           name: 'Database',
           value: database,
           url: getDatabaseDetailsPath(
-            getPartialNameFromFQN(
+            getPartialNameFromTableFQN(
               fullyQualifiedName ?? '',
               ['service', 'database'],
               FQN_SEPARATOR_CHAR

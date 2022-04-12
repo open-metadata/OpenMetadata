@@ -171,7 +171,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public void validateGetWithDifferentFields(DashboardService service, boolean byName) throws HttpResponseException {
+  public EntityInterface<DashboardService> validateGetWithDifferentFields(DashboardService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
@@ -184,7 +185,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(service);
   }
 
   @Override

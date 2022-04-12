@@ -196,6 +196,10 @@
     @apply tw-cursor-not-allowed;
   }
 
+  .tw-form-container {
+    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form;
+  }
+
   /* Dropdown CSS start */
   .dropdown-list {
     @apply tw-origin-top-right tw-absolute tw-z-9999

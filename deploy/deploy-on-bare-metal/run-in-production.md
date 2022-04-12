@@ -40,9 +40,13 @@ Make sure to configure required databases and users for OpenMetadata.
 You can refer a sample script from [here](https://github.com/open-metadata/OpenMetadata/blob/main/docker/local-metadata/mysql-script.sql).
 {% endhint %}
 
-### Elasticsearch (version 7.0.0 or greater)
+### Elasticsearch (version 7.X)
 
 To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at [Installing Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
+
+We do not support ElasticSearch 8.x yet.
+
+Please follow the instructions[ here to install Elasticsearch ](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html)
 
 ### Airflow (version 2.0.0 or greater) or other workflow schedulers
 
@@ -58,7 +62,7 @@ Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases
 
 For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
 
-![](<../../docs/.gitbook/assets/image (4).png>)
+![](<../../docs/.gitbook/assets/image (4) (2).png>)
 
 ### 2. Untar the release download
 

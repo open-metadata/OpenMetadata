@@ -180,48 +180,53 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  protected void prepareGetWithDifferentFields(Role role) throws HttpResponseException {
+  public EntityInterface<Role> validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
     // Assign two arbitrary users this role for testing.
-    UserResourceTest userResourceTest = new UserResourceTest();
-    userResourceTest.createEntity(
-        userResourceTest.createRequest(role.getName() + "user1", "", "", null).withRoles(List.of(role.getId())),
-        ADMIN_AUTH_HEADERS);
-    userResourceTest.createEntity(
-        userResourceTest.createRequest(role.getName() + "user2", "", "", null).withRoles(List.of(role.getId())),
-        ADMIN_AUTH_HEADERS);
+    if (role.getUsers() == null) {
+      UserResourceTest userResourceTest = new UserResourceTest();
+      userResourceTest.createEntity(
+          userResourceTest.createRequest(role.getName() + "user1", "", "", null).withRoles(List.of(role.getId())),
+          ADMIN_AUTH_HEADERS);
+      userResourceTest.createEntity(
+          userResourceTest.createRequest(role.getName() + "user2", "", "", null).withRoles(List.of(role.getId())),
+          ADMIN_AUTH_HEADERS);
+    }
+
     // Assign two arbitrary teams this role for testing.
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    teamResourceTest.createEntity(
-        teamResourceTest.createRequest(role.getName() + "team1", "", "", null).withDefaultRoles(List.of(role.getId())),
-        ADMIN_AUTH_HEADERS);
-    teamResourceTest.createEntity(
-        teamResourceTest.createRequest(role.getName() + "team2", "", "", null).withDefaultRoles(List.of(role.getId())),
-        ADMIN_AUTH_HEADERS);
-  }
+    if (role.getTeams() == null) {
+      TeamResourceTest teamResourceTest = new TeamResourceTest();
+      teamResourceTest.createEntity(
+          teamResourceTest
+              .createRequest(role.getName() + "team1", "", "", null)
+              .withDefaultRoles(List.of(role.getId())),
+          ADMIN_AUTH_HEADERS);
+      teamResourceTest.createEntity(
+          teamResourceTest
+              .createRequest(role.getName() + "team2", "", "", null)
+              .withDefaultRoles(List.of(role.getId())),
+          ADMIN_AUTH_HEADERS);
+    }
 
-  /** Validate returned fields GET .../roles/{id}?fields="..." or GET .../roles/name/{name}?fields="..." */
-  @Override
-  public void validateGetWithDifferentFields(Role expectedRole, boolean byName) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
-
-    Role role =
+    role =
         byName
-            ? getEntityByName(expectedRole.getName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedRole.getId(), null, ADMIN_AUTH_HEADERS);
-    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+            ? getEntityByName(role.getName(), null, ADMIN_AUTH_HEADERS)
+            : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
+    validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicy(), role.getUsers());
 
     // .../roles?fields=policy,users
     String fields = "policy,teams,users";
     role =
         byName
-            ? getEntityByName(expectedRole.getName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedRole.getId(), fields, ADMIN_AUTH_HEADERS);
+            ? getEntityByName(role.getName(), null, fields, ADMIN_AUTH_HEADERS)
+            : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(role.getPolicy(), role.getUsers());
-    validateRole(role, expectedRole.getDescription(), expectedRole.getDisplayName(), updatedBy);
+    validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     TestUtils.validateEntityReference(role.getPolicy());
-    TestUtils.validateEntityReferences(role.getTeams());
-    TestUtils.validateEntityReferences(role.getUsers());
+    TestUtils.validateEntityReferences(role.getTeams(), true);
+    TestUtils.validateEntityReferences(role.getUsers(), true);
+    return getEntityInterface(role);
   }
 
   @Override

@@ -32,7 +32,8 @@
         "SingleStore",
         "SQLite",
         "DeltaLake",
-        "Salesforce"
+        "Salesforce",
+        "SampleData"
       ],
       "javaEnums": [
         {
@@ -106,6 +107,9 @@
         },
         {
           "name": "Salesforce"
+        },
+        {
+          "name": "SampleData"
         }
       ]
     },
@@ -132,6 +136,9 @@
             },
             {
               "$ref": "./connections/database/db2Connection.json"
+            },
+            {
+              "$ref": "./connections/database/deltaLakeConnection.json"
             },
             {
               "$ref": "./connections/database/druidConnection.json"
@@ -183,6 +190,9 @@
             },
             {
               "$ref": "./connections/database/verticaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sampleDataConnection.json"
             }
           ]
         }

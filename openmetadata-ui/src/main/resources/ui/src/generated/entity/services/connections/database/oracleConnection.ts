@@ -16,7 +16,7 @@
  * Oracle Database Connection Config
  */
 export interface OracleConnection {
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
@@ -28,6 +28,11 @@ export interface OracleConnection {
    * Host and port of the Oracle.
    */
   hostPort?: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
   /**
    * password to connect  to the Oracle.
    */
@@ -49,6 +54,17 @@ export interface OracleConnection {
    * metadata in Oracle.
    */
   username?: string;
+}
+
+/**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
 }
 
 /**

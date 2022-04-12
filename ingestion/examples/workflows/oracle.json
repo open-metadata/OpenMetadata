@@ -1,25 +1,27 @@
 {
-    "source": {
-      "type": "oracle",
+  "source": {
+    "type": "oracle",
+    "serviceName": "local_oracle",
+    "serviceConnection": {
       "config": {
-        "host_port":"host:1521",
-        "username": "pdbadmin",
+        "hostPort": "hostPort",
+        "username": "username",
         "password": "password",
-        "service_name": "local_oracle",
-        "service_type": "Oracle",
-        "oracle_service_name": "ORCLPDB1"
+        "type": "Oracle",
+        "oracleServiceName":"TESTDB"
       }
-    },
-    "sink": {
-      "type": "metadata-rest",
-      "config": {
-      }
-    },
-    "metadata_server": {
-      "type": "metadata-server",
-      "config": {
-        "api_endpoint": "http://localhost:8585/api",
-          "auth_provider_type": "no-auth"
-      }
+    },"sourceConfig":{
+      "config":{}
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
+}

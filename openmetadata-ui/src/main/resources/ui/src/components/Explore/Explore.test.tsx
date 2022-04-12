@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -80,6 +80,8 @@ const mockSearchResult = {
   resAggTier: mockResponse as unknown as SearchResponse,
   resAggTag: mockResponse as unknown as SearchResponse,
   resAggDatabase: mockResponse as unknown as SearchResponse,
+  resAggDatabaseSchema: mockResponse as unknown as SearchResponse,
+  resAggServiceName: mockResponse as unknown as SearchResponse,
 };
 
 describe('Test Explore component', () => {

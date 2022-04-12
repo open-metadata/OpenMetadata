@@ -242,7 +242,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -280,7 +280,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(queryUsageConfig, ingestion.getSource().getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -313,7 +313,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                         .withStartDate(startDate.toString())),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -482,7 +482,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             OK,
             ADMIN_AUTH_HEADERS);
 
-    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getName(), ingestion.getName());
+    String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
     validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestionPipeline);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
@@ -614,12 +614,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     return TestUtils.put(getCollection(), create, IngestionPipeline.class, status, authHeaders);
   }
 
-  /**
-   * Validate returned fields GET .../operations/IngestionPipelines/{id}?fields="..." or GET
-   * .../operations/IngestionPipelines/name/{fqn}?fields="..."
-   */
   @Override
-  public void validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName) throws HttpResponseException {
+  public EntityInterface<IngestionPipeline> validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     ingestion =
         byName
@@ -633,7 +630,8 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(ingestion.getOwner(), ingestion.getService());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(ingestion);
   }
 
   private void validateSourceConfig(SourceConfig orig, SourceConfig updated, IngestionPipeline ingestionPipeline) {

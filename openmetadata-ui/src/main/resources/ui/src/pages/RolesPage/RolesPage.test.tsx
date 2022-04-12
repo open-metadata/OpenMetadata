@@ -33,7 +33,7 @@ jest.mock('../../axiosAPIs/rolesAPI', () => ({
   updateRole: jest.fn(),
 }));
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

@@ -6,6 +6,7 @@
       "config": {
         "type": "Vertica",
         "username": "openmetadata_user",
+        "password": "",
         "hostPort": "localhost:5433",
         "database": "custom_database_name"
       }

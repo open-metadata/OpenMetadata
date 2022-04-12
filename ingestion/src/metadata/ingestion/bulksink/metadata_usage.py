@@ -13,7 +13,7 @@ import json
 import logging
 from datetime import datetime
 
-from metadata.config.common import FQDN_SEPARATOR, ConfigModel
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -28,6 +28,8 @@ from metadata.ingestion.models.table_queries import (
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.helpers import _get_formmated_table_name
 
 logger = logging.getLogger(__name__)
 
@@ -66,18 +68,25 @@ class MetadataUsageBulkSink(BulkSink):
     def handle_work_unit_end(self, wu):
         pass
 
+    def ingest_sql_queries_lineage(self, queries, database):
+        for query in queries:
+            self.metadata.ingest_lineage_by_query(
+                query=query.query, service_name=self.service_name, database=database
+            )
+
     def write_records(self) -> None:
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         table_usage_map = {}
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             if "." in table_usage.table:
-                table_usage.database, table_usage.table = table_usage.table.split(".")[
-                    -2:
-                ]
+                (
+                    table_usage.database_schema,
+                    table_usage.table,
+                ) = table_usage.table.split(".")[-2:]
             self.service_name = table_usage.service_name
             table_entity = self.__get_table_entity(
-                table_usage.database, table_usage.table
+                table_usage.database, table_usage.database_schema, table_usage.table
             )
             if table_entity is not None:
                 if not table_usage_map.get(table_entity.id.__root__):
@@ -86,6 +95,7 @@ class MetadataUsageBulkSink(BulkSink):
                         "usage_count": table_usage.count,
                         "sql_queries": table_usage.sql_queries,
                         "usage_date": table_usage.date,
+                        "database": table_usage.database,
                     }
                 else:
                     table_usage_map[table_entity.id.__root__][
@@ -124,6 +134,9 @@ class MetadataUsageBulkSink(BulkSink):
             self.metadata.ingest_table_queries_data(
                 table=value_dict["table_entity"],
                 table_queries=value_dict["sql_queries"],
+            )
+            self.ingest_sql_queries_lineage(
+                value_dict["sql_queries"], value_dict["database"]
             )
             table_usage_request = TableUsageRequest(
                 date=value_dict["usage_date"], count=value_dict["usage_count"]
@@ -168,11 +181,13 @@ class MetadataUsageBulkSink(BulkSink):
             else:
                 column_joins_dict[column_join.table_column.column] = {}
             main_column_fqdn = self.__get_column_fqdn(
-                table_usage.database, column_join.table_column
+                table_usage.database,
+                table_usage.database_schema,
+                column_join.table_column,
             )
             for column in column_join.joined_with:
                 joined_column_fqdn = self.__get_column_fqdn(
-                    table_usage.database, column
+                    table_usage.database, table_usage.database_schema, column
                 )
                 if str(joined_column_fqdn) in joined_with.keys():
                     column_joined_with = joined_with[str(joined_column_fqdn)]
@@ -194,16 +209,25 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqdn(self, database: str, table_column: TableColumn):
-        table_entity = self.__get_table_entity(database, table_column.table)
+    def __get_column_fqdn(
+        self, database: str, database_schema: str, table_column: TableColumn
+    ):
+        table_entity = self.__get_table_entity(
+            database, database_schema, table_column.table
+        )
         if table_entity is None:
             return None
         for tbl_column in table_entity.columns:
             if table_column.column.lower() == tbl_column.name.__root__.lower():
-                return tbl_column.fullyQualifiedName.__root__
+                return tbl_column.fullyQualifiedName.__root__.__root__
 
-    def __get_table_entity(self, database_name: str, table_name: str) -> Table:
-        table_fqn = f"{self.service_name}{FQDN_SEPARATOR}{database_name}{FQDN_SEPARATOR}{table_name}"
+    def __get_table_entity(
+        self, database_name: str, database_schema: str, table_name: str
+    ) -> Table:
+        table_fqn = get_fqdn(
+            Table, self.service_name, database_name, database_schema, table_name
+        )
+        table_fqn = _get_formmated_table_name(table_fqn)
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         return table_entity
 

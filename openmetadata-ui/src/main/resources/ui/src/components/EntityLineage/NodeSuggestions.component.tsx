@@ -16,13 +16,15 @@ import { capitalize } from 'lodash';
 import { FormatedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -33,16 +35,21 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const showToast = useToastContext();
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
+  const getSuggestionLabel = (fqn: string, type: string, name: string) => {
+    if (type === EntityType.TABLE) {
+      const database = getPartialNameFromTableFQN(fqn, ['database']);
+      const schema = getPartialNameFromTableFQN(fqn, ['schema']);
+
+      return database && schema
+        ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+        : name;
+    } else {
+      return name;
+    }
   };
 
   useEffect(() => {
@@ -60,12 +67,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-suggestions-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   }, [searchValue]);
 
@@ -87,7 +92,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           aria-labelledby="menu-button"
           aria-orientation="vertical"
           className="tw-origin-top-right tw-absolute tw-z-20
-          tw-w-full tw-mt-1 tw-rounded-md tw-shadow-lg
+          tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
           role="menu">
           {data.map((entity) => (
@@ -111,9 +116,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   className="tw-inline tw-h-4 tw-w-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
-                {entity.database
-                  ? `${entity.database}.${entity.name}`
-                  : entity.name}
+                {getSuggestionLabel(
+                  entity.fullyQualifiedName,
+                  entity.entityType as string,
+                  entity.name
+                )}
               </span>
             </div>
           ))}
