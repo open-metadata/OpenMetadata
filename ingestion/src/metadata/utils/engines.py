@@ -20,11 +20,11 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnection,
-)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
 )
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
