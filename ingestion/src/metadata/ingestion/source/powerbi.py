@@ -178,3 +178,6 @@ class PowerbiSource(Source[Entity]):
 
     def prepare(self):
         pass
+
+    def test_connection(self) -> None:
+        pass

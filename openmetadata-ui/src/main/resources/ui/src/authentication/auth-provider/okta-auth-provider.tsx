@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { IDToken, OktaAuth } from '@okta/okta-auth-js';
+import { OktaAuth } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import React, { FunctionComponent, ReactNode } from 'react';
 import { oidcTokenKey } from '../../constants/constants';
@@ -42,17 +42,18 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   };
 
   const restoreOriginalUri = async (_oktaAuth: OktaAuth) => {
-    const idToken =
-      _oktaAuth?.authStateManager?._authState?.idToken || ({} as IDToken);
-    localStorage.setItem(oidcTokenKey, idToken?.idToken || '');
+    const idToken = _oktaAuth.getIdToken() || '';
+    const scopes =
+      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+    localStorage.setItem(oidcTokenKey, idToken);
     _oktaAuth
       .getUser()
       .then((info) => {
         setIsAuthenticated(true);
         const user = {
           // eslint-disable-next-line @typescript-eslint/camelcase
-          id_token: idToken.idToken,
-          scope: idToken.scopes.join(),
+          id_token: idToken,
+          scope: scopes,
           profile: {
             email: info.email || '',
             name: info.name || '',

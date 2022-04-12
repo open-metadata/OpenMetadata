@@ -299,3 +299,6 @@ class DeltalakeSource(Source[Entity]):
             or isinstance(delta_type, ArrayType)
             or isinstance(delta_type, MapType)
         )
+
+    def test_connection(self) -> None:
+        pass

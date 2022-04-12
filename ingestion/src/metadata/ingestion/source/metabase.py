@@ -257,6 +257,9 @@ class MetabaseSource(Source[Entity]):
     def prepare(self):
         pass
 
+    def test_connection(self) -> None:
+        pass
+
     def get_card_detail(self, card_list):
         metadata = OpenMetadata(self.metadata_config)
         for card in card_list:
