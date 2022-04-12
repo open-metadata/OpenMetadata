@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
     ServiceConnection,
 )
 from metadata.utils.source_connections import get_connection_args, get_connection_url
+from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
 
@@ -67,6 +68,7 @@ def create_and_bind_session(engine: Engine) -> Session:
     return session()
 
 
+@timeout(seconds=120)
 def test_connection(engine: Engine) -> None:
     """
     Test that we can connect to the source using the given engine

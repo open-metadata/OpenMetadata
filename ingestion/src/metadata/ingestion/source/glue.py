@@ -290,3 +290,6 @@ class GlueSource(Source[Entity]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def test_connection(self) -> None:
+        pass

@@ -165,3 +165,6 @@ class S3Source(Source[Entity]):
             prefixFilter=prefix_filter,
             name=name,
         )
+
+    def test_connection(self) -> None:
+        pass

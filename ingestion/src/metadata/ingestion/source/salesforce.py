@@ -203,3 +203,6 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
 
     def close(self):
         pass
+
+    def test_connection(self) -> None:
+        pass

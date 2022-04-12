@@ -179,3 +179,6 @@ class GcsSource(Source[Entity]):
             enabled=True,
             name=name,
         )
+
+    def test_connection(self) -> None:
+        pass

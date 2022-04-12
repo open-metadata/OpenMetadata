@@ -23,9 +23,10 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { getUserTeams } from '../../utils/CommonUtils';
+import { getEntityName, getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -76,7 +77,7 @@ const ManageTab: FunctionComponent<Props> = ({
     if (user?.isAdmin) {
       const users = appState.users
         .map((user) => ({
-          name: user.displayName || user.name || '',
+          name: getEntityName(user as unknown as EntityReference),
           value: user.id,
           group: 'Users',
           type: 'user',
@@ -91,7 +92,7 @@ const ManageTab: FunctionComponent<Props> = ({
 
       return [
         {
-          name: user.displayName || user.name || '',
+          name: getEntityName(user as unknown as EntityReference),
           value: user.id,
           group: 'Users',
           type: 'user',

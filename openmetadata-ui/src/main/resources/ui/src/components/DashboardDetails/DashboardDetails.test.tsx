@@ -12,11 +12,12 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
+import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
@@ -62,7 +63,7 @@ const DashboardDetailsProps = {
   entityLineage: {} as EntityLineage,
   entityName: '',
   activeTab: 1,
-  owner: {} as TableDetail['owner'],
+  owner: {} as EntityReference,
   description: '',
   tier: {} as TagLabel,
   followers: [],
@@ -150,6 +151,8 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getHtmlForNonAdminAction: jest.fn(),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
+  getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
 describe('Test DashboardDetails component', () => {
