@@ -40,6 +40,7 @@ interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
   serviceCategory: ServiceCategory;
   status: LoadingState;
+  onCancel?: () => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
 }
 
@@ -47,6 +48,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   serviceCategory,
   status,
+  onCancel,
   onSave,
 }: Props) => {
   const config = !isNil(data)
@@ -55,7 +57,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       ? ((data as DatabaseService | MessagingService | DashboardService)
           .connection.config as ConfigData)
       : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
-    : {};
+    : ({} as ConfigData);
   const getDatabaseFields = () => {
     let connSch = {
       schema: {},
@@ -105,6 +107,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}
+        onCancel={onCancel}
         onSubmit={onSave}
       />
     );

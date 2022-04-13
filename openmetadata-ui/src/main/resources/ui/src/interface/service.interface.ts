@@ -62,15 +62,19 @@ export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<DashboardService> &
   Partial<PipelineService>;
 
+export type DataService =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService;
+
 export interface ServiceResponse {
   data: Array<ServiceDataObj>;
   paging: Paging;
 }
 
-export type ConfigData =
-  | DatabaseService['connection']
-  | MessagingService['connection']
-  | DashboardService['connection']
-  | {
-      pipelineUrl: string;
-    };
+export type ConfigData = Partial<DatabaseService['connection']> &
+  Partial<MessagingService['connection']> &
+  Partial<DashboardService['connection']> & {
+    pipelineUrl: string;
+  };
