@@ -55,6 +55,7 @@ import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -464,9 +465,11 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {sortedUser.map((user, index) => {
             const User = {
-              description: user.displayName || user.name || '',
-              name: user.name || '',
+              displayName: getEntityName(user),
+              fqn: user.fullyQualifiedName || '',
+              type: user.type,
               id: user.id,
+              name: user.name,
             };
 
             return (
@@ -515,8 +518,11 @@ const TeamsPage = () => {
           {' '}
           {currentTeam?.owns?.map((dataset, index) => {
             const Dataset = {
-              description: dataset.name || '',
-              name: dataset.type,
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName || '',
+              id: dataset.id,
+              name: dataset.name,
             };
 
             return (
@@ -547,9 +553,11 @@ const TeamsPage = () => {
         data-testid="teams-card">
         {currentTeam?.defaultRoles?.map((role, i) => {
           const roleData = {
-            description: role.displayName || role.name || '',
-            name: role.name as string,
+            displayName: role.displayName || role.name || '',
+            fqn: role.fullyQualifiedName as string,
+            type: role.type,
             id: role.id,
+            name: role.name,
           };
 
           return <UserCard isIconVisible item={roleData} key={i} />;

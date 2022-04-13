@@ -4,12 +4,13 @@ import uuid
 from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -19,7 +20,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source_common import SQLSourceStatus
+from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.filters import filter_by_table
@@ -27,11 +28,9 @@ from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-
 
 class DynamodbSource(Source[Entity]):
-    def __init__(self, config, metadata_config: OpenMetadataServerConfig):
+    def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SQLSourceStatus()
 
@@ -48,7 +47,7 @@ class DynamodbSource(Source[Entity]):
         ).get_resource("dynamodb")
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DynamoDBConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DynamoDBConnection):
@@ -138,3 +137,6 @@ class DynamodbSource(Source[Entity]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def test_connection(self) -> None:
+        pass

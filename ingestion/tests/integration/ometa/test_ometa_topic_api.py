@@ -24,13 +24,13 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
     MessagingService,
     MessagingServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -44,7 +44,7 @@ class OMetaTopicTest(TestCase):
 
     service_entity_id = None
 
-    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()

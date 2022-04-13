@@ -316,16 +316,29 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
 
 export const getOwnerIds = (
   filter: Ownership,
-  userDetails: User
+  userDetails: User,
+  nonSecureUserDetails: User
 ): Array<string> => {
-  if (filter === Ownership.OWNER && userDetails.teams) {
-    const userTeams = !isEmpty(userDetails)
-      ? userDetails.teams.map((team) => team.id)
-      : [];
-
-    return [...userTeams, getCurrentUserId()];
+  if (filter === Ownership.OWNER) {
+    if (!isEmpty(userDetails)) {
+      return [
+        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        userDetails.id,
+      ];
+    } else {
+      if (!isEmpty(nonSecureUserDetails)) {
+        return [
+          ...(nonSecureUserDetails.teams?.map(
+            (team) => team.id
+          ) as Array<string>),
+          nonSecureUserDetails.id,
+        ];
+      } else {
+        return [];
+      }
+    }
   } else {
-    return [getCurrentUserId()];
+    return [userDetails.id || nonSecureUserDetails.id];
   }
 };
 
@@ -553,4 +566,27 @@ export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
   } else {
     return label.replace(/(^"|"$)/g, '');
   }
+};
+
+/**
+ * Check if entity is deleted and return with "(Deactivated) text"
+ * @param value - entity name
+ * @param isDeleted - boolean
+ * @returns - entity placeholder
+ */
+export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
+  if (isDeleted) {
+    return `${value} (Deactivated)`;
+  } else {
+    return value;
+  }
+};
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity: EntityReference) => {
+  return entity?.displayName || entity?.name || '';
 };

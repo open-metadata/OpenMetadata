@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Query parser utils tests
+Dynamodb unit test
 """
 import json
 from unittest import TestCase
@@ -24,35 +24,40 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
-    "source": {
-      "type": "dynamodb",
+  "source": {
+    "type": "dynamodb",
+    "serviceName": "local_dynamodb",
+    "serviceConnection": {
       "config": {
-        "aws_access_key_id": "aws_access_key_id",
-        "aws_secret_access_key": "aws_secret_access_key",
-        "service_name": "DynamoDBTest",
-        "region_name": "us-east-2",
-        "endpoint_url": "https://dynamodb.us-east-2.amazonaws.com",
-        "db_name":"custom_database_name",
-        "table_filter_pattern":{
-          "excludes": ["Music.*"]
+        "awsAccessKeyId": "aws_access_key_id",
+        "awsSecretAccessKey": "aws_secret_access_key",
+        "awsRegion": "us-east-2",
+        "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
+        "database": "custom_database_name"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "enableDataProfiler": false,
+        "tableFilterPattern": {
+          "includes": [""]
         }
       }
-    },
-    "sink": {
-      "type": "file",
-      "config": {
-        "filename": "./datasets.json"
-      }
-    },
-    "metadata_server": {
-      "type": "metadata-server",
-      "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-      }
+    }
+  },
+  "sink": {
+    "type": "file",
+    "config": {
+      "filename": "/var/tmp/datasets.json"
+    }
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
-
+}
 """
 
 

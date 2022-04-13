@@ -13,11 +13,11 @@ import json
 import logging
 from datetime import datetime
 
-from metadata.config.common import FQDN_SEPARATOR, ConfigModel
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.models.table_queries import (
@@ -28,6 +28,7 @@ from metadata.ingestion.models.table_queries import (
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import _get_formmated_table_name
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class MetadataUsageBulkSink(BulkSink):
     def __init__(
         self,
         config: MetadataUsageSinkConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -57,7 +58,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
@@ -223,7 +224,9 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_table_entity(
         self, database_name: str, database_schema: str, table_name: str
     ) -> Table:
-        table_fqn = f"{self.service_name}{FQDN_SEPARATOR}{database_name}{FQDN_SEPARATOR}{database_schema}{FQDN_SEPARATOR}{table_name}"
+        table_fqn = get_fqdn(
+            Table, self.service_name, database_name, database_schema, table_name
+        )
         table_fqn = _get_formmated_table_name(table_fqn)
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         return table_entity

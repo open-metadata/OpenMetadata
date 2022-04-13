@@ -10,13 +10,13 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import _get_formmated_table_name, get_entity_type
+from metadata.utils.fqdn_generator import get_fqdn
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +135,20 @@ class OMetaLineageMixin(Generic[T]):
         This method is to create a lineage between two tables
         """
         try:
-            from_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(from_table))}"
+            from_fqdn = get_fqdn(
+                AddLineageRequest,
+                service_name,
+                database,
+                _get_formmated_table_name(str(from_table)),
+            )
             from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
 
-            to_fqdn = f"{service_name}{FQDN_SEPARATOR}{database}{FQDN_SEPARATOR}{_get_formmated_table_name(str(to_table))}"
+            to_fqdn = get_fqdn(
+                AddLineageRequest,
+                service_name,
+                database,
+                _get_formmated_table_name(str(to_table)),
+            )
             to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
             if not from_entity or not to_entity:
                 return None

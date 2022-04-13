@@ -37,6 +37,7 @@ type Props = {
   id?: string;
   tier?: string | TagLabel;
   usage?: number;
+  service?: string;
   serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[] | TagLabel[];
@@ -46,6 +47,7 @@ type Props = {
     value: number;
   }[];
   database?: string;
+  databaseSchema?: string;
   deleted?: boolean;
 };
 
@@ -56,12 +58,14 @@ const TableDataCard: FunctionComponent<Props> = ({
   id,
   tier = '',
   usage,
+  service,
   serviceType,
   fullyQualifiedName,
   tags,
   indexType,
   matches,
   database,
+  databaseSchema,
   tableType,
   deleted = false,
 }: Props) => {
@@ -95,11 +99,30 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
-  OtherDetails.push({ key: 'Service', value: serviceType, showLabel: true });
+  OtherDetails.push({
+    key: 'Service Type',
+    value: serviceType,
+    showLabel: true,
+  });
+  if (service) {
+    OtherDetails.push({
+      key: 'Service',
+      value: service,
+      showLabel: true,
+    });
+  }
+
   if (database) {
     OtherDetails.push({
       key: 'Database',
       value: database,
+      showLabel: true,
+    });
+  }
+  if (databaseSchema) {
+    OtherDetails.push({
+      key: 'Schema',
+      value: databaseSchema,
       showLabel: true,
     });
   }

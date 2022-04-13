@@ -29,11 +29,11 @@ import {
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { DatasetTestModeType } from '../../interface/dataQuality.interface';
 import DatasetDetails from './DatasetDetails.component';
-import { DatasetOwner } from './DatasetDetails.interface';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -117,7 +117,7 @@ const DatasetDetailsProps = {
   joins: {
     columnJoins: [] as ColumnJoins[],
   } as TableJoins,
-  owner: {} as DatasetOwner,
+  owner: {} as EntityReference,
   sampleData: {},
   setActiveTabHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
@@ -205,6 +205,8 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('xyz'),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
+  getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
 const mockObserve = jest.fn();

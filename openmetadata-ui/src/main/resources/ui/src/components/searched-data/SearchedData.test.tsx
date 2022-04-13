@@ -17,6 +17,7 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
+import { FormatedTableData } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import SearchedData from './SearchedData';
@@ -27,7 +28,16 @@ const mockData = [
     name: 'name1',
     description: 'description1',
     fullyQualifiedName: 'fullyQualifiedName1',
-    owner: 'owner1',
+    owner: {
+      deleted: false,
+      displayName: 'Customer_Support',
+      name: 'Customer_Support',
+      description: 'This is Customer_Support description.',
+      id: '32a6706e-8862-48e5-b3f3-ff280045ae32',
+      href: 'http://localhost:8585/api/v1/teams/32a6706e-8862-48e5-b3f3-ff280045ae32',
+      type: 'team',
+      fullyQualifiedName: 'Customer_Support',
+    },
     tags: ['tags1', 'tags2', 'tags3'],
     tier: 'tier1',
     index: 'index1',
@@ -52,7 +62,7 @@ const mockData = [
     tier: 'tier3',
     index: 'index1',
   },
-];
+] as FormatedTableData[];
 
 const mockPaginate = jest.fn();
 

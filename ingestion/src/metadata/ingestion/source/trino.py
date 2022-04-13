@@ -16,8 +16,8 @@ from typing import Iterable
 import click
 from sqlalchemy.inspection import inspect
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -53,7 +53,7 @@ class TrinoSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
         connection: TrinoConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TrinoConnection):

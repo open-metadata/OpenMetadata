@@ -22,7 +22,8 @@ import { UserType } from '../../enums/user.enum';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { EntityReference } from '../../generated/type/entityReference';
+import { getCountBadge, getEntityName } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -346,7 +347,7 @@ const UserList: FunctionComponent<Props> = ({
           data-testid="user-card-container">
           {listUserData.map((user, index) => {
             const User = {
-              description: user.displayName || user.name || '',
+              description: getEntityName(user as unknown as EntityReference),
               name: user.name || '',
               id: user.id,
               email: user.email || '',

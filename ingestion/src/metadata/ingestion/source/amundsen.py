@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional
 
 from pydantic import SecretStr
 
-from metadata.config.common import FQDN_SEPARATOR, ConfigModel
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -25,13 +25,13 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -41,6 +41,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -79,9 +80,7 @@ class AmundsenStatus(SourceStatus):
 
 
 class AmundsenSource(Source[Entity]):
-    def __init__(
-        self, config: AmundsenConfig, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: AmundsenConfig, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
 
@@ -97,7 +96,7 @@ class AmundsenSource(Source[Entity]):
         self.status = AmundsenStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = AmundsenConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
@@ -163,7 +162,9 @@ class AmundsenSource(Source[Entity]):
                 col = Column(**parsed_string)
                 columns.append(col)
 
-            fqn = f"{service_name}{FQDN_SEPARATOR}{database.name}{FQDN_SEPARATOR}{table['schema']}{FQDN_SEPARATOR}{table['name']}"
+            fqn = get_fqdn(
+                Table, service_name, database.name, table["schema"], table["name"]
+            )
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],
@@ -267,3 +268,6 @@ class AmundsenSource(Source[Entity]):
                 CreateDatabaseServiceRequest(**service)
             )
             return created_service
+
+    def test_connection(self) -> None:
+        pass

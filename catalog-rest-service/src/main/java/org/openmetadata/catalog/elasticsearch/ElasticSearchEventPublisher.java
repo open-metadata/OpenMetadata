@@ -100,6 +100,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             LOG.warn("Ignoring Entity Type {}", entityType);
         }
         if (updateRequest != null) {
+          LOG.debug("Sending request to ElasticSearch");
+          LOG.debug(updateRequest.toString());
           client.update(updateRequest, RequestOptions.DEFAULT);
         }
       } catch (ElasticsearchException e) {

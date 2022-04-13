@@ -24,6 +24,8 @@ export type ExploreSearchData = {
   resAggTier: SearchResponse;
   resAggTag: SearchResponse;
   resAggDatabase: SearchResponse;
+  resAggDatabaseSchema: SearchResponse;
+  resAggServiceName: SearchResponse;
 };
 
 export interface ExploreProps {

@@ -13,8 +13,8 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -33,7 +33,7 @@ class FileSink(Sink[Entity]):
     def __init__(
         self,
         config: FileSinkConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -46,7 +46,7 @@ class FileSink(Sink[Entity]):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = FileSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

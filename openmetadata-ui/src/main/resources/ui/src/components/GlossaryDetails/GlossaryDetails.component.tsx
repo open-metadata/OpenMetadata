@@ -216,9 +216,11 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             isActionVisible
             isIconVisible
             item={{
-              name: term.name || '',
-              description: term.displayName || '',
+              fqn: term.fullyQualifiedName || '',
+              displayName: term.displayName || term.name || '',
               id: term.id,
+              type: term.type,
+              name: term.name,
             }}
             key={term.name}
             onRemove={handleRemoveReviewer}
