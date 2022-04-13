@@ -20,11 +20,11 @@
       "default": "Atlas"
     },
     "username": {
-      "description": "username to connect  to the SingleStore. This user should have privileges to read all the metadata in SingleStore.",
+      "description": "username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the SingleStore.",
+      "description": "password to connect  to the Atlas.",
       "type": "string",
       "format": "password"
     },
@@ -48,7 +48,7 @@
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in SingleStore.",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Atlas.",
       "type": "string"
     },
     "connectionOptions": {
