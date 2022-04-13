@@ -33,7 +33,7 @@
           "$ref": "../../../../security/client/azureSSOClientConfig.json"
         },
         {
-          "$ref": "../../../../security/client/customOidcSSOConfig.json"
+          "$ref": "../../../../security/client/customOidcSSOClientConfig.json"
         }
       ]
     },
