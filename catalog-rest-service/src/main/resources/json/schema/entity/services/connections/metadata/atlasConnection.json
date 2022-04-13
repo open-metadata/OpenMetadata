@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/atlasConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AtlasConnection",
+  "description": "Atlas Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.AtlasConnection",
+  "definitions": {
+    "atlasType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Atlas"],
+      "default": "Atlas"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/atlasType",
+      "default": "Atlas"
+    },
+    "username": {
+      "description": "username to connect  to the SingleStore. This user should have privileges to read all the metadata in SingleStore.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the SingleStore.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the data source.",
+      "type": "string"
+    },
+
+    "entityTypes": {
+      "description": "entity types of the data source.",
+      "type": "string"
+    },
+
+    "serviceType": {
+      "description": "service type of the data source.",
+      "type": "string"
+    },
+
+    "atlasHost": {
+      "description": "Atlas Host of the data source.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in SingleStore.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

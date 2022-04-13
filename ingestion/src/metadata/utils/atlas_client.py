@@ -1,41 +1,22 @@
 import base64
-from typing import Any, List
+from typing import List
 
-from pydantic import SecretStr
-
-from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
+from metadata.generated.schema.entity.services.connections.database.atlasConnection import (
+    AtlasConnection,
 )
-from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 
 
-class AtlasSourceConfig(ConfigModel):
-    atlas_host: str = "http://localhost:21000"
-    user_name: str
-    password: SecretStr
-    service_name: str
-    service_type: str = "Hive"
-    host_port: str
-    entity_types: Any
-    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-
-    def get_service_type(self) -> DatabaseServiceType:
-        return DatabaseServiceType[self.service_type]
-
-    def get_service_name(self) -> str:
-        return self.service_name
-
-
 class AtlasClient:
-    def __init__(self, config: AtlasSourceConfig, raw_data: bool = False):
+    def __init__(self, config: AtlasConnection, raw_data: bool = False):
+
         self.config = config
+        config_obj = self.config.serviceConnection.__root__.config
         self.auth_token = generate_http_basic_token(
-            config.user_name, config.password.get_secret_value()
+            config_obj.user_name, config_obj.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.atlas_host,
+            base_url=config_obj.atlasHost,
             auth_header="Authorization",
             api_version="api",
             auth_token=self.get_auth_token,
@@ -44,8 +25,8 @@ class AtlasClient:
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    def list_entities(self, entity_type="Table") -> List[str]:
-        response = self.client.get(f"/atlas/entities?type={entity_type}")
+    def list_entities(self, entityType="Table") -> List[str]:
+        response = self.client.get(f"/atlas/entities?type={entityType}")
 
         if "error" in response.keys():
             raise APIError(response["error"])
