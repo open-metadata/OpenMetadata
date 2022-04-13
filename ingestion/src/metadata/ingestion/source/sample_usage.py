@@ -17,11 +17,11 @@ from typing import Iterable
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -36,9 +36,7 @@ class SampleUsageSource(Source[TableQuery]):
 
     service_type = DatabaseServiceType.BigQuery.value
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
@@ -59,7 +57,7 @@ class SampleUsageSource(Source[TableQuery]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SampleDataConnection = config.serviceConnection.__root__.config

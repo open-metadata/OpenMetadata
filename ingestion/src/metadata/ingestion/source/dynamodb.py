@@ -9,8 +9,8 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -30,7 +30,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class DynamodbSource(Source[Entity]):
-    def __init__(self, config, metadata_config: OpenMetadataServerConfig):
+    def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SQLSourceStatus()
 
@@ -47,7 +47,7 @@ class DynamodbSource(Source[Entity]):
         ).get_resource("dynamodb")
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DynamoDBConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DynamoDBConnection):

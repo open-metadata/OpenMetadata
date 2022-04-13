@@ -26,8 +26,8 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -441,7 +441,7 @@ class RedshiftSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """
         Create source
 

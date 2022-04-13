@@ -33,11 +33,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -70,13 +70,13 @@ class TableauSource(Source[Entity]):
     """
 
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
     status: SourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -135,7 +135,7 @@ class TableauSource(Source[Entity]):
         return conn
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TableauConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TableauConnection):

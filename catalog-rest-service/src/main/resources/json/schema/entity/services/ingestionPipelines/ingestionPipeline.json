@@ -142,7 +142,7 @@
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/source"
     },
     "openMetadataServerConnection": {
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/openMetadataServerConfig"
+      "$ref": "../connections/metadata/openMetadataConnection.json"
     },
     "airflowConfig": {
       "$ref": "#/definitions/airflowConfig"

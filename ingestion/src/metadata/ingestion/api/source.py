@@ -13,8 +13,8 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterable, List
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
@@ -50,7 +50,7 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataServerConfig
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
     ) -> "Source":
         pass
 

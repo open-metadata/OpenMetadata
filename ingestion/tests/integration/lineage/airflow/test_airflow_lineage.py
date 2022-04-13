@@ -40,13 +40,13 @@ from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -57,7 +57,7 @@ class AirflowLineageTest(TestCase):
     Run this test installing the necessary airflow version
     """
 
-    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()

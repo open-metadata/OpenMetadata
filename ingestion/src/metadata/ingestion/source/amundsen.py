@@ -25,13 +25,13 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -80,9 +80,7 @@ class AmundsenStatus(SourceStatus):
 
 
 class AmundsenSource(Source[Entity]):
-    def __init__(
-        self, config: AmundsenConfig, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: AmundsenConfig, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
 
@@ -98,7 +96,7 @@ class AmundsenSource(Source[Entity]):
         self.status = AmundsenStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = AmundsenConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

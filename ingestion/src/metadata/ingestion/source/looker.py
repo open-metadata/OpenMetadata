@@ -19,11 +19,11 @@ import looker_sdk
 from metadata.generated.schema.entity.services.connections.dashboard import (
     lookerConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -40,12 +40,12 @@ logger = logging.getLogger(__name__)
 
 class LookerSource(Source[Entity]):
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -83,7 +83,7 @@ class LookerSource(Source[Entity]):
             logger.error(f"ERROR: {repr(err)}")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
         connection: lookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, lookerConnection):
