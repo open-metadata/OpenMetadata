@@ -588,5 +588,5 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @returns - entity name
  */
 export const getEntityName = (entity: EntityReference) => {
-  return entity.displayName || entity.name || '';
+  return entity?.displayName || entity?.name || '';
 };
