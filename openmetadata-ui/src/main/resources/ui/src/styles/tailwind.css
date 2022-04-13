@@ -390,7 +390,7 @@
   /* react tostify */
 
   .Toastify__toast-container {
-    @apply tw-font-sans tw-break-words;
+    @apply tw-font-sans tw-break-all;
   }
 
   .Toastify__toast-body {

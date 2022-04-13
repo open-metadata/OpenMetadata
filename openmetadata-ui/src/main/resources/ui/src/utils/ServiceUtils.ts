@@ -349,18 +349,33 @@ export const getAirflowPipelineTypes = (
 export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
       return true;
 
-    case ServiceCategory.MESSAGING_SERVICES:
     case ServiceCategory.PIPELINE_SERVICES:
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return false;
-
     default:
-      break;
+      return false;
   }
+};
 
-  return false;
+export const isServiceSupportIngestion = (serviceType: string) => {
+  // add unsupported service below, if any
+
+  switch (serviceType) {
+    default:
+      return true;
+  }
+};
+
+export const isIngestionSupported = (
+  serviceCategory: ServiceCategory,
+  serviceType: string
+) => {
+  return (
+    getIsIngestionEnable(serviceCategory) &&
+    isServiceSupportIngestion(serviceType)
+  );
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {
