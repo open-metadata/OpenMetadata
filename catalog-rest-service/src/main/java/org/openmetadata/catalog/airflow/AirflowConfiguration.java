@@ -32,5 +32,9 @@ public class AirflowConfiguration {
 
   @NotEmpty @Getter @Setter private String authProvider;
 
-  @Getter @Setter private Map<String, String> authConfig;
+  @Getter private Map<String, String> authConfig;
+
+  public void setAuthConfig(Map<String, String> authConfig) {
+    this.authConfig = authConfig;
+  }
 }

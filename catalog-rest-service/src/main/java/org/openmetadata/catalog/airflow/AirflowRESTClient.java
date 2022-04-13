@@ -21,10 +21,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -33,24 +29,14 @@ import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.AirflowException;
 import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
-import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
-import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.security.client.OKtaSSOClientConfig;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class AirflowRESTClient {
   private final URL airflowURL;
-  private final URL openMetadataURL;
   private final String username;
   private final String password;
   private final HttpClient client;
-  private final AuthProvider authProvider;
-  private final Map<String, String> authConfig;
   private static final String AUTH_HEADER = "Authorization";
   private static final String AUTH_TOKEN = "Bearer %s";
   private static final String CONTENT_HEADER = "Content-Type";
@@ -59,14 +45,11 @@ public class AirflowRESTClient {
   public AirflowRESTClient(AirflowConfiguration airflowConfig) {
     try {
       this.airflowURL = new URL(airflowConfig.getApiEndpoint());
-      this.openMetadataURL = new URL(airflowConfig.getMetadataApiEndpoint());
     } catch (MalformedURLException e) {
       throw new AirflowException(airflowConfig.getApiEndpoint() + " Malformed.");
     }
     this.username = airflowConfig.getUsername();
     this.password = airflowConfig.getPassword();
-    this.authProvider = OpenMetadataServerConnection.AuthProvider.fromValue(airflowConfig.getAuthProvider());
-    this.authConfig = airflowConfig.getAuthConfig();
     this.client =
         HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -165,74 +148,5 @@ public class AirflowRESTClient {
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
-  }
-
-  public OpenMetadataServerConnection buildOpenMetadataServerConfig() {
-    OpenMetadataServerConnection openMetadataServerConnection = new OpenMetadataServerConnection();
-    openMetadataServerConnection.setAuthProvider(authProvider);
-    switch (authProvider) {
-      case GOOGLE:
-        GoogleSSOClientConfig googleSSOClientConfig =
-            new GoogleSSOClientConfig()
-                .withSecretKey(authConfig.get("secretKey"))
-                .withAudience(authConfig.get("audience"));
-        openMetadataServerConnection.setSecurityConfig(googleSSOClientConfig);
-        break;
-      case AUTH_0:
-        Auth0SSOClientConfig auth0SSOClientConfig =
-            new Auth0SSOClientConfig()
-                .withClientId(authConfig.get("clientId"))
-                .withSecretKey(authConfig.get("secretKey"))
-                .withDomain(authConfig.get("domain"));
-        openMetadataServerConnection.setSecurityConfig(auth0SSOClientConfig);
-        break;
-      case OKTA:
-        OKtaSSOClientConfig oktaSSOClientConfig =
-            new OKtaSSOClientConfig()
-                .withClientId(authConfig.get("clientId"))
-                .withEmail(authConfig.get("email"))
-                .withOrgURL(authConfig.get("orgURL"))
-                .withPrivateKey(authConfig.get("privateKey"));
-        String scopes = authConfig.get("scopes");
-        List<String> oktaScopesList = getSecurityScopes(scopes);
-        if (!oktaScopesList.isEmpty()) {
-          oktaSSOClientConfig.setScopes(oktaScopesList);
-        }
-        openMetadataServerConnection.setSecurityConfig(oktaSSOClientConfig);
-        break;
-      case AZURE:
-        AzureSSOClientConfig azureSSOClientConfig =
-            new AzureSSOClientConfig()
-                .withClientId(authConfig.get("clientId"))
-                .withClientSecret(authConfig.get("clientSecret"))
-                .withAuthority(authConfig.get("authority"));
-        List<String> scopesList = getSecurityScopes(authConfig.get("scopes"));
-        if (!scopesList.isEmpty()) {
-          azureSSOClientConfig.setScopes(scopesList);
-        }
-        openMetadataServerConnection.setSecurityConfig(azureSSOClientConfig);
-        break;
-      case CUSTOM_OIDC:
-        CustomOIDCSSOClientConfig customOIDCSSOClientConfig =
-            new CustomOIDCSSOClientConfig()
-                .withClientId(authConfig.get("clientId"))
-                .withSecretKey(authConfig.get("secretKey"))
-                .withTokenEndpoint(authConfig.get("tokenEndpoint"));
-        openMetadataServerConnection.setSecurityConfig(customOIDCSSOClientConfig);
-        break;
-      case NO_AUTH:
-        break;
-      default:
-        throw new IllegalArgumentException("OpenMetadata doesn't support auth provider type " + authProvider.value());
-    }
-    openMetadataServerConnection.setHostPort(openMetadataURL.toString());
-    return openMetadataServerConnection;
-  }
-
-  protected List<String> getSecurityScopes(String scopes) {
-    if (scopes != null && !scopes.isEmpty()) {
-      return Arrays.asList(scopes.split("\\s*,\\s*"));
-    }
-    return Collections.emptyList();
   }
 }

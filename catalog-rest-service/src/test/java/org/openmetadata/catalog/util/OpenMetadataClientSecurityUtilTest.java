@@ -1,41 +1,53 @@
-package org.openmetadata.catalog.airflow;
+package org.openmetadata.catalog.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
+import org.openmetadata.catalog.exception.OpenMetadataClientSecurityConfigException;
 import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
 import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
 import org.openmetadata.catalog.security.client.OKtaSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
-public class AirflowRESTClientTest {
+public class OpenMetadataClientSecurityUtilTest {
 
   @Test
   void testOpenMetadataGoogleClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildGoogleAuthConfig();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     GoogleSSOClientConfig googleSSOClientConfig =
         JsonUtils.convertValue(serverConnection.getSecurityConfig(), GoogleSSOClientConfig.class);
     assertEquals(googleSSOClientConfig.getSecretKey(), airflowConfiguration.getAuthConfig().get("secretKey"));
     assertEquals(googleSSOClientConfig.getAudience(), airflowConfiguration.getAuthConfig().get("audience"));
+    Map<String, String> authConfigs = airflowConfiguration.getAuthConfig();
+    authConfigs.remove("secretKey");
+    airflowConfiguration.setAuthConfig(authConfigs);
+    OpenMetadataClientSecurityConfigException exception =
+        assertThrows(
+            OpenMetadataClientSecurityConfigException.class,
+            () -> {
+              OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
+            });
+    assertEquals("google SSO client config requires secretKey", exception.getMessage());
   }
 
   @Test
   void testOpenMetadataOktaClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildOktaAuthConfig();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     OKtaSSOClientConfig oktaSSOClientConfig =
@@ -46,14 +58,24 @@ public class AirflowRESTClientTest {
     assertEquals(oktaSSOClientConfig.getPrivateKey(), airflowConfiguration.getAuthConfig().get("privateKey"));
     assertEquals(
         oktaSSOClientConfig.getScopes(),
-        airflowRESTClient.getSecurityScopes(airflowConfiguration.getAuthConfig().get("scopes")));
+        OpenMetadataClientSecurityUtil.getSecurityScopes(airflowConfiguration.getAuthConfig().get("scopes")));
+    Map<String, String> authConfigs = airflowConfiguration.getAuthConfig();
+    authConfigs.remove("privateKey");
+    airflowConfiguration.setAuthConfig(authConfigs);
+    OpenMetadataClientSecurityConfigException exception =
+        assertThrows(
+            OpenMetadataClientSecurityConfigException.class,
+            () -> {
+              OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
+            });
+    assertEquals("okta SSO client config requires privateKey", exception.getMessage());
   }
 
   @Test
   void testOpenMetadataAuth0ClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildAuth0Config();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     Auth0SSOClientConfig auth0SSOClientConfig =
@@ -66,8 +88,8 @@ public class AirflowRESTClientTest {
   @Test
   void testOpenMetadataAzureAuthClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildAzureAuthConfig();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     AzureSSOClientConfig azureSSOClientConfig =
@@ -77,14 +99,14 @@ public class AirflowRESTClientTest {
     assertEquals(azureSSOClientConfig.getAuthority(), airflowConfiguration.getAuthConfig().get("authority"));
     assertEquals(
         azureSSOClientConfig.getScopes(),
-        airflowRESTClient.getSecurityScopes(airflowConfiguration.getAuthConfig().get("scopes")));
+        OpenMetadataClientSecurityUtil.getSecurityScopes(airflowConfiguration.getAuthConfig().get("scopes")));
   }
 
   @Test
   void testOpenMetadataCustomOIDCAuthClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildCustomOIDCConfig();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     CustomOIDCSSOClientConfig customOIDCSSOClientConfig =
@@ -98,8 +120,8 @@ public class AirflowRESTClientTest {
   @Test
   void testOpenMetadataNoAuthClientConfigs() {
     AirflowConfiguration airflowConfiguration = buildNoAuthConfig();
-    AirflowRESTClient airflowRESTClient = new AirflowRESTClient(airflowConfiguration);
-    OpenMetadataServerConnection serverConnection = airflowRESTClient.buildOpenMetadataServerConfig();
+    OpenMetadataServerConnection serverConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     assertNull(serverConnection.getSecurityConfig());
@@ -150,7 +172,7 @@ public class AirflowRESTClientTest {
     Map<String, String> authConfig = new HashMap<>();
     authConfig.put("clientId", "1234");
     authConfig.put("secretKey", "34123");
-    authConfig.put("audience", "local");
+    authConfig.put("domain", "local");
     AirflowConfiguration airflowConfiguration = new AirflowConfiguration();
     airflowConfiguration.setAuthConfig(authConfig);
     airflowConfiguration.setUsername("admin");

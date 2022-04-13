@@ -53,6 +53,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -66,9 +67,11 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -80,6 +83,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private AirflowRESTClient airflowRESTClient;
+  private AirflowConfiguration airflowConfiguration;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -93,6 +97,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public void initialize(CatalogApplicationConfig config) {
+    this.airflowConfiguration = config.getAirflowConfiguration();
     this.airflowRESTClient = new AirflowRESTClient(config.getAirflowConfiguration());
   }
 
@@ -398,7 +403,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
       throws IOException {
     Source source = buildIngestionSource(create);
-
+    OpenMetadataServerConnection openMetadataServerConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     return new IngestionPipeline()
         .withId(UUID.randomUUID())
         .withName(create.getName())
@@ -406,7 +412,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
-        .withOpenMetadataServerConnection(airflowRESTClient.buildOpenMetadataServerConfig())
+        .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSource(source)
         .withOwner(create.getOwner())
         .withService(create.getService())
