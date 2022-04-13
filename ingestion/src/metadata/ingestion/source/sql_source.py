@@ -549,7 +549,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return columns
 
-    def _get_database(self, database: str) -> Database:
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = "default"
         return Database(
