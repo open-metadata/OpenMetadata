@@ -9,8 +9,8 @@
     "mySQLType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["MySQL"],
-      "default": "MySQL"
+      "enum": ["Mysql"],
+      "default": "Mysql"
     },
     "mySQLScheme": {
       "description": "SQLAlchemy driver scheme options.",
@@ -23,7 +23,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/mySQLType",
-      "default": "MySQL"
+      "default": "Mysql"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",

@@ -342,7 +342,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     createDatabaseService
         .withName("mysqlDB")
-        .withServiceType(DatabaseServiceType.MySQL)
+        .withServiceType(DatabaseServiceType.Mysql)
         .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
     MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
