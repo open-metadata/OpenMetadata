@@ -14,7 +14,7 @@ import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
 import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.security.client.OKtaSSOClientConfig;
+import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
@@ -50,8 +50,8 @@ public class OpenMetadataClientSecurityUtilTest {
         OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     assertEquals(serverConnection.getHostPort(), airflowConfiguration.getMetadataApiEndpoint());
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
-    OKtaSSOClientConfig oktaSSOClientConfig =
-        JsonUtils.convertValue(serverConnection.getSecurityConfig(), OKtaSSOClientConfig.class);
+    OktaSSOClientConfig oktaSSOClientConfig =
+        JsonUtils.convertValue(serverConnection.getSecurityConfig(), OktaSSOClientConfig.class);
     assertEquals(oktaSSOClientConfig.getClientId(), airflowConfiguration.getAuthConfig().get("clientId"));
     assertEquals(oktaSSOClientConfig.getEmail(), airflowConfiguration.getAuthConfig().get("email"));
     assertEquals(oktaSSOClientConfig.getOrgURL(), airflowConfiguration.getAuthConfig().get("orgURL"));

@@ -11,7 +11,7 @@ import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
 import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.security.client.OKtaSSOClientConfig;
+import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider;
 
@@ -60,8 +60,8 @@ public final class OpenMetadataClientSecurityUtil {
         break;
       case OKTA:
         validateAuthConfigs(authConfig, authProvider, OKTA_SSO_CONFIGS);
-        OKtaSSOClientConfig oktaSSOClientConfig =
-            new OKtaSSOClientConfig()
+        OktaSSOClientConfig oktaSSOClientConfig =
+            new OktaSSOClientConfig()
                 .withClientId(authConfig.get(CLIENT_ID))
                 .withEmail(authConfig.get(EMAIL))
                 .withOrgURL(authConfig.get(ORG_URL))
