@@ -333,7 +333,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
-        owner.deleted
+        owner?.deleted
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
