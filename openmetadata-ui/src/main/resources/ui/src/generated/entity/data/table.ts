@@ -130,6 +130,8 @@ export interface Table {
    * View Definition in SQL. Applies to TableType.View only.
    */
   viewDefinition?: string;
+
+  databaseSchema: EntityReference;
 }
 
 /**

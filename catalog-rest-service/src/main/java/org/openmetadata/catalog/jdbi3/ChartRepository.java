@@ -54,7 +54,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   public static String getFQN(Chart chart) {
     return (chart != null && chart.getService() != null)
-        ? FullyQualifiedName.add(chart.getService().getName(), chart.getName())
+        ? FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName())
         : null;
   }
 

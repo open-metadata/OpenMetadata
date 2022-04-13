@@ -113,7 +113,6 @@ Note: The `source.config` field in the configuration JSON will include the major
       "host_port": "hostname.domain.com:10000",
       "token": "<databricks token>",
       "scheme": "databricks+connector",
-      "service_type" = "DatabaseServiceType.Databricks.value"
       "database": "databricks_db",
       "service_name": "local_databricks",
       "connect_args":{
@@ -175,14 +174,6 @@ Edit the value for `source.config.scheme` in `databricks.json` for your Databric
 
 ```javascript
 "scheme": "databricks+connector"
-```
-
-#### service\_type
-
-Edit the value for `source.config.service_type` as shown in the example below.
-
-```javascript
-"service_type": "DatabaseServiceType.Databricks.value"
 ```
 
 #### service\_name

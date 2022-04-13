@@ -18,6 +18,7 @@ export enum EntityType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
+  DATABASE_SCHEMA = 'databaseSchema',
   GLOSSARY = 'glossary',
   GLOSSARY_TERM = 'glossaryTerm',
   DATABASE_SERVICE = 'databaseService',

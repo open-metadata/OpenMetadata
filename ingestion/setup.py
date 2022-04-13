@@ -128,6 +128,7 @@ plugins: Dict[str, Set[str]] = {
     "databricks": {"sqlalchemy-databricks==0.1.0"},
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
+    "deltalake": {"delta-spark~=1.1.0"},
 }
 dev = {
     "boto3==1.20.14",

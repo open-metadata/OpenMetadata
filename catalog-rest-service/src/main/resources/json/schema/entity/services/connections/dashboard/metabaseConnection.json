@@ -32,15 +32,12 @@
       "description": "Host and Port of Metabase instance.",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "dbServiceName": {
+      "description": "Database Service Name for creation of lineage",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

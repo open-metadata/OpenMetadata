@@ -40,6 +40,8 @@ export interface DatabaseConnection {
 }
 
 /**
+ * Google BigQuery Connection Config
+ *
  * AWS Athena Connection Config
  *
  * Azure SQL Connection Config
@@ -85,13 +87,7 @@ export interface DatabaseConnection {
  * Vertica Connection Config
  */
 export interface Connection {
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  connectionArguments?: { [key: string]: any };
+  connectionArguments?: ConnectionArguments;
   connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
@@ -160,7 +156,7 @@ export interface Connection {
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Trino.
+   * attempts to scan all the databases in the selected catalog in Trino.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -168,6 +164,12 @@ export interface Connection {
    */
   database?: string;
   /**
+   * Enable importing policy tags of BigQuery into OpenMetadata
+   */
+  enablePolicyTagImport?: boolean;
+  /**
+   * BigQuery APIs URL
+   *
    * Host and port of the Athena
    *
    * Host and port of the Clickhouse
@@ -194,55 +196,25 @@ export interface Connection {
    */
   hostPort?: string;
   /**
-   * password to connect  to the Athena.
-   *
-   * password to connect to the Clickhouse.
-   *
-   * password to connect to the Databricks.
-   *
-   * password to connect to the DB2.
-   *
-   * password to connect to the Druid.
-   *
-   * password to connect  to the Hive.
-   *
-   * password to connect  to the MariaDB.
-   *
-   * password to connect  to the MsSQL.
-   *
-   * password to connect  to the SingleStore.
-   *
-   * password to connect  to the Oracle.
-   *
-   * password to connect  to the Postgres.
-   *
-   * password to connect  to the Redshift.
-   *
-   * password to connect  to the MYSQL.
-   *
-   * password to connect  to the Snowflake.
-   *
-   * password to connect  to the Trino.
-   *
-   * password to connect  to the Vertica.
+   * Google BigQuery project id.
    */
-  password?: string;
-  /**
-   * S3 Staging Directory.
-   */
-  s3StagingDir?: string;
+  projectID?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
   /**
-   * Service Type
-   */
-  serviceType?: AthenaType;
-  /**
    * Supported Metadata Extraction Pipelines.
    */
   supportedPipelineTypes?: string;
+  /**
+   * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
+   */
+  tagCategoryName?: string;
+  /**
+   * Service Type
+   */
+  type?: Type;
   /**
    * username to connect  to the Athena. This user should have privileges to read all the
    * metadata in Athena.
@@ -289,10 +261,61 @@ export interface Connection {
    * username to connect  to the Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    *
+   * username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
+   *
    * username to connect  to the Vertica. This user should have privileges to read all the
    * metadata in Vertica.
    */
   username?: string;
+  /**
+   * AWS Athena AWS Region.
+   *
+   * AWS Region Name.
+   */
+  awsRegion?: string;
+  /**
+   * password to connect  to the Athena.
+   *
+   * password to connect to the Clickhouse.
+   *
+   * password to connect to the Databricks.
+   *
+   * password to connect to the DB2.
+   *
+   * password to connect to the Druid.
+   *
+   * password to connect  to the Hive.
+   *
+   * password to connect  to the MariaDB.
+   *
+   * password to connect  to the MsSQL.
+   *
+   * password to connect  to the SingleStore.
+   *
+   * password to connect  to the Oracle.
+   *
+   * password to connect  to the Postgres.
+   *
+   * password to connect  to the Redshift.
+   *
+   * password to connect  to the MYSQL.
+   *
+   * password to connect  to the Snowflake.
+   *
+   * password to connect  to the Trino.
+   *
+   * password to connect  to the Vertica.
+   */
+  password?: string;
+  /**
+   * S3 Staging Directory.
+   */
+  s3StagingDir?: string;
+  /**
+   * Service Type
+   */
+  serviceType?: AthenaType;
   /**
    * Athena workgroup.
    */
@@ -301,10 +324,6 @@ export interface Connection {
    * SQLAlchemy driver for Azure SQL
    */
   driver?: string;
-  /**
-   * Service Type
-   */
-  type?: Type;
   /**
    * Clickhouse SQL connection duration
    */
@@ -331,7 +350,13 @@ export interface Connection {
    */
   authOptions?: string;
   /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
    * Presto catalog
+   *
+   * Catalog of the data source.
    */
   catalog?: string;
   /**
@@ -354,6 +379,25 @@ export interface Connection {
    * Snowflake warehouse.
    */
   warehouse?: string;
+  /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: any };
+  /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: any };
+}
+
+/**
+ * Additional connection arguments such as security or protocol configs that can be sent to
+ * service during connection.
+ */
+export interface ConnectionArguments {
+  /**
+   * HTTP path of databricks cluster
+   */
+  http_path?: string;
 }
 
 /**
@@ -361,6 +405,7 @@ export interface Connection {
  */
 export enum Scheme {
   AwsathenaREST = 'awsathena+rest',
+  Bigquery = 'bigquery',
   ClickhouseHTTP = 'clickhouse+http',
   DatabricksConnector = 'databricks+connector',
   Db2IBMDB = 'db2+ibm_db',
@@ -397,6 +442,7 @@ export enum AthenaType {
  */
 export enum Type {
   AzureSQL = 'AzureSQL',
+  BigQuery = 'BigQuery',
   ClickHouse = 'ClickHouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
@@ -483,6 +529,7 @@ export enum DatabaseServiceType {
   Presto = 'Presto',
   Redshift = 'Redshift',
   SQLite = 'SQLite',
+  Salesforce = 'Salesforce',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',

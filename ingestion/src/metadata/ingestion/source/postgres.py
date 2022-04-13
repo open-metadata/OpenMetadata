@@ -9,28 +9,35 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import logging
 from collections import namedtuple
+from typing import Iterable
 
 import psycopg2
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
 
-# This import verifies that the dependencies are available.
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
-
-TableKey = namedtuple("TableKey", ["schema", "table_name"])
-
+from metadata.config.common import FQDN_SEPARATOR
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
 
+# This import verifies that the dependencies are available.
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils.engines import get_engine
 
-class PostgresConfig(PostgresConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
+TableKey = namedtuple("TableKey", ["schema", "table_name"])
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class PostgresSource(SQLSource):
@@ -39,9 +46,43 @@ class PostgresSource(SQLSource):
         self.pgconn = self.engine.raw_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = PostgresConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: PostgresConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PostgresConnection):
+            raise InvalidSourceException(
+                f"Expected MysqlConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
+
+    def get_databases(self) -> Iterable[Inspector]:
+        if self.config.database != None:
+            yield from super().get_databases()
+        else:
+            query = "select datname from pg_catalog.pg_database;"
+
+            results = self.connection.execute(query)
+
+            for res in results:
+
+                row = list(res)
+                try:
+
+                    logger.info(f"Ingesting from database: {row[0]}")
+                    self.config.database = row[0]
+                    self.engine = get_engine(self.config.serviceConnection)
+                    self.connection = self.engine.connect()
+                    yield inspect(self.engine)
+
+                except Exception as err:
+                    logger.error(f"Failed to Connect: {row[0]} due to error {err}")
+
+    def _get_database(self, schema: str) -> Database:
+        return Database(
+            name=self.config.database + FQDN_SEPARATOR + schema,
+            service=EntityReference(id=self.service.id, type=self.config.service_type),
+        )
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -58,7 +99,8 @@ class PostgresSource(SQLSource):
             """,
             (table_name, schema),
         )
-        is_partition = cur.fetchone()[0]
+        obj = cur.fetchone()
+        is_partition = obj[0] if obj else False
         return is_partition
 
     def type_of_column_name(self, sa_type, table_name: str, column_name: str):

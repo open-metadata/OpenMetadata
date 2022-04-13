@@ -40,8 +40,7 @@ metadata ingest -c ./examples/workflows/looker.json
       "password": "Looker Client Secret",
       "url": "http://localhost",
       "service_name": "looker",
-      "service_type": "Looker"
-    }
+      }
   }
 ...
 ```
@@ -69,8 +68,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "password": "Looker Client Secret",
       "url": "http://localhost",
       "service_name": "looker",
-      "service_type": "Looker"
-    }
+      }
   },
   "sink": {
     "type": "metadata-rest",

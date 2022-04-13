@@ -30,6 +30,8 @@ const jsonData = {
     'create-tag-category-error': 'Error while creating tag category!',
     'create-tag-error': 'Error while creating tag!',
     'create-team-error': 'Error while creating team!',
+    'create-ingestion-error': 'Error while creating ingestion workflow!',
+    'create-service-error': 'Error while creating service!',
 
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
@@ -41,10 +43,14 @@ const jsonData = {
     'delete-team-error': 'Error while deleting team!',
     'delete-test-error': 'Error while deleting test!',
     'delete-user-error': 'Error while deleting user!',
+    'delete-tag-category-error': 'Error while deleting tag category!',
+    'delete-tag-error': 'Error while deleting tag!',
 
     'unexpected-error': 'Oops! An unexpected error occurred.',
 
-    'elastic-search-error': 'Error while fetch data from Elasticsearch!',
+    'forbidden-error': 'You do not have permissions to perform this action!',
+
+    'elastic-search-error': 'Error while fetching data from Elasticsearch!',
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
 
@@ -54,6 +60,9 @@ const jsonData = {
     'fetch-data-error': 'Error while fetching data!',
     'fetch-database-details-error': 'Error while fetching database details!',
     'fetch-database-tables-error': 'Error while fetching database tables!',
+    'fetch-database-schemas-error': 'Error while fetching database schemas!',
+    'fetch-databaseSchema-details-error':
+      'Error while fetching database schema details!',
     'fetch-activity-feed-error': 'Error while fetching activity feeds!',
     'fetch-entity-feed-error': 'Error while fetching entity feeds!',
     'fetch-entity-feed-count-error': 'Error while fetching entity feed count!',
@@ -62,6 +71,7 @@ const jsonData = {
     'fetch-glossary-error': 'Error while fetching glossary!',
     'fetch-glossary-list-error': 'Error while fetching glossaries!',
     'fetch-glossary-term-error': 'Error while fetching glossary term!',
+    'fetch-glossary-terms-error': 'Error while fetching glossary terms!',
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
@@ -86,12 +96,14 @@ const jsonData = {
     'fetch-teams-error': 'Error while fetching teams!',
     'fetch-version-error': 'Error while fetching version!',
     'fetch-webhook-error': 'Error while fetching webhooks!',
+    'fetch-user-count-error': 'Error while getting users count!',
 
     'unexpected-server-response': 'Unexpected response from server!',
 
     'update-chart-error': 'Error while updating charts!',
     'update-description-error': 'Error while updating description!',
     'update-database-error': 'Error while updating database!',
+    'update-databaseSchema-error': 'Error while updating database schema!',
     'update-entity-error': 'Error while updating entity!',
     'update-entity-follow-error': 'Error while following entity!',
     'update-entity-unfollow-error': 'Error while unfollowing entity!',
@@ -105,6 +117,12 @@ const jsonData = {
     'update-task-error': 'Error while updating tasks!',
     'update-team-error': 'Error while updating team!',
     'update-user-error': 'Error while updating user!',
+    'update-admin-profile-error':
+      'Error while updating the admin user profile!',
+    'update-service-error': 'Error while updating service!',
+    'update-reviewer-error': 'Error while updating reviewer!',
+
+    'feed-post-error': 'Error while posting the message!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',

@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from './auth-provider/AuthProvider';
-import { ToastContextProvider } from './contexts/ToastContext';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
-  faTimes,
   faCheck,
-  faSearch,
-  faPlus,
-  faCheckSquare,
   faCheckCircle,
+  faCheckSquare,
+  faPlus,
+  faSearch,
+  faTimes,
 } from '@fortawesome/free-solid-svg-icons';
+import React, { FunctionComponent } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.min.css';
+import { AuthProvider } from './authentication/auth-provider/AuthProvider';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
@@ -32,13 +33,12 @@ const App: FunctionComponent = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <ToastContextProvider>
-          <Router>
-            <AuthProvider childComponentType={AppRouter}>
-              <AppRouter />
-            </AuthProvider>
-          </Router>
-        </ToastContextProvider>
+        <Router>
+          <AuthProvider childComponentType={AppRouter}>
+            <AppRouter />
+          </AuthProvider>
+        </Router>
+        <ToastContainer autoClose={false} />
       </div>
     </div>
   );

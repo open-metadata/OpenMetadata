@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -27,13 +27,15 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getPartialNameFromFQN,
+  getEntityName,
+  getEntityPlaceHolder,
+  getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
@@ -176,7 +178,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -301,7 +303,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(
+            name: getPartialNameFromTableFQN(
               tableFQN,
               ['database', 'table'],
               FQN_SEPARATOR_CHAR
@@ -328,8 +330,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -600,7 +605,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
                 <div className="tw-col-span-full">
                   <SchemaTab
-                    columnName={getPartialNameFromFQN(
+                    columnName={getPartialNameFromTableFQN(
                       datasetFQN,
                       ['column'],
                       FQN_SEPARATOR_CHAR

@@ -4,13 +4,6 @@
   "title": "Database Schema",
   "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
-
-  "definitions": {
-    "schemaName": {
-      "description": "Name that identifies the schema.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    }
-  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this schema instance.",
@@ -18,7 +11,7 @@
     },
     "name": {
       "description": "Name that identifies the schema.",
-      "$ref": "#/definitions/schemaName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",

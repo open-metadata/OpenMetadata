@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/glueConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlueConnection",
+  "description": "Glue Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.GlueConnection",
+  "definitions": {
+    "glueType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Glue"],
+      "default": "Glue"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/glueType",
+      "default": "Glue"
+    },
+    "hostPort": {
+      "description": "Host and port of the Glue",
+      "type": "string"
+    },
+    "endPointURL": {
+      "description": "EndPoint URL for the Glue",
+      "type": "string"
+    },
+    "awsAccessKeyId": {
+      "description": "AWS Access key ID.",
+      "type": "string"
+    },
+    "awsSecretAccessKey": {
+      "description": "AWS Secret Access Key.",
+      "type": "string",
+      "format": "password"
+    },
+    "awsSessionToken": {
+      "description": "AWS Session Token.",
+      "type": "string"
+    },
+    "storageServiceName": {
+      "description": "AWS storageServiceName Name.",
+      "type": "string"
+    },
+    "pipelineServiceName": {
+      "description": "AWS pipelineServiceName Name.",
+      "type": "string"
+    },
+    "awsRegion": {
+      "description": "AWS Region Name.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Glue.",
+      "type": "string",
+      "default": "Glue"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

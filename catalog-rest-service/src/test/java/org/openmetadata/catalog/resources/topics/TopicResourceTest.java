@@ -210,9 +210,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // TODO
   }
 
-  /** Validate returned fields GET .../topics/{id}?fields="..." or GET .../topics/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
+  public EntityInterface<Topic> validateGetWithDifferentFields(Topic topic, boolean byName)
+      throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "";
     topic =
@@ -226,7 +226,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         byName
             ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(topic.getOwner(), topic.getService(), topic.getServiceType());
+    assertListNotNull(topic.getService(), topic.getServiceType());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(topic);
   }
 
   public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {

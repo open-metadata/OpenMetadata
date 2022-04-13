@@ -35,11 +35,12 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "sample-data",
-    "serviceName": "bigquery_gcp",
+    "type": "sample_data",
+    "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "BigQuery"
+        "type": "SampleData",
+        "sampleDataFolder": "./examples/sample_data"
       }
     },
     "sourceConfig": {}
@@ -55,8 +56,6 @@ config = """
     }
   }
 }
-
-
 """
 
 

@@ -13,8 +13,7 @@
 
 import { FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getRecentlyViewedData } from '../../utils/CommonUtils';
+import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 
@@ -23,13 +22,13 @@ const RecentlyViewed: FunctionComponent = () => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
 
-  useEffect(() => {
+  const prepareData = () => {
     if (recentlyViewedData.length) {
       setIsloading(true);
       const formatedData = recentlyViewedData.map((data) => {
         return {
           serviceType: data.serviceType,
-          name: data.displayName || data.fqn.split(FQN_SEPARATOR_CHAR).pop(),
+          name: data.displayName || prepareLabel(data.entityType, data.fqn),
           fullyQualifiedName: data.fqn,
           index: data.entityType,
         };
@@ -37,6 +36,10 @@ const RecentlyViewed: FunctionComponent = () => {
       setData(formatedData as unknown as FormatedTableData[]);
       setIsloading(false);
     }
+  };
+
+  useEffect(() => {
+    prepareData();
   }, []);
 
   return (

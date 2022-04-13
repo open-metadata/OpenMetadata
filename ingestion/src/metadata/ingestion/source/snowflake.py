@@ -26,15 +26,14 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.engines import get_engine
 
@@ -43,23 +42,6 @@ ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-
-class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
-    result_limit: int = 1000
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        connect_string = super().get_connection_url()
-        options = {
-            "account": self.account,
-            "warehouse": self.warehouse,
-            "role": self.role,
-        }
-        params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
-        if params:
-            connect_string = f"{connect_string}{params}"
-        return connect_string
 
 
 class SnowflakeSource(SQLSource):
@@ -80,9 +62,9 @@ class SnowflakeSource(SQLSource):
                     format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption(),
                 )
-            config.serviceConnection.__root__.config.connectionArguments.private_key = (
-                pkb
-            )
+                config.serviceConnection.__root__.config.connectionArguments.private_key = (
+                    pkb
+                )
 
         super().__init__(config, metadata_config)
 
@@ -100,7 +82,7 @@ class SnowflakeSource(SQLSource):
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_engine(self.config)
+                self.engine = get_engine(self.config.serviceConnection)
                 yield inspect(self.engine)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
@@ -123,7 +105,7 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):

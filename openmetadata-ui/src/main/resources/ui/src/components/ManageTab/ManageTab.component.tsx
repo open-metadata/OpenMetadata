@@ -19,16 +19,16 @@ import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getUserTeams } from '../../utils/CommonUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { getEntityName, getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
@@ -59,7 +59,6 @@ const ManageTab: FunctionComponent<Props> = ({
   allowTeamOwner = true,
   isJoinable,
 }: Props) => {
-  const showToast = useToastContext();
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const getOwnerList = () => {
@@ -78,7 +77,7 @@ const ManageTab: FunctionComponent<Props> = ({
     if (user?.isAdmin) {
       const users = appState.users
         .map((user) => ({
-          name: user.displayName || user.name || '',
+          name: getEntityName(user as unknown as EntityReference),
           value: user.id,
           group: 'Users',
           type: 'user',
@@ -93,7 +92,7 @@ const ManageTab: FunctionComponent<Props> = ({
 
       return [
         {
-          name: user.displayName || user.name || '',
+          name: getEntityName(user as unknown as EntityReference),
           value: user.id,
           group: 'Users',
           type: 'user',
@@ -127,13 +126,6 @@ const ManageTab: FunctionComponent<Props> = ({
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -226,12 +218,10 @@ const ManageTab: FunctionComponent<Props> = ({
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-tiers-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 

@@ -21,7 +21,7 @@ import { ExtraInfo, FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTeam,
   deleteTeam,
@@ -51,16 +51,17 @@ import {
   User,
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   hasEditAccess,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
@@ -88,19 +89,6 @@ const TeamsPage = () => {
     team: Team | undefined;
     state: boolean;
   }>({ team: undefined, state: false });
-
-  const showToast = useToastContext();
-
-  /**
-   * Take error message as input and display toast message
-   * @param errMessage - error message
-   */
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const extraInfo: Array<ExtraInfo> = [
     {
@@ -151,10 +139,8 @@ const TeamsPage = () => {
           err,
           jsonData['api-error-messages']['fetch-teams-error']
         );
-
         setError(errMsg);
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -195,7 +181,7 @@ const TeamsPage = () => {
 
           setError(errMsg);
 
-          handleShowErrorToast(errMsg);
+          showErrorToast(errMsg);
         })
         .finally(() => {
           setIsLoading(false);
@@ -259,12 +245,10 @@ const TeamsPage = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             error,
             jsonData['api-error-messages']['create-team-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsAddingTeam(false);
@@ -291,12 +275,10 @@ const TeamsPage = () => {
         }
       })
       .catch((error: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['update-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsAddingUsers(false);
@@ -337,12 +319,10 @@ const TeamsPage = () => {
         }
       })
       .catch((error: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['update-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingUser({ user: undefined, state: false });
@@ -371,12 +351,10 @@ const TeamsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-team-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setDeletingTeam({ team: undefined, state: false });
@@ -487,9 +465,11 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {sortedUser.map((user, index) => {
             const User = {
-              description: user.displayName || user.name || '',
-              name: user.name || '',
+              displayName: getEntityName(user),
+              fqn: user.fullyQualifiedName || '',
+              type: user.type,
               id: user.id,
+              name: user.name,
             };
 
             return (
@@ -538,8 +518,11 @@ const TeamsPage = () => {
           {' '}
           {currentTeam?.owns?.map((dataset, index) => {
             const Dataset = {
-              description: dataset.name || '',
-              name: dataset.type,
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName || '',
+              id: dataset.id,
+              name: dataset.name,
             };
 
             return (
@@ -570,9 +553,11 @@ const TeamsPage = () => {
         data-testid="teams-card">
         {currentTeam?.defaultRoles?.map((role, i) => {
           const roleData = {
-            description: role.displayName || role.name || '',
-            name: role.name as string,
+            displayName: role.displayName || role.name || '',
+            fqn: role.fullyQualifiedName as string,
+            type: role.type,
             id: role.id,
+            name: role.name,
           };
 
           return <UserCard isIconVisible item={roleData} key={i} />;
@@ -646,12 +631,10 @@ const TeamsPage = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             error,
             jsonData['api-error-messages']['update-team-error']
           );
-
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsEditable(false);
@@ -733,14 +716,12 @@ const TeamsPage = () => {
         })
         .catch((err: AxiosError) => {
           reject();
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             `${jsonData['api-error-messages']['update-owner-error']} for ${
               currentTeam?.displayName ?? currentTeam?.name
             }`
           );
-
-          handleShowErrorToast(errMsg);
         });
     });
   };

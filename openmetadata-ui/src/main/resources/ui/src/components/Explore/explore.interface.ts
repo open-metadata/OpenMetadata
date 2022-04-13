@@ -24,6 +24,8 @@ export type ExploreSearchData = {
   resAggTier: SearchResponse;
   resAggTag: SearchResponse;
   resAggDatabase: SearchResponse;
+  resAggDatabaseSchema: SearchResponse;
+  resAggServiceName: SearchResponse;
 };
 
 export interface ExploreProps {
@@ -40,6 +42,7 @@ export interface ExploreProps {
   error: string;
   searchQuery: string;
   showDeleted: boolean;
+  searchResult: ExploreSearchData | undefined;
   fetchCount: () => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
@@ -50,5 +53,4 @@ export interface ExploreProps {
   updateDbtModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
-  searchResult: ExploreSearchData | undefined;
 }

@@ -153,7 +153,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public static String getFQN(Location location) {
     return (location != null && location.getService() != null)
-        ? FullyQualifiedName.add(location.getService().getName(), location.getName())
+        ? FullyQualifiedName.add(location.getService().getFullyQualifiedName(), location.getName())
         : null;
   }
 

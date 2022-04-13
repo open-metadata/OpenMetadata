@@ -23,7 +23,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import ServicePage from './index';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -178,6 +178,10 @@ jest.mock(
       .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
   })
 );
+
+jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
+  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+});
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {

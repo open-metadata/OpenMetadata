@@ -167,7 +167,10 @@ public final class EntityUtil {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
-        ref.withDescription(ref2.getDescription()).withName(ref2.getName()).withDisplayName(ref2.getDisplayName());
+        ref.withDescription(ref2.getDescription())
+            .withName(ref2.getName())
+            .withDisplayName(ref2.getDisplayName())
+            .withFullyQualifiedName(ref2.getFullyQualifiedName());
       }
     }
     return list;

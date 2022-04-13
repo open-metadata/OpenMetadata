@@ -147,6 +147,12 @@ export interface EntityReference {
    */
   displayName?: string;
   /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -155,8 +161,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**
@@ -199,6 +204,10 @@ export interface ConfigClass {
    */
   generateSampleData?: boolean;
   /**
+   * Optional configuration to turn off fetching metadata for tables.
+   */
+  includeTables?: boolean;
+  /**
    * Optional configuration to turn off fetching metadata for views.
    */
   includeViews?: boolean;
@@ -223,6 +232,10 @@ export interface ConfigClass {
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */
   queryLogDuration?: number;
+  /**
+   * Configuration to set the limit for query logs
+   */
+  resultLimit?: number;
   /**
    * Temporary file name to store the query logs before processing. Absolute file path
    * required.

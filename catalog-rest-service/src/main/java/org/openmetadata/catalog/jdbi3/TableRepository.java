@@ -144,7 +144,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static String getFQN(Table table) {
     return (table != null && table.getDatabaseSchema() != null)
-        ? FullyQualifiedName.add(table.getDatabaseSchema().getName(), table.getName())
+        ? FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName())
         : null;
   }
 

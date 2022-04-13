@@ -27,6 +27,7 @@ export const formatDataResponse = (hits) => {
       hit._source.pipeline_id ||
       hit._source.pipeine_id;
     newData.name = hit._source.name;
+    newData.displayName = hit._source.display_name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;
@@ -43,6 +44,7 @@ export const formatDataResponse = (hits) => {
     newData.highlight = hit.highlight;
 
     newData.database = hit._source.database;
+    newData.databaseSchema = hit._source.database_schema;
 
     newData.entityType = hit._source.entity_type;
     newData.changeDescriptions = hit._source.change_descriptions;

@@ -18,7 +18,7 @@ import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getGlossaryPath,
@@ -58,6 +58,7 @@ type Props = {
   searchText: string;
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
+  currentPage: number;
   handleAddGlossaryClick: () => void;
   handleAddGlossaryTermClick: () => void;
   updateGlossary: (value: Glossary) => void;
@@ -67,7 +68,7 @@ type Props = {
   handleSearchText: (text: string) => void;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
-  onAssetPaginate: (num: number) => void;
+  onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   isChildLoading: boolean;
 };
@@ -97,8 +98,8 @@ const GlossaryV1 = ({
   onGlossaryTermDelete,
   onAssetPaginate,
   onRelatedTermClick,
-}: // handlePathChange,
-Props) => {
+  currentPage,
+}: Props) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const treeRef = useRef<RcTree<DataNode>>(null);
@@ -268,14 +269,14 @@ Props) => {
                 <DropdownIcon
                   style={{
                     transform: 'rotate(180deg)',
-                    marginTop: '1px',
+                    marginTop: '2px',
                     color: '#fff',
                   }}
                 />
               ) : (
                 <DropdownIcon
                   style={{
-                    marginTop: '1px',
+                    marginTop: '2px',
                     color: '#fff',
                   }}
                 />
@@ -304,6 +305,7 @@ Props) => {
         ) : (
           <GlossaryTermsV1
             assetData={assetData}
+            currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
             isHasAccess={isHasAccess}

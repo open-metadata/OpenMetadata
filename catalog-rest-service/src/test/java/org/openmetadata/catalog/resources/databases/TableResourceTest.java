@@ -35,7 +35,6 @@ import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
-import static org.openmetadata.catalog.util.FullyQualifiedName.add;
 import static org.openmetadata.catalog.util.FullyQualifiedName.build;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -45,6 +44,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -130,6 +130,7 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -1347,54 +1348,36 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // GET .../tables?fields=columns,tableConstraints
     final String fields = "tableConstraints";
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields);
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields);
-            put("database", DATABASE.getFullyQualifiedName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields);
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
     // GET .../tables?fields=usageSummary,owner
     final String fields1 = "usageSummary,owner";
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields1);
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
-      assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
-      assertEquals(table.getDatabase().getId(), DATABASE.getId());
-      assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
+      assertEquals(USER_OWNER1, table.getOwner());
+      assertReference(DATABASE_REFERENCE, table.getDatabase());
     }
 
     // List tables with databaseFQN as filter
-    queryParams =
-        new HashMap<>() {
-          {
-            put("fields", fields1);
-            put("database", DATABASE.getFullyQualifiedName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("fields", fields1);
+    queryParams.put("database", DATABASE.getFullyQualifiedName());
     tableList1 = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields1);
@@ -1635,9 +1618,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotNull(table.getDatabase(), table.getService(), table.getServiceType());
   }
 
-  /** Validate returned fields GET .../tables/{id}?fields="..." or GET .../tables/name/{fqn}?fields="..." */
   @Override
-  public void validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
+  public EntityInterface<Table> validateGetWithDifferentFields(Table table, boolean byName)
+      throws HttpResponseException {
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -1670,11 +1653,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getOwner(),
-        table.getTags(),
-        table.getFollowers(),
         table.getJoins() /*, table.getSampleData(), table.getViewDefinition(), table
             .getTableProfile(),  table.getLocation(), table.getTableQueries(), table.getDataModel()*/);
+    assertListNotEmpty(table.getTableConstraints());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(table);
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -2010,7 +1993,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
     assertListNotNull(createdEntity.getService(), createdEntity.getServiceType());
     assertEquals(
-        add(createdEntity.getDatabaseSchema().getName(), createdEntity.getName()),
+        FullyQualifiedName.add(createdEntity.getDatabaseSchema().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
   }
 
@@ -2048,7 +2031,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(expected.getFollowers());
     assertEquals(
-        FullyQualifiedName.add(patched.getDatabaseSchema().getName(), patched.getName()),
+        FullyQualifiedName.add(patched.getDatabaseSchema().getFullyQualifiedName(), patched.getName()),
         patched.getFullyQualifiedName());
   }
 
@@ -2072,7 +2055,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public TableEntityInterface getEntityInterface(Table entity) {
+  public EntityInterface<Table> getEntityInterface(Table entity) {
     return new TableEntityInterface(entity);
   }
 

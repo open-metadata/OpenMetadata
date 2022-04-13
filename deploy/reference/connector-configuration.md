@@ -234,7 +234,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. See the figure below for an example.
 
-![](../../docs/.gitbook/assets/sample-data.png)
+![](<../../docs/.gitbook/assets/sample-data (1).png>)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 

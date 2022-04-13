@@ -20,17 +20,18 @@ from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
 from airflow_provider_openmetadata.lineage.config.providers import (
+    InvalidAirflowProviderException,
     provider_config_registry,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
-    OpenMetadataServerConfig,
+    OpenMetadataConnection,
 )
 
 
 class AirflowLineageConfig(BaseModel):
     airflow_service_name: str
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
 
 
 def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
@@ -45,12 +46,18 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
     if auth_provider_type == AuthProvider.no_auth.value:
         security_config = None
     else:
-        load_security_config_fn = provider_config_registry.registry(auth_provider_type)
+        load_security_config_fn = provider_config_registry.registry.get(
+            auth_provider_type
+        )
+        if not load_security_config_fn:
+            raise InvalidAirflowProviderException(
+                f"Cannot find {auth_provider_type} in airflow providers registry."
+            )
         security_config = load_security_config_fn()
 
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
-        metadata_config=OpenMetadataServerConfig(
+        metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
                 "openmetadata_api_endpoint",
@@ -83,7 +90,7 @@ def get_lineage_config() -> AirflowLineageConfig:
     # If nothing is configured, let's use a default for local
     return AirflowLineageConfig(
         airflow_service_name="airflow",
-        metadata_config=OpenMetadataServerConfig(
+        metadata_config=OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
         ),
     )

@@ -30,6 +30,10 @@ export interface DatabaseServiceMetadataPipelineClass {
    */
   generateSampleData?: boolean;
   /**
+   * Optional configuration to turn off fetching metadata for tables.
+   */
+  includeTables?: boolean;
+  /**
    * Optional configuration to turn off fetching metadata for views.
    */
   includeViews?: boolean;

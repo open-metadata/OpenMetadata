@@ -19,23 +19,14 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import { User } from '../../generated/entity/teams/user';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const showToast = useToastContext();
   const { username } = useParams<{ [key: string]: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const fetchUserData = () => {
     getUserByName(username, 'profile,roles,teams,follows,owns')
@@ -47,11 +38,10 @@ const UserPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-user-details-error']
         );
-        handleShowErrorToast(errMsg);
         setIsError(true);
       })
       .finally(() => setIsLoading(false));

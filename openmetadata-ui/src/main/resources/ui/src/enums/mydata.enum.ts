@@ -12,7 +12,7 @@
  */
 
 export enum Ownership {
-  OWNER = 'owner',
+  OWNER = 'owner.id',
   FOLLOWERS = 'followers',
 }
 

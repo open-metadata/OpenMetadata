@@ -89,7 +89,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public void validateGetWithDifferentFields(StorageService service, boolean byName) throws HttpResponseException {
+  public EntityInterface<StorageService> validateGetWithDifferentFields(StorageService service, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     service =
         byName
@@ -102,7 +103,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
         byName
             ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNotNull(service.getOwner());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(service);
   }
 
   @Override

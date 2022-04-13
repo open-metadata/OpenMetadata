@@ -14,28 +14,37 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import { AssetsType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
-type Props = {
-  item: { description: string; name: string; id?: string };
+interface Props {
+  item: {
+    fqn: string;
+    type: string;
+    displayName: string;
+    id?: string;
+    name?: string;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
-};
+}
 
 const UserCard = ({
   item,
@@ -48,16 +57,23 @@ const UserCard = ({
 }: Props) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getArrForPartialName = (
-    type: string
-  ): Array<'service' | 'database' | 'table' | 'column'> => {
+
+  /**
+   * prepare asset displayname and return it
+   * @param type - asset type
+   * @param fqn - asset fqn
+   * @returns - displayname
+   */
+  const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return ['database', 'table'];
-      case AssetsType.TOPIC:
+        return getPartialNameFromTableFQN(fqn, ['database', 'table']);
+
       case AssetsType.DASHBOARD:
+      case AssetsType.PIPELINE:
+      case AssetsType.TOPIC:
       default:
-        return ['service', 'database', 'table'];
+        return getPartialNameFromFQN(fqn, ['service', 'database']);
     }
   };
 
@@ -119,7 +135,7 @@ const UserCard = ({
     return (
       <Link data-testid="dataset-link" to={link}>
         <button className="tw-font-medium tw-text-grey-body tw-break-all">
-          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
+          {getAssetDisplayName(type, fqn)}
         </button>
       </Link>
     );
@@ -134,9 +150,9 @@ const UserCard = ({
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
+          <Avatar name={item.displayName} />
         ) : (
-          <>{getDatasetIcon(item.name)}</>
+          <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
@@ -145,16 +161,16 @@ const UserCard = ({
           })}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
+            <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
-            <>
+            <Fragment>
               <p
                 className={classNames(
                   'tw-font-normal',
                   isActionVisible ? 'tw-truncate tw-w-32' : null
                 )}
-                title={item.description}>
-                {item.description}
+                title={item.displayName}>
+                {item.displayName}
               </p>
               {item.name && (
                 <p
@@ -165,7 +181,7 @@ const UserCard = ({
                   {isIconVisible ? item.name : capitalize(item.name)}
                 </p>
               )}
-            </>
+            </Fragment>
           )}
         </div>
       </div>

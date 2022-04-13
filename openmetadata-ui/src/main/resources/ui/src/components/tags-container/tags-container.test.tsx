@@ -28,10 +28,10 @@ const tagList = [
 ];
 
 const tagListWithTier = [
-  { fqn: 'Tier:Tier1', source: 'Tag' },
-  { fqn: 'Data:Tier1Data', source: 'Tag' },
-  { fqn: 'Tier:Tier2', source: 'Glossary' },
-  { fqn: 'Count:Tier2Count', source: 'Glossary' },
+  { fqn: 'Tier.Tier1', source: 'Tag' },
+  { fqn: 'Data.Tier1Data', source: 'Tag' },
+  { fqn: 'Tier.Tier2', source: 'Glossary' },
+  { fqn: 'Count.Tier2Count', source: 'Glossary' },
 ];
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();

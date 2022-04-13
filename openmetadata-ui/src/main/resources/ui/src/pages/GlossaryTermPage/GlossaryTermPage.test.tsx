@@ -6,7 +6,7 @@ jest.mock('../../components/GlossaryTerms/GlossaryTerms.component', () => {
   return jest.fn().mockReturnValue(<div>GlossaryTerms.component</div>);
 });
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,

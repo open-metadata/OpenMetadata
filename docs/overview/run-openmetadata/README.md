@@ -60,6 +60,33 @@ Docker Compose version v2.1.1
 Note: In previous releases of Docker compose functions were delivered with the `docker-compose` tool. OpenMetadata uses Compose V2. Please see the paragraphs above for instructions on installing Compose V2.
 {% endhint %}
 
+### Install Docker Compose Version 2.0.0 on Linux
+
+Follow the [instructions here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
+
+1. Run the following command to download the current stable release of Docker Compose
+
+```
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+This command installs Compose V2 for the active user under `$HOME` directory. To install Docker Compose for all users on your system, replace `~/.docker/cli-plugins` with `/usr/local/lib/docker/cli-plugins`.
+
+2\. Apply executable permissions to the binary
+
+```
+chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+3\. Test your installation
+
+```
+docker compose version
+Docker Compose version v2.2.3
+```
+
 ## Procedure
 
 ### 1. Create a directory for OpenMetadata
@@ -164,17 +191,21 @@ After starting the containers, `metadata` will launch Airflow tasks to ingest sa
 
 Once metadata ingestion has finished and the OpenMetadata UI is ready for use, you will see output similar to the following.
 
-```
-[2021-11-18 15:54:51,165] INFO     {metadata.cmd:232} - Time took to get OpenMetadata running: 0:00:58.414548
+```bash
+✅ OpenMetadata is up and running
 
-✔ OpenMetadata is up and running
-
-Head to http://localhost:8585 to play around with OpenMetadata UI.
+Open http://localhost:8585 in your browser to access OpenMetadata..
                 
 To checkout Ingestion via Airflow, go to http://localhost:8080 
 (username: admin, password: admin)
                 
-Need support? Get in touch on Slack: https://slack.open-metadata.org/
+We are available on Slack , https://slack.open-metadata.org/ . Reach out to us if
+you have any questions.
+                
+If you like what we are doing, please consider giving us a star on github at 
+https://github.com/open-metadata/OpenMetadata. 
+
+It helps OpenMetadata reach wider audience and helps our community.
 ```
 
 ### 9. Log in to Airflow
@@ -203,7 +234,7 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../../.gitbook/assets/om-local-landing-page.png)
+![](../../.gitbook/assets/landing-page.png)
 
 ### Next Steps
 
@@ -250,7 +281,7 @@ If you would like to upgrade your OpenMetadata deployment installed following th
 
 ### 1. Ensure your Python virtual environment is activated
 
-The procedure for [installing OpenMetadata](./) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
+The procedure for [installing OpenMetadata](./#procedure) asks you to create a new directory and Python virtual environment. The procedure then asks you to install the `openmetadata-ingestion[docker]` Python module in this virtual environment.
 
 In your command-line environment, please navigate to the directory where you installed `openmetadata-ingestion[docker]` and activate the virtual environment by running the following command.
 
