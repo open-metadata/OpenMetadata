@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DataObj } from '../../interface/service.interface';
+import { JSONSchema7 } from 'json-schema';
+import { cloneDeep } from 'lodash';
 
-export interface AddServiceProps {
-  serviceCategory: ServiceCategory;
-  onAddServiceSave: (service: DataObj) => Promise<void>;
-  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
-  newServiceData: DataObj | undefined;
-}
+export const getPipelineConfig = () => {
+  const schema = {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    title: 'PipelineConnection',
+    description: 'Pipeline Connection Config',
+    type: 'object',
+    properties: {
+      pipelineUrl: {
+        description: 'Pipeline Service Management/UI URL.',
+        type: 'string',
+        format: 'uri',
+      },
+    },
+    additionalProperties: false,
+  } as JSONSchema7;
+  const uiSchema = {};
+
+  return cloneDeep({ schema, uiSchema });
+};

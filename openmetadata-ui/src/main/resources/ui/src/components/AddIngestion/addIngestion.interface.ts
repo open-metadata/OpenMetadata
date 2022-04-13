@@ -12,11 +12,16 @@
  */
 
 import { FilterPatternType } from '../../enums/filterPattern.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
+  serviceCategory: ServiceCategory;
   serviceData: DataObj;
   handleAddIngestion: (value: boolean) => void;
+  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  handleViewServiceClick: () => void;
 }
 
 export type PatternType = {

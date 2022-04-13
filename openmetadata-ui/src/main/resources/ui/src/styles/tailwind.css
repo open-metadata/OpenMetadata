@@ -353,6 +353,31 @@
     transform: rotate(180deg);
   }
 
+  .rjsf.no-header #root__title,
+  .rjsf.no-header #root__description {
+    @apply tw-hidden;
+  }
+
+  .rjsf .form-group.field {
+    @apply tw-my-3;
+  }
+
+  .rjsf .control-label {
+    @apply tw-capitalize;
+  }
+  .rjsf .control-label .required {
+    @apply tw-text-red-600 tw-ml-0.5;
+  }
+
+  .rjsf .field-description {
+    @apply tw-text-grey-muted tw-text-xs tw-my-0.5;
+  }
+
+  .rjsf .form-control {
+    @apply tw-w-full tw-px-3 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
+    focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;

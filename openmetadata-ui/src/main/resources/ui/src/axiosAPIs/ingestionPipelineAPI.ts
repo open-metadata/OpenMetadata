@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DataObj } from '../../interface/service.interface';
+import { AxiosResponse } from 'axios';
+import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import APIClient from './index';
 
-export interface AddServiceProps {
-  serviceCategory: ServiceCategory;
-  onAddServiceSave: (service: DataObj) => Promise<void>;
-  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
-  newServiceData: DataObj | undefined;
-}
+export const addIngestionPipeline = (
+  data: CreateIngestionPipeline
+): Promise<AxiosResponse> => {
+  return APIClient.post('/services/ingestionPipelines', data);
+};

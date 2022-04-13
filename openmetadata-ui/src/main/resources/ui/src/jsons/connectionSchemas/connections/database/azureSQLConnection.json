@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/azureSQLConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AzureSQLConnection",
+  "description": "Azure SQL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.AzureSQLConnection",
+  "definitions": {
+    "azureSQLType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["AzureSQL"],
+      "default": "AzureSQL"
+    },
+    "azureSQLScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["mssql+pyodbc"],
+      "default": "mssql+pyodbc"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/azureSQLType",
+      "default": "AzureSQL"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/azureSQLScheme",
+      "default": "mssql+pyodbc"
+    },
+    "username": {
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Azure SQL.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Athena.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Athena",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Azure SQL.",
+      "type": "string"
+    },
+    "driver": {
+      "description": "SQLAlchemy driver for Azure SQL",
+      "type": "string",
+      "default": "{ODBC Driver 17 for SQL Server}"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
