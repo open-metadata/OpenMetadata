@@ -219,8 +219,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     if (catalogApplicationConfig.getSlackEventPublishers() != null) {
       for (SlackPublisherConfiguration slackPublisherConfiguration :
           catalogApplicationConfig.getSlackEventPublishers()) {
-        SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
-        EventPubSub.addEventHandler(slackPublisher);
+        if (slackPublisherConfiguration.getWebhookUrl() != null
+            && !slackPublisherConfiguration.getWebhookUrl().isEmpty()) {
+          SlackWebhookEventPublisher slackPublisher = new SlackWebhookEventPublisher(slackPublisherConfiguration);
+          EventPubSub.addEventHandler(slackPublisher);
+        }
       }
     }
   }
