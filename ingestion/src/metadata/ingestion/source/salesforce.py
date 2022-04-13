@@ -28,8 +28,8 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -61,7 +61,7 @@ class SalesforceSourceStatus(SourceStatus):
 
 
 class SalesforceSource(Source[OMetaDatabaseAndTable]):
-    def __init__(self, config, metadata_config: OpenMetadataServerConfig):
+    def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.service = get_database_service_or_create(
@@ -75,7 +75,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SalesforceConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SalesforceConnection):

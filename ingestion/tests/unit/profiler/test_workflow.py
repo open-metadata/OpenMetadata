@@ -21,11 +21,11 @@ from sqlalchemy.orm import declarative_base
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
@@ -67,7 +67,7 @@ def test_init_workflow():
     We can initialise the workflow from a config
     """
     assert isinstance(workflow.source_config, DatabaseServiceMetadataPipeline)
-    assert isinstance(workflow.metadata_config, OpenMetadataServerConfig)
+    assert isinstance(workflow.metadata_config, OpenMetadataConnection)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None

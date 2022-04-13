@@ -19,8 +19,8 @@ from typing import Optional
 from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
@@ -57,7 +57,7 @@ class QueryParserProcessor(Processor):
     def __init__(
         self,
         config: QueryParserProcessorConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -66,7 +66,7 @@ class QueryParserProcessor(Processor):
 
     @classmethod
     def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataServerConfig, **kwargs
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
     ):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
         return cls(config, metadata_config)

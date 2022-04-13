@@ -16,8 +16,10 @@ from typing import Type, TypeVar
 import click
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink
@@ -49,7 +51,7 @@ class Workflow:
                 self.typeClassFetch(source_type, False),
             )
         )
-        metadata_config: OpenMetadataServerConfig = (
+        metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
 

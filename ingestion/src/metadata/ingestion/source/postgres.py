@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 
 # This import verifies that the dependencies are available.
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -46,42 +46,39 @@ class PostgresSource(SQLSource):
         self.pgconn = self.engine.raw_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
-                f"Expected MysqlConnection, but got {connection}"
+                f"Expected PostgresConnection, but got {connection}"
             )
 
         return cls(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
-        if self.config.database != None:
+        if self.service_connection.database:
             yield from super().get_databases()
         else:
             query = "select datname from pg_catalog.pg_database;"
-
             results = self.connection.execute(query)
-
             for res in results:
-
                 row = list(res)
                 try:
-
                     logger.info(f"Ingesting from database: {row[0]}")
-                    self.config.database = row[0]
+                    self.service_connection.database = row[0]
                     self.engine = get_engine(self.config.serviceConnection)
-                    self.connection = self.engine.connect()
+                    self.engine.connect()
                     yield inspect(self.engine)
-
                 except Exception as err:
                     logger.error(f"Failed to Connect: {row[0]} due to error {err}")
 
-    def _get_database(self, schema: str) -> Database:
+    def _get_database(self, database: str) -> Database:
+        if database:
+            self.service_connection.database = database
         return Database(
-            name=self.config.database + FQDN_SEPARATOR + schema,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
+            name=self.service_connection.database,
+            service=EntityReference(id=self.service.id, type="database"),
         )
 
     def get_status(self) -> SourceStatus:
