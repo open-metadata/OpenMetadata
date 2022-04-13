@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -82,7 +82,7 @@ class SnowflakeSource(SQLSource):
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_engine(self.config)
+                self.engine = get_engine(self.config.serviceConnection)
                 yield inspect(self.engine)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
@@ -105,7 +105,7 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):

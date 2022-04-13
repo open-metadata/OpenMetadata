@@ -17,8 +17,8 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -26,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils.filters import filter_by_schema
 from metadata.utils.fqdn_generator import get_fqdn
 
 
@@ -34,7 +35,7 @@ class MysqlSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MysqlConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MysqlConnection):
@@ -52,9 +53,8 @@ class MysqlSource(SQLSource):
     def next_record(self) -> Iterable[Entity]:
         for schema in self.inspector.get_schema_names():
             self.database_source_state.clear()
-            if (
-                self.source_config.schemaFilterPattern
-                and schema not in self.source_config.schemaFilterPattern.includes
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern, schema_name=schema
             ):
                 self.status.filter(schema, "Schema pattern not allowed")
                 continue

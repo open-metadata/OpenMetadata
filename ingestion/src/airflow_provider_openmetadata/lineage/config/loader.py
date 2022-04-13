@@ -23,15 +23,15 @@ from airflow_provider_openmetadata.lineage.config.providers import (
     InvalidAirflowProviderException,
     provider_config_registry,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
-    OpenMetadataServerConfig,
+    OpenMetadataConnection,
 )
 
 
 class AirflowLineageConfig(BaseModel):
     airflow_service_name: str
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
 
 
 def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
@@ -57,7 +57,7 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
 
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
-        metadata_config=OpenMetadataServerConfig(
+        metadata_config=OpenMetadataConnection(
             hostPort=conf.get(
                 LINEAGE,
                 "openmetadata_api_endpoint",
@@ -90,7 +90,7 @@ def get_lineage_config() -> AirflowLineageConfig:
     # If nothing is configured, let's use a default for local
     return AirflowLineageConfig(
         airflow_service_name="airflow",
-        metadata_config=OpenMetadataServerConfig(
+        metadata_config=OpenMetadataConnection(
             hostPort="http://localhost:8585/api",
         ),
     )

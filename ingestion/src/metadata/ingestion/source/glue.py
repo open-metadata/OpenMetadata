@@ -23,9 +23,10 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -39,7 +40,6 @@ from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
-    get_database_service_or_create,
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
@@ -48,20 +48,19 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GlueSource(Source[Entity]):
-    def __init__(
-        self, config: GlueConnection, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: GlueConnection, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SQLSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service = get_database_service_or_create(
-            config=config,
-            metadata_config=metadata_config,
-            service_name=self.config.serviceName,
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
+
         config_obj = self.config.serviceConnection.__root__.config
+
+        # TODO: add to service_mixin
         self.storage_service = get_storage_service_or_create(
             {
                 "name": config_obj.storageServiceName,
@@ -85,7 +84,7 @@ class GlueSource(Source[Entity]):
         self.next_db_token = None
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GlueConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GlueConnection):
@@ -290,3 +289,6 @@ class GlueSource(Source[Entity]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def test_connection(self) -> None:
+        pass

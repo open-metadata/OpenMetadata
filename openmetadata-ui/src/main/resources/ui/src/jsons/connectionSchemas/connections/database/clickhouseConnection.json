@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/clickhouseConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClickhouseConnection",
+  "description": "Clickhouse Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.ClickhouseConnection",
+  "definitions": {
+    "clickhouseType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["ClickHouse"],
+      "default": "ClickHouse"
+    },
+    "clickhouseScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["clickhouse+http"],
+      "default": "clickhouse+http"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/clickhouseType",
+      "default": "ClickHouse"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/clickhouseScheme",
+      "default": "clickhouse+http"
+    },
+    "username": {
+      "description": "username to connect  to the Clickhouse. This user should have privileges to read all the metadata in Clickhouse.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to the Clickhouse.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Clickhouse",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Clickhouse.",
+      "type": "string"
+    },
+    "duration": {
+      "description": "Clickhouse SQL connection duration",
+      "type": "integer"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

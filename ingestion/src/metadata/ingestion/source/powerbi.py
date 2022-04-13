@@ -20,12 +20,10 @@ from powerbi.client import PowerBiClient
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -33,8 +31,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -56,20 +54,21 @@ class PowerbiSource(Source[Entity]):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.source_config = self.config.sourceConfig.config
         self.service_connection_config = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.status = SourceStatus()
-        self.dashboard_service = get_dashboard_service_or_create(
-            self.config.serviceName,
-            DashboardServiceType.PowerBI.name,
-            self.service_connection_config.dict(),
-            metadata_config,
+
+        self.dashboard_service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
+
         self.client = PowerBiClient(
             client_id=self.service_connection_config.clientId,
             client_secret=self.service_connection_config.clientSecret.get_secret_value(),
@@ -79,7 +78,7 @@ class PowerbiSource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Instantiate object
 
         Args:
@@ -177,4 +176,7 @@ class PowerbiSource(Source[Entity]):
         pass
 
     def prepare(self):
+        pass
+
+    def test_connection(self) -> None:
         pass

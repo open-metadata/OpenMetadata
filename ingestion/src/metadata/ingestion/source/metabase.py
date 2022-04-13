@@ -25,12 +25,10 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -42,7 +40,6 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -66,19 +63,21 @@ class MetabaseSource(Source[Entity]):
     """
 
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
     status: SQLSourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.status = SQLSourceStatus()
         params = dict()
         params["username"] = self.service_connection.username
@@ -93,17 +92,15 @@ class MetabaseSource(Source[Entity]):
             raise ConnectionError() from err
         session_id = resp.json()["id"]
         self.metabase_session = {"X-Metabase-Session": session_id}
-        self.dashboard_service = get_dashboard_service_or_create(
-            config.serviceName,
-            DashboardServiceType.Metabase.name,
-            self.service_connection.dict(),
-            metadata_config,
+
+        self.dashboard_service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
         self.charts = []
         self.metric_charts = []
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Instantiate object
 
         Args:
@@ -255,6 +252,9 @@ class MetabaseSource(Source[Entity]):
         pass
 
     def prepare(self):
+        pass
+
+    def test_connection(self) -> None:
         pass
 
     def get_card_detail(self, card_list):

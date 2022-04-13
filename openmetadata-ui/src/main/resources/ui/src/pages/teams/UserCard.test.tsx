@@ -17,9 +17,10 @@ import { MemoryRouter } from 'react-router-dom';
 import UserCard from './UserCard';
 
 const mockItem = {
-  description: 'description1',
-  name: 'name1',
+  displayName: 'description1',
+  fqn: 'name1',
   id: 'id1',
+  type: 'table',
 };
 
 const mockRemove = jest.fn();

@@ -19,12 +19,14 @@ type SuccessScreenProps = {
   name: string;
   showIngestionButton: boolean;
   handleIngestionClick?: () => void;
+  handleViewServiceClick: () => void;
 };
 
 const SuccessScreen = ({
   name,
   showIngestionButton,
   handleIngestionClick,
+  handleViewServiceClick,
 }: SuccessScreenProps) => {
   return (
     <div
@@ -49,9 +51,7 @@ const SuccessScreen = ({
           size="regular"
           theme="primary"
           variant="outlined"
-          // this will be implementd once api integration is done, as we need FQN to re-direct
-          // onClick={handleViewServiceClick}
-        >
+          onClick={handleViewServiceClick}>
           <span>View Service</span>
         </Button>
 

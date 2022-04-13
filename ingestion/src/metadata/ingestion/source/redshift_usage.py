@@ -17,11 +17,11 @@ from typing import Any, Dict, Iterable, Iterator, Union
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -51,9 +51,7 @@ class RedshiftUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Redshift.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -72,7 +70,7 @@ class RedshiftUsageSource(Source[TableQuery]):
         self.status = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):

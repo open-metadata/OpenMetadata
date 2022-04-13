@@ -10,6 +10,7 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
+# TODO DELETE, STATUS (pick it up from airflow directly), LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
 APIS_METADATA = [
     {
         "name": "deploy_dag",
@@ -20,7 +21,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "workflow_config",
-                "description": "Workflow config to deploy",
+                "description": "Workflow config to deploy as IngestionPipeline",
                 "form_input_type": "file",
                 "required": True,
             },
@@ -36,6 +37,38 @@ APIS_METADATA = [
                 "name": "workflow_name",
                 "description": "Workflow name to run",
                 "required": True,
+            },
+        ],
+    },
+    {
+        "name": "test_connection",
+        "description": "Test a connection",
+        "http_method": "POST",
+        "arguments": [],
+        "post_arguments": [
+            {
+                "name": "service_connection",
+                "description": "ServiceConnectionModel config to test",
+                "required": True,
+            },
+        ],
+    },
+    {
+        "name": "dag_status",
+        "description": "Get the status of a dag run",
+        "http_method": "GET",
+        "arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+            {
+                "name": "run_id",
+                "description": "The id of the dagRun",
+                "form_input_type": "text",
+                "required": False,
             },
         ],
     },

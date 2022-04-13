@@ -53,6 +53,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
+  getEntityName,
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -657,9 +658,11 @@ const RolesPage = () => {
           <UserCard
             isIconVisible
             item={{
-              description: (user.displayName ?? user.name) as string,
-              name: user.name as string,
+              displayName: getEntityName(user),
+              fqn: user.fullyQualifiedName || '',
               id: user.id,
+              type: user.type,
+              name: user.name,
             }}
             key={user.id}
           />
@@ -709,9 +712,11 @@ const RolesPage = () => {
           data-testid="teams-card">
           {teams.map((team, i) => {
             const teamData = {
-              description: team.displayName || team.name || '',
-              name: team.name as string,
+              displayName: team.displayName || team.name || '',
+              fqn: team.fullyQualifiedName || '',
               id: team.id,
+              type: team.type,
+              name: team.name,
             };
 
             return <UserCard isIconVisible item={teamData} key={i} />;

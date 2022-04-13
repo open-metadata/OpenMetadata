@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/security/client/auth0SSOClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Auth0SSOClientConfig",
+  "description": "Auth0 SSO client security configs.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.security.client.Auth0SSOClientConfig",
+  "properties": {
+    "clientId": {
+      "description": "Auth0 Client ID.",
+      "type": "string"
+    },
+    "secretKey": {
+      "description": "Auth0 Client Secret Key.",
+      "type": "string"
+    },
+    "domain": {
+      "description": "Auth0 Domain.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["clientId", "secretKey", "domain"]
+}

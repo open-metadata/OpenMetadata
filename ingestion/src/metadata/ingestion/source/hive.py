@@ -52,13 +52,32 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return result
 
 
+def get_table_names(self, connection, schema=None, **kw):
+    query = "SHOW TABLES"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    tables_in_schema = connection.execute(query)
+    tables = []
+    for row in tables_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            tables.append(row[1])
+        else:
+            tables.append(row[0])
+    return tables
+
+
 HiveDialect.get_columns = get_columns
+HiveDialect.get_table_names = get_table_names
+
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveSQLConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -72,7 +91,7 @@ class HiveSource(SQLSource):
         return super().prepare()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: HiveSQLConnection = WorkflowSource.parse_obj(config_dict)
         connection: HiveSQLConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, HiveSQLConnection):

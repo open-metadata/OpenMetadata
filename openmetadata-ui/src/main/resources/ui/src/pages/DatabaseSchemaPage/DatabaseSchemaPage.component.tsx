@@ -536,8 +536,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   data-testid="tabale-column"
                   key={index}>
                   <td className="tableBody-cell">
-                    <Link to={getTableDetailsPath(table.name)}>
-                      {getPartialNameFromTableFQN(table.name, ['table'])}
+                    <Link
+                      to={getTableDetailsPath(
+                        table.fullyQualifiedName as string
+                      )}>
+                      {table.name}
                     </Link>
                   </td>
                   <td className="tableBody-cell">

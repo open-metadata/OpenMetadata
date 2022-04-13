@@ -79,6 +79,7 @@
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
+    <antlr.version>4.9.3</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -94,6 +95,11 @@
   </properties>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-runtime</artifactId>
+        <version>${antlr.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
         <artifactId>jersey-bom</artifactId>

@@ -20,10 +20,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { TableType } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
-import {
-  getOwnerFromId,
-  getTierFromSearchTableTags,
-} from '../../utils/TableUtils';
+import { getTierFromSearchTableTags } from '../../utils/TableUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import TableDataCard from '../common/table-data-card/TableDataCard';
@@ -126,7 +123,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             indexType={table.index}
             matches={matches}
             name={name}
-            owner={getOwnerFromId(table.owner)?.name}
+            owner={table.owner?.displayName || table.owner?.name}
             service={table.service}
             serviceType={table.serviceType || '--'}
             tableType={table.tableType as TableType}

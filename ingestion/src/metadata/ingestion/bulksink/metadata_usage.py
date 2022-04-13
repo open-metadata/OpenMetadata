@@ -16,8 +16,8 @@ from datetime import datetime
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.models.table_queries import (
@@ -44,7 +44,7 @@ class MetadataUsageBulkSink(BulkSink):
     def __init__(
         self,
         config: MetadataUsageSinkConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -58,7 +58,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

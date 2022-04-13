@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-export enum FilterPatternType {
-  DATABASE = 'database',
+export enum FilterPatternEnum {
   SCHEMA = 'schema',
   TABLE = 'table',
-  VIEW = 'view',
+  CHART = 'chart',
+  DASHBOARD = 'dashboard',
+  TOPIC = 'topic',
 }

@@ -33,6 +33,12 @@ export const getCategory: Function = (
   return APIClient.get(url);
 };
 
+export const deleteTagCategory = (
+  categoryId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(`/tags/${categoryId}`);
+};
+
 export const createTagCategory: Function = (data: TagsCategory) => {
   return APIClient.post('/tags', data);
 };
@@ -53,4 +59,11 @@ export const updateTag: Function = (
   data: TagsCategory
 ) => {
   return APIClient.put(`/tags/${category}/${tagName}`, data);
+};
+
+export const deleteTag = (
+  categoryName: string,
+  tagId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(`/tags/${categoryName}/${tagId}`);
 };
