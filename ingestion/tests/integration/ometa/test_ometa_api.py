@@ -12,8 +12,9 @@
 """
 OpenMetadata API initialization
 """
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
-
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

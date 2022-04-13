@@ -12,7 +12,7 @@
 Helper mixin to handle services
 """
 import logging
-from typing import TypeVar, Type
+from typing import Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -32,6 +32,7 @@ class OMetaServiceMixin:
 
     To be inherited by OpenMetadata
     """
+
     def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:
         """
         Create a service of type T.
@@ -50,7 +51,7 @@ class OMetaServiceMixin:
         create_service = create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.__root__.config.type.value,
-            connection=config.serviceConnection.__root__
+            connection=config.serviceConnection.__root__,
         )
 
         return self.create_or_update(create_service)
@@ -63,4 +64,6 @@ class OMetaServiceMixin:
         :param config: WorkflowSource
         :return: Entity Service of T
         """
-        return self.get_by_name(entity, config.serviceName) or self.create_service_from_source(entity, config)
+        return self.get_by_name(
+            entity, config.serviceName
+        ) or self.create_service_from_source(entity, config)

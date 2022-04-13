@@ -17,13 +17,22 @@ from unittest import TestCase
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService, DashboardServiceType
-from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseServiceType
-
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardService,
+    DashboardServiceType,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingService,
+    MessagingServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class OMetaServiceTest(TestCase):
@@ -51,21 +60,25 @@ class OMetaServiceTest(TestCase):
                     "type": "MySQL",
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
-                    "hostPort": "random:3306"
+                    "hostPort": "random:3306",
                 }
             },
-            "sourceConfig": {"config": {"enableDataProfiler": False}}
+            "sourceConfig": {"config": {"enableDataProfiler": False}},
         }
 
         workflow_source = WorkflowSource(**data)
 
         # Create service
-        service: DatabaseService = self.metadata.get_service_or_create(entity=DatabaseService, config=workflow_source)
+        service: DatabaseService = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
         assert service
         assert service.serviceType == DatabaseServiceType.MySQL
 
         # Check get
-        assert service == self.metadata.get_service_or_create(entity=DatabaseService, config=workflow_source)
+        assert service == self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
 
         # Clean
         self.metadata.delete(entity=DatabaseService, entity_id=service.id)
@@ -82,21 +95,25 @@ class OMetaServiceTest(TestCase):
                     "type": "MSSQL",
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
-                    "hostPort": "random:3306"
+                    "hostPort": "random:3306",
                 }
             },
-            "sourceConfig": {"config": {"enableDataProfiler": False}}
+            "sourceConfig": {"config": {"enableDataProfiler": False}},
         }
 
         workflow_source = WorkflowSource(**data)
 
         # Create service
-        service: DatabaseService = self.metadata.get_service_or_create(entity=DatabaseService, config=workflow_source)
+        service: DatabaseService = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
         assert service
         assert service.serviceType == DatabaseServiceType.MSSQL
 
         # Check get
-        assert service == self.metadata.get_service_or_create(entity=DatabaseService, config=workflow_source)
+        assert service == self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
 
         # Clean
         self.metadata.delete(entity=DatabaseService, entity_id=service.id)
@@ -113,21 +130,124 @@ class OMetaServiceTest(TestCase):
                     "type": "Looker",
                     "username": "looker_user",
                     "password": "looker_pwd",
-                    "hostPort": "random:1234"
+                    "hostPort": "http://random:1234",
                 }
             },
-            "sourceConfig": {"config": {}}
+            "sourceConfig": {"config": {}},
         }
 
         workflow_source = WorkflowSource(**data)
 
         # Create service
-        service: DashboardService = self.metadata.get_service_or_create(entity=DashboardService, config=workflow_source)
+        service: DashboardService = self.metadata.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
 
         # Check get
-        assert service == self.metadata.get_service_or_create(entity=DashboardService, config=workflow_source)
+        assert service == self.metadata.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
 
         # Clean
         self.metadata.delete(entity=DashboardService, entity_id=service.id)
+
+    def test_create_dashboard_service_tableau(self):
+        """
+        Create a db service from WorkflowSource
+        """
+        data = {
+            "type": "tableau",
+            "serviceName": "local_tableau",
+            "serviceConnection": {
+                "config": {
+                    "type": "Tableau",
+                    "username": "tb_user",
+                    "password": "tb_pwd",
+                    "hostPort": "http://random:1234",
+                }
+            },
+            "sourceConfig": {"config": {}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: DashboardService = self.metadata.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == DashboardServiceType.Tableau
+
+        # Check get
+        assert service == self.metadata.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
+
+        # Clean
+        self.metadata.delete(entity=DashboardService, entity_id=service.id)
+
+    def test_create_messaging_service_kafka(self):
+        """
+        Create a db service from WorkflowSource
+        """
+        data = {
+            "type": "kafka",
+            "serviceName": "local_kafka",
+            "serviceConnection": {
+                "config": {
+                    "type": "Kafka",
+                }
+            },
+            "sourceConfig": {"config": {}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: MessagingService = self.metadata.get_service_or_create(
+            entity=MessagingService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == MessagingServiceType.Kafka
+
+        # Check get
+        assert service == self.metadata.get_service_or_create(
+            entity=MessagingService, config=workflow_source
+        )
+
+        # Clean
+        self.metadata.delete(entity=MessagingService, entity_id=service.id)
+
+    def test_create_messaging_service_pulsar(self):
+        """
+        Create a db service from WorkflowSource
+        """
+        data = {
+            "type": "pulsar",
+            "serviceName": "local_pulsar",
+            "serviceConnection": {
+                "config": {
+                    "type": "Pulsar",
+                }
+            },
+            "sourceConfig": {"config": {}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: MessagingService = self.metadata.get_service_or_create(
+            entity=MessagingService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == MessagingServiceType.Pulsar
+
+        # Check get
+        assert service == self.metadata.get_service_or_create(
+            entity=MessagingService, config=workflow_source
+        )
+
+        # Clean
+        self.metadata.delete(entity=MessagingService, entity_id=service.id)
