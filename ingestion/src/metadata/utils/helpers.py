@@ -193,20 +193,6 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
         return created_service
 
 
-def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqdn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service_json)
-        )
-    return created_service
-
-
 def datetime_to_ts(date: datetime) -> int:
     """
     Convert a given date to a timestamp as an Int
