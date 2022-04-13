@@ -179,6 +179,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
+  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+});
+
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ServicePage />, {
