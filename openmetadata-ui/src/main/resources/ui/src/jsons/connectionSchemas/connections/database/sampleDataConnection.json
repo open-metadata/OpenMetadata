@@ -1,9 +1,34 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/connectionBasicType.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sampleDataConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ConnectionType",
-  "description": "This schema defines basic common types that are used by other schemas.",
+  "title": "SampleDataConnection",
+  "description": "Sample Data Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SampleDataConnection",
   "definitions": {
+    "sampledataType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SampleData"],
+      "default": "SampleData"
+    },
+    "sampledataScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["sampledata"],
+      "default": "sampledata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/sampledataType",
+      "default": "BigQuery"
+    },
+    "sampleDataFolder": {
+      "description": "Sample Data File Path",
+      "type": "string"
+    },
     "connectionOptions": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
       "description": "Additional connection options that can be sent to service during the connection.",
@@ -30,5 +55,6 @@
       "type": "boolean",
       "default": true
     }
-  }
+  },
+  "additionalProperties": false
 }

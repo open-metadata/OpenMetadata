@@ -466,18 +466,32 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const handleConfigUpdate = (updatedData: ServicesData) => {
-    const configData = {
-      databaseConnection: updatedData.databaseConnection,
-      name: updatedData.name,
-      serviceType: updatedData.serviceType,
-      brokers: updatedData.brokers,
-      schemaRegistry: updatedData.schemaRegistry,
-      dashboardUrl: updatedData.dashboardUrl,
-      username: updatedData.username,
-      password: updatedData.password,
-      pipelineUrl: updatedData.pipelineUrl,
-    };
+  const handleConfigUpdate = (
+    updatedData: ServicesData,
+    serviceCategory: ServiceCategory
+  ) => {
+    const configData =
+      serviceCategory === ServiceCategory.PIPELINE_SERVICES
+        ? {
+            databaseConnection: updatedData.databaseConnection,
+            name: updatedData.name,
+            serviceType: updatedData.serviceType,
+            brokers: updatedData.brokers,
+            schemaRegistry: updatedData.schemaRegistry,
+            dashboardUrl: updatedData.dashboardUrl,
+            username: updatedData.username,
+            password: updatedData.password,
+            pipelineUrl: updatedData.pipelineUrl,
+          }
+        : {
+            name: serviceDetails?.name,
+            serviceType: serviceDetails?.serviceType,
+            description: serviceDetails?.description,
+            owner: serviceDetails?.owner,
+            connection: {
+              config: updatedData,
+            },
+          };
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
@@ -806,9 +820,9 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.DASHBOARD_SERVICES:
         return {
-          dashboardUrl: serviceDetails?.dashboardUrl,
-          username: serviceDetails?.username,
-          password: serviceDetails?.password,
+          dashboardUrl: serviceDetails?.connection?.config?.dashboardURL,
+          username: serviceDetails?.connection?.config?.username,
+          password: serviceDetails?.connection?.config?.password,
         };
 
       case ServiceCategory.PIPELINE_SERVICES:

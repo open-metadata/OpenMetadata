@@ -1,0 +1,78 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sqliteConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SQLiteConnection",
+  "description": "SQLite Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SQLiteConnection",
+  "definitions": {
+    "SQLiteType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SQLite"],
+      "default": "SQLite"
+    },
+    "SQLiteScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["sqlite+pysqlite"],
+      "default": "sqlite+pysqlite"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/SQLiteType",
+      "default": "SQLite"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/SQLiteScheme",
+      "default": "sqlite+pysqlite"
+    },
+    "username": {
+      "description": "username to connect  to the SQLite. Blank for in-memory database.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to SQLite. Blank for in-memory database.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the data source. Blank for in-memory database.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "databaseMode": {
+      "description": "How to run the SQLite database. :memory: by default.",
+      "type": "string",
+      "default": ":memory:"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/singleStoreConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SingleStoreConnection",
+  "description": "SingleStore Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SingleStoreConnection",
+  "definitions": {
+    "singleStoreType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SingleStore"],
+      "default": "SingleStore"
+    },
+    "singleStoreScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["mysql+pymysql"],
+      "default": "mysql+pymysql"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/singleStoreType",
+      "default": "SingleStore"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/singleStoreScheme",
+      "default": "mysql+pymysql"
+    },
+    "username": {
+      "description": "username to connect  to the MySQL. This user should have privileges to read all the metadata in MySQL.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the MYSQL.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the data source.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in MySQL.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

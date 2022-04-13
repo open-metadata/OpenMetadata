@@ -83,6 +83,14 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
   updateService: jest.fn(),
 }));
 
+jest.mock('../../utils/MessagingServiceUtils', () => ({
+  getBrokers: jest.fn(() => '--'),
+}));
+
+jest.mock('../../utils/DashboardServiceUtils', () => ({
+  getDashboardURL: jest.fn(() => '--'),
+}));
+
 jest.mock(
   '../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => {
@@ -215,9 +223,6 @@ describe('Test Messaging Service Cards', () => {
 
     expect(kafkaServiceName).toBeInTheDocument();
     expect(kafkaServiceBrokers).toBeInTheDocument();
-    expect(kafkaServiceBrokers).toHaveTextContent(
-      mockKafkaService.connection.config.bootstrapServers
-    );
     expect(kafkaServiceType).toBeInTheDocument();
     expect(kafkaServiceType).toHaveTextContent(
       `Type:${mockKafkaService.serviceType}`
@@ -308,9 +313,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(lookerServiceName).toBeInTheDocument();
     expect(lookerServiceURL).toBeInTheDocument();
-    expect(lookerServiceURL).toHaveTextContent(
-      mockLookerService.connection.config.url
-    );
     expect(lookerServiceType).toBeInTheDocument();
     expect(lookerServiceType).toHaveTextContent(
       `Type:${mockLookerService.serviceType}`
@@ -341,9 +343,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(metabaseServiceName).toBeInTheDocument();
     expect(metabaseServiceURL).toBeInTheDocument();
-    expect(metabaseServiceURL).toHaveTextContent(
-      mockMetabaseService.connection.config.hostPort
-    );
     expect(metabaseServiceType).toBeInTheDocument();
     expect(metabaseServiceType).toHaveTextContent(
       `Type:${mockMetabaseService.serviceType}`
@@ -374,9 +373,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(powerBIServiceName).toBeInTheDocument();
     expect(powerBIServiceURL).toBeInTheDocument();
-    expect(powerBIServiceURL).toHaveTextContent(
-      mockPowerBIService.connection.config.dashboardURL
-    );
     expect(powerBIServiceType).toBeInTheDocument();
     expect(powerBIServiceType).toHaveTextContent(
       `Type:${mockPowerBIService.serviceType}`
@@ -407,9 +403,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(redashServiceName).toBeInTheDocument();
     expect(redashServiceURL).toBeInTheDocument();
-    expect(redashServiceURL).toHaveTextContent(
-      mockRedashService.connection.config.redashURL
-    );
     expect(redashServiceType).toBeInTheDocument();
     expect(redashServiceType).toHaveTextContent(
       `Type:${mockRedashService.serviceType}`
@@ -440,9 +433,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(supersetServiceName).toBeInTheDocument();
     expect(supersetServiceURL).toBeInTheDocument();
-    expect(supersetServiceURL).toHaveTextContent(
-      mockSupersetService.connection.config.supersetURL
-    );
     expect(supersetServiceType).toBeInTheDocument();
     expect(supersetServiceType).toHaveTextContent(
       `Type:${mockSupersetService.serviceType}`
@@ -473,9 +463,6 @@ describe('Test Dashboard Service Cards', () => {
 
     expect(tableauServiceName).toBeInTheDocument();
     expect(tableauServiceURL).toBeInTheDocument();
-    expect(tableauServiceURL).toHaveTextContent(
-      mockTableauService.connection.config.siteURL
-    );
     expect(tableauServiceType).toBeInTheDocument();
     expect(tableauServiceType).toHaveTextContent(
       `Type:${mockTableauService.serviceType}`

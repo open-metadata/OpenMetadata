@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/tableauConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableauConnection",
+  "description": "Tableau Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.TableauConnection",
+  "definitions": {
+    "tableauType": {
+      "description": "Tableau service type",
+      "type": "string",
+      "enum": ["Tableau"],
+      "default": "Tableau"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/tableauType",
+      "default": "Tableau"
+    },
+    "hostPort": {
+      "description": "Tableau Server",
+      "type": "string"
+    },
+    "username": {
+      "description": "username for the Tableau",
+      "type": "string"
+    },
+    "password": {
+      "description": "password for the Tableau",
+      "type": "string",
+      "format": "password"
+    },
+    "apiVersion": {
+      "description": "Tableau API version",
+      "type": "string"
+    },
+    "siteName": {
+      "description": "Tableau Site Name",
+      "type": "string"
+    },
+    "personalAccessTokenName": {
+      "description": "Personal Access Token Name",
+      "type": "string"
+    },
+    "personalAccessTokenSecret": {
+      "description": "Personal Access Token Secret",
+      "type": "string"
+    },
+    "env": {
+      "description": "Tableau Environment Name",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
