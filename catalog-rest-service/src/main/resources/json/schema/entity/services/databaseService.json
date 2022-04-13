@@ -10,7 +10,7 @@
       "type": "string",
       "enum": [
         "BigQuery",
-        "MySQL",
+        "Mysql",
         "Redshift",
         "Snowflake",
         "Postgres",
@@ -40,7 +40,7 @@
           "name": "BigQuery"
         },
         {
-          "name": "MySQL"
+          "name": "Mysql"
         },
         {
           "name": "Redshift"
