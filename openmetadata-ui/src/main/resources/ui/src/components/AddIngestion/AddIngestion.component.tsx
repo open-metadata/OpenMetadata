@@ -178,6 +178,7 @@ const AddIngestion = ({
         startDate: startDate as unknown as Date,
         endDate: startDate as unknown as Date,
         scheduleInterval: repeatFrequency,
+        forceDeploy: true,
       },
       name: ingestionName,
       displayName: ingestionName,

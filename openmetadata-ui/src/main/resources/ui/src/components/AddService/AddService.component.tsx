@@ -472,10 +472,7 @@ const AddService = ({
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
-              showIngestionButton={isIngestionSupported(
-                serviceCategory,
-                selectServiceType
-              )}
+              showIngestionButton={isIngestionSupported(serviceCategory)}
             />
           )}
         </div>

@@ -359,23 +359,8 @@ export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
   }
 };
 
-export const isServiceSupportIngestion = (serviceType: string) => {
-  // add unsupported service below, if any
-
-  switch (serviceType) {
-    default:
-      return true;
-  }
-};
-
-export const isIngestionSupported = (
-  serviceCategory: ServiceCategory,
-  serviceType: string
-) => {
-  return (
-    getIsIngestionEnable(serviceCategory) &&
-    isServiceSupportIngestion(serviceType)
-  );
+export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
+  return getIsIngestionEnable(serviceCategory);
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {
