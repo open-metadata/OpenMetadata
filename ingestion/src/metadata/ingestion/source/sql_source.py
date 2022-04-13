@@ -106,49 +106,64 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 def get_dbt_details(config):
     dbt_catalog = "{}"
     dbt_manifest = "{}"
-    if config.dbtMethod == "s3":
-        from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+    if config.dbtProvider:
+        if config.dbtProvider.value == "s3":
+            from metadata.utils.aws_client import AWSClient
 
-        aws_config = AWSClientConfigModel(
-            awsAccessKeyId=config.dbtOptions["awsAccessKeyId"],
-            awsSecretAccessKey=config.dbtOptions["awsSecretAccessKey"],
-            awsRegion=config.dbtOptions["awsRegion"],
-        )
-        aws_client = AWSClient(aws_config).get_resource("s3")
-        buckets = aws_client.buckets.all()
-        for bucket in buckets:
-            for bucket_object in bucket.objects.all():
-                if "manifest_1.0" in bucket_object.key:
-                    dbt_manifest = bucket_object.get()["Body"].read().decode()
-                if "catalog_1.0" in bucket_object.key:
-                    dbt_catalog = bucket_object.get()["Body"].read().decode()
-    elif config.dbtMethod == "gcs":
-        if store_gcs_credentials(config.dbtOptions):
-            from google.cloud import storage
+            aws_client = AWSClient(config.dbtConfig).get_resource("s3")
+            buckets = aws_client.buckets.all()
+            for bucket in buckets:
+                for bucket_object in bucket.objects.all():
+                    if "manifest_1.0" in bucket_object.key:
+                        dbt_manifest = bucket_object.get()["Body"].read().decode()
+                    if "catalog_1.0" in bucket_object.key:
+                        dbt_catalog = bucket_object.get()["Body"].read().decode()
+        elif "gcs" in config.dbtProvider.value:
+            if config.dbtProvider.value == "gcs":
+                options = {
+                    "credentials": {
+                        "type": config.dbtConfig.__root__.type,
+                        "project_id": config.dbtConfig.__root__.projectId,
+                        "private_key_id": config.dbtConfig.__root__.privateKeyId,
+                        "private_key": config.dbtConfig.__root__.privateKey,
+                        "client_email": config.dbtConfig.__root__.clientEmail,
+                        "client_id": config.dbtConfig.__root__.clientId,
+                        "auth_uri": config.dbtConfig.__root__.authUri,
+                        "token_uri": config.dbtConfig.__root__.tokenUri,
+                        "auth_provider_x509_cert_url": config.dbtConfig.__root__.authProviderX509CertUrl,
+                        "client_x509_cert_url": config.dbtConfig.__root__.clientX509CertUrl,
+                    }
+                }
+            else:
+                options = {"credentials_path": config.dbtConfig.__root__.__root__}
+            if store_gcs_credentials(options):
+                from google.cloud import storage
 
-            client = storage.Client()
-            for bucket in client.list_buckets():
-                for blob in client.list_blobs(bucket.name):
-                    if "manifest_1.0" in blob.name:
-                        dbt_manifest = blob.download_as_string().decode()
-                    if "catalog_1.0" in blob.name:
-                        dbt_catalog = blob.download_as_string().decode()
-        else:
-            exit()
-    elif config.dbtMethod == "http":
-        import urllib.request
+                client = storage.Client()
+                for bucket in client.list_buckets():
+                    for blob in client.list_blobs(bucket.name):
+                        if "manifest_1.0" in blob.name:
+                            dbt_manifest = blob.download_as_string().decode()
+                        if "catalog_1.0" in blob.name:
+                            dbt_catalog = blob.download_as_string().decode()
+        elif config.dbtProvider.value == "http":
+            import urllib.request
 
-        catalog_file = urllib.request.urlopen(config.dbtCatalogFilePath)
-        manifest_file = urllib.request.urlopen(config.dbtManifestFilePath)
-        dbt_catalog = catalog_file.read().decode()
-        dbt_manifest = manifest_file.read().decode()
-    else:
-        if config.dbtCatalogFilePath is not None:
-            with open(config.dbtCatalogFilePath, "r", encoding="utf-8") as catalog:
-                dbt_catalog = catalog.read()
-        if config.dbtManifestFilePath is not None:
-            with open(config.dbtManifestFilePath, "r", encoding="utf-8") as manifest:
-                dbt_manifest = manifest.read()
+            catalog_file = urllib.request.urlopen(config.dbtConfig.dbtCatalogFilePath)
+            manifest_file = urllib.request.urlopen(config.dbtConfig.dbtManifestFilePath)
+            dbt_catalog = catalog_file.read().decode()
+            dbt_manifest = manifest_file.read().decode()
+        elif config.dbtProvider.value == "local":
+            if config.dbtConfig.dbtCatalogFilePath is not None:
+                with open(
+                    config.dbtConfig.dbtCatalogFilePath, "r", encoding="utf-8"
+                ) as catalog:
+                    dbt_catalog = catalog.read()
+            if config.dbtConfig.dbtManifestFilePath is not None:
+                with open(
+                    config.dbtConfig.dbtManifestFilePath, "r", encoding="utf-8"
+                ) as manifest:
+                    dbt_manifest = manifest.read()
     return json.loads(dbt_catalog), json.loads(dbt_manifest)
 
 
@@ -493,7 +508,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Get all the DBT information and feed it to the Table Entity
         """
-        if self.source_config.dbtMethod:
+        if self.source_config.dbtProvider:
             logger.info("Parsing Data Models")
             manifest_entities = {
                 **self.dbt_manifest["nodes"],

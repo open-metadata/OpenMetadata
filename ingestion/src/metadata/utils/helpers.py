@@ -227,6 +227,7 @@ def store_gcs_credentials(options) -> bool:
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         if options.get("credentials_path"):
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options["credentials_path"]
+            del options["credentials_path"]
         elif options.get("credentials"):
             temp_credentials = create_credential_temp_file(
                 credentials=options.get("credentials")
