@@ -219,8 +219,6 @@ const ServicesPage = () => {
   };
 
   const handleAddService = () => {
-    // setEditData(undefined);
-    // setIsModalOpen(true);
     goToAddService();
   };
   const handleClose = () => {

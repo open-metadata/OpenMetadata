@@ -98,7 +98,7 @@ const AddService = ({
 
   const handleConfigUpdate = (
     oData: ConfigData,
-    serviceCategory: ServiceCategory
+    serviceCat: ServiceCategory
   ) => {
     const data = {
       name: serviceName,
@@ -110,7 +110,7 @@ const AddService = ({
       },
     };
     const configData =
-      serviceCategory === ServiceCategory.PIPELINE_SERVICES
+      serviceCat === ServiceCategory.PIPELINE_SERVICES
         ? { ...data, pipelineUrl: oData.pipelineUrl }
         : {
             ...data,
