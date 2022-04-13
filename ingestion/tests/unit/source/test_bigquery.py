@@ -66,13 +66,10 @@ CONFIG = """
 }
 """
 
-MOCK_GET_TABLE_NAMES = [
-    "open_metadata.test_schema.test1",
-    "open_metadata.cloudaudit-googleapis_com_data_access_20220122",
-]
+MOCK_GET_TABLE_NAMES = ["test_schema_1.test_table_1", "test_schema_1.test_table_2"]
 
 GET_TABLE_DESCRIPTIONS = {"text": "Test"}
-MOCK_GET_SCHEMA_NAMES = ["open_metadata"]
+MOCK_GET_SCHEMA_NAMES = ["test_schema_1"]
 MOCK_UNIQUE_CONSTRAINTS = []
 MOCK_PK_CONSTRAINT = {"constrained_columns": []}
 MOCK_GET_COLUMN = [
@@ -268,14 +265,18 @@ class BigQueryIngestionTest(TestCase):
     def test_file_sink(self):
         config = json.loads(CONFIG)
         file_data = open(config["sink"]["config"]["filename"])
-        data = json.load(file_data)
-        for i in data:
-            table = i.get("table")
-            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
+        file_sink = json.load(file_data)
+        for ometa_data in file_sink:
+            table = ometa_data.get("table")
+            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(
+                ometa_data
+            )
             table_obj: Table = Table.parse_obj(table)
 
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
-            table_name = f"{i.get('database').get('name')}.{table.get('name')}"
+            table_name = (
+                f"{ometa_data.get('database_schema').get('name')}.{table.get('name')}"
+            )
             if table.get("tableType") == TableType.Regular.value:
                 assert table_name in MOCK_GET_TABLE_NAMES
 
