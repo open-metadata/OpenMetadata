@@ -15,7 +15,6 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
-import logging
 import urllib
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
@@ -57,6 +56,7 @@ from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
@@ -64,9 +64,9 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
@@ -115,6 +115,7 @@ class OpenMetadata(
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
+    OMetaServiceMixin,
     Generic[T, C],
 ):
     """

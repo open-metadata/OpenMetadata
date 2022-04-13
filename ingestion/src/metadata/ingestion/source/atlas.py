@@ -62,6 +62,7 @@ class AtlasSource(Source):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.status = AtlasSourceStatus()
+        # TODO: use metadata.get_service_or_create
         self.service = get_database_service_or_create(config, metadata_config)
 
         schema_registry_url = "http://localhost:8081"

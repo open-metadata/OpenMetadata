@@ -13,7 +13,6 @@ Mixin class containing Pipeline specific methods
 
 To be used by OpenMetadata class
 """
-import logging
 from typing import List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -23,8 +22,9 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class OMetaPipelineMixin:

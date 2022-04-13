@@ -78,7 +78,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
+  void post_invalidDatabaseServiceNoConnection_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = createRequest(test).withConnection(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
@@ -113,6 +113,31 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
     assertEquals("description1", service.getDescription());
+  }
+
+  @Test
+  void post_put_invalidConnection_as_admin_4xx(TestInfo test) throws IOException {
+    RedshiftConnection redshiftConnection =
+        new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+    assertResponseContains(
+        () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
+    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+    // Update database description and ingestion service that are null
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
+
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    MysqlConnection mysqlConnection = new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
+    update.withConnection(databaseConnection);
+    assertResponseContains(
+        () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
   }
 
   @Test
@@ -172,6 +197,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
     assertEquals(ingestionPipeline.getName(), expectedPipeline.getName());
     assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getFullyQualifiedName());
+    DatabaseConnection expectedDatabaseConnection =
+        JsonUtils.convertValue(ingestionPipeline.getSource().getServiceConnection(), DatabaseConnection.class);
+    SnowflakeConnection expectedSnowflake =
+        JsonUtils.convertValue(expectedDatabaseConnection.getConfig(), SnowflakeConnection.class);
+    assertEquals(expectedSnowflake, snowflakeConnection);
   }
 
   @Override
@@ -244,7 +274,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
       DatabaseServiceType databaseServiceType) {
     // Validate Database Connection if available. We nullify when not admin or bot
     if (expectedDatabaseConnection != null) {
-      if (databaseServiceType == DatabaseServiceType.MySQL) {
+      if (databaseServiceType == DatabaseServiceType.Mysql) {
         MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
         MysqlConnection actualMysqlConnection;
         if (actualDatabaseConnection.getConfig() instanceof MysqlConnection) {
