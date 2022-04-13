@@ -25,11 +25,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -66,13 +66,13 @@ class MetabaseSource(Source[Entity]):
     """
 
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
     status: SQLSourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -103,7 +103,7 @@ class MetabaseSource(Source[Entity]):
         self.metric_charts = []
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Instantiate object
 
         Args:

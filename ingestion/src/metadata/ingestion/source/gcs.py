@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
 )
 from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import GcsStorageClass, StorageServiceType
@@ -63,7 +63,7 @@ class GcsSource(Source[Entity]):
     status: SourceStatus
 
     def __init__(
-        self, config: GcsSourceConfig, metadata_config: OpenMetadataServerConfig
+        self, config: GcsSourceConfig, metadata_config: OpenMetadataConnection
     ):
         super().__init__()
         self.config = config
@@ -78,7 +78,7 @@ class GcsSource(Source[Entity]):
         self.gcs = storage.Client()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = GcsSourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

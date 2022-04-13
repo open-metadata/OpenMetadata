@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 
 # This import verifies that the dependencies are available.
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -46,7 +46,7 @@ class PostgresSource(SQLSource):
         self.pgconn = self.engine.raw_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):

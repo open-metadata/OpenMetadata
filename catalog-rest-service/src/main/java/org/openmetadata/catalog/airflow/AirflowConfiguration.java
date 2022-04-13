@@ -13,80 +13,28 @@
 
 package org.openmetadata.catalog.airflow;
 
+import java.util.Map;
 import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
 
 public class AirflowConfiguration {
 
-  @NotEmpty private String apiEndpoint;
+  @NotEmpty @Getter @Setter private String apiEndpoint;
 
-  @NotEmpty private String username;
+  @NotEmpty @Getter @Setter private String username;
 
-  @NotEmpty private String password;
+  @NotEmpty @Getter @Setter private String password;
 
-  private Integer timeout = 30;
+  @Getter @Setter private Integer timeout = 30;
 
-  private String metadataApiEndpoint;
+  @NotEmpty @Getter @Setter private String metadataApiEndpoint;
 
-  private String authProvider;
+  @NotEmpty @Getter @Setter private String authProvider;
 
-  private String secretKey;
+  @Getter private Map<String, String> authConfig;
 
-  public String getApiEndpoint() {
-    return apiEndpoint;
-  }
-
-  public void setApiEndpoint(String apiEndpoint) {
-    this.apiEndpoint = apiEndpoint;
-  }
-
-  public String getUsername() {
-    return username;
-  }
-
-  public void setUsername(String username) {
-    this.username = username;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(String password) {
-    this.password = password;
-  }
-
-  public Integer getTimeout() {
-    return timeout;
-  }
-
-  public void setTimeout(Integer timeout) {
-    this.timeout = timeout;
-  }
-
-  public String getMetadataApiEndpoint() {
-    return metadataApiEndpoint;
-  }
-
-  public String getAuthProvider() {
-    return authProvider;
-  }
-
-  public String getSecretKey() {
-    return secretKey;
-  }
-
-  @Override
-  public String toString() {
-    return "AirflowConfiguration{"
-        + "apiEndpoint='"
-        + apiEndpoint
-        + '\''
-        + ", username='"
-        + username
-        + '\''
-        + ", password='"
-        + password
-        + '\''
-        + '}';
+  public void setAuthConfig(Map<String, String> authConfig) {
+    this.authConfig = authConfig;
   }
 }

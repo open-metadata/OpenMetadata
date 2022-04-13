@@ -26,11 +26,13 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.processor import Processor
@@ -59,7 +61,7 @@ class ProfilerWorkflow:
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        self.metadata_config: OpenMetadataServerConfig = (
+        self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
 

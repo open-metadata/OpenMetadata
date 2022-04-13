@@ -155,6 +155,7 @@ airflowConfiguration:
   metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
   authProvider: "no-auth"
 
+
 slackEventPublishers:
   - name: "slack events"
     webhookUrl: ${SLACK_WEBHOOK_URL:-""}

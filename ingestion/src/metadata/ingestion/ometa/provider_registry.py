@@ -11,9 +11,9 @@
 """
 Register auth provider init functions here
 """
-from metadata.generated.schema.metadataIngestion.workflow import (
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
-    OpenMetadataServerConfig,
+    OpenMetadataConnection,
 )
 from metadata.ingestion.ometa.auth_provider import (
     Auth0AuthenticationProvider,
@@ -38,30 +38,30 @@ auth_provider_registry = enum_register()
 
 
 @auth_provider_registry.add(AuthProvider.no_auth.value)
-def no_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def no_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return NoOpAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.google.value)
-def google_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def google_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return GoogleAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.okta.value)
-def okta_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def okta_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return OktaAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.auth0.value)
-def auth0_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def auth0_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return Auth0AuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.azure.value)
-def azure_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def azure_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return AzureAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.custom_oidc.value)
-def custom_oidc_auth_init(config: OpenMetadataServerConfig) -> AuthenticationProvider:
+def custom_oidc_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return CustomOIDCAuthenticationProvider.create(config)
