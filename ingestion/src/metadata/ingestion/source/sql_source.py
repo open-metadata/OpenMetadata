@@ -125,10 +125,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             self.config.sourceConfig.config
         )
 
-        self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(config, metadata_config)
-        self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
+
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
+        self.service = get_database_service_or_create(config, metadata_config)
         self.engine = get_engine(service_connection=self.config.serviceConnection)
         self.test_connection()
 
