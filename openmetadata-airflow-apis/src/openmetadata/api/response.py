@@ -12,6 +12,7 @@
 import json
 from typing import Optional
 
+from airflow.models import DagRun
 from flask import Response
 
 
@@ -69,9 +70,10 @@ class ResponseFormat:
         pass
 
     @staticmethod
-    def format_dag_run_state(dag_run):
+    def format_dag_run_state(dag_run: DagRun):
         return {
             "state": dag_run.get_state(),
+            "run_id": dag_run.run_id,
             "startDate": (
                 None
                 if not dag_run.start_date
