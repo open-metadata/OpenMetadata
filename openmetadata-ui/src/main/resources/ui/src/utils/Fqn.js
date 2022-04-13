@@ -27,6 +27,7 @@ export default class Fqn {
     const tree = parser.fqn();
     const splitter = new SplitListener();
     ParseTreeWalker.DEFAULT.walk(splitter, tree);
+
     return splitter.split();
   }
 
@@ -36,29 +37,32 @@ export default class Fqn {
     for (const x of xs) {
       result.push(this.quoteName(x));
     }
+
     return result.join('.');
   }
 
   // Equivalent of Java's FullyQualifiedName#quoteName
   static quoteName(name) {
-    let matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
+    const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
     if (!matcher || matcher[0].length != name.length) {
-      throw "Invalid name " + name;
+      throw 'Invalid name ' + name;
     }
 
     // Name matches quoted string "sss".
     // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
     if (matcher[1] != null) {
-      let unquotedName = matcher[2];
-      return unquotedName.includes(".") ? name : unquotedName;
+      const unquotedName = matcher[2];
+
+      return unquotedName.includes('.') ? name : unquotedName;
     }
 
     // Name matches unquoted string sss
     // If unquoted string contains ".", return quoted "sss", else unquoted sss
-    let unquotedName = matcher[4];
-    if (!unquotedName.includes("\"")) {
-      return unquotedName.includes(".") ? "\"" + name + "\"" : unquotedName;
+    const unquotedName = matcher[4];
+    if (!unquotedName.includes('"')) {
+      return unquotedName.includes('.') ? '"' + name + '"' : unquotedName;
     }
-    throw "Invalid name " + name;
+
+    throw 'Invalid name ' + name;
   }
 }
