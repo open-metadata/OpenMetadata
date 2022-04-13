@@ -37,7 +37,7 @@ import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.i
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
-import EntityDeleteModal from '../Modals/EntityDeleteModal /EntityDeleteModal';
+import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { ManageProps } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
