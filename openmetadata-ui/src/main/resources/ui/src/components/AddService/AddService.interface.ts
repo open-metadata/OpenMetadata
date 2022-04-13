@@ -12,10 +12,12 @@
  */
 
 import { ServiceCategory } from '../../enums/service.enum';
-// import { DataObj } from '../../interface/service.interface';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DataObj } from '../../interface/service.interface';
 
 export interface AddServiceProps {
   serviceCategory: ServiceCategory;
-  // uncomment below at the time of API intigration
-  // onSave: (service: DataObj) => void;
+  onAddServiceSave: (service: DataObj) => Promise<void>;
+  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  newServiceData: DataObj | undefined;
 }

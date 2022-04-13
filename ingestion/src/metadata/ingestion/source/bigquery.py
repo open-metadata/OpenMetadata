@@ -25,16 +25,18 @@ from sqlalchemy_bigquery._types import (
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -100,15 +102,18 @@ class BigquerySource(SQLSource):
             logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigQueryConnection = config.serviceConnection.__root__.config
-        options = connection.connectionOptions.dict()
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        if (
+            not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            and connection.connectionOptions
+        ):
+            options = connection.connectionOptions.dict()
             if options.get("credentials_path"):
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options[
                     "credentials_path"
@@ -176,6 +181,16 @@ class BigquerySource(SQLSource):
                 return []
 
         super().fetch_sample_data(schema, table)
+
+    def _get_database(self, database: Optional[str]) -> Database:
+        if not database:
+            database = self.service_connection.projectID
+        return Database(
+            name=database,
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
+        )
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

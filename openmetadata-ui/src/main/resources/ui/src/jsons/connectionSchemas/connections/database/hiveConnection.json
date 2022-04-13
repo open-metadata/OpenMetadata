@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/hiveSQLConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HiveSQLConnection",
+  "description": "Hive SQL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.HiveSQLConnection",
+  "definitions": {
+    "hiveType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Hive"],
+      "default": "Hive"
+    },
+    "hiveScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["hive"],
+      "default": "hive"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/hiveType",
+      "default": "Hive"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/hiveScheme",
+      "default": "hive"
+    },
+    "username": {
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Hive.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Hive.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Hive.",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Hive.",
+      "type": "string"
+    },
+    "authOptions": {
+      "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

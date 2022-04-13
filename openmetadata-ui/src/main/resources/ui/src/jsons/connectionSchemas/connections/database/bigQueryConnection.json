@@ -1,0 +1,103 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/bigQueryConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BigQueryConnection",
+  "description": "Google BigQuery Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
+  "definitions": {
+    "bigqueryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["BigQuery"],
+      "default": "BigQuery"
+    },
+    "bigqueryScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["bigquery"],
+      "default": "bigquery"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/bigqueryType",
+      "default": "BigQuery"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/bigqueryScheme",
+      "default": "bigquery"
+    },
+    "hostPort": {
+      "description": "BigQuery APIs URL",
+      "type": "string",
+      "default": "bigquery.googleapis.com"
+    },
+    "username": {
+      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+      "type": "string"
+    },
+    "projectID": {
+      "description": "Google BigQuery project id.",
+      "type": "string"
+    },
+    "enablePolicyTagImport": {
+      "description": "Enable importing policy tags of BigQuery into OpenMetadata",
+      "type": "boolean",
+      "default": true
+    },
+    "tagCategoryName": {
+      "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
+      "type": "string",
+      "default": "BigqueryPolicyTags"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "type": "string"
+    },
+    "partitionQueryDuration": {
+      "description": "Duration for partitioning bigquery tables",
+      "type": "integer",
+      "default": 1
+    },
+    "partitionQuery": {
+      "description": "Partitioning query for bigquery tables",
+      "type": "string",
+      "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
+    },
+    "partitionField": {
+      "description": "Column name on which bigquery table will be partitioned",
+      "type": "string",
+      "default": "_PARTITIONTIME"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsUsageExtraction": {
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

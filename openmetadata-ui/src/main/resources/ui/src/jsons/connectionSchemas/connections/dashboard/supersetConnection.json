@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SupersetConnection",
+  "description": "Superset Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.SupersetConnection",
+  "definitions": {
+    "supersetType": {
+      "description": "Superset service type",
+      "type": "string",
+      "enum": ["Superset"],
+      "default": "Superset"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/supersetType",
+      "default": "Superset"
+    },
+    "supersetURL": {
+      "description": "URL for the superset instance",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:8088"
+    },
+    "username": {
+      "description": "username for the Superset",
+      "type": "string"
+    },
+    "password": {
+      "description": "password for the Superset",
+      "type": "string",
+      "format": "password"
+    },
+    "provider": {
+      "description": "authenticaiton provider for the Superset",
+      "type": "string",
+      "default": "db"
+    },
+    "dbServiceConnection": {
+      "description": "Database Service to create lineage",
+      "type": "string",
+      "default": null
+    },
+    "connectionOptions": {
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object"
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

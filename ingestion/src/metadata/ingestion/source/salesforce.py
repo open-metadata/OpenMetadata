@@ -28,16 +28,17 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -61,11 +62,12 @@ class SalesforceSourceStatus(SourceStatus):
 
 
 class SalesforceSource(Source[OMetaDatabaseAndTable]):
-    def __init__(self, config, metadata_config: OpenMetadataServerConfig):
+    def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
-        self.service = get_database_service_or_create(
-            config=config, metadata_config=metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
@@ -75,7 +77,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SalesforceConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SalesforceConnection):

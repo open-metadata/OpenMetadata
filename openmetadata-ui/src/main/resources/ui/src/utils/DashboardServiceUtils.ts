@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   DashboardConnection,
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
+import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
+import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
+import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
+import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   let retVal: string | undefined;
@@ -53,4 +60,43 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
   }
 
   return !isUndefined(retVal) ? retVal : '--';
+};
+
+export const getDashboardConfig = (config?: DashboardConnection['config']) => {
+  let schema = {};
+  const uiSchema = { ...COMMON_UI_SCHEMA };
+  switch (config?.type) {
+    case DashboardServiceType.Looker: {
+      schema = lookerConnection;
+
+      break;
+    }
+    case DashboardServiceType.Metabase: {
+      schema = metabaseConnection;
+
+      break;
+    }
+    case DashboardServiceType.PowerBI: {
+      schema = powerBIConnection;
+
+      break;
+    }
+    case DashboardServiceType.Redash: {
+      schema = redashConnection;
+
+      break;
+    }
+    case DashboardServiceType.Superset: {
+      schema = supersetConnection;
+
+      break;
+    }
+    case DashboardServiceType.Tableau: {
+      schema = tableauConnection;
+
+      break;
+    }
+  }
+
+  return cloneDeep({ schema, uiSchema });
 };

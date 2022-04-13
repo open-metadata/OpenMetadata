@@ -16,9 +16,10 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -26,10 +27,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -49,16 +50,15 @@ class DeltalakeSource(Source[Entity]):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.connection_config = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(
-            config=config,
-            metadata_config=metadata_config,
-            service_name=config.serviceName,
+        self.metadata = OpenMetadata(metadata_config)
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
@@ -92,7 +92,7 @@ class DeltalakeSource(Source[Entity]):
         self.ARRAY_CHILD_END_INDEX = -1
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DeltaLakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DeltaLakeConnection):

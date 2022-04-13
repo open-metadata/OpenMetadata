@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FilterPatternType } from '../../../enums/filterPattern.enum';
+import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 
 export interface FilterPatternProps {
   checked: boolean;
@@ -19,7 +19,7 @@ export interface FilterPatternProps {
   handleChecked: (e: boolean) => void;
   includePattern: Array<string> | undefined;
   excludePattern: Array<string> | undefined;
-  type: FilterPatternType;
-  getExcludeValue: (value: Array<string>, type: FilterPatternType) => void;
-  getIncludeValue: (value: Array<string>, type: FilterPatternType) => void;
+  type: FilterPatternEnum;
+  getExcludeValue: (value: Array<string>, type: FilterPatternEnum) => void;
+  getIncludeValue: (value: Array<string>, type: FilterPatternEnum) => void;
 }

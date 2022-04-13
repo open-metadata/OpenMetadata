@@ -19,11 +19,11 @@ from typing import Iterable
 
 from google.cloud import logging
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
@@ -70,7 +70,7 @@ class BigqueryUsageSource(Source[TableQuery]):
         return f"{self.scheme}://"
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = BigQueryConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
