@@ -18,11 +18,11 @@ from typing import Any, Dict, Iterable
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -56,9 +56,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
         report:
     """
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.connection = config.serviceConnection.__root__.config
@@ -76,7 +74,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ClickhouseConnection):

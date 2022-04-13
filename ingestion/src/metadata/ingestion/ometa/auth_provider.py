@@ -23,13 +23,20 @@ from typing import Tuple
 import requests
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Auth0SSOConfig,
-    AzureSSOConfig,
-    CustomOidcSSOConfig,
-    GoogleSSOConfig,
-    OktaSSOConfig,
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.auth0SSOClientConfig import (
+    Auth0SSOClientConfig,
+)
+from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
+    CustomOIDCSSOClientConfig,
+)
+from metadata.generated.schema.security.client.googleSSOClientConfig import (
+    GoogleSSOClientConfig,
+)
+from metadata.generated.schema.security.client.oktaSSOClientConfig import (
+    OktaSSOClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
 
@@ -93,11 +100,11 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self):
@@ -118,15 +125,15 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: GoogleSSOConfig = self.config.securityConfig
+        self.security_config: GoogleSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -153,15 +160,15 @@ class OktaAuthenticationProvider(AuthenticationProvider):
     Prepare the Json Web Token for Okta auth
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: OktaSSOConfig = self.config.securityConfig
+        self.security_config: OktaSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     async def auth_token(self) -> None:
@@ -256,15 +263,15 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: Auth0SSOConfig = self.config.securityConfig
+        self.security_config: Auth0SSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -298,14 +305,14 @@ class AzureAuthenticationProvider(AuthenticationProvider):
     """
 
     # TODO: Prepare JSON for Azure Auth
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
         self.security_config: AzureSSOConfig = self.config.securityConfig
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -343,16 +350,16 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig) -> None:
+    def __init__(self, config: OpenMetadataConnection) -> None:
         self.config = config
-        self.security_config: CustomOidcSSOConfig = self.config.securityConfig
+        self.security_config: CustomOIDCSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
     def create(
-        cls, config: OpenMetadataServerConfig
+        cls, config: OpenMetadataConnection
     ) -> "CustomOIDCAuthenticationProvider":
         return cls(config)
 

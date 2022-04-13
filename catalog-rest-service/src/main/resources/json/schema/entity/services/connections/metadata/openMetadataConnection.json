@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/openMetadataConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenMetadataConnection",
+  "description": "OpenMetadata Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection",
+  "properties": {
+    "hostPort": {
+      "description": "OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api",
+      "type": "string",
+      "default": "http://localhost:8585/api"
+    },
+    "authProvider": {
+      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
+      "type": "string",
+      "enum": ["no-auth", "azure", "google", "okta", "auth0", "custom-oidc"],
+      "default": "no-auth"
+    },
+    "securityConfig": {
+      "description": "OpenMetadata Client security configuration.",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/client/googleSSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/oktaSSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/auth0SSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/azureSSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/customOidcSSOClientConfig.json"
+        }
+      ]
+    },
+    "apiVersion": {
+      "description": "OpenMetadata server API version to use.",
+      "type": "string",
+      "default": "v1"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}

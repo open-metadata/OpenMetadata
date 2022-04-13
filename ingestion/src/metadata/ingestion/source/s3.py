@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
 )
 from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import S3StorageClass, StorageServiceType
@@ -46,9 +46,7 @@ class S3Source(Source[Entity]):
     config: S3SourceConfig
     status: SourceStatus
 
-    def __init__(
-        self, config: S3SourceConfig, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: S3SourceConfig, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
@@ -63,7 +61,7 @@ class S3Source(Source[Entity]):
         self.s3 = AWSClient(self.config).get_client("s3")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = S3SourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

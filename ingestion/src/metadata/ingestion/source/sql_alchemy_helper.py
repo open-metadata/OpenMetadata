@@ -14,7 +14,10 @@ from typing import Any, Iterable
 
 from sqlalchemy import create_engine
 
-from ...generated.schema.metadataIngestion.workflow import OpenMetadataServerConfig
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+
 from ...utils.source_connections import get_connection_url
 from .sql_source import SQLSourceStatus
 
@@ -25,7 +28,7 @@ class SQLAlchemyHelper:
     def __init__(
         self,
         config,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
         platform: str,
         query: str,
     ):
