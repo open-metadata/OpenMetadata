@@ -152,4 +152,14 @@ describe('Test Manage tab Component', () => {
 
     expect(isJoinableSwitch).toBeInTheDocument();
   });
+
+  it('Should render danger zone if allowDelete is present', async () => {
+    const { container } = render(
+      <ManageTab allowDelete hasEditAccess onSave={mockFunction} />
+    );
+
+    const dangerZone = await findByTestId(container, 'danger-zone');
+
+    expect(dangerZone).toBeInTheDocument();
+  });
 });
