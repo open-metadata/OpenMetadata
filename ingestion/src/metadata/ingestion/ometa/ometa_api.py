@@ -18,6 +18,7 @@ working with OpenMetadata entities.
 import urllib
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
+from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -114,6 +115,7 @@ class OpenMetadata(
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
+    OMetaServiceMixin,
     Generic[T, C],
 ):
     """
