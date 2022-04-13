@@ -226,7 +226,8 @@ class SampleDataSource(Source[Entity]):
             open(self.service_connection.sampleDataFolder + "/glue/tables.json", "r")
         )
         self.glue_database_service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=WorkflowSource(**self.glue_database_service_json)
+            entity=DatabaseService,
+            config=WorkflowSource(**self.glue_database_service_json),
         )
         self.glue_storage_service = get_storage_service_or_create(
             self.glue_storage_service_json,
@@ -295,7 +296,8 @@ class SampleDataSource(Source[Entity]):
             )
         )
         self.dashboard_service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=WorkflowSource(**self.dashboard_service_json)
+            entity=DashboardService,
+            config=WorkflowSource(**self.dashboard_service_json),
         )
 
         self.pipeline_service_json = json.load(

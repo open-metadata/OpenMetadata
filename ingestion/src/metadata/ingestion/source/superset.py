@@ -32,7 +32,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType, DashboardService,
+    DashboardService,
+    DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
