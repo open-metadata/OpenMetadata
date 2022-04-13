@@ -1,9 +1,13 @@
 import json
 import uuid
 from dataclasses import dataclass, field
+from distutils.command.config import config
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+from importlib_metadata import SelectableGroups
+
+from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -16,7 +20,9 @@ from metadata.generated.schema.entity.services.connections.metadata.atlasConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import (
+    MessagingService,
     MessagingServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -98,16 +104,14 @@ class AtlasSource(Source):
 
     def prepare(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            self.service = get_database_service_or_create(
-                self.config, self.metadata_config
+            self.service = self.metadata.get_service_or_create(
+                entity=DatabaseService,
+                config=self.config,
             )
             self.tables[key] = self.atlas_client.list_entities(entityType=key)
         for key in self.service_connection.entityTypes.get("Topic", []):
-            self.message_service = get_messaging_service_or_create(
-                self.config.serviceName,
-                MessagingServiceType.Kafka.name,
-                self.config,
-                self.metadata_config,
+            self.message_service = self.metadata.get_service_or_create(
+                entity=MessagingService, config=self.config
             )
             self.topics[key] = self.atlas_client.list_entities(entityType=key)
 
