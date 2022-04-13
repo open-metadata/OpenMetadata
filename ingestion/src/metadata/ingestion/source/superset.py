@@ -210,7 +210,7 @@ class SupersetSource(Source[Entity]):
         dashboard_id = dashboard_json["id"]
         name = dashboard_json["dashboard_title"]
         dashboard_url = (
-            f"{self.service_connection.supersetURL[:-1]}{dashboard_json['url']}"
+            f"{self.service_connection.hostPort[:-1]}{dashboard_json['url']}"
         )
         last_modified = (
             dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp()
@@ -312,7 +312,7 @@ class SupersetSource(Source[Entity]):
             dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
         )
         chart_type = chart_json["viz_type"]
-        chart_url = f"{self.service_connection.supersetURL}{chart_json['url']}"
+        chart_url = f"{self.service_connection.hostPort}{chart_json['url']}"
         datasource_id = chart_json["datasource_id"]
         datasource_fqn = self._get_datasource_from_id(datasource_id)
         owners = get_owners(chart_json["owners"])
