@@ -182,7 +182,7 @@ class BigquerySource(SQLSource):
 
         super().fetch_sample_data(schema, table)
 
-    def _get_database(self, database: str) -> Database:
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = self.service_connection.projectID
         return Database(

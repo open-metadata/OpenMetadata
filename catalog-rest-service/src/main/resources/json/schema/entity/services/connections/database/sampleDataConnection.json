@@ -17,7 +17,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/sampleDataType",
-      "default": "Athena"
+      "default": "SampleData"
     },
     "sampleDataFolder": {
       "description": "Sample Data File Path",
