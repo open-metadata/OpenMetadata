@@ -13,7 +13,6 @@ Mixin class containing entity tag specific methods
 
 To be used be OpenMetadata
 """
-import logging
 from typing import List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -23,9 +22,10 @@ from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.utils import ometa_logger
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class OMetaTagMixin:

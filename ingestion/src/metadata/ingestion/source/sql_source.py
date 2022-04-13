@@ -12,7 +12,6 @@
 Generic source to build SQL connectors.
 """
 import json
-import logging
 import re
 import traceback
 import uuid
@@ -59,6 +58,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -67,7 +67,7 @@ from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 @dataclass

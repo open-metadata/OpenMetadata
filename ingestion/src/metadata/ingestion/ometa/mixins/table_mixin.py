@@ -13,7 +13,6 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import logging
 from typing import List, Optional, Union
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -30,8 +29,9 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class OMetaTableMixin:

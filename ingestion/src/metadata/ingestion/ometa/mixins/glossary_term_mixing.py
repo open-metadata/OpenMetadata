@@ -13,13 +13,14 @@ Mixin class containing Glossary Term specific methods
 
 To be used be OpenMetadata
 """
-import logging
 from typing import Type, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.ingestion.ometa.utils import ometa_logger
+
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class GlossaryTermMixin:

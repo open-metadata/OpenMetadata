@@ -13,7 +13,6 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-import logging
 import traceback
 from logging.config import DictConfigurator
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
@@ -25,10 +24,15 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import _get_formmated_table_name, get_entity_type
+from metadata.ingestion.ometa.utils import (
+    _get_formmated_table_name,
+    get_entity_type,
+    ometa_logger,
+)
 from metadata.utils.fqdn_generator import get_fqdn
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
+
 
 # Prevent sqllineage from modifying the logger config
 def configure(self):

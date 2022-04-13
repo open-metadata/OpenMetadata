@@ -12,7 +12,6 @@
 REST Auth & Client for Apache Superset
 """
 import json
-import logging
 
 from pydantic import SecretStr
 
@@ -21,8 +20,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class SupersetAuthenticationProvider(AuthenticationProvider):
