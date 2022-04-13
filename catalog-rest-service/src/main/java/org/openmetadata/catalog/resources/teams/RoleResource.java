@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -48,6 +49,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
@@ -59,8 +62,11 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -68,7 +74,10 @@ import org.openmetadata.catalog.util.ResultList;
 @Api(value = "Roles collection", tags = "Roles collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "roles")
+@Collection(name = "roles", order = 1) // Load after PolicyResource at Order 0
+// policies exist before
+// loading roles
+@Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
 
@@ -86,7 +95,23 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    dao.initSeedDataFromResources();
+    List<String> jsonFiles = EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", Entity.ROLE));
+    jsonFiles.forEach(
+        jsonFile -> {
+          try {
+            String roleJson =
+                IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonFile)));
+            Role role = JsonUtils.readValue(roleJson, entityClass);
+            List<EntityReference> policies = role.getPolicies();
+            for (EntityReference policy : policies) {
+              EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName());
+              policy.setId(ref.getId());
+            }
+            dao.initSeedData(role);
+          } catch (Exception e) {
+            LOG.warn("Failed to initialize the {} from file {}", Entity.ROLE, jsonFile, e);
+          }
+        });
   }
 
   public static class RoleList extends ResultList<Role> {

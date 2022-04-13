@@ -186,14 +186,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
       }
 
       // If all user (subject) and entity (object) attributes are null, the rule is invalid.
-      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Found invalid rule %s within policy %s. Please ensure that at least one among the user (subject) and entity (object) attributes is specified",
-                rule.getName(), policy.getName()));
-      }
+      // TODO: fixme
+      //      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null) {
+      //        throw new IllegalArgumentException(
+      //            String.format(
+      //                "Found invalid rule %s within policy %s. Please ensure that at least one among the user
+      // (subject) and entity (object) attributes is specified",
+      //                rule.getName(), policy.getName()));
+      //      }
     }
-    // No validation errors, if execution reaches here.
   }
 
   private List<Policy> getAccessControlPolicies() throws IOException {

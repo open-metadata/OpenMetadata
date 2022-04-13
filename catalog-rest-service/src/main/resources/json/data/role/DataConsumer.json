@@ -6,9 +6,8 @@
   "defaultRole": true,
   "policies" : [
     {
-      "name" : "TODO",
-      "fullyQualifiedName" : "TODO",
-      "type" : "policy"
+      "type" : "policy",
+      "name" : "DataConsumerAccessControlPolicy"
     }
   ]
 }

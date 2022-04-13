@@ -74,8 +74,8 @@ public class TagResourceTest extends CatalogApplicationTest {
     CategoryList list = listCategories();
 
     // Ensure category list has all the tag categories initialized from tags files in the resource path
-    List<String> files = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
-    assertEquals(files.size(), list.getData().size());
+    List<String> jsonData = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
+    assertEquals(jsonData.size(), list.getData().size());
 
     // Validate list of tag categories returned in GET
     for (TagCategory category : list.getData()) {

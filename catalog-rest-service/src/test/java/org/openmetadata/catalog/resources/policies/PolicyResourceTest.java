@@ -141,8 +141,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.UpdateDescription, true, 0, true));
     rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -151,8 +150,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule("rule21", null, null, MetadataOperation.UpdateDescription, true, 0, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
@@ -166,15 +164,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule1", null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule2", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.UpdateTags, true, 1, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),

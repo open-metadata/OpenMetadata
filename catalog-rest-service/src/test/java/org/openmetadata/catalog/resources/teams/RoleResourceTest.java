@@ -215,7 +215,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     assertListNull(role.getPolicies(), role.getUsers());
 
     // .../roles?fields=policy,users
-    String fields = "policy,teams,users";
+    String fields = "policies,teams,users";
     role =
         byName
             ? getEntityByName(role.getName(), null, fields, ADMIN_AUTH_HEADERS)
@@ -230,7 +230,11 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public CreateRole createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateRole().withName(name).withDescription(description).withDisplayName(displayName);
+    return new CreateRole()
+        .withName(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withPolicies(DATA_CONSUMER_ROLE.getPolicies());
   }
 
   @Override

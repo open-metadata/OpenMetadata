@@ -51,9 +51,9 @@ import org.openmetadata.catalog.type.MetadataOperation;
 public class PolicyEvaluator {
 
   private PolicyRepository policyRepository;
-  private AtomicReference<Rules> rules;
-  private RulesEngine checkPermissionRulesEngine;
-  private RulesEngine allowedOperationsRulesEngine;
+  private final AtomicReference<Rules> rules;
+  private final RulesEngine checkPermissionRulesEngine;
+  private final RulesEngine allowedOperationsRulesEngine;
 
   // Eager initialization of Singleton since PolicyEvaluator is lightweight.
   private static final PolicyEvaluator policyEvaluator = new PolicyEvaluator();

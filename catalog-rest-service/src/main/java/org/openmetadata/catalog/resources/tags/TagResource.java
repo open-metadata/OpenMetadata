@@ -116,7 +116,7 @@ public class TagResource {
                     });
             daoCategory.initCategory(tagCategory);
           } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
+            LOG.warn("Failed to initialize the tag files {}", tagFile, e);
           }
         });
   }

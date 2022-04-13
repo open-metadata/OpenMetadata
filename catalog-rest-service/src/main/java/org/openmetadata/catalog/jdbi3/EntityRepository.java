@@ -225,8 +225,8 @@ public abstract class EntityRepository<T> {
             String json =
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
             initSeedData(JsonUtils.readValue(json, entityClass));
-          } catch (IOException e) {
-            LOG.warn("Failed to initialize the {} from file {}: {}", entityType, jsonDataFile, e.getMessage());
+          } catch (Exception e) {
+            LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
   }
@@ -244,7 +244,7 @@ public abstract class EntityRepository<T> {
     LOG.info("{} {} is not initialized", entityType, entityInterface.getFullyQualifiedName());
     entityInterface.setUpdateDetails("admin", System.currentTimeMillis());
     entityInterface.setId(UUID.randomUUID());
-    storeEntity(entityInterface.getEntity(), false);
+    create(null, entityInterface.getEntity());
     LOG.info("Created a new {} {}", entityType, entityInterface.getFullyQualifiedName());
   }
 
@@ -502,7 +502,7 @@ public abstract class EntityRepository<T> {
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
     EntityInterface<T> entityInterface = getEntityInterface(updated);
-    if (supportsSoftDelete && hardDelete == false) {
+    if (supportsSoftDelete && !hardDelete) {
       entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
       entityInterface.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);

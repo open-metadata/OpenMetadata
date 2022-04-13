@@ -5,11 +5,9 @@
   "description": "Policy for Data Consumer to perform operations on metadata entities",
   "policyType": "AccessControl",
   "enabled": true,
-  "deleted": false,
   "rules": [
     {
       "name": "DataConsumerAccessControlPolicy-UpdateDescription",
-      "userRoleAttr": "DataConsumer",
       "operation": "UpdateDescription",
       "allow": true,
       "enabled": true,
@@ -17,7 +15,6 @@
     },
     {
       "name": "DataConsumerAccessControlPolicy-UpdateOwner",
-      "userRoleAttr": "DataConsumer",
       "operation": "UpdateOwner",
       "allow": true,
       "enabled": true,
@@ -25,7 +22,6 @@
     },
     {
       "name": "DataConsumerAccessControlPolicy-UpdateTags",
-      "userRoleAttr": "DataConsumer",
       "operation": "UpdateTags",
       "allow": true,
       "enabled": true,

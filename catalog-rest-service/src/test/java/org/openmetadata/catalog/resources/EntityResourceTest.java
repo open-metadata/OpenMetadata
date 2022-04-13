@@ -1472,6 +1472,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final T createEntity(K createRequest, Map<String, String> authHeaders) throws HttpResponseException {
+    System.out.println("XXX " + createRequest);
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 

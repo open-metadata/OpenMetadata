@@ -46,11 +46,6 @@ class RuleCondition implements Condition {
     }
 
     String entityType = facts.get(CommonFields.ENTITY_TYPE);
-    if (rule.getEntityTypeAttr() != null && !entityType.equals(rule.getEntityTypeAttr())) {
-      return false;
-    }
-
-    List<String> userRoles = facts.get(CommonFields.USER_ROLES);
-    return rule.getUserRoleAttr() == null || userRoles.contains(rule.getUserRoleAttr());
+    return rule.getEntityTypeAttr() == null || entityType.equals(rule.getEntityTypeAttr());
   }
 }

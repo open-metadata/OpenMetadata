@@ -194,7 +194,9 @@ public class UserRepository extends EntityRepository<User> {
 
   private void assignRoles(User user, List<EntityReference> roles) {
     roles = listOrEmpty(roles);
+    System.out.println("XXX assigning roles " + roles);
     for (EntityReference role : roles) {
+      System.out.println("XXX assigning role " + role);
       addRelationship(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS);
     }
   }
