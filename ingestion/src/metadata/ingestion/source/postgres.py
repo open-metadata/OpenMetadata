@@ -52,7 +52,7 @@ class PostgresSource(SQLSource):
     def get_status(self) -> SourceStatus:
         return self.status
 
-    def _is_partition(self, table_name: str, schema_name: str) -> bool:
+    def _is_partition(self, table_name: str, schema_name: str, inspector=None) -> bool:
         cur = self.pgconn.cursor()
         cur.execute(
             """
