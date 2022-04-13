@@ -170,7 +170,7 @@ def _(connection: TrinoConnection):
 
 @get_connection_url.register
 def _(connection: DatabricksConnection):
-    url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
+    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
     return url
