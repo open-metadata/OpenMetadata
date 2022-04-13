@@ -14,7 +14,7 @@
 import antlr4 from 'antlr4';
 import FqnLexer from '../generated/antlr/FqnLexer';
 import FqnParser from '../generated/antlr/FqnParser';
-import SplitListener from '../antlr/SplitListner';
+import SplitListener from '../antlr/SplitListener';
 import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
 
 export default class Fqn {
