@@ -53,6 +53,25 @@ APIS_METADATA = [
             },
         ],
     },
+    {
+        "name": "dag_status",
+        "description": "Get the status of a dag run",
+        "http_method": "GET",
+        "arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+            {
+                "name": "run_id",
+                "description": "The id of the dagRun",
+                "form_input_type": "text",
+                "required": False,
+            },
+        ],
+    },
 ]
 
 

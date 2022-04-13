@@ -17,9 +17,7 @@ import traceback
 from typing import Optional
 
 from airflow import settings
-from airflow.api.common.experimental.trigger_dag import trigger_dag
 from airflow.models import DagBag, DagModel
-from airflow.utils import timezone
 from airflow.www.app import csrf
 from flask import Response, request
 from flask_admin import expose as admin_expose
@@ -35,6 +33,7 @@ from openmetadata.api.config import (
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
 from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.status import status
 from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
@@ -122,6 +121,8 @@ class REST_API(AppBuilderBaseView):
             return self.trigger_dag()
         if api == "test_connection":
             return self.test_connection()
+        if api == "dag_status":
+            return self.dag_status()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -188,7 +189,6 @@ class REST_API(AppBuilderBaseView):
         """
         Trigger a dag run
         """
-        logging.info("Running run_dag method")
         request_json = request.get_json()
 
         dag_id = request_json.get("workflow_name")
@@ -206,4 +206,21 @@ class REST_API(AppBuilderBaseView):
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Workflow {dag_id} has filed to trigger due to {exc} - {traceback.format_exc()}",
+            )
+
+    def dag_status(self) -> Response:
+        """
+        Check the status of a DAG runs
+        """
+        dag_id: str = self.get_request_arg(request, "dag_id")
+        run_id: Optional[str] = self.get_request_arg(request, "run_id")
+
+        try:
+            return status(dag_id, run_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to get dag {dag_id} {run_id} status")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to get status for {dag_id} {run_id} due to {exc} - {traceback.format_exc()}",
             )
