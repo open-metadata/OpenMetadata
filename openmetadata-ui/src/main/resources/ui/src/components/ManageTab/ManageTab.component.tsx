@@ -435,7 +435,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
               type="button"
               variant="outlined"
               onClick={handleOnEntityDelete}>
-              Delete this entity
+              Delete this {entityType}
             </Button>
           </div>
         </div>
