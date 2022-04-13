@@ -424,7 +424,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
                 Delete {entityType} {entityName}
               </h4>
               <p data-testid="danger-zone-text-para">
-                {jsonData['label']['delete-entity-text']}
+                {`Once you delete this ${entityType}, it would be removed permanently`}
               </p>
             </div>
             <Button

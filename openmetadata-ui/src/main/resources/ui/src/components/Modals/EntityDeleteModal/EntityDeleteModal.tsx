@@ -19,7 +19,6 @@ import React, {
   useCallback,
   useState,
 } from 'react';
-import jsonData from '../../../jsons/en';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -61,7 +60,7 @@ const EntityDeleteModal: FC<Prop> = ({
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2">{jsonData['label']['delete-entity-text']}</p>
+          <p className="tw-mb-2">{`Once you delete this ${entityType}, it would be removed permanently`}</p>
           <p className="tw-mb-2">
             Type{' '}
             <strong>
