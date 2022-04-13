@@ -13,6 +13,7 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
+import { ServiceCategory } from '../../enums/service.enum';
 import { DataObj } from '../../interface/service.interface';
 import AddIngestion from './AddIngestion.component';
 import { AddIngestionProps } from './addIngestion.interface';
@@ -22,6 +23,9 @@ const mockAddIngestionProps: AddIngestionProps = {
     name: 'serviceName',
   } as DataObj,
   handleAddIngestion: jest.fn(),
+  serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+  onAddIngestionSave: jest.fn(),
+  handleViewServiceClick: jest.fn(),
 };
 
 jest.mock('./Steps/ConfigureIngestion', () => {

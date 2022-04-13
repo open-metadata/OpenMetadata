@@ -30,6 +30,8 @@ const jsonData = {
     'create-tag-category-error': 'Error while creating tag category!',
     'create-tag-error': 'Error while creating tag!',
     'create-team-error': 'Error while creating team!',
+    'create-ingestion-error': 'Error while creating ingestion workflow!',
+    'create-service-error': 'Error while creating service!',
 
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
