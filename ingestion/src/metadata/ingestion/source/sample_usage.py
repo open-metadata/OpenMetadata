@@ -92,3 +92,6 @@ class SampleUsageSource(Source[TableQuery]):
 
     def get_status(self):
         return self.status
+
+    def test_connection(self) -> None:
+        pass

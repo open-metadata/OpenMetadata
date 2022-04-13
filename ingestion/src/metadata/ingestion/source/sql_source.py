@@ -62,7 +62,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import create_and_bind_session, get_engine
+from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_database_service_or_create
@@ -130,6 +130,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
         self.engine = get_engine(service_connection=self.config.serviceConnection)
+        self.test_connection()
+
         self._session = None  # We will instantiate this just if needed
         self._connection = None  # Lazy init as well
         self.data_profiler = None
@@ -147,6 +149,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             ) as manifest:
                 self.dbt_manifest = json.load(manifest)
         self.profile_date = datetime.now()
+
+    def test_connection(self) -> None:
+        """
+        Used a timed-bound function to test that the engine
+        can properly reach the source
+        """
+        test_connection(self.engine)
 
     def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
         """

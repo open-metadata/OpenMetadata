@@ -351,3 +351,6 @@ class MetadataSource(Source[Entity]):
 
     def close(self):
         pass
+
+    def test_connection(self) -> None:
+        pass

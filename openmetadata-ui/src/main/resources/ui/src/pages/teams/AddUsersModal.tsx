@@ -16,6 +16,7 @@ import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import { getEntityName } from '../../utils/CommonUtils';
 import UserCard from './UserCard';
 
 type Props = {
@@ -60,9 +61,11 @@ const AddUsersModal = ({
       })
       .map((user, index) => {
         const User = {
-          description: user.displayName || user.description || '',
-          name: user.name || '',
+          displayName: getEntityName(user),
+          fqn: user.fullyQualifiedName || '',
           id: user.id,
+          type: user.type,
+          name: user.name,
         };
 
         return (

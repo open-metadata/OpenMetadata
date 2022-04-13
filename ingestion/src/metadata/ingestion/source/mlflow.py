@@ -209,3 +209,6 @@ class MlflowSource(Source[CreateMlModelRequest]):
         """
         Don't need to close the client
         """
+
+    def test_connection(self) -> None:
+        pass

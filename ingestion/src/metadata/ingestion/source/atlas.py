@@ -265,3 +265,6 @@ class AtlasSource(Source):
             if not pipeline:
                 return
             return EntityReference(id=pipeline.id.__root__, type="pipeline")
+
+    def test_connection(self) -> None:
+        pass

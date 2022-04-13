@@ -27,6 +27,7 @@ export const formatDataResponse = (hits) => {
       hit._source.pipeline_id ||
       hit._source.pipeine_id;
     newData.name = hit._source.name;
+    newData.displayName = hit._source.display_name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;

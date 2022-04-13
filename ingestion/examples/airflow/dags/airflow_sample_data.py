@@ -35,7 +35,7 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "sample-data",
+    "type": "sample_data",
     "serviceName": "sample_data",
     "serviceConnection": {
       "config": {

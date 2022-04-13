@@ -204,6 +204,7 @@ declare module 'Models' {
   export type FormatedTableData = {
     id: string;
     name: string;
+    displayName: string;
     description: string;
     fullyQualifiedName: string;
     owner: EntityReference;
