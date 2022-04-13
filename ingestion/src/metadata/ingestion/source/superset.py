@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardService,
     DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -44,7 +45,6 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -181,14 +181,12 @@ class SupersetSource(Source[Entity]):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
-        self.metadata_client = OpenMetadata(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
+
         self.status = SourceStatus()
         self.client = SupersetAPIClient(self.config)
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Superset.name,
-            config=self.service_connection.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
 
     @classmethod
@@ -212,7 +210,7 @@ class SupersetSource(Source[Entity]):
         dashboard_id = dashboard_json["id"]
         name = dashboard_json["dashboard_title"]
         dashboard_url = (
-            f"{self.service_connection.supersetURL[:-1]}{dashboard_json['url']}"
+            f"{self.service_connection.hostPort[:-1]}{dashboard_json['url']}"
         )
         last_modified = (
             dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp()
@@ -281,11 +279,11 @@ class SupersetSource(Source[Entity]):
             dashboards = chart_data["result"].get("dashboards")
             for dashboard in dashboards:
                 try:
-                    from_entity = self.metadata_client.get_by_name(
+                    from_entity = self.metadata.get_by_name(
                         entity=Table,
                         fqdn=f"{self.service_connection.dbServiceName}.{datasource_text}",
                     )
-                    to_entity = self.metadata_client.get_by_name(
+                    to_entity = self.metadata.get_by_name(
                         entity=Lineage_Dashboard,
                         fqdn=f"{self.config.serviceName}.{dashboard['id']}",
                     )
@@ -314,7 +312,7 @@ class SupersetSource(Source[Entity]):
             dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
         )
         chart_type = chart_json["viz_type"]
-        chart_url = f"{self.service_connection.supersetURL}{chart_json['url']}"
+        chart_url = f"{self.service_connection.hostPort}{chart_json['url']}"
         datasource_id = chart_json["datasource_id"]
         datasource_fqn = self._get_datasource_from_id(datasource_id)
         owners = get_owners(chart_json["owners"])
