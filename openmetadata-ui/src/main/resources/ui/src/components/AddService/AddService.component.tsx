@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import { DynamicFormFieldType } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   getAddServicePath,
+  getServiceDetailsPath,
   ONLY_NUMBER_REGEX,
   ROUTES,
 } from '../../constants/constants';
@@ -25,6 +27,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { DataObj } from '../../interface/service.interface';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import {
   getAirflowPipelineTypes,
   getIsIngestionEnable,
@@ -39,10 +42,14 @@ import ConfigureService from './Steps/ConfigureService';
 import ConnectionDetails from './Steps/ConnectionDetails';
 import SelectServiceType from './Steps/SelectServiceType';
 
-const AddService = ({ serviceCategory }: AddServiceProps) => {
+const AddService = ({
+  serviceCategory,
+  onAddServiceSave,
+  newServiceData,
+  onAddIngestionSave,
+}: AddServiceProps) => {
   const history = useHistory();
   const [addIngestion, setAddIngestion] = useState(false);
-  const [serviceData, setServiceData] = useState<DataObj>();
   const [showErrorMessage, setShowErrorMessage] = useState({
     serviceType: false,
     name: false,
@@ -209,9 +216,27 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
       default:
         break;
     }
-    setServiceData(dataObj);
-    // onSave(dataObj);
-    setActiveStepperStep(4);
+    // TODO:- need to replace mockdata with actual data.
+    // mockdata to create service for mySQL
+    const mockData = {
+      description: description,
+      name: serviceName,
+      connection: {
+        config: {
+          type: 'MySQL',
+          hostPort: 'localhost:3306',
+        },
+      },
+      owner: {
+        id: getCurrentUserId(),
+        type: 'user',
+      },
+      serviceType: 'MySQL',
+    };
+
+    onAddServiceSave(mockData).then(() => {
+      setActiveStepperStep(4);
+    });
   };
 
   const handleConnectionDetailsSubmitClick = () => {
@@ -262,6 +287,12 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
     const newFormValues = [...connectionArguments];
     newFormValues[i][field] = value;
     setConnectionArguments(newFormValues);
+  };
+
+  const handleViewServiceClick = () => {
+    if (!isUndefined(newServiceData)) {
+      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+    }
   };
 
   const handleValidation = (
@@ -447,6 +478,7 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
           {activeStepperStep > 3 && (
             <SuccessScreen
               handleIngestionClick={() => handleAddIngestion(true)}
+              handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
               showIngestionButton={isIngestionSupported()}
             />
@@ -483,7 +515,10 @@ const AddService = ({ serviceCategory }: AddServiceProps) => {
         {addIngestion ? (
           <AddIngestion
             handleAddIngestion={handleAddIngestion}
-            serviceData={serviceData as DataObj}
+            handleViewServiceClick={handleViewServiceClick}
+            serviceCategory={serviceCategory}
+            serviceData={newServiceData as DataObj}
+            onAddIngestionSave={onAddIngestionSave}
           />
         ) : (
           addNewService()

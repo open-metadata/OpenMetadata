@@ -18,8 +18,11 @@ import {
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/ingestion.constant';
 import { FilterPatternType } from '../../enums/filterPattern.enum';
-import { PipelineType } from '../../generated/api/operations/pipelines/createAirflowPipeline';
-import { getCurrentDate } from '../../utils/CommonUtils';
+import {
+  CreateIngestionPipeline,
+  PipelineType,
+} from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddIngestionProps, PatternType } from './addIngestion.interface';
@@ -28,7 +31,10 @@ import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
   serviceData,
+  serviceCategory,
+  onAddIngestionSave,
   handleAddIngestion,
+  handleViewServiceClick,
 }: AddIngestionProps) => {
   const [activeStepperStep, setActiveStepperStep] = useState(1);
   const [ingestionName] = useState(
@@ -133,8 +139,49 @@ const AddIngestion = ({
     setActiveStepperStep(1);
   };
 
+  const getFilterPatternData = (data: PatternType) => {
+    const { include, exclude } = data;
+
+    return include.length === 0 && exclude.length === 0
+      ? undefined
+      : {
+          includes: include.length > 0 ? include : undefined,
+          excludes: exclude.length > 0 ? exclude : undefined,
+        };
+  };
+
   const handleScheduleIntervalDeployClick = () => {
-    setActiveStepperStep(3);
+    const ingestionDetails: CreateIngestionPipeline = {
+      airflowConfig: {
+        startDate: startDate as unknown as Date,
+        endDate: startDate as unknown as Date,
+        scheduleInterval: repeatFrequency,
+      },
+      name: ingestionName,
+      displayName: ingestionName,
+      owner: {
+        id: getCurrentUserId(),
+        type: 'user',
+      },
+      pipelineType: PipelineType.Metadata,
+      service: {
+        id: serviceData.id as string,
+        type: serviceCategory.slice(0, -1),
+      },
+      sourceConfig: {
+        config: {
+          enableDataProfiler: enableDataProfiler,
+          generateSampleData: ingestSampleData,
+          includeViews: includeView,
+          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
+          tableFilterPattern: getFilterPatternData(tableFilterPattern),
+        },
+      },
+    };
+
+    onAddIngestionSave(ingestionDetails).then(() => {
+      setActiveStepperStep(3);
+    });
   };
 
   return (
@@ -192,7 +239,11 @@ const AddIngestion = ({
         )}
 
         {activeStepperStep > 2 && (
-          <SuccessScreen name={ingestionName} showIngestionButton={false} />
+          <SuccessScreen
+            handleViewServiceClick={handleViewServiceClick}
+            name={ingestionName}
+            showIngestionButton={false}
+          />
         )}
       </div>
     </div>
