@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-import { FilterPatternType } from '../../../enums/filterPattern.enum';
+import React, { Fragment } from 'react';
+import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
@@ -21,17 +22,20 @@ import { Field } from '../../Field/Field';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 
 const ConfigureIngestion = ({
-  databaseFilterPattern,
+  dashboardFilterPattern,
   schemaFilterPattern,
   tableFilterPattern,
-  viewFilterPattern,
+  topicFilterPattern,
+  chartFilterPattern,
   includeView,
+  serviceCategory,
   enableDataProfiler,
   ingestSampleData,
-  showDatabaseFilter,
+  showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
-  showViewFilter,
+  showTopicFilter,
+  showChartFilter,
   getExcludeValue,
   getIncludeValue,
   handleShowFilter,
@@ -41,55 +45,88 @@ const ConfigureIngestion = ({
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
+  const getFilterPatternField = () => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showSchemaFilter}
+              excludePattern={schemaFilterPattern.exclude}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.SCHEMA)
+              }
+              includePattern={schemaFilterPattern.include}
+              type={FilterPatternEnum.SCHEMA}
+            />
+            <FilterPattern
+              checked={showTableFilter}
+              excludePattern={tableFilterPattern.exclude}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.TABLE)
+              }
+              includePattern={tableFilterPattern.include}
+              showSeparator={false}
+              type={FilterPatternEnum.TABLE}
+            />
+          </Fragment>
+        );
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showDashboardFilter}
+              excludePattern={dashboardFilterPattern.exclude}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.DASHBOARD)
+              }
+              includePattern={dashboardFilterPattern.include}
+              type={FilterPatternEnum.DASHBOARD}
+            />
+            <FilterPattern
+              checked={showChartFilter}
+              excludePattern={chartFilterPattern.exclude}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.CHART)
+              }
+              includePattern={chartFilterPattern.include}
+              showSeparator={false}
+              type={FilterPatternEnum.CHART}
+            />
+          </Fragment>
+        );
+
+      case ServiceCategory.MESSAGING_SERVICES:
+        return (
+          <FilterPattern
+            checked={showTopicFilter}
+            excludePattern={topicFilterPattern.exclude}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleChecked={(value) =>
+              handleShowFilter(value, FilterPatternEnum.TOPIC)
+            }
+            includePattern={topicFilterPattern.include}
+            showSeparator={false}
+            type={FilterPatternEnum.TOPIC}
+          />
+        );
+      default:
+        return <></>;
+    }
+  };
+
   return (
     <div className="tw-px-2" data-testid="configure-ingestion-container">
-      <div>
-        <FilterPattern
-          checked={showDatabaseFilter}
-          excludePattern={databaseFilterPattern.exclude}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternType.DATABASE)
-          }
-          includePattern={databaseFilterPattern.include}
-          type={FilterPatternType.DATABASE}
-        />
-        <FilterPattern
-          checked={showSchemaFilter}
-          excludePattern={schemaFilterPattern.exclude}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternType.SCHEMA)
-          }
-          includePattern={schemaFilterPattern.include}
-          type={FilterPatternType.SCHEMA}
-        />
-        <FilterPattern
-          checked={showTableFilter}
-          excludePattern={tableFilterPattern.exclude}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternType.TABLE)
-          }
-          includePattern={tableFilterPattern.include}
-          type={FilterPatternType.TABLE}
-        />
-        <FilterPattern
-          checked={showViewFilter}
-          excludePattern={viewFilterPattern.exclude}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternType.VIEW)
-          }
-          includePattern={viewFilterPattern.include}
-          showSeparator={false}
-          type={FilterPatternType.VIEW}
-        />
-      </div>
+      <div>{getFilterPatternField()}</div>
       {getSeparator('')}
       <div>
         <Field>
