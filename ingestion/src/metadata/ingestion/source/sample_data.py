@@ -43,6 +43,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -61,7 +62,6 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import (
-    get_messaging_service_or_create,
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
@@ -270,22 +270,11 @@ class SampleDataSource(Source[Entity]):
         self.topics = json.load(
             open(self.service_connection.sampleDataFolder + "/topics/topics.json", "r")
         )
-        kafka_config = {
-            "config": {
-                "bootstrapServers": self.kafka_service_json["config"]["connection"][
-                    "bootstrapServers"
-                ],
-                "schemaRegistryURL": self.kafka_service_json["config"]["connection"][
-                    "schemaRegistry"
-                ],
-            }
-        }
-        self.kafka_service = get_messaging_service_or_create(
-            service_name=self.kafka_service_json.get("name"),
-            message_service_type=self.kafka_service_json.get("serviceType"),
-            config=kafka_config,
-            metadata_config=self.metadata_config,
+
+        self.kafka_service = self.metadata.get_service_or_create(
+            entity=MessagingService, config=WorkflowSource(**self.kafka_service_json)
         )
+
         self.dashboard_service_json = json.load(
             open(
                 self.service_connection.sampleDataFolder + "/dashboards/service.json",
