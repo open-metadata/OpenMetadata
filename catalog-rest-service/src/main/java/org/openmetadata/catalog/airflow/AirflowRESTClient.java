@@ -120,8 +120,9 @@ public class AirflowRESTClient {
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       return response.body();
     } catch (Exception e) {
-      throw new AirflowException(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
+      LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
     }
+    return null;
   }
 
   public String runPipeline(String pipelineName) {
