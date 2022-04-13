@@ -31,7 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 
 class AirflowLineageConfig(BaseModel):
     airflow_service_name: str
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
 
 
 def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:

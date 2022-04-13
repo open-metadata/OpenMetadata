@@ -25,11 +25,11 @@ from confluent_kafka.schema_registry.schema_registry_client import (
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import SchemaType
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern, logger
@@ -67,7 +67,7 @@ class KafkaSource(Source[CreateTopicRequest]):
     def __init__(
         self,
         config: KafkaSourceConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -91,7 +91,7 @@ class KafkaSource(Source[CreateTopicRequest]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = KafkaSourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

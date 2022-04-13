@@ -17,12 +17,20 @@ OpenMetadata Airflow Lineage Backend security providers config
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Auth0SSOConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
-    AzureSSOConfig,
-    GoogleSSOConfig,
-    OktaSSOConfig,
+)
+from metadata.generated.schema.security.client.auth0SSOClientConfig import (
+    Auth0SSOClientConfig,
+)
+from metadata.generated.schema.security.client.azureSSOClientConfig import (
+    AzureSSOClientConfig,
+)
+from metadata.generated.schema.security.client.googleSSOClientConfig import (
+    GoogleSSOClientConfig,
+)
+from metadata.generated.schema.security.client.oktaSSOClientConfig import (
+    OktaSSOClientConfig,
 )
 from metadata.utils.dispatch import enum_register
 
@@ -37,11 +45,11 @@ class InvalidAirflowProviderException(Exception):
 
 
 @provider_config_registry.add(AuthProvider.google.value)
-def load_google_auth() -> GoogleSSOConfig:
+def load_google_auth() -> GoogleSSOClientConfig:
     """
     Load config for Google Auth
     """
-    return GoogleSSOConfig(
+    return GoogleSSOClientConfig(
         secretKey=conf.get(LINEAGE, "secret_key"),
         audience=conf.get(
             LINEAGE, "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
@@ -50,11 +58,11 @@ def load_google_auth() -> GoogleSSOConfig:
 
 
 @provider_config_registry.add(AuthProvider.okta.value)
-def load_okta_auth() -> OktaSSOConfig:
+def load_okta_auth() -> OktaSSOClientConfig:
     """
     Load config for Google Auth
     """
-    return OktaSSOConfig(
+    return OktaSSOClientConfig(
         clientId=conf.get(LINEAGE, "client_id"),
         orgURL=conf.get(LINEAGE, "org_url"),
         privateKey=conf.get(LINEAGE, "private_key"),
@@ -64,11 +72,11 @@ def load_okta_auth() -> OktaSSOConfig:
 
 
 @provider_config_registry.add(AuthProvider.auth0.value)
-def load_auth0_auth() -> Auth0SSOConfig:
+def load_auth0_auth() -> Auth0SSOClientConfig:
     """
     Load config for Google Auth
     """
-    return Auth0SSOConfig(
+    return Auth0SSOClientConfig(
         clientId=conf.get(LINEAGE, "client_id"),
         secretKey=conf.get(LINEAGE, "secret_key"),
         domain=conf.get(LINEAGE, "domain"),
@@ -76,11 +84,11 @@ def load_auth0_auth() -> Auth0SSOConfig:
 
 
 @provider_config_registry.add(AuthProvider.azure.value)
-def load_azure_auth() -> AzureSSOConfig:
+def load_azure_auth() -> AzureSSOClientConfig:
     """
     Load config for Azure Auth
     """
-    return AzureSSOConfig(
+    return AzureSSOClientConfig(
         clientSecret=conf.get(LINEAGE, "client_secret"),
         authority=conf.get(LINEAGE, "authority"),
         clientId=conf.get(LINEAGE, "client_id"),

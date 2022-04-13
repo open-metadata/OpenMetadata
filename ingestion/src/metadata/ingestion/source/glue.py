@@ -23,8 +23,8 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -48,9 +48,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GlueSource(Source[Entity]):
-    def __init__(
-        self, config: GlueConnection, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: GlueConnection, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SQLSourceStatus()
         self.config = config
@@ -85,7 +83,7 @@ class GlueSource(Source[Entity]):
         self.next_db_token = None
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GlueConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GlueConnection):

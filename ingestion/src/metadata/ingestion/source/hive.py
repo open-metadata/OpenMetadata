@@ -76,8 +76,8 @@ HiveDialect.get_table_names = get_table_names
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveSQLConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -91,7 +91,7 @@ class HiveSource(SQLSource):
         return super().prepare()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: HiveSQLConnection = WorkflowSource.parse_obj(config_dict)
         connection: HiveSQLConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, HiveSQLConnection):
