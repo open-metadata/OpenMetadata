@@ -40,7 +40,9 @@
         "Salesforce",
         "SampleData",
         "PinotDB",
-        "Datalake"
+        "Datalake",
+        "Atlas",
+        "Amundsen"
       ],
       "javaEnums": [
         {
@@ -123,6 +125,12 @@
         },
         {
           "name": "Datalake"
+        },
+        {
+          "name": "Atlas"
+        },
+        {
+          "name": "Amundsen"
         }
       ]
     },

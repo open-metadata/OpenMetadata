@@ -13,7 +13,7 @@ class AtlasClient:
         self.config = config
         config_obj = self.config.serviceConnection.__root__.config
         self.auth_token = generate_http_basic_token(
-            config_obj.user_name, config_obj.password.get_secret_value()
+            config_obj.username, config_obj.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
             base_url=config_obj.atlasHost,
