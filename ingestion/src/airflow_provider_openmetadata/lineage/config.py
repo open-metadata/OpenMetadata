@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Backend
 """
+import ast
 import json
 import os
 from typing import Optional
@@ -62,6 +63,10 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
         audience = conf.get(
             "lineage", "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
         )
+        authority = conf.get("lineage", "authority", fallback=None)
+        raw_scopes = conf.get("lineage", "scopes", fallback=[])
+        scopes = ast.literal_eval(raw_scopes) if raw_scopes else []
+
         auth_header = conf.get("lineage", "auth_header", fallback="Authorization")
         return OpenMetadataLineageConfig.parse_obj(
             {
@@ -79,6 +84,8 @@ def get_lineage_config() -> OpenMetadataLineageConfig:
                 "retry_wait": retry_wait,
                 "retry": retry,
                 "api_version": api_version,
+                "authority": authority,
+                "scopes": scopes,
             }
         )
 
@@ -102,6 +109,18 @@ def get_metadata_config(config: OpenMetadataLineageConfig) -> MetadataServerConf
     Return MetadataServerConfig to interact with the API.
     :param config: get_lineage_config()
     """
+    if config.auth_provider_type == "azure":
+
+        return MetadataServerConfig.parse_obj(
+            {
+                "api_endpoint": config.api_endpoint,
+                "auth_provider_type": config.auth_provider_type,
+                "secret_key": config.secret_key,
+                "client_id": config.client_id,
+                "authority": config.authority,
+                "scopes": config.scopes,
+            }
+        )
 
     return MetadataServerConfig.parse_obj(
         {
