@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -28,8 +29,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sample_data import SampleDataSourceStatus
-from metadata.utils.helpers import get_database_service_or_create
 
 
 class SampleUsageSource(Source[TableQuery]):
@@ -42,6 +43,8 @@ class SampleUsageSource(Source[TableQuery]):
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.service_json = json.load(
             open(
                 self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
@@ -52,8 +55,8 @@ class SampleUsageSource(Source[TableQuery]):
         )
         with open(self.query_log_csv, "r") as fin:
             self.query_logs = [dict(i) for i in csv.DictReader(fin)]
-        self.service = get_database_service_or_create(
-            config=self.config, metadata_config=metadata_config
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
 
     @classmethod

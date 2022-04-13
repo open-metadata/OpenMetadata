@@ -44,7 +44,7 @@ class Workflow:
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        source_type = self.config.source.type
+        source_type = self.config.source.type.lower()
         source_class = self.get(
             "metadata.ingestion.source.{}.{}Source".format(
                 self.typeClassFetch(source_type, True),

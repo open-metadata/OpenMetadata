@@ -16,7 +16,6 @@ package org.openmetadata.catalog.exception;
 import javax.ws.rs.core.Response;
 
 public class AirflowException extends WebServiceException {
-
   private static final String BY_NAME_MESSAGE = "Airflow Exception [%s] due to [%s].";
 
   public AirflowException(String message) {
