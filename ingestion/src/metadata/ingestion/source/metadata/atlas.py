@@ -9,18 +9,23 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.services.connections.database.atlasConnection import (
+    AtlasConnection,
 )
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataServerConfig,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
+from metadata.utils.atlas_client import AtlasClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import (
@@ -46,7 +51,7 @@ class AtlasSourceStatus(SourceStatus):
 
 @dataclass
 class AtlasSource(Source):
-    config: AtlasSourceConfig
+    config: AtlasConnection
     atlas_client: AtlasClient
     status: AtlasSourceStatus
     tables: Dict[str, Any]
@@ -54,8 +59,8 @@ class AtlasSource(Source):
 
     def __init__(
         self,
-        config: AtlasSourceConfig,
-        metadata_config: OpenMetadataConnection,
+        config: AtlasConnection,
+        metadata_config: OpenMetadataServerConfig,
     ):
         super().__init__()
         self.config = config
@@ -68,32 +73,38 @@ class AtlasSource(Source):
         schema_registry_url = "http://localhost:8081"
         bootstrap_servers = "http://localhost:9092"
         self.message_service = get_messaging_service_or_create(
-            config.service_name,
+            self.config.serviceName,
             MessagingServiceType.Kafka.name,
             schema_registry_url,
             bootstrap_servers.split(","),
             metadata_config,
         )
         self.atlas_client = AtlasClient(config)
-        path = Path(self.config.entity_types)
+        path = Path(self.config.entityTypes)
         if not path.is_file():
-            logger.error(f"File not found {self.config.entity_types}")
+            logger.error(f"File not found {self.config.entityTypes}")
             raise FileNotFoundError()
-        f = open(self.config.entity_types)
-        self.config.entity_types = json.load(f)
+        f = open(self.config.entityTypes)
+        self.config.entityTypes = json.load(f)
         self.tables: Dict[str, Any] = {}
         self.topics: Dict[str, Any] = {}
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config = AtlasSourceConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: AtlasConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, AtlasConnection):
+            raise InvalidSourceException(
+                f"Expected AtlasConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
 
     def prepare(self):
-        for key in self.config.entity_types["Table"].keys():
-            self.tables[key] = self.atlas_client.list_entities(entity_type=key)
-        for key in self.config.entity_types["Topic"]:
-            self.topics[key] = self.atlas_client.list_entities(entity_type=key)
+        for key in self.config.entityTypes["Table"].keys():
+            self.tables[key] = self.atlas_client.list_entities(entityType=key)
+        for key in self.config.entityTypes["Topic"]:
+            self.topics[key] = self.atlas_client.list_entities(entityType=key)
 
     def next_record(self):
         if self.tables:
@@ -143,12 +154,25 @@ class AtlasSource(Source):
                     )
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"][
-                        self.config.entity_types["Table"][name]["db"]
+                        self.config.entityTypes["Table"][name]["db"]
                     ]
                     db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
                     fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
+
+                    tbl_columns = self._parse_table_columns(table_entity, tbl_entity)
+                    tbl_attrs = tbl_entity["attributes"]
+                    db_entity = tbl_entity["relationshipAttributes"]["db"]
+
+                    db = self._get_database(db_entity["displayText"])
+                    table_name = tbl_attrs["name"]
+                    fqn = f"{self.config.serviceName}.{db.name.__root__}.{table_name}"
+                    tbl_description = (
+                        tbl_attrs["description"]
+                        if tbl_attrs["description"] is not None
+                        else " "
+                    )
 
                     om_table_entity = Table(
                         id=uuid.uuid4(),
@@ -172,7 +196,7 @@ class AtlasSource(Source):
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []
         col_entities = tbl_entity["relationshipAttributes"][
-            self.config.entity_types["Table"][name]["column"]
+            self.config.entityTypes["Table"][name]["column"]
         ]
         referred_entities = table_response["referredEntities"]
         ordinal_pos = 1
@@ -201,7 +225,7 @@ class AtlasSource(Source):
     def get_database_entity(self, database_name: str) -> Database:
         return Database(
             name=database_name,
-            service=EntityReference(id=self.service.id, type=self.config.service_type),
+            service=EntityReference(id=self.service.id, type=self.config.serviceType),
         )
 
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
@@ -210,7 +234,7 @@ class AtlasSource(Source):
         tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
             db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                self.config.entity_types["Table"][name]["db"]
+                self.config.entityTypes["Table"][name]["db"]
             ]
             db = self.get_database_entity(db_entity["displayText"])
             table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
@@ -231,7 +255,7 @@ class AtlasSource(Source):
                 tbl_entity = self.atlas_client.get_entity(edge["toEntityId"])
                 for key in tbl_entity["referredEntities"]:
                     db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
-                        self.config.entity_types["Table"][name]["db"]
+                        self.config.entityTypes["Table"][name]["db"]
                     ]
 
                     db = self.get_database_entity(db_entity["displayText"])
