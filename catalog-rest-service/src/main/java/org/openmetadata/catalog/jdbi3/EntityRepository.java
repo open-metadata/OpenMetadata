@@ -1178,7 +1178,7 @@ public abstract class EntityRepository<T> {
       originFromRefs.sort(EntityUtil.compareEntityReference);
     }
 
-    public final void storeUpdate() throws IOException {
+    public void storeUpdate() throws IOException {
       if (updateVersion(original.getVersion())) { // Update changed the entity version
         storeOldVersion(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity

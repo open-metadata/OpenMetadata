@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -103,6 +104,7 @@ public class RoleRepository extends EntityRepository<Role> {
     role.withPolicies(null).withHref(null);
     store(role.getId(), role, update);
     role.withPolicies(policies); // Restore policies
+    RoleEvaluator.getInstance().reload();
   }
 
   @Override
@@ -316,6 +318,12 @@ public class RoleRepository extends EntityRepository<Role> {
       } catch (IOException e) {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
       }
+    }
+
+    @Override
+    public void storeUpdate() throws IOException {
+      super.storeUpdate();
+      RoleEvaluator.getInstance().reload();
     }
   }
 }

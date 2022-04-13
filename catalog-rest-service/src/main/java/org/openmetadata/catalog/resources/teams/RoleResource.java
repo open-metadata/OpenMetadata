@@ -89,8 +89,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Role.class, new RoleRepository(dao), authorizer);
+  public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    super(Role.class, new RoleRepository(collectionDAO), authorizer);
   }
 
   @SuppressWarnings("unused") // Method used for reflection

@@ -13,6 +13,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -31,17 +41,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -129,7 +128,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     store(policy.getId(), policy, update);
     if (PolicyType.AccessControl.equals(policy.getPolicyType())) {
       // Refresh rules in PolicyEvaluator right after an Access Control policy has been stored.
-      policyEvaluator.refreshRules();
+      policyEvaluator.reload();
     }
 
     // Restore the relationships
@@ -179,7 +178,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
       if (!operations.add(rule.getOperation())) {
         throw new IllegalArgumentException(
-                CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
+            CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
       }
 
       // If all user (subject) and entity (object) attributes are null, the rule is invalid.
@@ -201,32 +200,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
+      if (!policy.getPolicyType().equals(PolicyType.AccessControl) && !Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }
       policies.add(policy);
     }
     return policies;
-  }
-
-  /**
-   * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
-   */
-  public List<Rule> getAccessControlPolicyRules() throws IOException {
-    List<Policy> policies = getAccessControlPolicies();
-    List<Rule> rules = new ArrayList<>();
-    for (Policy policy : policies) {
-      if (!Boolean.TRUE.equals(policy.getEnabled())) {
-        // Skip if policy is not enabled.
-        continue;
-      }
-      List<Object> ruleObjects = policy.getRules();
-      for (Object ruleObject : ruleObjects) {
-        Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
-        rules.add(rule);
-      }
-    }
-    return rules;
   }
 
   private void setLocation(Policy policy, EntityReference location) {
@@ -403,6 +382,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
             Relationship.APPLIED_TO);
       }
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
+    }
+
+    @Override
+    public void storeUpdate() throws IOException {
+      super.storeUpdate();
+      PolicyEvaluator.getInstance().reload();
     }
   }
 }

@@ -89,7 +89,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
     policyEvaluator.setPolicyRepository(dao);
     // Load any existing rules from database, before loading seed data.
-    policyEvaluator.refreshRules();
+    policyEvaluator.reload();
     dao.initSeedDataFromResources();
   }
 

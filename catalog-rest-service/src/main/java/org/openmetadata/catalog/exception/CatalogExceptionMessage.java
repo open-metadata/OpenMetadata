@@ -99,11 +99,12 @@ public final class CatalogExceptionMessage {
   }
 
   public static String invalidPolicyOperationNull(String rule, String policy) {
-    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null",rule, policy);
+    return String.format("Found invalid rule %s within policy %s. Please ensure operation is non-null", rule, policy);
   }
+
   public static String invalidPolicyDuplicateOperation(String operation, String policy) {
-            return String.format(
-                    "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-                    operation, policy);
+    return String.format(
+        "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
+        operation, policy);
   }
 }

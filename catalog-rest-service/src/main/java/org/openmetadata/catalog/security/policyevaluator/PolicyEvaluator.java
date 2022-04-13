@@ -13,6 +13,10 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Rule;
@@ -25,11 +29,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.type.MetadataOperation;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
+import org.openmetadata.catalog.util.JsonUtils;
 
 /**
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
@@ -54,8 +54,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PolicyEvaluator {
 
   private PolicyRepository policyRepository;
-  private final ConcurrentHashMap<String, AtomicReference<Rules>> policyRules = new ConcurrentHashMap<>();
-  private final AtomicReference<Rules> rules;
+  private final ConcurrentHashMap<UUID, Rules> policyRules = new ConcurrentHashMap<>();
   private final RulesEngine checkPermissionRulesEngine;
   private final RulesEngine allowedOperationsRulesEngine;
 
@@ -66,8 +65,6 @@ public class PolicyEvaluator {
     // When first rule applies, stop the check for permission.
     checkPermissionRulesEngine = new DefaultRulesEngine(new RulesEngineParameters().skipOnFirstAppliedRule(true));
     allowedOperationsRulesEngine = new DefaultRulesEngine();
-    // Initialize with empty set of rules. If not, the RulesEngine would throw NullPointerException.
-    rules = new AtomicReference<>(new Rules());
   }
 
   public static PolicyEvaluator getInstance() {
@@ -79,41 +76,49 @@ public class PolicyEvaluator {
   }
 
   /** Refresh rules within {@link PolicyEvaluator} to be used by {@link DefaultRulesEngine}. */
-  public void refreshRules() throws IOException {
-    LOG.warn("{} rules are available for Access Control", rules.get().size());
+  public void reload() throws IOException {
     final List<Policy> policies = policyRepository.getAccessControlPolicies();
     for (final Policy policy : policies) {
       Rules newRules = new Rules();
-    policy.getRules().stream()
-              // Add rules only if they are enabled.
-              .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule)t).getEnabled())
-              .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule) rule))
-              .forEach(newRules::register);
-      // Atomic swap of rules.
-      rules.set(newRules);
-      policyRules.put(policy.getName(), rules);
+      for (Object r : policy.getRules()) {
+        org.openmetadata.catalog.entity.policies.accessControl.Rule acRule =
+            JsonUtils.readValue(
+                JsonUtils.getJsonStructure(r).toString(),
+                org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
+        if (acRule.getAllow()) {
+          newRules.register(convertRule(acRule));
+        }
+      }
+      //      policy.getRules().stream()
+      //          // Add rules only if they are enabled.
+      //          .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule) t).getEnabled())
+      //          .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule) rule))
+      //          .forEach(newRules::register);
+      //      // Atomic swap of rules.
+      policyRules.put(policy.getId(), newRules);
+      LOG.info("Loaded new set of {} rules for policy {}:{}", newRules.size(), policy.getName(), policy.getId());
     }
-    LOG.warn("Loaded new set of {} rules for Access Control", rules.get().size());
+    LOG.info("Finished loading Access Control policies");
   }
 
-  /** Checks if the user has permission to perform an operation on the given entity. */
-  public boolean hasPermission(@NonNull User user, Object entity, @NonNull MetadataOperation operation) {
+  /** Checks if the policy has rules that gives permission to perform an operation on the given entity. */
+  public boolean hasPermission(@NonNull UUID policyId, Object entity, @NonNull MetadataOperation operation) {
     AttributeBasedFacts facts =
         new AttributeBasedFacts.AttributeBasedFactsBuilder()
-            .withUser(user)
             .withEntity(entity)
             .withOperation(operation)
             .withCheckOperation(true)
             .build();
-    checkPermissionRulesEngine.fire(rules.get(), facts.getFacts());
+    Rules rules = policyRules.get(policyId);
+    checkPermissionRulesEngine.fire(rules, facts.getFacts());
     return facts.hasPermission();
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(@NonNull User user, Object entity) {
-    AttributeBasedFacts facts =
-        new AttributeBasedFacts.AttributeBasedFactsBuilder().withUser(user).withEntity(entity).build();
-    allowedOperationsRulesEngine.fire(rules.get(), facts.getFacts());
+  public List<MetadataOperation> getAllowedOperations(@NonNull UUID policyId, Object entity) {
+    AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
+    Rules rules = policyRules.get(policyId);
+    allowedOperationsRulesEngine.fire(rules, facts.getFacts());
     return facts.getAllowedOperations();
   }
 

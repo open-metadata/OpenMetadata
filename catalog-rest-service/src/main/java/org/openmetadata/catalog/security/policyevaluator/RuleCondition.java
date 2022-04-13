@@ -13,13 +13,12 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Condition;
 import org.jeasy.rules.api.Facts;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.type.MetadataOperation;
-
-import java.util.List;
 
 @Slf4j
 class RuleCondition implements Condition {
