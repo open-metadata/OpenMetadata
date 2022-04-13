@@ -132,7 +132,7 @@ public final class TestUtils {
           new DashboardConnection()
               .withConfig(
                   new SupersetConnection()
-                      .withSupersetURL(new URI("http://localhost:8080"))
+                      .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {

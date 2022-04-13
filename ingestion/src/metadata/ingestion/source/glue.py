@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -39,7 +40,6 @@ from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
-    get_database_service_or_create,
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
@@ -54,12 +54,13 @@ class GlueSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service = get_database_service_or_create(
-            config=config,
-            metadata_config=metadata_config,
-            service_name=self.config.serviceName,
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
+
         config_obj = self.config.serviceConnection.__root__.config
+
+        # TODO: add to service_mixin
         self.storage_service = get_storage_service_or_create(
             {
                 "name": config_obj.storageServiceName,
