@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FilterPatternType } from '../../enums/filterPattern.enum';
+import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
@@ -31,23 +31,26 @@ export type PatternType = {
 
 export interface ConfigureIngestionProps {
   ingestionName: string;
-  databaseFilterPattern: PatternType;
+  serviceCategory: ServiceCategory;
+  dashboardFilterPattern: PatternType;
   schemaFilterPattern: PatternType;
   tableFilterPattern: PatternType;
-  viewFilterPattern: PatternType;
+  topicFilterPattern: PatternType;
+  chartFilterPattern: PatternType;
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
-  showDatabaseFilter: boolean;
+  showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;
-  showViewFilter: boolean;
+  showTopicFilter: boolean;
+  showChartFilter: boolean;
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
-  getIncludeValue: (value: string[], type: FilterPatternType) => void;
-  getExcludeValue: (value: string[], type: FilterPatternType) => void;
-  handleShowFilter: (value: boolean, type: FilterPatternType) => void;
+  getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
+  getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
+  handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
   onCancel: () => void;
   onNext: () => void;
 }

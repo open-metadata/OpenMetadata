@@ -13,6 +13,7 @@
 
 import { findAllByText, findByTestId, render } from '@testing-library/react';
 import React from 'react';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 import ConfigureIngestion from './ConfigureIngestion';
 
@@ -28,7 +29,11 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
-  databaseFilterPattern: {
+  dashboardFilterPattern: {
+    include: [],
+    exclude: [],
+  },
+  chartFilterPattern: {
     include: [],
     exclude: [],
   },
@@ -40,17 +45,18 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     include: [],
     exclude: [],
   },
-  viewFilterPattern: {
+  topicFilterPattern: {
     include: [],
     exclude: [],
   },
   includeView: false,
   enableDataProfiler: false,
   ingestSampleData: false,
-  showDatabaseFilter: false,
+  showDashboardFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
-  showViewFilter: false,
+  showTopicFilter: false,
+  showChartFilter: false,
   handleIncludeView: jest.fn(),
   handleEnableDataProfiler: jest.fn(),
   handleIngestSampleData: jest.fn(),
@@ -59,6 +65,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
+  serviceCategory: ServiceCategory.DATABASE_SERVICES,
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -86,7 +93,7 @@ describe('Test ConfigureIngestion component', () => {
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(filterPatternComponents.length).toBe(4);
+    expect(filterPatternComponents.length).toBe(2);
     expect(toggleSwitchs.length).toBe(3);
   });
 });
