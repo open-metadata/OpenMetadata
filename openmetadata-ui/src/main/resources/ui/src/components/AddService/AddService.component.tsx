@@ -29,9 +29,8 @@ import { MessagingServiceType } from '../../generated/entity/services/messagingS
 import { DataObj } from '../../interface/service.interface';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import {
-  getAirflowPipelineTypes,
-  getIsIngestionEnable,
   getKeyValueObject,
+  isIngestionSupported,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -392,13 +391,6 @@ const AddService = ({
     }
   };
 
-  const isIngestionSupported = () => {
-    return (
-      getIsIngestionEnable(serviceCategory) &&
-      (getAirflowPipelineTypes(selectServiceType, true) || []).length > 0
-    );
-  };
-
   const addNewService = () => {
     return (
       <div data-testid="add-new-service-container">
@@ -480,7 +472,7 @@ const AddService = ({
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
-              showIngestionButton={isIngestionSupported()}
+              showIngestionButton={isIngestionSupported(serviceCategory)}
             />
           )}
         </div>
