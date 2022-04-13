@@ -13,16 +13,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -41,6 +31,17 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -173,16 +174,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
       if (rule.getOperation() == null) {
         throw new IllegalArgumentException(
-            String.format(
-                "Found invalid rule %s within policy %s. Please ensure operation is non-null",
-                rule.getName(), policy.getName()));
+            CatalogExceptionMessage.invalidPolicyOperationNull(rule.getName(), policy.getName()));
       }
 
       if (!operations.add(rule.getOperation())) {
         throw new IllegalArgumentException(
-            String.format(
-                "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-                rule.getOperation(), policy.getName()));
+                CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
       }
 
       // If all user (subject) and entity (object) attributes are null, the rule is invalid.
@@ -197,7 +194,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
   }
 
-  private List<Policy> getAccessControlPolicies() throws IOException {
+  public List<Policy> getAccessControlPolicies() throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");

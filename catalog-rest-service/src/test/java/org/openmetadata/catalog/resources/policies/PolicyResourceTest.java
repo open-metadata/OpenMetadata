@@ -13,27 +13,6 @@
 
 package org.openmetadata.catalog.resources.policies;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,6 +24,7 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -59,6 +39,28 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
+
+import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
@@ -149,16 +151,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   @Test
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
+    // Adding a rule without operation should be disallowed
+    String policyName = getEntityName(test);
+    String ruleName = "rule21";
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule("rule21", null, null, MetadataOperation.UpdateDescription, true, 0, true));
-    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format(
-            "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
-                + "(subject) and entity (object) attributes is specified",
-            getEntityName(test)));
+    rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true, 0, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST,
+            CatalogExceptionMessage.invalidPolicyOperationNull(ruleName, policyName));
   }
 
   @Test

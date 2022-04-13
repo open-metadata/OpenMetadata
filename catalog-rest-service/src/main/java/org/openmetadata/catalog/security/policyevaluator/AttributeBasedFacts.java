@@ -13,11 +13,6 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Facts;
@@ -28,6 +23,12 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Builder(setterPrefix = "with")
@@ -48,7 +49,6 @@ class AttributeBasedFacts {
    */
   public Facts getFacts() {
     // Facts to be taken into consideration by RuleCondition.
-    facts.put(CommonFields.USER_ROLES, getUserRoles(user));
     facts.put(CommonFields.ENTITY_TAGS, getEntityTags(entity));
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
     if (checkOperation) {

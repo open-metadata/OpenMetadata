@@ -13,9 +13,6 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Rule;
@@ -24,9 +21,15 @@ import org.jeasy.rules.api.RulesEngine;
 import org.jeasy.rules.api.RulesEngineParameters;
 import org.jeasy.rules.core.DefaultRulesEngine;
 import org.jeasy.rules.core.RuleBuilder;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.type.MetadataOperation;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * PolicyEvaluator for {@link MetadataOperation metadata operations} based on OpenMetadata's internal {@link
@@ -51,6 +54,7 @@ import org.openmetadata.catalog.type.MetadataOperation;
 public class PolicyEvaluator {
 
   private PolicyRepository policyRepository;
+  private final ConcurrentHashMap<String, AtomicReference<Rules>> policyRules = new ConcurrentHashMap<>();
   private final AtomicReference<Rules> rules;
   private final RulesEngine checkPermissionRulesEngine;
   private final RulesEngine allowedOperationsRulesEngine;
@@ -77,14 +81,18 @@ public class PolicyEvaluator {
   /** Refresh rules within {@link PolicyEvaluator} to be used by {@link DefaultRulesEngine}. */
   public void refreshRules() throws IOException {
     LOG.warn("{} rules are available for Access Control", rules.get().size());
-    Rules newRules = new Rules();
-    policyRepository.getAccessControlPolicyRules().stream()
-        // Add rules only if they are enabled.
-        .filter(org.openmetadata.catalog.entity.policies.accessControl.Rule::getEnabled)
-        .map(this::convertRule)
-        .forEach(newRules::register);
-    // Atomic swap of rules.
-    rules.set(newRules);
+    final List<Policy> policies = policyRepository.getAccessControlPolicies();
+    for (final Policy policy : policies) {
+      Rules newRules = new Rules();
+    policy.getRules().stream()
+              // Add rules only if they are enabled.
+              .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule)t).getEnabled())
+              .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule) rule))
+              .forEach(newRules::register);
+      // Atomic swap of rules.
+      rules.set(newRules);
+      policyRules.put(policy.getName(), rules);
+    }
     LOG.warn("Loaded new set of {} rules for Access Control", rules.get().size());
   }
 

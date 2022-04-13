@@ -13,12 +13,13 @@
 
 package org.openmetadata.catalog.security.policyevaluator;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Condition;
 import org.jeasy.rules.api.Facts;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.type.MetadataOperation;
+
+import java.util.List;
 
 @Slf4j
 class RuleCondition implements Condition {
@@ -32,7 +33,6 @@ class RuleCondition implements Condition {
   @Override
   public boolean evaluate(Facts facts) {
     // Check against operation and each of the entity and user attributes.
-
     if (facts.get(CommonFields.CHECK_OPERATION)) {
       MetadataOperation operation = facts.get(CommonFields.OPERATION);
       if (!operation.equals(rule.getOperation())) {

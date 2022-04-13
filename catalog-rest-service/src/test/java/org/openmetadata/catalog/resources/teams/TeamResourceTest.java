@@ -13,32 +13,7 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
-import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -66,11 +41,38 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 @Slf4j
 public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
@@ -233,7 +235,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     CreatePolicy createPolicy =
-        policyResourceTest.createRequest("TeamManagerPolicy", "", "", null).withRules(List.of(rule));
+        policyResourceTest.createRequest("TeamManagerPolicy", "", "", null).withPolicyType(PolicyType.AccessControl).withRules(List.of(rule));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
     EntityInterface<Policy> policyEntityInterface = policyResourceTest.getEntityInterface(policy);
 
