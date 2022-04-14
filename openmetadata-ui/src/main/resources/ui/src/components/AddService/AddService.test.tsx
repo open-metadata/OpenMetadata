@@ -38,6 +38,10 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
+jest.mock('../ServiceConfig/ConnectionConfigForm', () => () => (
+  <>ConnectionConfigForm</>
+));
+
 describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(
