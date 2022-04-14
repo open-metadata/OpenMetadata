@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 
-import { ServicesData } from 'Models';
+import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { ConfigData } from '../../interface/service.interface';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
   data?: ServicesData;
   handleUpdate: (
-    data: ServicesData,
+    data: ConfigData,
     serviceCategory: ServiceCategory
   ) => Promise<void>;
 }
@@ -38,7 +39,7 @@ const ServiceConfig = ({
   data,
   handleUpdate,
 }: ServiceConfigProps) => {
-  const [status] = useState<'initial' | 'waiting' | 'success'>('initial');
+  const [status] = useState<LoadingState>('initial');
 
   const getDynamicFields = () => {
     return (
@@ -53,7 +54,7 @@ const ServiceConfig = ({
         serviceCategory={serviceCategory}
         status={status}
         onSave={(e) => {
-          handleUpdate(e.formData as ServicesData, serviceCategory);
+          handleUpdate(e.formData, serviceCategory);
         }}
       />
     );

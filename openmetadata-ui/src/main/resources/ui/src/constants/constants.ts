@@ -45,7 +45,8 @@ const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
-const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
+
+export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
@@ -239,13 +240,6 @@ export const getServiceDetailsPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
-
-  return path;
-};
-
-export const getAddServicePath = (serviceCategory: string) => {
-  let path = ROUTES.ADD_SERVICE;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
 
   return path;
 };
