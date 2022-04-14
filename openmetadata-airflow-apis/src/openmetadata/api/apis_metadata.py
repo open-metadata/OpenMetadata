@@ -72,6 +72,19 @@ APIS_METADATA = [
             },
         ],
     },
+    {
+        "name": "delete_dag",
+        "description": "Delete a DAG in the Web Server from Airflow database and filesystem",
+        "http_method": "DELETE",
+        "arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag to delete",
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
+    },
 ]
 
 
