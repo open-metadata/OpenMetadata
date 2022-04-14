@@ -258,24 +258,21 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       userPermissions[Operation.UpdateTeam] ||
       !hasEditAccess;
 
-    return !isUndefined(isJoinable) ? (
-      <div className="tw-mt-3 tw-mb-1">
-        {isActionAllowed ? (
-          <div className="tw-flex">
-            <label htmlFor="join-team">Allow users to join this team</label>
-            <div
-              className={classNames(
-                'toggle-switch ',
-                teamJoinable ? 'open' : null
-              )}
-              data-testid="team-isJoinable-switch"
-              id="join-team"
-              onClick={() => setTeamJoinable((prev) => !prev)}>
-              <div className="switch" />
-            </div>
-          </div>
-        ) : null}
+    const joinableSwitch = isActionAllowed ? (
+      <div className="tw-flex">
+        <label htmlFor="join-team">Allow users to join this team</label>
+        <div
+          className={classNames('toggle-switch ', teamJoinable ? 'open' : null)}
+          data-testid="team-isJoinable-switch"
+          id="join-team"
+          onClick={() => setTeamJoinable((prev) => !prev)}>
+          <div className="switch" />
+        </div>
       </div>
+    ) : null;
+
+    return !isUndefined(isJoinable) ? (
+      <div className="tw-mt-3 tw-mb-1">{joinableSwitch}</div>
     ) : null;
   };
 
