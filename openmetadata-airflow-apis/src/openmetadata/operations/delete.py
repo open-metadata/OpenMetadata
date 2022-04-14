@@ -49,5 +49,5 @@ def delete_dag_id(dag_id: str) -> Response:
     return ApiResponse.error(
         status=ApiResponse.STATUS_SERVER_ERROR,
         error=f"Could not find and delete {dag_id}. Deleted dags: {deleted_dags}; "
-        + "deleted {dag_py_file}: {deleted_file}",
+        + f"deleted {dag_py_file}: {deleted_file}",
     )
