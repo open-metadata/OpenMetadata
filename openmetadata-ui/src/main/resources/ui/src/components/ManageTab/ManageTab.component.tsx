@@ -205,7 +205,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             </p>
           </div>
           <Button
-            className="tw-px-2 tw-py-0 tw-rounded tw-h-8 tw-self-center tw-shadow"
+            className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
             data-testid="delete-button"
             size="custom"
             theme="primary"
