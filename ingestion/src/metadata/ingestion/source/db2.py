@@ -29,7 +29,7 @@ def get_pk_constraint(self, bind, table_name, schema=None, **kw):
 
 DB2Dialect.get_pk_constraint = get_pk_constraint
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
-    DB2Connection,
+    Db2Connection,
 )
 
 
@@ -40,9 +40,9 @@ class Db2Source(SQLSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DB2Connection = config.serviceConnection.__root__.config
-        if not isinstance(connection, DB2Connection):
+        connection: Db2Connection = config.serviceConnection.__root__.config
+        if not isinstance(connection, Db2Connection):
             raise InvalidSourceException(
-                f"Expected DB2Connection, but got {connection}"
+                f"Expected Db2Connection, but got {connection}"
             )
         return cls(config, metadata_config)
