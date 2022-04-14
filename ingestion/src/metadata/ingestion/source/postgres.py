@@ -17,7 +17,6 @@ import psycopg2
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,

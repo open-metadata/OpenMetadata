@@ -57,7 +57,7 @@ class OMetaServiceTest(TestCase):
             "serviceName": "local_mysql",
             "serviceConnection": {
                 "config": {
-                    "type": "MySQL",
+                    "type": "Mysql",
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
                     "hostPort": "random:3306",
@@ -73,7 +73,7 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
         assert service
-        assert service.serviceType == DatabaseServiceType.MySQL
+        assert service.serviceType == DatabaseServiceType.Mysql
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -92,10 +92,10 @@ class OMetaServiceTest(TestCase):
             "serviceName": "local_mssql",
             "serviceConnection": {
                 "config": {
-                    "type": "MSSQL",
+                    "type": "Mssql",
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
-                    "hostPort": "random:3306",
+                    "hostPort": "random:1433",
                 }
             },
             "sourceConfig": {"config": {"enableDataProfiler": False}},
@@ -108,7 +108,7 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
         assert service
-        assert service.serviceType == DatabaseServiceType.MSSQL
+        assert service.serviceType == DatabaseServiceType.Mssql
 
         # Check get
         assert service == self.metadata.get_service_or_create(

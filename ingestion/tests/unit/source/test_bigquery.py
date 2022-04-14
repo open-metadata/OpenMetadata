@@ -262,16 +262,13 @@ class BigQueryIngestionTest(TestCase):
 
         execute_workflow(json.loads(CONFIG))
 
-    def test_file_sink(self):
         config = json.loads(CONFIG)
         file_data = open(config["sink"]["config"]["filename"])
         file_sink = json.load(file_data)
         for ometa_data in file_sink:
             table = ometa_data.get("table")
-            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(
-                ometa_data
-            )
-            table_obj: Table = Table.parse_obj(table)
+            _: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(ometa_data)
+            _: Table = Table.parse_obj(table)
 
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
             table_name = (
@@ -281,7 +278,7 @@ class BigQueryIngestionTest(TestCase):
                 assert table_name in MOCK_GET_TABLE_NAMES
 
             for column in table.get("columns"):
-                column_obj: Column = Column.parse_obj(column)
+                _: Column = Column.parse_obj(column)
                 if column in MOCK_UNIQUE_CONSTRAINTS:
                     assert Column.constraint.UNIQUE == column.get("constraint")
                 if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
