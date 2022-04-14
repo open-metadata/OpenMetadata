@@ -114,12 +114,12 @@ public class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.noServicesAddServiceButton());
-    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.addServiceButton());
+    Events.click(webDriver, common.serviceType("Mysql"));
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
     Events.sendKeys(webDriver, common.servicePort(), "3306");
@@ -138,10 +138,9 @@ public class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.containsText("bigquery_gcp"));
+    Events.click(webDriver, common.containsText("test"));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");
     Events.click(webDriver, common.editDescriptionSaveButton());
     Events.click(webDriver, common.containsText("Error while updating description!"));

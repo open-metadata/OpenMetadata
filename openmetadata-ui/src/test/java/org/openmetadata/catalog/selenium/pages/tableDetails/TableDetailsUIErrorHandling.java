@@ -38,7 +38,7 @@ public class TableDetailsUIErrorHandling {
   static String serviceName = faker.name().firstName();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  static By toastMessage = By.cssSelector("[data-testid='toast']");
+  static By toastMessage = By.xpath("(//div[@class='Toastify__toast-body']/div)[2]");
   List<WebElement> checkTabs = new ArrayList<>();
   WebElement explore;
   WebElement headerSettings;

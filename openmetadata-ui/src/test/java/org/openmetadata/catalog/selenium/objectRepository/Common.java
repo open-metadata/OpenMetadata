@@ -15,9 +15,9 @@ public class Common {
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
 
   By displayName = By.name("name");
-  By descriptionBoldButton = By.cssSelector("[data-testid='boldButton']");
-  By descriptionItalicButton = By.cssSelector("[data-testid='italicButton']");
-  By descriptionLinkButton = By.cssSelector("[data-testid='linkButton']");
+  By descriptionBoldButton = By.cssSelector("[class='bold toastui-editor-toolbar-icons']");
+  By descriptionItalicButton = By.cssSelector("[class='italic toastui-editor-toolbar-icons']");
+  By descriptionLinkButton = By.cssSelector("[class='link toastui-editor-toolbar-icons']");
   By descriptionSaveButton = By.cssSelector("[data-testid='saveButton']");
   By addDescriptionString = By.xpath(enterDescription);
   By editTagCategoryDescription = By.cssSelector("[data-testid='edit-description']");
@@ -26,9 +26,9 @@ public class Common {
   By headerSettings = By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']");
   By explore = By.cssSelector("[data-testid='appbar-item'][id='explore']");
   By headerSettingsServices = By.cssSelector("[data-testid='menu-item-Services']");
-  By addServiceButton = By.cssSelector("[data-testid='add-service-button']");
+  By addServiceButton = By.cssSelector("[data-testid='add-new-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
-  By serviceName = By.cssSelector("[data-testid='name']");
+  By serviceName = By.cssSelector("[data-testid='service-name']");
   By serviceUsername = By.cssSelector("[name='username']");
   By servicePassword = By.cssSelector("[name='password']");
   By nextButton = By.cssSelector("[data-testid='next-button']");
@@ -88,12 +88,14 @@ public class Common {
   By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
   By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p");
   By home = By.cssSelector("[data-testid='image']");
-  By saveWebhook = By.xpath("//button[@data-testid='save-webhook']");
+  By saveWebhook = By.cssSelector("[data-testid='save-webhook']");
   By reviewCount = By.cssSelector("[data-testid='user-card-container']");
   By tagsCount = By.xpath("(//div[@data-testid='tags']/div)");
   By addGlossaryReviewer = By.cssSelector("[data-testid='add-new-reviewer']");
   By connectionConfig = By.cssSelector("[data-testid='Connection Config']");
   By ingestion = By.cssSelector("[data-testid='Ingestions']");
+  By descriptionBox = By.xpath("//div[@class='ProseMirror']");
+  By focusedDescriptionBox = By.xpath("//div[@class='ProseMirror ProseMirror-focused']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

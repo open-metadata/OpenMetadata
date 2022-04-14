@@ -89,7 +89,8 @@ public class TeamsPageTest {
     Events.click(webDriver, teamsPage.addTeam()); // add team
     Events.sendKeys(webDriver, teamsPage.name(), faker.name().firstName()); // name
     Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -147,12 +148,11 @@ public class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, By.xpath(xpath));
     Events.click(webDriver, teamsPage.editDescription());
-    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.enterDescription()));
-    Events.click(webDriver, teamsPage.enterDescription());
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), sendKeys);
+    wait.until(ExpectedConditions.presenceOfElementLocated(common.focusedDescriptionBox()));
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, teamsPage.saveDescription());
-    String description = webDriver.findElement(common.descriptionContainer()).getText();
+    String description = webDriver.findElement(teamsPage.descriptionContainer()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(description, sendKeys);
   }

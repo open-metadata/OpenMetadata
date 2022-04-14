@@ -70,15 +70,15 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     Thread.sleep(1000);
@@ -98,8 +98,8 @@ public class RolesPageTest {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.sendKeys(webDriver, common.addDescriptionString(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.addDescriptionString(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(roleName));
@@ -159,7 +159,7 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, common.displayName(), "");
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -178,7 +178,7 @@ public class RolesPageTest {
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), "");
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -197,14 +197,14 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.addRoleButton());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, rolesPage.addRoleButton());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
