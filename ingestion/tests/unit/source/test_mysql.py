@@ -282,7 +282,6 @@ class MySqlIngestionTest(TestCase):
 
         execute_workflow()
 
-    def test_file_sink(self):
         config = json.loads(CONFIG)
         file_data = open(config["sink"]["config"]["filename"])
         data = json.load(file_data)
