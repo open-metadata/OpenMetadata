@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
@@ -66,5 +67,12 @@ class FullyQualifiedNameTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> FullyQualifiedName.quoteName("a\"b")); // Error when invalid quote is present in the middle of the string
+  }
+
+  @Test
+  void test_invalid() {
+    assertThrows(
+        ParseCancellationException.class,
+        () -> FullyQualifiedName.split("a\""));
   }
 }

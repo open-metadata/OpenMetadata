@@ -18,9 +18,7 @@ class Fqn(TestCase):
 
                 for i in range(len(self.parts)):
                     if "." in self.parts[i]:
-                        this.assertEqual(
-                            fqn.quote_name(self.parts[i]), actual_parts[i]
-                        )
+                        this.assertEqual(fqn.quote_name(self.parts[i]), actual_parts[i])
                     else:
                         this.assertEqual(self.parts[i], actual_parts[i])
 
@@ -58,3 +56,7 @@ class Fqn(TestCase):
         with self.assertRaises(Exception) as context:
             fqn.quote_name('a"b')
         self.assertEqual('Invalid name a"b', str(context.exception))
+
+    def test_invalid(self):
+        with self.assertRaises(Exception):
+            fqn.split('a"')

@@ -16,6 +16,7 @@ import FqnLexer from '../antlr/generated/FqnLexer';
 import FqnParser from '../antlr/generated/FqnParser';
 import SplitListener from '../antlr/SplitListener';
 import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
+import { BailErrorStrategy } from 'antlr4/src/antlr4/error';
 
 export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#split
@@ -24,6 +25,7 @@ export default class Fqn {
     const lexer = new FqnLexer(chars);
     const tokens = new antlr4.CommonTokenStream(lexer);
     const parser = new FqnParser(tokens);
+    parser.setErrorHandler(new BailErrorStrategy());
     const tree = parser.fqn();
     const splitter = new SplitListener();
     ParseTreeWalker.DEFAULT.walk(splitter, tree);

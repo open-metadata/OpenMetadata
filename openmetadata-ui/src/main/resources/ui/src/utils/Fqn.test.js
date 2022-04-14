@@ -63,4 +63,8 @@ describe('Test FQN', () => {
     expect(() => Fqn.quoteName('a"')).toThrow('Invalid name a"'); // Error when beginning quote is missing
     expect(() => Fqn.quoteName('a"b')).toThrow('Invalid name a"b'); // Error when invalid quote is present in the middle of the string
   });
+
+  it('should throw exception', () => {
+    expect(() => Fqn.split('a"')).toThrow();
+  });
 });
