@@ -91,6 +91,8 @@ const PipelineDetailsProps = {
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
+  pipelineStatus: [],
+  isPipelineStatusLoading: false,
 };
 
 const mockObserve = jest.fn();

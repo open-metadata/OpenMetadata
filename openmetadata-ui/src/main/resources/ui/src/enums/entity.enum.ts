@@ -62,4 +62,5 @@ export enum TabSpecificField {
   TASKS = 'tasks',
   TABLE_QUERIES = 'tableQueries',
   TESTS = 'tests',
+  PIPELINE_STATUS = 'pipelineStatus',
 }

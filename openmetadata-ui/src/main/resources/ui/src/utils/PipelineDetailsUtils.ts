@@ -27,6 +27,11 @@ export const pipelineDetailsTabs = [
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
+    name: 'Executions',
+    path: 'execution',
+    field: TabSpecificField.PIPELINE_STATUS,
+  },
+  {
     name: 'Lineage',
     path: 'lineage',
     field: TabSpecificField.LINEAGE,
@@ -45,13 +50,18 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'lineage':
+    case 'execution':
       currentTab = 3;
 
       break;
 
-    case 'manage':
+    case 'lineage':
       currentTab = 4;
+
+      break;
+
+    case 'manage':
+      currentTab = 5;
 
       break;
 
