@@ -143,7 +143,7 @@ public class PolicyEvaluator {
       } catch (Exception e) {
         LOG.warn("Failed to load a rule", e);
       }
-      if (Boolean.TRUE.equals(acRule.getAllow())) {
+      if (acRule != null && Boolean.TRUE.equals(acRule.getAllow())) {
         rules.register(convertRule(acRule));
       }
     }

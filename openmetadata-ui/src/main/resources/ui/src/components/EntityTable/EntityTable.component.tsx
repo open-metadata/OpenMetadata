@@ -21,7 +21,7 @@ import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
@@ -326,6 +326,21 @@ const EntityTable = ({
     return searchedValue;
   };
 
+  /* eslint-disable-next-line */
+  const getColumnName = (cell: any) => {
+    const fqn = cell?.row?.original?.fullyQualifiedName || '';
+    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
+    // wrap it in quotes if dot is present
+
+    return columnName.includes('.') ? `"${columnName}"` : columnName;
+  };
+
+  /* eslint-disable-next-line */
+  const onRequestDescriptionHandler = (cell: any) => {
+    const columnName = getColumnName(cell);
+    onEntityFieldSelect?.(`columns/${columnName}/description`);
+  };
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(tableColumns);
@@ -559,13 +574,13 @@ const EntityTable = ({
                                 </TagsContainer>
                               </NonAdminAction>
                               {getFieldThreadElement(
-                                cell.row.cells[0].value,
+                                getColumnName(cell),
                                 'tags',
                                 entityFieldThreads as EntityFieldThreads[],
                                 onThreadLinkSelect,
                                 EntityType.TABLE,
                                 entityFqn,
-                                `columns/${cell.row.cells[0].value}/tags`,
+                                `columns/${getColumnName(cell)}/tags`,
                                 Boolean(cell.value.length)
                               )}
                             </div>
@@ -619,7 +634,7 @@ const EntityTable = ({
                                   </NonAdminAction>
                                   {isNil(
                                     getThreadValue(
-                                      cell.row.cells[0].value,
+                                      getColumnName(cell),
                                       'description',
                                       entityFieldThreads as EntityFieldThreads[]
                                     )
@@ -628,9 +643,7 @@ const EntityTable = ({
                                       className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
                                       data-testid="request-description"
                                       onClick={() =>
-                                        onEntityFieldSelect?.(
-                                          `columns/${cell.row.cells[0].value}/description`
-                                        )
+                                        onRequestDescriptionHandler(cell)
                                       }>
                                       <PopOver
                                         position="top"
@@ -645,13 +658,15 @@ const EntityTable = ({
                                     </button>
                                   ) : null}
                                   {getFieldThreadElement(
-                                    cell.row.cells[0].value,
+                                    getColumnName(cell),
                                     'description',
                                     entityFieldThreads as EntityFieldThreads[],
                                     onThreadLinkSelect,
                                     EntityType.TABLE,
                                     entityFqn,
-                                    `columns/${cell.row.cells[0].value}/description`,
+                                    `columns/${getColumnName(
+                                      cell
+                                    )}/description`,
                                     Boolean(cell.value)
                                   )}
                                 </Fragment>
@@ -683,12 +698,16 @@ const EntityTable = ({
                                           ),
                                           getPartialNameFromTableFQN(
                                             columnJoin?.fullyQualifiedName as string,
-                                            ['column']
+                                            [FqnPart.Column]
                                           )
                                         )}>
                                         {getPartialNameFromTableFQN(
                                           columnJoin?.fullyQualifiedName as string,
-                                          ['database', 'table', 'column'],
+                                          [
+                                            FqnPart.Database,
+                                            FqnPart.Table,
+                                            FqnPart.Column,
+                                          ],
                                           FQN_SEPARATOR_CHAR
                                         )}
                                       </Link>
@@ -715,15 +734,15 @@ const EntityTable = ({
                                                   ),
                                                   getPartialNameFromTableFQN(
                                                     columnJoin?.fullyQualifiedName as string,
-                                                    ['column']
+                                                    [FqnPart.Column]
                                                   )
                                                 )}>
                                                 {getPartialNameFromTableFQN(
                                                   columnJoin?.fullyQualifiedName as string,
                                                   [
-                                                    'database',
-                                                    'table',
-                                                    'column',
+                                                    FqnPart.Database,
+                                                    FqnPart.Table,
+                                                    FqnPart.Column,
                                                   ]
                                                 )}
                                               </a>

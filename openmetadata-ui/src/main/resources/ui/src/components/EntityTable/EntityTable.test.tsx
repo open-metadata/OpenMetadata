@@ -50,7 +50,7 @@ const mockTableheader = [
 const mockEntityFieldThreads = [
   {
     entityLink:
-      '<#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/products/description>',
+      '<#E/table/bigquery_gcp.ecommerce.shopify.raw_product_catalog/columns/products/description>',
     count: 1,
     entityField: 'columns/products/description',
   },
@@ -66,7 +66,8 @@ const mockEntityTableProp = {
       dataType: 'STRING',
       dataLength: 1,
       dataTypeDisplay: 'string',
-      fullyQualifiedName: 'bigquery_gcp.shopify.raw_product_catalog.comments',
+      fullyQualifiedName:
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
       tags: [],
       constraint: 'NULL',
       ordinalPosition: 1,
@@ -78,7 +79,8 @@ const mockEntityTableProp = {
       dataLength: 1,
       dataTypeDisplay:
         'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
-      fullyQualifiedName: 'bigquery_gcp.shopify.raw_product_catalog.products',
+      fullyQualifiedName:
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
       tags: [],
       constraint: 'NULL',
       ordinalPosition: 2,
@@ -88,7 +90,8 @@ const mockEntityTableProp = {
       dataType: 'STRING',
       dataLength: 1,
       dataTypeDisplay: 'string',
-      fullyQualifiedName: 'bigquery_gcp.shopify.raw_product_catalog.platform',
+      fullyQualifiedName:
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
       tags: [],
       constraint: 'NULL',
       ordinalPosition: 3,
@@ -101,7 +104,7 @@ const mockEntityTableProp = {
       dataTypeDisplay:
         'array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>',
       fullyQualifiedName:
-        'bigquery_gcp.shopify.raw_product_catalog.store_address',
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.store_address',
       tags: [],
       constraint: 'NULL',
       ordinalPosition: 4,
@@ -113,7 +116,7 @@ const mockEntityTableProp = {
       description:
         'The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
       fullyQualifiedName:
-        'bigquery_gcp.shopify.raw_product_catalog.first_order_date',
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.first_order_date',
       tags: [],
       ordinalPosition: 5,
     },
@@ -124,7 +127,7 @@ const mockEntityTableProp = {
       description:
         'The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
       fullyQualifiedName:
-        'bigquery_gcp.shopify.raw_product_catalog.last_order_date',
+        'bigquery_gcp.ecommerce.shopify.raw_product_catalog.last_order_date',
       tags: [],
       ordinalPosition: 6,
     },
@@ -134,7 +137,7 @@ const mockEntityTableProp = {
   joins: [],
   entityFieldThreads: [],
   isReadOnly: false,
-  entityFqn: 'bigquery_gcp.shopify.raw_product_catalog',
+  entityFqn: 'bigquery_gcp.ecommerce.shopify.raw_product_catalog',
   owner: {} as Table['owner'],
   columnName: '',
   onEntityFieldSelect,

@@ -281,12 +281,10 @@ export const makeRow = (column: Column) => {
 export const makeData = (
   columns: ModifiedTableColumn[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
-  const data = columns.map((column) => ({
+  return columns.map((column) => ({
     ...makeRow(column),
     subRows: column.children ? makeData(column.children) : undefined,
   }));
-
-  return data;
 };
 
 export const getDataTypeString = (dataType: string): string => {

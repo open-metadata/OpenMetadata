@@ -51,7 +51,7 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -145,7 +145,7 @@ const EntityVersionPage: FunctionComponent = () => {
         getTableDetailsByFQN(
           getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'schema', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
@@ -174,14 +174,14 @@ const EntityVersionPage: FunctionComponent = () => {
               },
               {
                 name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                  'database',
+                  FqnPart.Database,
                 ]),
                 url: getDatabaseDetailsPath(database.fullyQualifiedName),
               },
               {
                 name: getPartialNameFromTableFQN(
                   databaseSchema.fullyQualifiedName,
-                  ['schema']
+                  [FqnPart.Schema]
                 ),
                 url: getDatabaseSchemaDetailsPath(
                   databaseSchema.fullyQualifiedName
@@ -368,7 +368,7 @@ const EntityVersionPage: FunctionComponent = () => {
         getTableDetailsByFQN(
           getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'schema', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           )
         )
@@ -394,14 +394,14 @@ const EntityVersionPage: FunctionComponent = () => {
                   {
                     name: getPartialNameFromTableFQN(
                       database.fullyQualifiedName,
-                      ['database']
+                      [FqnPart.Database]
                     ),
                     url: getDatabaseDetailsPath(database.fullyQualifiedName),
                   },
                   {
                     name: getPartialNameFromTableFQN(
                       databaseSchema.fullyQualifiedName,
-                      ['schema']
+                      [FqnPart.Schema]
                     ),
                     url: getDatabaseSchemaDetailsPath(
                       databaseSchema.fullyQualifiedName
