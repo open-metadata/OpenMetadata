@@ -95,7 +95,9 @@ class REST_API(AppBuilderBaseView):
     # '/api' REST Endpoint where API requests should all come in
     @csrf.exempt  # Exempt the CSRF token
     @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
-    @app_builder_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask AppBuilder
+    @app_builder_expose(
+        "/api", methods=["GET", "POST", "DELETE"]
+    )  # for Flask AppBuilder
     @jwt_token_secure  # On each request
     def api(self):
         # Get the api that you want to execute
