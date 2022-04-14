@@ -20,7 +20,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   JoinedWith,
   Table,
@@ -305,7 +305,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           return {
             name: getPartialNameFromTableFQN(
               tableFQN,
-              ['database', 'table'],
+              [FqnPart.Database, FqnPart.Table],
               FQN_SEPARATOR_CHAR
             ),
             fullyQualifiedName: tableFQN,
@@ -607,7 +607,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <SchemaTab
                     columnName={getPartialNameFromTableFQN(
                       datasetFQN,
-                      ['column'],
+                      [FqnPart['Column']],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
