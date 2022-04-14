@@ -48,7 +48,7 @@ describe('Test FQN', () => {
     ];
     for (const x of xs) {
       const actualParts = Fqn.split(x.fqn);
-      const actualFqn = Fqn.build(x.parts);
+      const actualFqn = Fqn.build(...x.parts);
       x.validate(actualParts, actualFqn);
     }
   });

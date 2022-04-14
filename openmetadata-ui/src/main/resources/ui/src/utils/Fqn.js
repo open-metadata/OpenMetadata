@@ -32,7 +32,7 @@ export default class Fqn {
   }
 
   // Equivalent of Java's FullyQualifiedName#build
-  static build(xs) {
+  static build(...xs) {
     const result = [];
     for (const x of xs) {
       result.push(this.quoteName(x));
