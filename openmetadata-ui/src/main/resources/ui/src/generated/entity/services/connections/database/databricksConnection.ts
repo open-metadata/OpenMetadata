@@ -16,8 +16,8 @@
  * Databricks Connection Config
  */
 export interface DatabricksConnection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -36,10 +36,10 @@ export interface DatabricksConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: DatabricksScheme;
+  supportsMetadataExtraction?: boolean;
   /**
-   * Supported Metadata Extraction Pipelines.
+   * Generated Token to connect to Databricks
    */
-  supportedPipelineTypes?: string;
   token?: string;
   /**
    * Service Type
@@ -50,17 +50,6 @@ export interface DatabricksConnection {
    * metadata in Databricks.
    */
   username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**

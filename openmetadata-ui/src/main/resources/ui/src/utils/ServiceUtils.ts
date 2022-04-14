@@ -72,7 +72,7 @@ import { ServiceResponse } from '../interface/service.interface';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
       return MYSQL;
 
     case DatabaseServiceType.Redshift:
@@ -117,7 +117,7 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.AzureSQL:
       return AZURESQL;
 
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
       return CLICKHOUSE;
 
     case DatabaseServiceType.Databricks:
@@ -323,7 +323,7 @@ export const getAirflowPipelineTypes = (
     case DatabaseServiceType.Redshift:
     case DatabaseServiceType.BigQuery:
     case DatabaseServiceType.Snowflake:
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
     case DatabaseServiceType.Mssql:
       return onlyMetaData
         ? [PipelineType.Metadata]
@@ -332,7 +332,7 @@ export const getAirflowPipelineTypes = (
     // need to add additional config feild to support trino
     // case DatabaseServiceType.Trino:
     case DatabaseServiceType.Hive:
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
     case DatabaseServiceType.Postgres:
     case DatabaseServiceType.Vertica:
     case DatabaseServiceType.MariaDB:
