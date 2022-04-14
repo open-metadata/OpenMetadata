@@ -12,9 +12,10 @@
 name: Publish openmetadata-ingestion
 
 on:
-  release:
-    types:
-      - created
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag being built"
 
 jobs:
   publish-test:
