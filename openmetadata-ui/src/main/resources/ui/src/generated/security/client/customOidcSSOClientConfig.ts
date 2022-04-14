@@ -13,38 +13,19 @@
  */
 
 /**
- * Looker Connection Config
+ * Custom OIDC SSO client security configs.
  */
-export interface LookerConnection {
+export interface CustomOidcSSOClientConfig {
   /**
-   * Looker Environment
+   * Custom OIDC Client ID.
    */
-  env?: string;
+  clientId: string;
   /**
-   * URL to Looker instance.
+   * Custom OIDC Client Secret Key.
    */
-  hostPort?: string;
+  secretKey: string;
   /**
-   * password to connect  to the Looker.
+   * Custom OIDC token endpoint.
    */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: LookerType;
-  /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
-   */
-  username?: string;
-}
-
-/**
- * Service Type
- *
- * Looker service type
- */
-export enum LookerType {
-  Looker = 'Looker',
+  tokenEndpoint: string;
 }

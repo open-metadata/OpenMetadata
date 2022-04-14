@@ -20,8 +20,8 @@ export interface PrestoConnection {
    * Presto catalog
    */
   catalog?: string;
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -40,10 +40,7 @@ export interface PrestoConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: PrestoScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -53,17 +50,6 @@ export interface PrestoConnection {
    * metadata in Postgres.
    */
   username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**

@@ -13,38 +13,27 @@
  */
 
 /**
- * Looker Connection Config
+ * Okta SSO client security configs.
  */
-export interface LookerConnection {
+export interface OktaSSOClientConfig {
   /**
-   * Looker Environment
+   * Okta Client ID.
    */
-  env?: string;
+  clientId: string;
   /**
-   * URL to Looker instance.
+   * Okta Service account Email.
    */
-  hostPort?: string;
+  email: string;
   /**
-   * password to connect  to the Looker.
+   * Okta org url.
    */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
+  orgURL: string;
   /**
-   * Service Type
+   * Okta Private Key.
    */
-  type?: LookerType;
+  privateKey: string;
   /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
+   * Okta client scopes.
    */
-  username?: string;
-}
-
-/**
- * Service Type
- *
- * Looker service type
- */
-export enum LookerType {
-  Looker = 'Looker',
+  scopes?: string[];
 }

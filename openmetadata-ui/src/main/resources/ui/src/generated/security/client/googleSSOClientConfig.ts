@@ -13,38 +13,15 @@
  */
 
 /**
- * Looker Connection Config
+ * Google SSO client security configs.
  */
-export interface LookerConnection {
+export interface GoogleSSOClientConfig {
   /**
-   * Looker Environment
+   * Google SSO audience URL
    */
-  env?: string;
+  audience?: string;
   /**
-   * URL to Looker instance.
+   * Google SSO client secret key path or contents.
    */
-  hostPort?: string;
-  /**
-   * password to connect  to the Looker.
-   */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: LookerType;
-  /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
-   */
-  username?: string;
-}
-
-/**
- * Service Type
- *
- * Looker service type
- */
-export enum LookerType {
-  Looker = 'Looker',
+  secretKey: string;
 }

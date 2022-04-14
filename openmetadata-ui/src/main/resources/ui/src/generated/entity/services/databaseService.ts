@@ -171,10 +171,12 @@ export interface DatabaseConnection {
  * Trino Connection Config
  *
  * Vertica Connection Config
+ *
+ * Sample Data Connection Config
  */
 export interface Connection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -290,6 +292,18 @@ export interface Connection {
    */
   hostPort?: string;
   /**
+   * Column name on which bigquery table will be partitioned
+   */
+  partitionField?: string;
+  /**
+   * Partitioning query for bigquery tables
+   */
+  partitionQuery?: string;
+  /**
+   * Duration for partitioning bigquery tables
+   */
+  partitionQueryDuration?: number;
+  /**
    * Google BigQuery project id.
    */
   projectID?: string;
@@ -297,10 +311,8 @@ export interface Connection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
    */
@@ -308,7 +320,7 @@ export interface Connection {
   /**
    * Service Type
    */
-  type?: Type;
+  type?: DatabaseServiceType;
   /**
    * username to connect  to the Athena. This user should have privileges to read all the
    * metadata in Athena.
@@ -411,10 +423,6 @@ export interface Connection {
    */
   s3StagingDir?: string;
   /**
-   * Service Type
-   */
-  serviceType?: AthenaType;
-  /**
    * Athena workgroup.
    */
   workgroup?: string;
@@ -426,6 +434,9 @@ export interface Connection {
    * Clickhouse SQL connection duration
    */
   duration?: number;
+  /**
+   * Generated Token to connect to Databricks
+   */
   token?: string;
   /**
    * pySpark App Name
@@ -516,17 +527,10 @@ export interface Connection {
    * Proxies for the connection to Trino data source
    */
   proxies?: { [key: string]: any };
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
   /**
-   * HTTP path of databricks cluster
+   * Sample Data File Path
    */
-  http_path?: string;
+  sampleDataFolder?: string;
 }
 
 /**
@@ -559,20 +563,14 @@ export enum Scheme {
  * Service Type
  *
  * Service type.
- */
-export enum AthenaType {
-  Athena = 'Athena',
-}
-
-/**
- * Service Type
  *
- * Service type.
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  */
-export enum Type {
+export enum DatabaseServiceType {
+  Athena = 'Athena',
   AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
+  Clickhouse = 'Clickhouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
   DeltaLake = 'DeltaLake',
@@ -581,14 +579,15 @@ export enum Type {
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
+  Mssql = 'Mssql',
+  Mysql = 'Mysql',
   Oracle = 'Oracle',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
   SQLite = 'SQLite',
   Salesforce = 'Salesforce',
+  SampleData = 'SampleData',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
@@ -642,34 +641,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
- */
-export enum DatabaseServiceType {
-  Athena = 'Athena',
-  AzureSQL = 'AzureSQL',
-  BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
-  Databricks = 'Databricks',
-  Db2 = 'Db2',
-  DeltaLake = 'DeltaLake',
-  Druid = 'Druid',
-  DynamoDB = 'DynamoDB',
-  Glue = 'Glue',
-  Hive = 'Hive',
-  MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
-  Oracle = 'Oracle',
-  Postgres = 'Postgres',
-  Presto = 'Presto',
-  Redshift = 'Redshift',
-  SQLite = 'SQLite',
-  Salesforce = 'Salesforce',
-  SingleStore = 'SingleStore',
-  Snowflake = 'Snowflake',
-  Trino = 'Trino',
-  Vertica = 'Vertica',
 }

@@ -37,3 +37,6 @@ swagger.html
 
 # macOS
 .DS_Store
+
+# antlr
+src/antlr/generated/
