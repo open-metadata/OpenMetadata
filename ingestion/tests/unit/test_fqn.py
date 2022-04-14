@@ -1,16 +1,28 @@
 from unittest import TestCase
 
-from metadata.utils.fqn import *
+from metadata.utils import fqn
 
 
 class Fqn(TestCase):
     def test_split(self):
-        fqn = "foo.bar"
-        xs = split(fqn)
-        expected_xs = ["foo", "bar"]
-        self.assertEqual(xs, expected_xs)
-        self.assertEqual(build(*xs), fqn)
+        pass
 
-    def test_build(self):
-        names = ["foo.bar", 'bar"baz']
-        self.assertEqual(names, split(build(*names)))
+    def test_quote_name(self):
+        # Unquote_named name remains unquote_named
+        self.assertEqual("a", fqn.quote_name("a"))
+        # Add quote_names when "." exists in the name
+        self.assertEqual('"a.b"', fqn.quote_name("a.b"))
+        # Leave existing valid quote_names
+        self.assertEqual('"a.b"', fqn.quote_name('"a.b"'))
+        # Remove quote_names when not needed
+        self.assertEqual("a", fqn.quote_name('"a"'))
+
+        with self.assertRaises(Exception) as context:
+            fqn.quote_name('"a')
+        self.assertEqual('Invalid name "a', str(context.exception))
+        with self.assertRaises(Exception) as context:
+            fqn.quote_name('a"')
+        self.assertEqual('Invalid name a"', str(context.exception))
+        with self.assertRaises(Exception) as context:
+            fqn.quote_name('a"b')
+        self.assertEqual('Invalid name a"b', str(context.exception))

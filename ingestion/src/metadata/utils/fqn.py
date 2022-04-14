@@ -29,15 +29,21 @@ def build(*args: List[str]) -> str:
     return FQDN_SEPARATOR.join(result)
 
 
-def unquote_name(name: str) -> str:
-    """Equivalent of Java's FullyQualifiedName#unquoteName"""
-    tmp_name = re.sub(r'^"|"$', "", name)
-    return re.sub(r'""', '"', tmp_name)
-
-
 def quote_name(name: str) -> str:
     """Equivalent of Java's FullyQualifiedName#quoteName"""
-    if bool(re.search(r'[.|"]', name)):
-        return '"' + re.sub(r'"', '""', name) + '"'
-    else:
-        return name
+    matcher = re.compile(r'^(")([^"]+)(")$|^(.*)$').match(name)
+    if not matcher or len(matcher.group(0)) != len(name):
+        raise ValueError("Invalid name " + name)
+
+    # Name matches quoted string "sss".
+    # If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if matcher.group(1):
+        unquoted_name = matcher.group(2)
+        return name if "." in unquoted_name else unquoted_name
+
+    # Name matches unquoted string sss
+    # If unquoted string contains ".", return quoted "sss", else unquoted sss
+    unquoted_name = matcher.group(4)
+    if '"' not in unquoted_name:
+        return '"' + name + '"' if "." in unquoted_name else unquoted_name
+    raise ValueError("Invalid name " + name)
