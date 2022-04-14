@@ -29,7 +29,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import javax.validation.Valid;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -60,12 +59,12 @@ import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 @Path("/v1/tags")
@@ -97,7 +96,7 @@ public class TagResource {
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<String> tagFiles = getTagDefinitions();
+    List<String> tagFiles = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
     tagFiles.forEach(
         tagFile -> {
           try {
@@ -117,14 +116,9 @@ public class TagResource {
                     });
             daoCategory.initCategory(tagCategory);
           } catch (Exception e) {
-            LOG.warn("Failed to initialize the tag files {} {}", tagFile, e.getMessage());
+            LOG.warn("Failed to initialize the tag files {}", tagFile, e);
           }
         });
-  }
-
-  public static List<String> getTagDefinitions() throws IOException {
-    Pattern pattern = Pattern.compile(".*json/data/tags/.*\\.json$");
-    return CommonUtil.getResources(pattern);
   }
 
   static final String FIELDS = "usageCount";

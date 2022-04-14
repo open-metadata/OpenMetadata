@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -40,13 +41,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
-import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
-import org.openmetadata.catalog.resources.policies.PolicyResource;
-import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -115,7 +113,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Create a set of roles.
     for (int i = 0; i < numberOfRoles; i++) {
       CreateRole create = createRequest(test, offset + i);
-      createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     }
 
     // Set one of the roles as default.
@@ -136,27 +134,16 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
     // Create role with different optional fields
     CreateRole create = createRequest(test, 1);
-    createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     create = createRequest(test, 2).withDisplayName("displayName");
-    createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     create = createRequest(test, 3).withDescription("description");
-    createAndCheckRole(create, ADMIN_AUTH_HEADERS);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     create = createRequest(test, 4).withDisplayName("displayName").withDescription("description");
-    createAndCheckRole(create, ADMIN_AUTH_HEADERS);
-  }
-
-  private Role createAndCheckRole(CreateRole create, Map<String, String> authHeaders) throws IOException {
-    Role role = createAndCheckEntity(create, authHeaders);
-    Policy policy = PolicyResourceTest.getPolicy(role.getPolicy().getId(), PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    assertEquals(String.format("%sRoleAccessControlPolicy", role.getName()), policy.getName());
-    assertEquals(String.format("%s Role Access Control Policy", role.getDisplayName()), policy.getDisplayName());
-    assertEquals(
-        String.format("Policy for %s Role to perform operations on metadata entities", role.getDisplayName()),
-        policy.getDescription());
-    return role;
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -213,17 +200,17 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
             ? getEntityByName(role.getName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
-    assertListNull(role.getPolicy(), role.getUsers());
+    assertListNull(role.getPolicies(), role.getUsers());
 
     // .../roles?fields=policy,users
-    String fields = "policy,teams,users";
+    String fields = "policies,teams,users";
     role =
         byName
             ? getEntityByName(role.getName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(role.getPolicy(), role.getUsers());
+    assertListNotNull(role.getPolicies(), role.getUsers());
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
-    TestUtils.validateEntityReference(role.getPolicy());
+    TestUtils.validateEntityReferences(role.getPolicies());
     TestUtils.validateEntityReferences(role.getTeams(), true);
     TestUtils.validateEntityReferences(role.getUsers(), true);
     return getEntityInterface(role);
@@ -231,13 +218,18 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public CreateRole createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateRole().withName(name).withDescription(description).withDisplayName(displayName);
+    return new CreateRole()
+        .withName(name)
+        .withDescription(description)
+        .withDisplayName(displayName)
+        .withPolicies(DATA_CONSUMER_ROLE.getPolicies());
   }
 
   @Override
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
         getEntityInterface(role), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    assertEntityReferenceList(role.getPolicies(), createRequest.getPolicies());
   }
 
   @Override

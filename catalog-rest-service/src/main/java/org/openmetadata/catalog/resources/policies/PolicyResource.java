@@ -89,7 +89,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
     policyEvaluator.setPolicyRepository(dao);
     // Load any existing rules from database, before loading seed data.
-    policyEvaluator.refreshRules();
+    policyEvaluator.load();
     dao.initSeedDataFromResources();
   }
 
@@ -279,7 +279,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(securityContext, create);
-    return create(uriInfo, securityContext, policy, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, policy, ADMIN | BOT);
+    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
+    return response;
   }
 
   @PATCH
@@ -304,7 +306,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -323,7 +327,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
     Policy policy = getPolicy(securityContext, create);
-    return createOrUpdate(uriInfo, securityContext, policy, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, policy, ADMIN | BOT | OWNER);
+    PolicyEvaluator.getInstance().update((Policy) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -345,7 +351,9 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           boolean hardDelete,
       @Parameter(description = "Policy Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    PolicyEvaluator.getInstance().delete((Policy) response.getEntity());
+    return response;
   }
 
   private Policy getPolicy(SecurityContext securityContext, CreatePolicy create) {

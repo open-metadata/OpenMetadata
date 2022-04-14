@@ -22,4 +22,7 @@ import java.lang.annotation.Target;
 @Target(value = ElementType.TYPE)
 public @interface Collection {
   String name();
+
+  /** Only order from 0 to 9 (inclusive) are allowed */
+  int order() default 0;
 }

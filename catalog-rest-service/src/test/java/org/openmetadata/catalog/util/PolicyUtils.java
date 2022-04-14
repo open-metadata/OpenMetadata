@@ -14,7 +14,6 @@ public class PolicyUtils {
       String name,
       String entityTag,
       String entityType,
-      String userRole,
       MetadataOperation operation,
       boolean allow,
       int priority,
@@ -23,7 +22,6 @@ public class PolicyUtils {
         .withName(name)
         .withEntityTagAttr(entityTag)
         .withEntityTypeAttr(entityType)
-        .withUserRoleAttr(userRole)
         .withOperation(operation)
         .withAllow(allow)
         .withPriority(priority)
@@ -31,14 +29,7 @@ public class PolicyUtils {
   }
 
   public static Rule accessControlRule(
-      String entityTag,
-      String entityType,
-      String userRole,
-      MetadataOperation operation,
-      boolean allow,
-      int priority,
-      boolean enabled) {
-    return accessControlRule(
-        "rule" + random.nextInt(21), entityTag, entityType, userRole, operation, allow, priority, enabled);
+      String entityTag, String entityType, MetadataOperation operation, boolean allow, int priority, boolean enabled) {
+    return accessControlRule("rule" + random.nextInt(21), entityTag, entityType, operation, allow, priority, enabled);
   }
 }

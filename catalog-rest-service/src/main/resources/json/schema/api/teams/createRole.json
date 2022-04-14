@@ -15,8 +15,12 @@
     "description": {
       "description": "Optional description of the role",
       "type": "string"
+    },
+    "policies": {
+      "description": "Policies that is attached to this role. At least one policy is required.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
-  "required": ["name"],
+  "required": ["name", "policies"],
   "additionalProperties": false
 }

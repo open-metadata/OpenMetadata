@@ -31,7 +31,6 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -48,8 +47,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private static final String POLICY_PATCH_FIELDS = "owner,location";
   public static final String ENABLED = "enabled";
 
-  private final PolicyEvaluator policyEvaluator;
-
   public PolicyRepository(CollectionDAO dao) {
     super(
         PolicyResource.COLLECTION_PATH,
@@ -59,7 +56,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao,
         POLICY_PATCH_FIELDS,
         POLICY_UPDATE_FIELDS);
-    policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   public static String getFQN(Policy policy) {
@@ -126,10 +122,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.withOwner(null).withLocation(null).withHref(null);
 
     store(policy.getId(), policy, update);
-    if (PolicyType.AccessControl.equals(policy.getPolicyType())) {
-      // Refresh rules in PolicyEvaluator right after an Access Control policy has been stored.
-      policyEvaluator.refreshRules();
-    }
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);
@@ -173,62 +165,29 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
       if (rule.getOperation() == null) {
         throw new IllegalArgumentException(
-            String.format(
-                "Found invalid rule %s within policy %s. Please ensure operation is non-null",
-                rule.getName(), policy.getName()));
+            CatalogExceptionMessage.invalidPolicyOperationNull(rule.getName(), policy.getName()));
       }
 
       if (!operations.add(rule.getOperation())) {
         throw new IllegalArgumentException(
-            String.format(
-                "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
-                rule.getOperation(), policy.getName()));
-      }
-
-      // If all user (subject) and entity (object) attributes are null, the rule is invalid.
-      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null && rule.getUserRoleAttr() == null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Found invalid rule %s within policy %s. Please ensure that at least one among the user (subject) and entity (object) attributes is specified",
-                rule.getName(), policy.getName()));
+            CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
       }
     }
-    // No validation errors, if execution reaches here.
   }
 
-  private List<Policy> getAccessControlPolicies() throws IOException {
+  public List<Policy> getAccessControlPolicies() throws IOException {
     EntityUtil.Fields fields = new EntityUtil.Fields(List.of("policyType", "rules", ENABLED));
     ListFilter filter = new ListFilter();
     List<String> jsons = daoCollection.policyDAO().listAfter(filter, Integer.MAX_VALUE, "");
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
+      if (!policy.getPolicyType().equals(PolicyType.AccessControl) && !Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }
       policies.add(policy);
     }
     return policies;
-  }
-
-  /**
-   * Helper method to get Access Control Policies Rules. This method returns only rules for policies that are enabled.
-   */
-  public List<Rule> getAccessControlPolicyRules() throws IOException {
-    List<Policy> policies = getAccessControlPolicies();
-    List<Rule> rules = new ArrayList<>();
-    for (Policy policy : policies) {
-      if (!Boolean.TRUE.equals(policy.getEnabled())) {
-        // Skip if policy is not enabled.
-        continue;
-      }
-      List<Object> ruleObjects = policy.getRules();
-      for (Object ruleObject : ruleObjects) {
-        Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
-        rules.add(rule);
-      }
-    }
-    return rules;
   }
 
   private void setLocation(Policy policy, EntityReference location) {

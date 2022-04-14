@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
@@ -56,6 +57,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public final class EntityUtil {
@@ -221,6 +223,10 @@ public final class EntityUtil {
         tags.add(derivedTag);
       }
     }
+  }
+
+  public static List<String> getJsonDataResources(String path) throws IOException {
+    return CommonUtil.getResources(Pattern.compile(path));
   }
 
   @RequiredArgsConstructor

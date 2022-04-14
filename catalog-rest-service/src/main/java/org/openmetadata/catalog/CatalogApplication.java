@@ -62,6 +62,8 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 
@@ -74,7 +76,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException, SQLException {
-
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
 
@@ -118,6 +119,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
     registerResources(catalogConfig, environment, jdbi);
+    RoleEvaluator.getInstance().load();
+    PolicyEvaluator.getInstance().load();
+    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -181,7 +185,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
       authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
-      authorizer.init(authorizerConf, jdbi);
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
@@ -195,7 +198,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = NoopAuthorizer.class.getConstructor().newInstance();
-      authorizer.init(null, jdbi);
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }

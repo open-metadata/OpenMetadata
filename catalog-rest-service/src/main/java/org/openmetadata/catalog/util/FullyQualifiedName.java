@@ -17,9 +17,6 @@ import org.openmetadata.catalog.FqnParser.QuotedNameContext;
 import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
 
 public class FullyQualifiedName {
-  // Match the sub parts of fqn string "sss". or sss. or sss$
-  private static final Pattern partsPattern = Pattern.compile("((\")([^\"]+)(\"))|([^.]+)([.$])?");
-
   // Quoted name of format "sss" or sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
@@ -57,7 +54,7 @@ public class FullyQualifiedName {
     List<String> list = new ArrayList<>();
 
     public String[] split() {
-      return list.toArray(new String[list.size()]);
+      return list.toArray(new String[0]);
     }
 
     @Override

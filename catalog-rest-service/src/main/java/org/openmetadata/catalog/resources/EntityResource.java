@@ -10,6 +10,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -25,13 +26,16 @@ import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 public abstract class EntityResource<T, K extends EntityRepository<T>> {
+  protected final Class<T> entityClass;
   protected final List<String> allowedFields;
   protected final K dao;
   protected final Authorizer authorizer;
   private final boolean supportsOwner;
 
   public EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
+    this.entityClass = entityClass;
     allowedFields = Entity.getEntityFields(entityClass);
     supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
@@ -87,6 +91,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, flags);
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
     EntityInterface<T> entityInterface = dao.getEntityInterface(entity);
+    LOG.info("Created {}:{}", entityInterface.getEntityType(), entityInterface.getId());
     return Response.created(entityInterface.getHref()).entity(entity).build();
   }
 
