@@ -672,8 +672,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
                     currentUser={databaseSchema?.owner?.id}
+                    entityId={databaseSchema?.id}
+                    entityName={databaseSchema?.name}
+                    entityType={EntityType.DATABASE_SCHEMA}
                     hasEditAccess={hasEditAccess(
                       databaseSchema?.owner?.type || '',
                       databaseSchema?.owner?.id || ''
