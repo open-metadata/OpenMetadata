@@ -14,7 +14,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
-        "MSSQL",
+        "Mssql",
         "Hive",
         "Oracle",
         "Athena",

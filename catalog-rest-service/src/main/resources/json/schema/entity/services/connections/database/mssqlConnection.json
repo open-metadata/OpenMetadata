@@ -9,8 +9,8 @@
     "mssqlType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["MSSQL"],
-      "default": "MSSQL"
+      "enum": ["Mssql"],
+      "default": "Mssql"
     },
     "mssqlScheme": {
       "description": "SQLAlchemy driver scheme options.",
@@ -23,7 +23,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/mssqlType",
-      "default": "MSSQL"
+      "default": "Mssql"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
