@@ -82,13 +82,6 @@ public class PolicyEvaluator {
       policies = policyRepository.getAccessControlPolicies();
       for (final Policy policy : policies) {
         Rules rules = getRules(policy);
-        //      policy.getRules().stream()
-        //          // Add rules only if they are enabled.
-        //          .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule) t).getEnabled())
-        //          .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule)
-        // rule))
-        //          .forEach(newRules::register);
-        //      // Atomic swap of rules.
         policyToRules.put(policy.getId(), rules);
         LOG.info("Loaded new set of {} rules for policy {}:{}", rules.size(), policy.getName(), policy.getId());
       }
@@ -130,7 +123,7 @@ public class PolicyEvaluator {
         .build();
   }
 
-  public void update(Policy policy) throws IOException {
+  public void update(Policy policy) {
     policyToRules.put(policy.getId(), getRules(policy));
   }
 
@@ -138,14 +131,19 @@ public class PolicyEvaluator {
     policyToRules.remove(po.getId());
   }
 
-  public Rules getRules(Policy policy) throws IOException {
+  public Rules getRules(Policy policy) {
     Rules rules = new Rules();
     for (Object r : policy.getRules()) {
-      org.openmetadata.catalog.entity.policies.accessControl.Rule acRule =
-          JsonUtils.readValue(
-              JsonUtils.getJsonStructure(r).toString(),
-              org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
-      if (acRule.getAllow()) {
+      org.openmetadata.catalog.entity.policies.accessControl.Rule acRule = null;
+      try {
+        acRule =
+            JsonUtils.readValue(
+                JsonUtils.getJsonStructure(r).toString(),
+                org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
+      } catch (Exception e) {
+        LOG.warn("Failed to load a rule", e);
+      }
+      if (Boolean.TRUE.equals(acRule.getAllow())) {
         rules.register(convertRule(acRule));
       }
     }
