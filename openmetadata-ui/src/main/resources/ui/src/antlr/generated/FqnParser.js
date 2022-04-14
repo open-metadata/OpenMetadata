@@ -273,4 +273,4 @@ FqnParser.UnquotedNameContext = UnquotedNameContext;
 
 
 FqnParser.FqnContext = FqnContext; 
-FqnParser.NameContext = NameContext; 
+FqnParser.NameContext = NameContext;

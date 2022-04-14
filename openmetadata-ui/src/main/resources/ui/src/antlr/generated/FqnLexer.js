@@ -70,4 +70,3 @@ FqnLexer.QUOTE = 3;
 FqnLexer.NON_RESERVED = 4;
 FqnLexer.RESERVED = 5;
 
-
