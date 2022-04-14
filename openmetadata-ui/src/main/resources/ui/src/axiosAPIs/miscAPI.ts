@@ -113,3 +113,10 @@ export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
     `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
   );
 };
+
+export const deleteEntity: Function = (
+  entityType: string,
+  entityId: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(`/${entityType}/${entityId}?hardDelete=true`);
+};

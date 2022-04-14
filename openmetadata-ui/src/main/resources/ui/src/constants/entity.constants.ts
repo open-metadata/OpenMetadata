@@ -11,18 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = ElementType.TYPE)
-public @interface Collection {
-  String name();
-
-  /** Only order from 0 to 9 (inclusive) are allowed */
-  int order() default 0;
-}
+export const ENTITY_DELETE_STATE = {
+  loading: 'initial',
+  state: false,
+};

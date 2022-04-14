@@ -14,43 +14,33 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { deleteEntity } from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { ENTITY_DELETE_STATE } from '../../constants/entity.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { getEntityName, getUserTeams } from '../../utils/CommonUtils';
+import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
+import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import { ManageProps } from './ManageTab.interface';
 
-type Props = {
-  currentTier?: string;
-  currentUser?: string;
-  hideTier?: boolean;
-  isJoinable?: boolean;
-  onSave: (
-    owner: TableDetail['owner'],
-    tier: TableDetail['tier'],
-    isJoinable?: boolean
-  ) => Promise<void>;
-  hasEditAccess: boolean;
-  allowTeamOwner?: boolean;
-};
-
-const ManageTab: FunctionComponent<Props> = ({
+const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
   currentUser = '',
   hideTier = false,
@@ -58,62 +48,15 @@ const ManageTab: FunctionComponent<Props> = ({
   hasEditAccess,
   allowTeamOwner = true,
   isJoinable,
-}: Props) => {
+  allowDelete,
+  entityName,
+  entityType,
+  entityId,
+}: ManageProps) => {
+  const history = useHistory();
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getOwnerList = () => {
-    const user = !isEmpty(appState.userDetails)
-      ? appState.userDetails
-      : appState.users.length
-      ? appState.users[0]
-      : undefined;
-    const teams = getUserTeams().map((team) => ({
-      name: team?.displayName || team.name || '',
-      value: team.id,
-      group: 'Teams',
-      type: 'team',
-    }));
 
-    if (user?.isAdmin) {
-      const users = appState.users
-        .map((user) => ({
-          name: getEntityName(user as unknown as EntityReference),
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        }))
-        .filter((u) => u.value != user.id);
-      const teams = appState.userTeams.map((team) => ({
-        name: team.displayName || team.name || '',
-        value: team.id,
-        group: 'Teams',
-        type: 'team',
-      }));
-
-      return [
-        {
-          name: getEntityName(user as unknown as EntityReference),
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        },
-        ...users,
-        ...teams,
-      ];
-    } else {
-      return user
-        ? [
-            {
-              name: user.displayName || user.name,
-              value: user.id,
-              group: 'Users',
-              type: 'user',
-            },
-            ...teams,
-          ]
-        : teams;
-    }
-  };
   const [loading, setLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
     'initial'
@@ -126,6 +69,8 @@ const ManageTab: FunctionComponent<Props> = ({
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [entityDeleteState, setEntityDeleteState] =
+    useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -189,6 +134,61 @@ const ManageTab: FunctionComponent<Props> = ({
   const handleCancel = () => {
     setActiveTier(currentTier);
     setOwner(currentUser);
+  };
+
+  const handleOnEntityDelete = () => {
+    setEntityDeleteState((prev) => ({ ...prev, state: true }));
+  };
+
+  const handleOnEntityDeleteCancel = () => {
+    setEntityDeleteState(ENTITY_DELETE_STATE);
+  };
+
+  const handleOnEntityDeleteConfirm = () => {
+    setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
+    deleteEntity(`${entityType}s`, entityId)
+      .then((res: AxiosResponse) => {
+        if (res.status === 200) {
+          setTimeout(() => {
+            handleOnEntityDeleteCancel();
+            showSuccessToast(
+              jsonData['api-success-messages']['delete-entity-success']
+            );
+            setTimeout(() => {
+              history.push('/');
+            }, 500);
+          }, 1000);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
+        }
+      })
+      .catch((error: AxiosError) => {
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['delete-entity-error']
+        );
+      })
+      .finally(() => {
+        handleOnEntityDeleteCancel();
+      });
+  };
+
+  const getDeleteModal = () => {
+    if (allowDelete && entityDeleteState.state) {
+      return (
+        <EntityDeleteModal
+          entityName={entityName as string}
+          entityType={entityType as string}
+          loadingState={entityDeleteState.loading}
+          onCancel={handleOnEntityDeleteCancel}
+          onConfirm={handleOnEntityDeleteConfirm}
+        />
+      );
+    } else {
+      return null;
+    }
   };
 
   const getTierData = () => {
@@ -272,9 +272,9 @@ const ManageTab: FunctionComponent<Props> = ({
           <span className="tw-relative">
             <NonAdminAction
               html={
-                <>
+                <Fragment>
                   <p>You do not have permissions to update the owner.</p>
-                </>
+                </Fragment>
               }
               isOwner={hasEditAccess}
               permission={Operation.UpdateOwner}
@@ -415,6 +415,32 @@ const ManageTab: FunctionComponent<Props> = ({
           </Button>
         )}
       </div>
+      {allowDelete ? (
+        <div className="tw-mt-9" data-testid="danger-zone">
+          <hr className="tw-border-main tw-mb-4" />
+          <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
+            <div data-testid="danger-zone-text">
+              <h4 className="tw-text-base" data-testid="danger-zone-text-title">
+                Delete {entityType} {entityName}
+              </h4>
+              <p data-testid="danger-zone-text-para">
+                {`Once you delete this ${entityType}, it would be removed permanently`}
+              </p>
+            </div>
+            <Button
+              className="tw-px-2 tw-py-0 tw-rounded tw-h-8 tw-self-center tw-shadow"
+              data-testid="delete-button"
+              size="custom"
+              theme="primary"
+              type="button"
+              variant="outlined"
+              onClick={handleOnEntityDelete}>
+              Delete this {entityType}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {getDeleteModal()}
     </div>
   );
 };

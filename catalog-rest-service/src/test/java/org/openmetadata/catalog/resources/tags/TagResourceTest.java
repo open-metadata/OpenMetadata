@@ -51,6 +51,7 @@ import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.CreateTagCategory.TagCategoryType;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -73,8 +74,8 @@ public class TagResourceTest extends CatalogApplicationTest {
     CategoryList list = listCategories();
 
     // Ensure category list has all the tag categories initialized from tags files in the resource path
-    List<String> files = TagResource.getTagDefinitions();
-    assertEquals(files.size(), list.getData().size());
+    List<String> jsonData = EntityUtil.getJsonDataResources(".*json/data/tags/.*\\.json$");
+    assertEquals(jsonData.size(), list.getData().size());
 
     // Validate list of tag categories returned in GET
     for (TagCategory category : list.getData()) {

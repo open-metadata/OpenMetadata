@@ -45,6 +45,7 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -141,8 +142,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.UpdateDescription, true, 0, true));
     rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -150,31 +150,24 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   @Test
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
+    // Adding a rule without operation should be disallowed
+    String policyName = getEntityName(test);
+    String ruleName = "rule21";
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
-    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
-    assertResponseContains(
+    rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true, 0, true));
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format(
-            "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
-                + "(subject) and entity (object) attributes is specified",
-            getEntityName(test)));
+        CatalogExceptionMessage.invalidPolicyOperationNull(ruleName, policyName));
   }
 
   @Test
   void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule1", null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule2", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.UpdateDescription, true, 0, true));
+    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.UpdateTags, true, 1, true));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),

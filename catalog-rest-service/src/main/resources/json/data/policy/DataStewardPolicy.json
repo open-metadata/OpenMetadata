@@ -1,39 +1,35 @@
 {
-  "name": "DataStewardRoleAccessControlPolicy",
+  "name": "DataStewardPolicy",
   "displayName": "Data Steward Role Access Control Policy",
-  "fullyQualifiedName": "DataStewardRoleAccessControlPolicy",
+  "fullyQualifiedName": "DataStewardPolicy",
   "description": "Policy for Data Steward Role to perform operations on metadata entities",
   "policyType": "AccessControl",
   "enabled": true,
   "deleted": false,
   "rules": [
     {
-      "name": "DataStewardRoleAccessControlPolicy-UpdateDescription",
-      "userRoleAttr": "DataSteward",
+      "name": "DataStewardPolicy-UpdateDescription",
       "operation": "UpdateDescription",
       "allow": true,
       "enabled": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardRoleAccessControlPolicy-UpdateLineage",
-      "userRoleAttr": "DataSteward",
+      "name": "DataStewardPolicy-UpdateLineage",
       "operation": "UpdateLineage",
       "allow": true,
       "enabled": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardRoleAccessControlPolicy-UpdateOwner",
-      "userRoleAttr": "DataSteward",
+      "name": "DataStewardPolicy-UpdateOwner",
       "operation": "UpdateOwner",
       "allow": true,
       "enabled": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardRoleAccessControlPolicy-UpdateTags",
-      "userRoleAttr": "DataSteward",
+      "name": "DataStewardPolicy-UpdateTags",
       "operation": "UpdateTags",
       "allow": true,
       "enabled": true,

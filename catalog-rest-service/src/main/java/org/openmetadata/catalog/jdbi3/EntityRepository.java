@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -72,7 +71,6 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -219,16 +217,16 @@ public abstract class EntityRepository<T> {
    * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
-    Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityType));
-    List<String> jsonDataFiles = CommonUtil.getResources(pattern);
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", entityType));
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
             String json =
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
             initSeedData(JsonUtils.readValue(json, entityClass));
-          } catch (IOException e) {
-            LOG.warn("Failed to initialize the {} from file {}: {}", entityType, jsonDataFile, e.getMessage());
+          } catch (Exception e) {
+            LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
   }
@@ -246,7 +244,7 @@ public abstract class EntityRepository<T> {
     LOG.info("{} {} is not initialized", entityType, entityInterface.getFullyQualifiedName());
     entityInterface.setUpdateDetails("admin", System.currentTimeMillis());
     entityInterface.setId(UUID.randomUUID());
-    storeEntity(entityInterface.getEntity(), false);
+    create(null, entityInterface.getEntity());
     LOG.info("Created a new {} {}", entityType, entityInterface.getFullyQualifiedName());
   }
 
@@ -504,7 +502,7 @@ public abstract class EntityRepository<T> {
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
     EntityInterface<T> entityInterface = getEntityInterface(updated);
-    if (supportsSoftDelete && hardDelete == false) {
+    if (supportsSoftDelete && !hardDelete) {
       entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
       entityInterface.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
