@@ -16,6 +16,6 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const validEmailRegEx = /^\S+@\S+\.\S+$/;
 export const FQN_REGEX = new RegExp(
-  `("${FQN_SEPARATOR_CHAR}*?"|[^"${FQN_SEPARATOR_CHAR}'\\s]+)(?=\\s*.|\\s*$)`,
+  `("${FQN_SEPARATOR_CHAR}*?"|[^"${FQN_SEPARATOR_CHAR}\\s]+)(?=\\s*.|\\s*$)`,
   'g'
 );
