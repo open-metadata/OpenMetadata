@@ -33,9 +33,7 @@ class Fqn(TestCase):
             FQNTest(["a.1", "b.2", "c.3", "d.4"], '"a.1"."b.2"."c.3"."d.4"'),
         ]
         for x in xs:
-            actual_parts = fqn.split(x.fqn)
-            actual_fqn = fqn.build(*x.parts)
-            x.validate(actual_parts, actual_fqn)
+            x.validate(fqn.split(x.fqn), fqn.build(*x.parts))
 
     def test_quote_name(self):
         # Unquote_named name remains unquote_named
