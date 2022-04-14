@@ -3,10 +3,10 @@ from typing import List
 
 from antlr4 import *
 
-from metadata.generated.antlr.FqnLexer import FqnLexer
-from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.antlr.SplitListener import SplitListener
 from metadata.config.common import FQDN_SEPARATOR
+from metadata.generated.antlr.FqnLexer import FqnLexer
+from metadata.generated.antlr.FqnParser import FqnParser
 
 
 def split(s: str) -> List[str]:
