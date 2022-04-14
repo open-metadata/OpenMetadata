@@ -23,10 +23,6 @@
       "description": "Host and port of the Glue",
       "type": "string"
     },
-    "endPointURL": {
-      "description": "EndPoint URL for the Glue",
-      "type": "string"
-    },
     "awsAccessKeyId": {
       "description": "AWS Access key ID.",
       "type": "string"
@@ -67,5 +63,8 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
 }

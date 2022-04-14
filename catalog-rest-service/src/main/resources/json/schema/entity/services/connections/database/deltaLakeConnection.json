@@ -41,5 +41,9 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "oneOf": [
+    {"required": ["metastoreHostPort"]},
+    {"required": ["metastoreFilePath"]}
+  ]
 }
