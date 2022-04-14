@@ -292,7 +292,7 @@ class AmundsenSource(Source[Entity]):
                 "name": service_name,
                 "description": "",
                 "serviceType": self.database_service_map.get(
-                    service_type.lower(), DatabaseServiceType.MySQL.value
+                    service_type.lower(), DatabaseServiceType.Mysql.value
                 ),
                 "connection": {"config": {}},
             }

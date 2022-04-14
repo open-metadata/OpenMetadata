@@ -64,7 +64,7 @@ class MssqlUsageSource(Source[TableQuery]):
         self.alchemy_helper = SQLAlchemyHelper(
             self.connection,
             metadata_config,
-            DatabaseServiceType.MSSQL.value,
+            DatabaseServiceType.Mssql.value,
             self.sql_stmt,
         )
         self.report = SQLSourceStatus()
