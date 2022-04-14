@@ -19,7 +19,7 @@ export interface DynamoDBConnection {
   /**
    * AWS Access key ID.
    */
-  awsAccessKeyId?: any;
+  awsAccessKeyId?: string;
   /**
    * AWS Region Name.
    */
