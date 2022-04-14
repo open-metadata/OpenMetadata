@@ -507,19 +507,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (16) (1) (1) (1) (1).png>)
 
 ### 2. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your Redshift service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30) (1).png>)
 
 ### 3. Select service type
 
 Select Redshift as the service type.
 
-![](<../../../.gitbook/assets/image (77).png>)
+![](<../../../.gitbook/assets/image (77) (1).png>)
 
 
 
@@ -543,7 +543,7 @@ Provide a description for your Redshift service that enables other users to dete
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
-![](<../../../.gitbook/assets/image (9).png>)
+![](<../../../.gitbook/assets/image (9) (1).png>)
 
 #### Host
 
@@ -571,7 +571,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your Redshift deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
-![](<../../../.gitbook/assets/image (18).png>)
+![](<../../../.gitbook/assets/image (18) (1).png>)
 
 #### Ingestion name
 

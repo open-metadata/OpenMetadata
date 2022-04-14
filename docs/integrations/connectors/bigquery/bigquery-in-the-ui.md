@@ -27,19 +27,19 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (16) (1) (1) (1) (1).png>)
 
 ## 3. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your BigQuery service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30) (1).png>)
 
 ## 4. Select service type
 
 Select BigQuery as the service type.
 
-![](<../../../.gitbook/assets/image (52).png>)
+![](<../../../.gitbook/assets/image (52) (1).png>)
 
 ## 5. Name and describe your service
 
@@ -53,7 +53,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your BigQuery service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (50).png>)
+![](<../../../.gitbook/assets/image (50) (1).png>)
 
 ## 6. Configure service connection
 
@@ -85,7 +85,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your BigQuery deployment. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![](<../../../.gitbook/assets/image (31) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (31) (1) (1) (1) (1) (1).png>)
 
 #### Ingestion name
 
@@ -163,4 +163,4 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (25).png>)
+![](<../../../.gitbook/assets/image (25) (1).png>)

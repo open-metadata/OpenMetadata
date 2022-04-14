@@ -494,19 +494,19 @@ By default, OpenMetadata ships with Apache Airflow and is configured to use the 
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (16) (1) (1) (1) (1).png>)
 
 ### 2. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your Glue service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30) (1).png>)
 
 ### 3. Select service type
 
 Select Glue as the service type.
 
-![](<../../../.gitbook/assets/image (44).png>)
+![](<../../../.gitbook/assets/image (44) (1).png>)
 
 
 
@@ -522,7 +522,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your Glue service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (24).png>)
+![](<../../../.gitbook/assets/image (24) (1).png>)
 
 
 
@@ -628,7 +628,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (23).png>)
+![](<../../../.gitbook/assets/image (23) (1).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}

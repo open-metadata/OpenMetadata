@@ -5,7 +5,7 @@ description: >-
   Okta.
 ---
 
-# Copy of Create Server Credentials
+# Create Server Credentials
 
 ## Step 1: Create an Okta Account
 
@@ -17,15 +17,15 @@ description: >-
 
 * Once done with **Signup/Sign in**, you will be redirected to the **Getting Started** page in Okta.
 
-![](<../../../../docs/.gitbook/assets/image (56).png>)
+![](<../../../../docs/.gitbook/assets/image (56) (1).png>)
 
 * Click on **Applications -> Applications** in the left navigation panel.
 
-![](<../../../../docs/.gitbook/assets/image (10).png>)
+![](<../../../../docs/.gitbook/assets/image (10) (1).png>)
 
 * Click on the **Create App Integration** button.
 
-![](<../../../../docs/.gitbook/assets/image (42).png>)
+![](<../../../../docs/.gitbook/assets/image (11) (1) (1) (1).png>)
 
 ## Step 3: Configuring the App
 
@@ -33,28 +33,27 @@ description: >-
 * Next, select the **Application type -> Single-Page Application**.
 * Once selected, click **Next**.
 
-![](<../../../../docs/.gitbook/assets/image (41).png>)
+![](<../../../../docs/.gitbook/assets/image (41) (1).png>)
 
-* From the **General Settings** page,&#x20;
+* From the **General Settings** page,
   * Enter an **App integration name**
   * Select the following in **Grant type**:
     * **Authorization Code**
     * **Refresh Token** - For the refresh token behavior, it is recommended to select the option to 'Rotate token after every use'.
     * **Implicit (hybrid)** - Select the options to allow ID Token and Access Token with implicit grant type.
   * Enter the **Sign-in redirect URIs**
-    * [http://localhost:8585/signin
-      \
+    * [http://localhost:8585/signin\
       http://localhost:8585](http://localhost:8585/signinhttp://localhost:8585)
   * Enter the **Sign-out redirect URIs**
   * Enter the **Base URIs**
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../../docs/.gitbook/assets/image (20).png>)
+![](<../../../../docs/.gitbook/assets/image (20) (1).png>)
 
 * The app is now configured.
 
-![](<../../../../docs/.gitbook/assets/image (28).png>)
+![](<../../../../docs/.gitbook/assets/image (28) (1).png>)
 
 ## Step 4: Add Authorization Server to get the Issuer URL
 
@@ -62,17 +61,17 @@ It is recommended to create a separate authorization server for different applic
 
 * Click on **Security -> API** in the left navigation panel.
 
-![](<../../../../docs/.gitbook/assets/image (17).png>)
+![](<../../../../docs/.gitbook/assets/image (17) (1).png>)
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../../docs/.gitbook/assets/image (26).png>)
+![](<../../../../docs/.gitbook/assets/image (29) (1).png>)
 
-* Enter a Name and Description.&#x20;
+* Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](okta-server-creds.md#step-7-where-to-find-the-credentials) to locate the Client ID.
 * **Save** the changes.
 
-![](<../../../../docs/.gitbook/assets/image (32).png>)
+![](<../../../../docs/.gitbook/assets/image (32) (1).png>)
 
 This will generate the Issuer URL.
 
@@ -85,7 +84,7 @@ This will generate the Issuer URL.
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**
 
-![](<../../../../docs/.gitbook/assets/image (51).png>)
+![](<../../../../docs/.gitbook/assets/image (51) (1).png>)
 
 * Set as a **Default Scope**.
 
@@ -97,7 +96,7 @@ This will generate the Issuer URL.
 * Navigate to the **Access Policies Tab**
 * Click on **Add New Access Policy**
 
-![](<../../../../docs/.gitbook/assets/image (37).png>)
+![](<../../../../docs/.gitbook/assets/image (37) (1).png>)
 
 * To create a policy, add a Name and Description.
 * Assign the policy to the required clients.
@@ -107,7 +106,7 @@ This will generate the Issuer URL.
 * Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 * Click on **Create Rule** to save the changes.
 
-![](<../../../../docs/.gitbook/assets/image (40).png>)
+![](<../../../../docs/.gitbook/assets/image (40) (1).png>)
 
 ## Step 7: Where to Find the Credentials
 
@@ -120,9 +119,9 @@ This will generate the Issuer URL.
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
 * The **Client authentication** is enabled by default.
-* By clicking on the Edit **** option for General Settings, you can deselect the option for **User consent**. Save the changes.
+* By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
-![](<../../../../docs/.gitbook/assets/image (1).png>)
+![](<../../../../docs/.gitbook/assets/image (1) (1).png>)
 
 * Click on the **Sign On** tab from the top navigation bar.
 * Click on Edit for **OpenID Connect ID Token**.
@@ -133,7 +132,7 @@ This will generate the Issuer URL.
 
 ## Step 8: Adding the Details in openmetadata-security.yaml
 
-* Once the **Client ID**, **** and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
+* Once the **Client ID**, \*\*\*\* and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
 
 ```yaml
 authorizerConfiguration:

@@ -27,19 +27,19 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (16) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (16) (1) (1) (1) (1).png>)
 
 ## 3. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your Snowflake service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30) (1).png>)
 
 ## 4. Select service type
 
 Select Snowflake as the service type.
 
-![](<../../../.gitbook/assets/image (60) (1).png>)
+![](<../../../.gitbook/assets/image (60) (1) (1).png>)
 
 ## 5. Name and describe your service
 
@@ -53,13 +53,13 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (65).png>)
+![](<../../../.gitbook/assets/image (65) (1).png>)
 
 ## 6. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (62).png>)
+![](<../../../.gitbook/assets/image (62) (1).png>)
 
 #### Host
 
@@ -85,7 +85,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (27).png>)
+![](<../../../.gitbook/assets/image (27) (1).png>)
 
 #### Ingestion name
 
@@ -163,7 +163,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (58).png>)
+![](<../../../.gitbook/assets/image (58) (1).png>)
 
 
 

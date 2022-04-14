@@ -6,7 +6,7 @@ description: This is a guide to configure Ingestion Connectors with security.
 
 ## Add Metadata Authentication for Connectors
 
-All Connectors have **metadata\_server** config. Pass the public/private key pair generated in step 1 in [Create Service Account](create-ingestion-service-account.md) as secret\_key
+All Connectors have **metadata\_server** config. Pass the public/private key pair generated in step 1 in [Create Service Account](broken-reference) as secret\_key
 
 {% code title="Connector Config for MySQL Connector:" %}
 ```javascript
@@ -34,7 +34,7 @@ All Connectors have **metadata\_server** config. Pass the public/private key pai
 * **auth\_provider\_type** - Okta
 * **client\_id** - Use the CLIENT\_ID for the service application that was created using curl command.&#x20;
 * **org\_url **_**** -_ It is the same as the __ ISSUER\_URL with v1/token. It is recommended to use a separate authorization server for different applications, rather than using the default authorization server.
-* **private\_key** - Use the Public/Private Key Pair that was generated while [Creating the Service Application](create-ingestion-service-account.md). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
+* **private\_key** - Use the Public/Private Key Pair that was generated while [Creating the Service Application](broken-reference). When copy-pasting the keys ensure that there are no additional codes and that it is a JSON compatible string.
 
 ![](<../../../../docs/.gitbook/assets/image (45).png>)
 
