@@ -168,3 +168,9 @@ core_py_antlr:  ## Generate the Python code for parsing FQNs. The generated code
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs. The generated code is committed
 	antlr -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: install_antlr_cli
+install_antlr_cli:  ## Install antlr CLI
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr
+	chmod 755 /usr/local/bin/antlr

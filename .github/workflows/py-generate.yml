@@ -39,5 +39,7 @@ jobs:
         run: |
           source env/bin/activate
           make generate
+          make install_antlr_cli
+          make py_antlr
       - name: Generate core models
-        run: make core_generate
+        run: make core_generate core_py_antlr
