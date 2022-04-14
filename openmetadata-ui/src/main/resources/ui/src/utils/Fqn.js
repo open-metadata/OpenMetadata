@@ -12,8 +12,8 @@
  */
 
 import antlr4 from 'antlr4';
-import FqnLexer from '../generated/antlr/FqnLexer';
-import FqnParser from '../generated/antlr/FqnParser';
+import FqnLexer from '../antlr/generated/FqnLexer';
+import FqnParser from '../antlr/generated/FqnParser';
 import SplitListener from '../antlr/SplitListener';
 import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
 

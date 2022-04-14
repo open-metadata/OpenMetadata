@@ -1,4 +1,4 @@
-import FqnListener from '../generated/antlr/FqnListener';
+import FqnListener from '../antlr/generated/FqnListener';
 
 export default class SplitListener extends FqnListener {
   constructor() {

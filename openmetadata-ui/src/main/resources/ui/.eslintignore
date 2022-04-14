@@ -31,4 +31,4 @@ mock-api/
 **/*.config.prod.js
 
 # antlr
-src/generated/antlr/
+src/antlr/generated/
