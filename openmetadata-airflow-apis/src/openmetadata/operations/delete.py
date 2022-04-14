@@ -43,7 +43,6 @@ def delete_dag_id(dag_id: str) -> Response:
         session.commit()
 
     if deleted_dags > 0 and deleted_file:
-
         return ApiResponse.success({"message": f"DAG [{dag_id}] has been deleted"})
 
     return ApiResponse.error(
