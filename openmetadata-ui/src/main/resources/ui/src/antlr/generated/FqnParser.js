@@ -1,4 +1,4 @@
-// Generated from /Users/amiorin/code/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4 by ANTLR 4.9.3
+// Generated from /Users/amiorin/code/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4 by ANTLR 4.9.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 import FqnListener from './FqnListener.js';
