@@ -454,10 +454,13 @@ class SampleDataSource(Source[Entity]):
         )
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
+        user_entity_len = min(len(self.user_entity), 5)
         for table in self.tables["tables"]:
             try:
                 for sql_object in table["tableQueries"]:
-                    user_entity = self.user_entity[random.choice(range(5))]
+                    user_entity = self.user_entity[
+                        random.choice(range(user_entity_len))
+                    ]
                     user_dict = {
                         "id": user_entity.id.__root__,
                         "name": user_entity.name.__root__,

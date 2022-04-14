@@ -126,7 +126,6 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         // In some cases there is no specific entity being acted upon. Eg: Lineage.
         return RoleEvaluator.getInstance().hasPermissions(user.getRoles(), null, operation);
-        //        return policyEvaluator.hasPermission(user, null, operation);
       }
 
       Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
