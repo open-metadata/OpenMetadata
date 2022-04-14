@@ -32,6 +32,7 @@ from openmetadata.api.config import (
 )
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
+from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
 from openmetadata.operations.status import status
 from openmetadata.operations.test_connection import test_source_connection
@@ -93,8 +94,10 @@ class REST_API(AppBuilderBaseView):
 
     # '/api' REST Endpoint where API requests should all come in
     @csrf.exempt  # Exempt the CSRF token
-    @admin_expose("/api", methods=["GET", "POST"])  # for Flask Admin
-    @app_builder_expose("/api", methods=["GET", "POST"])  # for Flask AppBuilder
+    @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
+    @app_builder_expose(
+        "/api", methods=["GET", "POST", "DELETE"]
+    )  # for Flask AppBuilder
     @jwt_token_secure  # On each request
     def api(self):
         # Get the api that you want to execute
@@ -123,6 +126,8 @@ class REST_API(AppBuilderBaseView):
             return self.test_connection()
         if api == "dag_status":
             return self.dag_status()
+        if api == "delete_dag":
+            return self.delete_dag()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -223,4 +228,28 @@ class REST_API(AppBuilderBaseView):
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to get status for {dag_id} {run_id} due to {exc} - {traceback.format_exc()}",
+            )
+
+    def delete_dag(self) -> Response:
+        """
+        POST request to DELETE a DAG.
+
+        Expect: POST
+        {
+            "workflow_name": "my_ingestion_pipeline3"
+        }
+        """
+        dag_id: str = self.get_request_arg(request, "dag_id")
+
+        if not dag_id:
+            return ApiResponse.bad_request("workflow_name should be informed")
+
+        try:
+            return delete_dag_id(dag_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to delete dag {dag_id}")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to delete {dag_id} due to {exc} - {traceback.format_exc()}",
             )
