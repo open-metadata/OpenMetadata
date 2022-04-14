@@ -71,8 +71,6 @@ class FullyQualifiedNameTest {
 
   @Test
   void test_invalid() {
-    assertThrows(
-        ParseCancellationException.class,
-        () -> FullyQualifiedName.split("a\""));
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a\""));
   }
 }
