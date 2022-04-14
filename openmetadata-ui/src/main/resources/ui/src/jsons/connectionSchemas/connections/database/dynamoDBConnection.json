@@ -29,7 +29,7 @@
     },
     "awsAccessKeyId": {
       "description": "AWS Access key ID.",
-      "typ": "string"
+      "type": "string"
     },
     "awsSecretAccessKey": {
       "description": "AWS Secret Access Key.",
