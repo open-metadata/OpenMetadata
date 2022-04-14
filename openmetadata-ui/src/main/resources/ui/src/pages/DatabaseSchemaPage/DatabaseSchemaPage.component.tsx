@@ -62,7 +62,7 @@ import {
   getTeamDetailsPath,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -258,7 +258,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             },
             {
               name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                'database',
+                FqnPart.Database,
               ]),
               url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },

@@ -25,13 +25,6 @@ import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  addAirflowPipeline,
-  deleteAirflowPipelineById,
-  getAirflowPipelines,
-  triggerAirflowPipelineById,
-  updateAirflowPipeline,
-} from '../../axiosAPIs/airflowPipelineAPI';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
@@ -40,6 +33,13 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
+import {
+  addIngestionPipeline,
+  deleteIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+  updateIngestionPipeline,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
@@ -70,20 +70,17 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import {
-  AirflowPipeline,
-  PipelineType,
-  Schema,
-} from '../../generated/operations/pipelines/airflowPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { DataObj, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
@@ -101,7 +98,6 @@ import {
   getCurrentServiceTab,
   getIsIngestionEnable,
   getServiceCategoryFromType,
-  isRequiredDetailsAvailableForIngestion,
   servicePageTabs,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
@@ -137,7 +133,7 @@ const ServicePage: FunctionComponent = () => {
   const [isConnectionAvailable, setConnectionAvailable] =
     useState<boolean>(true);
   const [isError, setIsError] = useState(false);
-  const [ingestions, setIngestions] = useState<AirflowPipeline[]>([]);
+  const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
@@ -298,22 +294,9 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const getSchemaFromType = (type: AirflowPipeline['pipelineType']) => {
-    switch (type) {
-      case PipelineType.Metadata:
-        return Schema.DatabaseServiceMetadataPipeline;
-
-      case PipelineType.QueryUsage:
-        return Schema.DatabaseServiceQueryUsagePipeline;
-
-      default:
-        return;
-    }
-  };
-
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getAirflowPipelines(['owner', 'pipelineStatuses'], serviceFQN, '', paging)
+    getIngestionPipelines(['owner'], serviceFQN, paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -339,7 +322,7 @@ const ServicePage: FunctionComponent = () => {
     displayName: string
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      triggerAirflowPipelineById(id)
+      triggerIngestionPipelineById(id)
         .then((res) => {
           if (res.data) {
             resolve();
@@ -367,7 +350,7 @@ const ServicePage: FunctionComponent = () => {
     displayName: string
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      deleteAirflowPipelineById(id)
+      deleteIngestionPipelineById(id)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
@@ -383,8 +366,8 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const updateIngestion = (
-    data: AirflowPipeline,
-    oldData: AirflowPipeline,
+    data: IngestionPipeline,
+    oldData: IngestionPipeline,
     id: string,
     displayName: string,
     triggerIngestion?: boolean
@@ -392,7 +375,7 @@ const ServicePage: FunctionComponent = () => {
     const jsonPatch = compare(oldData, data);
 
     return new Promise<void>((resolve, reject) => {
-      updateAirflowPipeline(id, jsonPatch)
+      updateIngestionPipeline(id, jsonPatch)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
@@ -415,55 +398,33 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const addIngestionWorkflowHandler = (
-    data: AirflowPipeline,
-    triggerIngestion?: boolean
-  ) => {
-    setIsloading(true);
-
-    const ingestionData: AirflowPipeline = {
-      ...data,
-      pipelineConfig: {
-        ...data.pipelineConfig,
-        schema: getSchemaFromType(data.pipelineType),
-      },
-      service: {
-        id: serviceDetails?.id,
-        type: 'databaseService',
-        name: data.service.name,
-      } as EntityReference,
-    };
-
-    addAirflowPipeline(ingestionData)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, displayName } = res.data;
-          setIsloading(false);
-          getAllIngestionWorkflows();
-          if (triggerIngestion) {
-            triggerIngestionById(id, displayName).catch((error: AxiosError) => {
-              showErrorToast(
-                error,
-                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
-              );
-            });
+  const onAddIngestionSave = (data: CreateIngestionPipeline) => {
+    return new Promise<void>((resolve, reject) => {
+      return addIngestionPipeline(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            getAllIngestionWorkflows();
+            resolve();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['create-ingestion-error']
+            );
+            reject();
           }
-        } else {
-          showErrorToast(jsonData['api-error-messages']['add-ingestion-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        const message = getErrorText(
-          error,
-          jsonData['api-error-messages']['add-ingestion-error']
-        );
-        if (message.includes('Connection refused')) {
-          setConnectionAvailable(false);
-        } else {
-          showErrorToast(message);
-        }
-        setIsloading(false);
-      });
+        })
+        .catch((error: AxiosError) => {
+          const message = getErrorText(
+            error,
+            jsonData['api-error-messages']['create-ingestion-error']
+          );
+          if (message.includes('Connection refused')) {
+            setConnectionAvailable(false);
+          } else {
+            showErrorToast(message);
+          }
+          reject();
+        });
+    });
   };
 
   const handleConfigUpdate = (
@@ -1208,24 +1169,20 @@ const ServicePage: FunctionComponent = () => {
                 )}
 
                 {activeTab === 3 && (
-                  <div
-                    className="tw-mt-4 tw-px-1"
-                    data-testid="ingestion-container">
+                  <div data-testid="ingestion-container">
                     {isConnectionAvailable ? (
                       <Ingestion
-                        addIngestion={addIngestionWorkflowHandler}
+                        isRequiredDetailsAvailable
+                        addIngestion={onAddIngestionSave}
                         currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
                         ingestionList={ingestions}
-                        isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
-                          serviceName as ServiceCategory,
-                          serviceDetails as ServicesData
-                        )}
                         paging={ingestionPaging}
                         pagingHandler={ingestionPagingHandler}
+                        serviceCategory={serviceName as ServiceCategory}
+                        serviceDetails={serviceDetails as DataObj}
                         serviceList={serviceList}
                         serviceName={serviceFQN}
-                        serviceType={serviceDetails?.serviceType}
                         triggerIngestion={triggerIngestionById}
                         updateIngestion={updateIngestion}
                       />
