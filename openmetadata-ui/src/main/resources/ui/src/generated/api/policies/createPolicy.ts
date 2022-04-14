@@ -124,6 +124,10 @@ export interface Rule {
    */
   allow?: boolean;
   /**
+   * Is the rule soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Is the rule enabled.
    */
   enabled?: boolean;
@@ -149,10 +153,6 @@ export interface Rule {
    * Priority of this rule among all rules across all policies.
    */
   priority?: number;
-  /**
-   * Role of the user that the rule should match on.
-   */
-  userRoleAttr?: string;
   /**
    * A set of actions to take on the entities.
    */

@@ -13,53 +13,49 @@
  */
 
 /**
- * DB2 Connection Config
+ * Amundsen Connection Config
  */
-export interface Db2Connection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+export interface AmundsenConnection {
   /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in DB2.
+   * Enable Encyption for the Amundsen Neo4j Connection.
    */
-  database?: string;
+  encrypted?: boolean;
   /**
-   * Host and port of the DB2
+   * Host and port of the Amundsen Neo4j Connection.
    */
   hostPort?: string;
   /**
-   * password to connect to the DB2.
+   * Maximum connection lifetime for the Amundsen Neo4j Connection.
+   */
+  maxConnectionLifeTime?: number;
+  /**
+   * Model Class for the Amundsen Neo4j Connection.
+   */
+  modelClass?: string;
+  /**
+   * password to connect to the Amundsen Neo4j Connection.
    */
   password?: string;
-  /**
-   * SQLAlchemy driver scheme options.
-   */
-  scheme?: Db2Scheme;
   supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: Db2Type;
+  type?: AmundsenType;
   /**
-   * username to connect  to the DB2. This user should have privileges to read all the
-   * metadata in DB2.
+   * username to connect to the Amundsen Neo4j Connection.
    */
   username?: string;
-}
-
-/**
- * SQLAlchemy driver scheme options.
- */
-export enum Db2Scheme {
-  Db2IBMDB = 'db2+ibm_db',
+  /**
+   * Enable SSL validation for the Amundsen Neo4j Connection.
+   */
+  validateSSL?: boolean;
 }
 
 /**
  * Service Type
  *
- * Service type.
+ * Amundsen service type
  */
-export enum Db2Type {
-  Db2 = 'Db2',
+export enum AmundsenType {
+  Amundsen = 'Amundsen',
 }

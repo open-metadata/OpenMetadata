@@ -13,52 +13,51 @@
  */
 
 /**
- * This schema defines the Messaging Service entity, such as Kafka and Pulsar.
+ * This schema defines the Metadata Service entity, such as Amundsen, Atlas etc.
  */
-export interface MessagingService {
+export interface MetadataService {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
-  connection: MessagingConnection;
+  connection: MetadataConnection;
   /**
    * When `true` indicates the entity has been soft deleted.
    */
   deleted?: boolean;
   /**
-   * Description of a messaging service instance.
+   * Description of a database service instance.
    */
   description?: string;
   /**
-   * Display Name that identifies this messaging service. It could be title or label from the
-   * source services.
+   * Display Name that identifies this database service.
    */
   displayName?: string;
   /**
-   * Link to the resource corresponding to this messaging service.
+   * Link to the resource corresponding to this database service.
    */
   href?: string;
   /**
-   * Unique identifier of this messaging service instance.
+   * Unique identifier of this database service instance.
    */
   id: string;
   /**
-   * Name that identifies this messaging service.
+   * Name that identifies this database service.
    */
   name: string;
   /**
-   * Owner of this messaging service.
+   * Owner of this database service.
    */
   owner?: EntityReference;
   /**
-   * References to pipelines deployed for this messaging service to extract topic configs and
-   * schemas.
+   * References to pipelines deployed for this database service to extract metadata, usage,
+   * lineage etc..
    */
   pipelines?: EntityReference[];
   /**
-   * Type of messaging service such as Kafka or Pulsar...
+   * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
    */
-  serviceType: MessagingServiceType;
+  serviceType: Type;
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -116,59 +115,74 @@ export interface FieldChange {
 }
 
 /**
- * Dashboard Connection.
+ * Metadata Service Connection.
  */
-export interface MessagingConnection {
-  config?: Connection;
+export interface MetadataConnection {
+  config?: AmundsenConnection;
 }
 
 /**
- * Kafka Connection Config
- *
- * Pulsar Connection Config
+ * Amundsen Connection Config
  */
-export interface Connection {
+export interface AmundsenConnection {
   /**
-   * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
+   * Enable Encyption for the Amundsen Neo4j Connection.
    */
-  bootstrapServers?: string;
+  encrypted?: boolean;
   /**
-   * Confluent Kafka Schema Registry URL.
+   * Host and port of the Amundsen Neo4j Connection.
    */
-  schemaRegistryURL?: string;
+  hostPort?: string;
+  /**
+   * Maximum connection lifetime for the Amundsen Neo4j Connection.
+   */
+  maxConnectionLifeTime?: number;
+  /**
+   * Model Class for the Amundsen Neo4j Connection.
+   */
+  modelClass?: string;
+  /**
+   * password to connect to the Amundsen Neo4j Connection.
+   */
+  password?: string;
   supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: MessagingServiceType;
+  type?: Type;
+  /**
+   * username to connect to the Amundsen Neo4j Connection.
+   */
+  username?: string;
+  /**
+   * Enable SSL validation for the Amundsen Neo4j Connection.
+   */
+  validateSSL?: boolean;
 }
 
 /**
  * Service Type
  *
- * Kafka service type
+ * Amundsen service type
  *
- * Pulsar service type
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  *
- * Type of messaging service such as Kafka or Pulsar...
- *
- * Type of messaging service - Kafka or Pulsar.
+ * Type of database service such as Amundsen, Atlas...
  */
-export enum MessagingServiceType {
-  Kafka = 'Kafka',
-  Pulsar = 'Pulsar',
+export enum Type {
+  Amundsen = 'Amundsen',
 }
 
 /**
- * Owner of this messaging service.
+ * Owner of this database service.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * References to pipelines deployed for this messaging service to extract topic configs and
- * schemas.
+ * References to pipelines deployed for this database service to extract metadata, usage,
+ * lineage etc..
  */
 export interface EntityReference {
   /**

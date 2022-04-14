@@ -13,46 +13,21 @@
  */
 
 /**
- * DynamoDB Connection Config
+ * Sample Data Connection Config
  */
-export interface DynamoDBConnection {
-  /**
-   * AWS Access key ID.
-   */
-  awsAccessKeyId?: any;
-  /**
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  /**
-   * AWS Secret Access Key.
-   */
-  awsSecretAccessKey?: string;
-  /**
-   * AWS Session Token.
-   */
-  awsSessionToken?: string;
+export interface SampleDataConnection {
   connectionArguments?: { [key: string]: string };
   connectionOptions?: { [key: string]: string };
   /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Druid.
+   * Sample Data File Path
    */
-  database?: string;
-  /**
-   * EndPoint URL for the Dynamo DB
-   */
-  endPointURL?: string;
-  /**
-   * Host and port of the DynamoDB
-   */
-  hostPort?: string;
+  sampleDataFolder?: string;
   supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: DynamoDBType;
+  type?: SampleDataType;
 }
 
 /**
@@ -60,6 +35,6 @@ export interface DynamoDBConnection {
  *
  * Service type.
  */
-export enum DynamoDBType {
-  DynamoDB = 'DynamoDB',
+export enum SampleDataType {
+  SampleData = 'SampleData',
 }

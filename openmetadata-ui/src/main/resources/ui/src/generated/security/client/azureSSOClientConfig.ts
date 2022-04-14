@@ -13,38 +13,23 @@
  */
 
 /**
- * Looker Connection Config
+ * Azure SSO Client security config to connect to OpenMetadata.
  */
-export interface LookerConnection {
+export interface AzureSSOClientConfig {
   /**
-   * Looker Environment
+   * Azure SSO Authority
    */
-  env?: string;
+  authority: string;
   /**
-   * URL to Looker instance.
+   * Azure Client ID.
    */
-  hostPort?: string;
+  clientId: string;
   /**
-   * password to connect  to the Looker.
+   * Azure SSO client secret key
    */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
+  clientSecret: string;
   /**
-   * Service Type
+   * Azure Client ID.
    */
-  type?: LookerType;
-  /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
-   */
-  username?: string;
-}
-
-/**
- * Service Type
- *
- * Looker service type
- */
-export enum LookerType {
-  Looker = 'Looker',
+  scopes: string[];
 }
