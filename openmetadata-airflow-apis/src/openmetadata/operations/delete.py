@@ -37,7 +37,9 @@ def delete_dag_id(dag_id: str) -> Response:
 
     with settings.Session() as session:
 
-        deleted_dags = session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
+        deleted_dags = (
+            session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
+        )
         session.commit()
 
     if deleted_dags > 0 and deleted_file:
