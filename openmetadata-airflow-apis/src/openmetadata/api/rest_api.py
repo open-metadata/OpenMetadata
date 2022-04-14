@@ -94,8 +94,8 @@ class REST_API(AppBuilderBaseView):
 
     # '/api' REST Endpoint where API requests should all come in
     @csrf.exempt  # Exempt the CSRF token
-    @admin_expose("/api", methods=["GET", "POST"])  # for Flask Admin
-    @app_builder_expose("/api", methods=["GET", "POST"])  # for Flask AppBuilder
+    @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
+    @app_builder_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask AppBuilder
     @jwt_token_secure  # On each request
     def api(self):
         # Get the api that you want to execute
@@ -237,9 +237,8 @@ class REST_API(AppBuilderBaseView):
             "workflow_name": "my_ingestion_pipeline3"
         }
         """
-        request_json = request.get_json()
+        dag_id: str = self.get_request_arg(request, "dag_id")
 
-        dag_id = request_json.get("workflow_name")
         if not dag_id:
             return ApiResponse.bad_request("workflow_name should be informed")
 
