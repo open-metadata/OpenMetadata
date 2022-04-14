@@ -70,6 +70,9 @@ from metadata.utils.helpers import get_database_service_or_create, store_gcs_cre
 
 logger = ometa_logger()
 
+MANIFEST_FILE_NAME = "manifest_1.0"
+CATALOG_FILE_NAME = "catalog_1.0"
+
 
 @dataclass
 class SQLSourceStatus(SourceStatus):
@@ -103,67 +106,92 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     return description
 
 
+def get_dbt_local(config):
+    if config.dbtConfig.dbtCatalogFilePath is not None:
+        with open(
+            config.dbtConfig.dbtCatalogFilePath, "r", encoding="utf-8"
+        ) as catalog:
+            dbt_catalog = catalog.read()
+    if config.dbtConfig.dbtManifestFilePath is not None:
+        with open(
+            config.dbtConfig.dbtManifestFilePath, "r", encoding="utf-8"
+        ) as manifest:
+            dbt_manifest = manifest.read()
+    return json.loads(dbt_catalog), json.loads(dbt_manifest)
+
+
+def get_dbt_http(config):
+    import urllib.request
+
+    catalog_file = urllib.request.urlopen(config.dbtConfig.dbtCatalogFilePath)
+    manifest_file = urllib.request.urlopen(config.dbtConfig.dbtManifestFilePath)
+    dbt_catalog = catalog_file.read().decode()
+    dbt_manifest = manifest_file.read().decode()
+    return json.loads(dbt_catalog), json.loads(dbt_manifest)
+
+
+def get_dbt_gcs(config):
+    dbt_options = config.dbtConfig.gcsConfig
+    if config.dbtProvider.value == "gcs":
+        options = {
+            "credentials": {
+                "type": dbt_options.type,
+                "project_id": dbt_options.projectId,
+                "private_key_id": dbt_options.privateKeyId,
+                "private_key": dbt_options.privateKey,
+                "client_email": dbt_options.clientEmail,
+                "client_id": dbt_options.clientId,
+                "auth_uri": dbt_options.authUri,
+                "token_uri": dbt_options.tokenUri,
+                "auth_provider_x509_cert_url": dbt_options.authProviderX509CertUrl,
+                "client_x509_cert_url": dbt_options.clientX509CertUrl,
+            }
+        }
+    else:
+        options = {"credentials_path": dbt_options.__root__}
+    if store_gcs_credentials(options):
+        from google.cloud import storage
+
+        client = storage.Client()
+        for bucket in client.list_buckets():
+            for blob in client.list_blobs(bucket.name):
+                if MANIFEST_FILE_NAME in blob.name:
+                    dbt_manifest = blob.download_as_string().decode()
+                if CATALOG_FILE_NAME in blob.name:
+                    dbt_catalog = blob.download_as_string().decode()
+    return json.loads(dbt_catalog), json.loads(dbt_manifest)
+
+
+def get_dbt_s3(config):
+    from metadata.utils.aws_client import AWSClient
+
+    aws_client = AWSClient(config.dbtConfig).get_resource("s3")
+    buckets = aws_client.buckets.all()
+    for bucket in buckets:
+        for bucket_object in bucket.objects.all():
+            if MANIFEST_FILE_NAME in bucket_object.key:
+                dbt_manifest = bucket_object.get()["Body"].read().decode()
+            if CATALOG_FILE_NAME in bucket_object.key:
+                dbt_catalog = bucket_object.get()["Body"].read().decode()
+    return json.loads(dbt_catalog), json.loads(dbt_manifest)
+
+
 def get_dbt_details(config):
     dbt_catalog = "{}"
     dbt_manifest = "{}"
-    if config.dbtProvider:
-        if config.dbtProvider.value == "s3":
-            from metadata.utils.aws_client import AWSClient
-
-            aws_client = AWSClient(config.dbtConfig).get_resource("s3")
-            buckets = aws_client.buckets.all()
-            for bucket in buckets:
-                for bucket_object in bucket.objects.all():
-                    if "manifest_1.0" in bucket_object.key:
-                        dbt_manifest = bucket_object.get()["Body"].read().decode()
-                    if "catalog_1.0" in bucket_object.key:
-                        dbt_catalog = bucket_object.get()["Body"].read().decode()
-        elif "gcs" in config.dbtProvider.value:
-            if config.dbtProvider.value == "gcs":
-                options = {
-                    "credentials": {
-                        "type": config.dbtConfig.__root__.type,
-                        "project_id": config.dbtConfig.__root__.projectId,
-                        "private_key_id": config.dbtConfig.__root__.privateKeyId,
-                        "private_key": config.dbtConfig.__root__.privateKey,
-                        "client_email": config.dbtConfig.__root__.clientEmail,
-                        "client_id": config.dbtConfig.__root__.clientId,
-                        "auth_uri": config.dbtConfig.__root__.authUri,
-                        "token_uri": config.dbtConfig.__root__.tokenUri,
-                        "auth_provider_x509_cert_url": config.dbtConfig.__root__.authProviderX509CertUrl,
-                        "client_x509_cert_url": config.dbtConfig.__root__.clientX509CertUrl,
-                    }
-                }
-            else:
-                options = {"credentials_path": config.dbtConfig.__root__.__root__}
-            if store_gcs_credentials(options):
-                from google.cloud import storage
-
-                client = storage.Client()
-                for bucket in client.list_buckets():
-                    for blob in client.list_blobs(bucket.name):
-                        if "manifest_1.0" in blob.name:
-                            dbt_manifest = blob.download_as_string().decode()
-                        if "catalog_1.0" in blob.name:
-                            dbt_catalog = blob.download_as_string().decode()
-        elif config.dbtProvider.value == "http":
-            import urllib.request
-
-            catalog_file = urllib.request.urlopen(config.dbtConfig.dbtCatalogFilePath)
-            manifest_file = urllib.request.urlopen(config.dbtConfig.dbtManifestFilePath)
-            dbt_catalog = catalog_file.read().decode()
-            dbt_manifest = manifest_file.read().decode()
-        elif config.dbtProvider.value == "local":
-            if config.dbtConfig.dbtCatalogFilePath is not None:
-                with open(
-                    config.dbtConfig.dbtCatalogFilePath, "r", encoding="utf-8"
-                ) as catalog:
-                    dbt_catalog = catalog.read()
-            if config.dbtConfig.dbtManifestFilePath is not None:
-                with open(
-                    config.dbtConfig.dbtManifestFilePath, "r", encoding="utf-8"
-                ) as manifest:
-                    dbt_manifest = manifest.read()
+    try:
+        if config.dbtProvider:
+            if config.dbtProvider.value == "s3":
+                return get_dbt_s3(config)
+            elif "gcs" in config.dbtProvider.value:
+                return get_dbt_gcs(config)
+            elif config.dbtProvider.value == "http":
+                return get_dbt_http(config)
+            elif config.dbtProvider.value == "local":
+                return get_dbt_local(config)
+    except Exception as exc:
+        logger.debug(traceback.print_exc())
+        logger.debug(f"Error fetching dbt files {repr(exc)}")
     return json.loads(dbt_catalog), json.loads(dbt_manifest)
 
 

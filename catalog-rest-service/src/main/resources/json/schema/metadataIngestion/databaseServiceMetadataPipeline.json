@@ -4,57 +4,6 @@
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
   "definitions": {
-    "credentials": {
-      "description": "GCS Credentials.",
-      "type": "object",
-      "properties": {
-        "type": {
-          "description": "Google Cloud service account type.",
-          "type": "string"
-        },
-        "projectId": {
-          "description": "Google Cloud project id.",
-          "type": "string"
-        },
-        "privateKeyId": {
-          "description": "Google Cloud private key id.",
-          "type": "string"
-        },
-        "privateKey": {
-          "description": "Google Cloud private key.",
-          "type": "string"
-        },
-        "clientEmail": {
-          "description": "Google Cloud email.",
-          "type": "string"
-        },
-        "clientId": {
-          "description": "Google Cloud Client ID.",
-          "type": "string"
-        },
-        "authUri": {
-          "description": "Google Cloud auth uri.",
-          "type": "string"
-        },
-        "tokenUri": {
-          "description": "Google Cloud token uri.",
-          "type": "string"
-        },
-        "authProviderX509CertUrl": {
-          "description": "Google Cloud auth provider certificate.",
-          "type": "string"
-        },
-        "clientX509CertUrl": {
-          "description": "Google Cloud client certificate uri.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "credentialsPath": {
-      "description": "GCS Credentials Path.",
-      "type": "string"
-    },
     "localHttpDBTConfig": {
       "description": "Local and HTTP DBT configs.",
       "type": "object",
@@ -70,45 +19,6 @@
       },
       "additionalProperties": false,
       "required": ["dbtCatalogFilePath", "dbtManifestFilePath"]
-    },
-    "gcsDBTConfig": {
-      "description": "GCS DBT configs.",
-      "oneOf": [
-        {
-          "$ref": "#/definitions/credentials"
-        },
-        {
-          "$ref": "#/definitions/credentialsPath"
-        }
-      ]
-    },
-    "s3DBTConfig": {
-      "description": "S3 DBT configs.",
-      "type": "object",
-      "properties": {
-        "awsAccessKeyId": {
-          "description": "AWS Access key ID.",
-          "type": "string"
-        },
-        "awsSecretAccessKey": {
-          "description": "AWS Secret Access Key.",
-          "type": "string",
-          "format": "password"
-        },
-        "awsRegion": {
-          "description": "AWS Region",
-          "type": "string"
-        },
-        "awsSessionToken": {
-          "description": "AWS Session Token.",
-          "type": "string"
-        },
-        "endPointURL": {
-          "description": "EndPoint URL for the Glue",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -162,10 +72,10 @@
           "$ref": "#/definitions/localHttpDBTConfig"
         },
         {
-          "$ref": "#/definitions/gcsDBTConfig"
+          "$ref": "../security/credentials/gcsCredentials.json"
         },
         {
-          "$ref": "#/definitions/s3DBTConfig"
+          "$ref": "../security/credentials/s3Credentials.json"
         }
       ]
     }
