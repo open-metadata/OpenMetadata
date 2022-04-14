@@ -31,15 +31,15 @@ jobs:
         run: |
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install and Publish Test PyPi packages
-        working-directory: ./ingestion
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
-          python setup.py install sdist bdist_wheel
-          twine check dist/*
-          twine upload -r testpypi dist/*
-
+          make install_dev install
+          cd ingestion; \
+            python setup.py install sdist bdist_wheel; \
+            twine check dist/*; \
+            twine upload -r testpypi dist/*
   publish:
     runs-on: ubuntu-latest
     environment: release
@@ -53,11 +53,12 @@ jobs:
         run: |
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install and Publish PyPi packages
-        working-directory: ./ingestion
         env:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
-          python setup.py install sdist bdist_wheel
-          twine check dist/*
-          twine upload -r dist/*
+          make install_dev install
+          cd ingestion; \
+            python setup.py install sdist bdist_wheel; \
+            twine check dist/*; \
+            twine upload -r dist/*
