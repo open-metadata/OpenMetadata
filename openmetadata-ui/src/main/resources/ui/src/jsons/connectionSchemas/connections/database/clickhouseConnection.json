@@ -9,8 +9,8 @@
     "clickhouseType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["ClickHouse"],
-      "default": "ClickHouse"
+      "enum": ["Clickhouse"],
+      "default": "Clickhouse"
     },
     "clickhouseScheme": {
       "description": "SQLAlchemy driver scheme options.",
@@ -23,7 +23,7 @@
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/clickhouseType",
-      "default": "ClickHouse"
+      "default": "Clickhouse"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",

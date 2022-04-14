@@ -107,7 +107,7 @@
     "build-test": "yarn run test",
     "commit-check": "yarn run pretty && yarn run build-check && yarn run build",
     "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && yarn run lint:fix",
-    "parse-conn-schema": "node parseConnectionSchema",
+    "parse-conn-schema": "node parseConnectionSchema && yarn pretty",
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4"
   },
   "browserslist": {
