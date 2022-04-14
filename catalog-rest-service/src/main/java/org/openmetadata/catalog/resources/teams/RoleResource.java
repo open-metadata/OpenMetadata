@@ -61,6 +61,7 @@ import org.openmetadata.catalog.jdbi3.RoleRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -315,7 +316,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext);
-    return create(uriInfo, securityContext, role, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, role, ADMIN | BOT);
+    RoleEvaluator.getInstance().update((Role) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -334,7 +337,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext);
-    return createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
+    Response response = createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
+    RoleEvaluator.getInstance().update((Role) response.getEntity());
+    return response;
   }
 
   @PATCH
@@ -359,7 +364,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                       }))
           JsonPatch patch)
       throws IOException {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    RoleEvaluator.getInstance().update((Role) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -383,7 +390,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    return delete(uriInfo, securityContext, id, true, hardDelete, ADMIN | BOT);
+    Response response = delete(uriInfo, securityContext, id, true, hardDelete, ADMIN | BOT);
+    RoleEvaluator.getInstance().delete((Role) response.getEntity());
+    return response;
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {
@@ -396,6 +405,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         .withDescription(cr.getDescription())
         .withDisplayName(cr.getDisplayName())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withUpdatedAt(System.currentTimeMillis())
+        .withPolicies(cr.getPolicies());
   }
 }

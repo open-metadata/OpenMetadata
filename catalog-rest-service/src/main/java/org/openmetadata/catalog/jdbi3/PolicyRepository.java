@@ -31,7 +31,6 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -48,8 +47,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private static final String POLICY_PATCH_FIELDS = "owner,location";
   public static final String ENABLED = "enabled";
 
-  private final PolicyEvaluator policyEvaluator;
-
   public PolicyRepository(CollectionDAO dao) {
     super(
         PolicyResource.COLLECTION_PATH,
@@ -59,7 +56,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         dao,
         POLICY_PATCH_FIELDS,
         POLICY_UPDATE_FIELDS);
-    policyEvaluator = PolicyEvaluator.getInstance();
   }
 
   public static String getFQN(Policy policy) {
@@ -126,10 +122,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     policy.withOwner(null).withLocation(null).withHref(null);
 
     store(policy.getId(), policy, update);
-    if (PolicyType.AccessControl.equals(policy.getPolicyType())) {
-      // Refresh rules in PolicyEvaluator right after an Access Control policy has been stored.
-      policyEvaluator.reload();
-    }
 
     // Restore the relationships
     policy.withOwner(owner).withLocation(location).withHref(href);
@@ -180,16 +172,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.invalidPolicyDuplicateOperation(rule.getOperation().value(), policy.getName()));
       }
-
-      // If all user (subject) and entity (object) attributes are null, the rule is invalid.
-      // TODO: fixme
-      //      if (rule.getEntityTagAttr() == null && rule.getEntityTypeAttr() == null) {
-      //        throw new IllegalArgumentException(
-      //            String.format(
-      //                "Found invalid rule %s within policy %s. Please ensure that at least one among the user
-      // (subject) and entity (object) attributes is specified",
-      //                rule.getName(), policy.getName()));
-      //      }
     }
   }
 
@@ -382,12 +364,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
             Relationship.APPLIED_TO);
       }
       recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
-    }
-
-    @Override
-    public void storeUpdate() throws IOException {
-      super.storeUpdate();
-      PolicyEvaluator.getInstance().reload();
     }
   }
 }

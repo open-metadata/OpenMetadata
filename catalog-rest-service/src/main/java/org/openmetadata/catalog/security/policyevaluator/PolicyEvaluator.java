@@ -54,7 +54,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 public class PolicyEvaluator {
 
   private PolicyRepository policyRepository;
-  private final ConcurrentHashMap<UUID, Rules> policyRules = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<UUID, Rules> policyToRules = new ConcurrentHashMap<>();
   private final RulesEngine checkPermissionRulesEngine;
   private final RulesEngine allowedOperationsRulesEngine;
 
@@ -76,27 +76,24 @@ public class PolicyEvaluator {
   }
 
   /** Refresh rules within {@link PolicyEvaluator} to be used by {@link DefaultRulesEngine}. */
-  public void reload() throws IOException {
-    final List<Policy> policies = policyRepository.getAccessControlPolicies();
-    for (final Policy policy : policies) {
-      Rules newRules = new Rules();
-      for (Object r : policy.getRules()) {
-        org.openmetadata.catalog.entity.policies.accessControl.Rule acRule =
-            JsonUtils.readValue(
-                JsonUtils.getJsonStructure(r).toString(),
-                org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
-        if (acRule.getAllow()) {
-          newRules.register(convertRule(acRule));
-        }
+  public void load() {
+    final List<Policy> policies;
+    try {
+      policies = policyRepository.getAccessControlPolicies();
+      for (final Policy policy : policies) {
+        Rules rules = getRules(policy);
+        //      policy.getRules().stream()
+        //          // Add rules only if they are enabled.
+        //          .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule) t).getEnabled())
+        //          .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule)
+        // rule))
+        //          .forEach(newRules::register);
+        //      // Atomic swap of rules.
+        policyToRules.put(policy.getId(), rules);
+        LOG.info("Loaded new set of {} rules for policy {}:{}", rules.size(), policy.getName(), policy.getId());
       }
-      //      policy.getRules().stream()
-      //          // Add rules only if they are enabled.
-      //          .filter(t -> ((org.openmetadata.catalog.entity.policies.accessControl.Rule) t).getEnabled())
-      //          .map((Object rule) -> convertRule((org.openmetadata.catalog.entity.policies.accessControl.Rule) rule))
-      //          .forEach(newRules::register);
-      //      // Atomic swap of rules.
-      policyRules.put(policy.getId(), newRules);
-      LOG.info("Loaded new set of {} rules for policy {}:{}", newRules.size(), policy.getName(), policy.getId());
+    } catch (IOException e) {
+      LOG.error("Failed to reload Policies");
     }
     LOG.info("Finished loading Access Control policies");
   }
@@ -109,7 +106,7 @@ public class PolicyEvaluator {
             .withOperation(operation)
             .withCheckOperation(true)
             .build();
-    Rules rules = policyRules.get(policyId);
+    Rules rules = policyToRules.get(policyId);
     checkPermissionRulesEngine.fire(rules, facts.getFacts());
     return facts.hasPermission();
   }
@@ -117,7 +114,7 @@ public class PolicyEvaluator {
   /** Returns a list of operations that a user can perform on the given entity. */
   public List<MetadataOperation> getAllowedOperations(@NonNull UUID policyId, Object entity) {
     AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
-    Rules rules = policyRules.get(policyId);
+    Rules rules = policyToRules.get(policyId);
     allowedOperationsRulesEngine.fire(rules, facts.getFacts());
     return facts.getAllowedOperations();
   }
@@ -131,5 +128,27 @@ public class PolicyEvaluator {
         .then(new SetPermissionAction(rule))
         .then(new SetAllowedOperationAction(rule))
         .build();
+  }
+
+  public void update(Policy policy) throws IOException {
+    policyToRules.put(policy.getId(), getRules(policy));
+  }
+
+  public void delete(Policy po) {
+    policyToRules.remove(po.getId());
+  }
+
+  public Rules getRules(Policy policy) throws IOException {
+    Rules rules = new Rules();
+    for (Object r : policy.getRules()) {
+      org.openmetadata.catalog.entity.policies.accessControl.Rule acRule =
+          JsonUtils.readValue(
+              JsonUtils.getJsonStructure(r).toString(),
+              org.openmetadata.catalog.entity.policies.accessControl.Rule.class);
+      if (acRule.getAllow()) {
+        rules.register(convertRule(acRule));
+      }
+    }
+    return rules;
   }
 }

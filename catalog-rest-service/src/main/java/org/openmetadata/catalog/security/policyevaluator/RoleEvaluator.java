@@ -51,7 +51,7 @@ public class RoleEvaluator {
     return INSTANCE;
   }
 
-  public void reload() {
+  public void load() {
     EntityRepository<Role> roleRepository = Entity.getEntityRepository(Entity.ROLE);
     roleToPolicies.clear();
     ListFilter filter = new ListFilter(Include.NON_DELETED);
@@ -86,5 +86,13 @@ public class RoleEvaluator {
       }
     }
     return list.stream().distinct().collect(Collectors.toList());
+  }
+
+  public void update(Role role) {
+    roleToPolicies.put(role.getId(), role.getPolicies());
+  }
+
+  public void delete(Role role) {
+    roleToPolicies.remove(role.getId());
   }
 }

@@ -119,8 +119,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
     registerResources(catalogConfig, environment, jdbi);
-    RoleEvaluator.getInstance().reload();
-    PolicyEvaluator.getInstance().reload();
+    RoleEvaluator.getInstance().load();
+    PolicyEvaluator.getInstance().load();
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
 
     // Register Event Handler
