@@ -6,24 +6,18 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.database.SampleDataConnection",
   "definitions": {
-    "sampledataType": {
+    "sampleDataType": {
       "description": "Service type.",
       "type": "string",
       "enum": ["SampleData"],
       "default": "SampleData"
-    },
-    "sampledataScheme": {
-      "description": "SQLAlchemy driver scheme options.",
-      "type": "string",
-      "enum": ["sampledata"],
-      "default": "sampledata"
     }
   },
   "properties": {
     "type": {
       "description": "Service Type",
-      "$ref": "#/definitions/sampledataType",
-      "default": "BigQuery"
+      "$ref": "#/definitions/sampleDataType",
+      "default": "SampleData"
     },
     "sampleDataFolder": {
       "description": "Sample Data File Path",

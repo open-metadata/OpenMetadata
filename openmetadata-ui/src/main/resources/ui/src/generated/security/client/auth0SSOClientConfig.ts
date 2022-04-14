@@ -13,38 +13,19 @@
  */
 
 /**
- * Looker Connection Config
+ * Auth0 SSO client security configs.
  */
-export interface LookerConnection {
+export interface Auth0SSOClientConfig {
   /**
-   * Looker Environment
+   * Auth0 Client ID.
    */
-  env?: string;
+  clientId: string;
   /**
-   * URL to Looker instance.
+   * Auth0 Domain.
    */
-  hostPort?: string;
+  domain: string;
   /**
-   * password to connect  to the Looker.
+   * Auth0 Client Secret Key.
    */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: LookerType;
-  /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
-   */
-  username?: string;
-}
-
-/**
- * Service Type
- *
- * Looker service type
- */
-export enum LookerType {
-  Looker = 'Looker',
+  secretKey: string;
 }
