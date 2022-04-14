@@ -237,4 +237,3 @@ class VerticaIngestionTest(TestCase):
             if table.get("name") in MOCK_GET_VIEW_NAMES:
                 assert table.get("tableType") == TableType.View.value
                 assert table.get("viewDefinition") == MOCK_GET_VIEW_DEFINITION
-

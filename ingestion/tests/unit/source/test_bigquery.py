@@ -267,9 +267,7 @@ class BigQueryIngestionTest(TestCase):
         file_sink = json.load(file_data)
         for ometa_data in file_sink:
             table = ometa_data.get("table")
-            _: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(
-                ometa_data
-            )
+            _: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(ometa_data)
             _: Table = Table.parse_obj(table)
 
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
