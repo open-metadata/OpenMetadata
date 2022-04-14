@@ -13,46 +13,21 @@
  */
 
 /**
- * DB2 Connection Config
+ * Sample Data Connection Config
  */
-export interface Db2Connection {
+export interface SampleDataConnection {
   connectionArguments?: { [key: string]: string };
   connectionOptions?: { [key: string]: string };
   /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in DB2.
+   * Sample Data File Path
    */
-  database?: string;
-  /**
-   * Host and port of the DB2
-   */
-  hostPort?: string;
-  /**
-   * password to connect to the DB2.
-   */
-  password?: string;
-  /**
-   * SQLAlchemy driver scheme options.
-   */
-  scheme?: Db2Scheme;
+  sampleDataFolder?: string;
   supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: Db2Type;
-  /**
-   * username to connect  to the DB2. This user should have privileges to read all the
-   * metadata in DB2.
-   */
-  username?: string;
-}
-
-/**
- * SQLAlchemy driver scheme options.
- */
-export enum Db2Scheme {
-  Db2IBMDB = 'db2+ibm_db',
+  type?: SampleDataType;
 }
 
 /**
@@ -60,6 +35,6 @@ export enum Db2Scheme {
  *
  * Service type.
  */
-export enum Db2Type {
-  Db2 = 'Db2',
+export enum SampleDataType {
+  SampleData = 'SampleData',
 }

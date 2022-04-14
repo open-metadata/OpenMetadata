@@ -16,21 +16,11 @@
  * Pulsar Connection Config
  */
 export interface PulsarConnection {
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: PulsarType;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

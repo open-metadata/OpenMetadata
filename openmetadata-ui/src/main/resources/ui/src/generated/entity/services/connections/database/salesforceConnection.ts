@@ -16,8 +16,8 @@
  * Salesforce Connection Config
  */
 export interface SalesforceConnection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Host and port of the Redshift.
    */
@@ -38,10 +38,7 @@ export interface SalesforceConnection {
    * Salesforce Object Name.
    */
   sobjectName?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -51,17 +48,6 @@ export interface SalesforceConnection {
    * metadata in Redshift.
    */
   username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**
