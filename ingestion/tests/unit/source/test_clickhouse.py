@@ -39,9 +39,9 @@ CONFIG = """
       "serviceName": "local_clickhouse",
       "serviceConnection": {
         "config": {
-          "type": "ClickHouse",
-          "username":"default",
-          "password":"",
+          "type": "Clickhouse",
+          "username": "default",
+          "password": "",
           "hostPort": "localhost:8123",
           "database": "default" 
         }
@@ -219,8 +219,8 @@ class ClickhouseIngestionTest(TestCase):
         data = json.load(file_data)
         for i in data:
             table = i.get("table")
-            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
-            table_obj: Table = Table.parse_obj(table)
+            _: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
+            _: Table = Table.parse_obj(table)
 
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
 
@@ -228,7 +228,7 @@ class ClickhouseIngestionTest(TestCase):
                 assert table.get("name") in MOCK_GET_TABLE_NAMES
 
             for column in table.get("columns"):
-                column_obj: Column = Column.parse_obj(column)
+                _: Column = Column.parse_obj(column)
                 if column in MOCK_UNIQUE_CONSTRAINTS[0].get("column_names"):
                     assert Column.constraint.UNIQUE == column.get("constraint")
                 if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
