@@ -18,7 +18,11 @@ import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { getUserPath } from '../../../constants/constants';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import {
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
 import {
   getNonDeletedTeams,
@@ -144,9 +148,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const entityDisplayName = () => {
     let displayName;
     if (entityType === EntityType.TABLE) {
-      displayName = getPartialNameFromTableFQN(entityFQN, ['table']);
+      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Table]);
     } else if (entityType === EntityType.DATABASE_SCHEMA) {
-      displayName = getPartialNameFromTableFQN(entityFQN, ['schema']);
+      displayName = getPartialNameFromTableFQN(entityFQN, [FqnPart.Schema]);
     } else if (
       [
         EntityType.DATABASE_SERVICE,

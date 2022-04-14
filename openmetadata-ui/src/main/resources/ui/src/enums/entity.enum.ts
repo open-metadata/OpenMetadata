@@ -63,3 +63,12 @@ export enum TabSpecificField {
   TABLE_QUERIES = 'tableQueries',
   TESTS = 'tests',
 }
+
+export enum FqnPart {
+  Service,
+  Database,
+  Schema,
+  Table,
+  Column,
+  NestedColumn,
+}
