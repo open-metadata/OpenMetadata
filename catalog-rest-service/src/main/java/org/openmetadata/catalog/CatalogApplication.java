@@ -101,7 +101,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
 
     // Register Authorizer
-    registerAuthorizer(catalogConfig, environment, jdbi);
+    registerAuthorizer(catalogConfig, environment);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -178,7 +178,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
+  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException, IOException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
