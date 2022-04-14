@@ -17,7 +17,7 @@ import {
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/ingestion.constant';
-import { FilterPatternType } from '../../enums/filterPattern.enum';
+import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import {
   CreateIngestionPipeline,
   PipelineType,
@@ -46,14 +46,15 @@ const AddIngestion = ({
   const [startDate, setStartDate] = useState(getCurrentDate());
   const [endDate, setEndDate] = useState('');
 
-  const [showDatabaseFilter, setShowDatabaseFilter] = useState(false);
+  const [showDashboardFilter, setShowDashboardFilter] = useState(false);
   const [showSchemaFilter, setShowSchemaFilter] = useState(false);
   const [showTableFilter, setShowTableFilter] = useState(false);
-  const [showViewFilter, setShowViewFilter] = useState(false);
+  const [showTopicFilter, setShowTopicFilter] = useState(false);
+  const [showChartFilter, setShowChartFilter] = useState(false);
   const [includeView, setIncludeView] = useState(false);
   const [enableDataProfiler, setEnableDataProfiler] = useState(true);
   const [ingestSampleData, setIngestSampleData] = useState(true);
-  const [databaseFilterPattern, setDatabaseFilterPattern] =
+  const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<PatternType>(INITIAL_FILTER_PATTERN);
   const [schemaFilterPattern, setSchemaFilterPattern] = useState<PatternType>(
     INITIAL_FILTER_PATTERN
@@ -61,67 +62,88 @@ const AddIngestion = ({
   const [tableFilterPattern, setTableFilterPattern] = useState<PatternType>(
     INITIAL_FILTER_PATTERN
   );
-  const [viewFilterPattern, setViewFilterPattern] = useState<PatternType>(
+  const [topicFilterPattern, setTopicFilterPattern] = useState<PatternType>(
+    INITIAL_FILTER_PATTERN
+  );
+  const [chartFilterPattern, setChartFilterPattern] = useState<PatternType>(
     INITIAL_FILTER_PATTERN
   );
 
-  const getIncludeValue = (value: Array<string>, type: FilterPatternType) => {
+  const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
-      case FilterPatternType.DATABASE:
-        setDatabaseFilterPattern({ ...databaseFilterPattern, include: value });
+      case FilterPatternEnum.DASHBOARD:
+        setDashboardFilterPattern({
+          ...dashboardFilterPattern,
+          include: value,
+        });
 
         break;
-      case FilterPatternType.SCHEMA:
+      case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, include: value });
 
         break;
-      case FilterPatternType.TABLE:
+      case FilterPatternEnum.TABLE:
         setTableFilterPattern({ ...tableFilterPattern, include: value });
 
         break;
-      case FilterPatternType.VIEW:
-        setViewFilterPattern({ ...viewFilterPattern, include: value });
+      case FilterPatternEnum.TOPIC:
+        setTopicFilterPattern({ ...topicFilterPattern, include: value });
+
+        break;
+      case FilterPatternEnum.CHART:
+        setChartFilterPattern({ ...topicFilterPattern, include: value });
 
         break;
     }
   };
-  const getExcludeValue = (value: Array<string>, type: FilterPatternType) => {
+  const getExcludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
-      case FilterPatternType.DATABASE:
-        setDatabaseFilterPattern({ ...databaseFilterPattern, exclude: value });
+      case FilterPatternEnum.DASHBOARD:
+        setDashboardFilterPattern({
+          ...dashboardFilterPattern,
+          exclude: value,
+        });
 
         break;
-      case FilterPatternType.SCHEMA:
+      case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, exclude: value });
 
         break;
-      case FilterPatternType.TABLE:
+      case FilterPatternEnum.TABLE:
         setTableFilterPattern({ ...tableFilterPattern, exclude: value });
 
         break;
-      case FilterPatternType.VIEW:
-        setViewFilterPattern({ ...viewFilterPattern, exclude: value });
+      case FilterPatternEnum.TOPIC:
+        setTopicFilterPattern({ ...topicFilterPattern, exclude: value });
+
+        break;
+      case FilterPatternEnum.CHART:
+        setChartFilterPattern({ ...topicFilterPattern, exclude: value });
 
         break;
     }
   };
 
-  const handleShowFilter = (value: boolean, type: FilterPatternType) => {
+  const handleShowFilter = (value: boolean, type: FilterPatternEnum) => {
     switch (type) {
-      case FilterPatternType.DATABASE:
-        setShowDatabaseFilter(value);
+      case FilterPatternEnum.DASHBOARD:
+        setShowDashboardFilter(value);
 
         break;
-      case FilterPatternType.SCHEMA:
+      case FilterPatternEnum.SCHEMA:
         setShowSchemaFilter(value);
 
         break;
-      case FilterPatternType.TABLE:
+      case FilterPatternEnum.TABLE:
         setShowTableFilter(value);
 
         break;
-      case FilterPatternType.VIEW:
-        setShowViewFilter(value);
+      case FilterPatternEnum.TOPIC:
+        setShowTopicFilter(value);
+
+        break;
+      case FilterPatternEnum.CHART:
+        setShowChartFilter(value);
 
         break;
     }
@@ -156,6 +178,7 @@ const AddIngestion = ({
         startDate: startDate as unknown as Date,
         endDate: startDate as unknown as Date,
         scheduleInterval: repeatFrequency,
+        forceDeploy: true,
       },
       name: ingestionName,
       displayName: ingestionName,
@@ -175,6 +198,9 @@ const AddIngestion = ({
           includeViews: includeView,
           schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
           tableFilterPattern: getFilterPatternData(tableFilterPattern),
+          chartFilterPattern: getFilterPatternData(chartFilterPattern),
+          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
+          topicFilterPattern: getFilterPatternData(topicFilterPattern),
         },
       },
     };
@@ -198,7 +224,8 @@ const AddIngestion = ({
       <div className="tw-pt-7">
         {activeStepperStep === 1 && (
           <ConfigureIngestion
-            databaseFilterPattern={databaseFilterPattern}
+            chartFilterPattern={chartFilterPattern}
+            dashboardFilterPattern={dashboardFilterPattern}
             enableDataProfiler={enableDataProfiler}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
@@ -212,12 +239,14 @@ const AddIngestion = ({
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             schemaFilterPattern={schemaFilterPattern}
-            showDatabaseFilter={showDatabaseFilter}
+            serviceCategory={serviceCategory}
+            showChartFilter={showChartFilter}
+            showDashboardFilter={showDashboardFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
-            showViewFilter={showViewFilter}
+            showTopicFilter={showTopicFilter}
             tableFilterPattern={tableFilterPattern}
-            viewFilterPattern={viewFilterPattern}
+            topicFilterPattern={topicFilterPattern}
             onCancel={handleConfigureIngestionCancelClick}
             onNext={handleConfigureIngestionNextClick}
           />

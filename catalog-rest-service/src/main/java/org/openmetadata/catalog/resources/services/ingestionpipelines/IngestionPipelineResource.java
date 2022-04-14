@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -437,7 +438,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceConnection(databaseService.getConnection())
                 .withServiceName(databaseService.getName())
-                .withType(databaseService.getServiceType().value());
+                .withType(databaseService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.DASHBOARD_SERVICE:
         DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -445,7 +446,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(dashboardService.getName())
                 .withServiceConnection(dashboardService.getConnection())
-                .withType(dashboardService.getServiceType().value());
+                .withType(dashboardService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.MESSAGING_SERVICE:
         MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -453,7 +454,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(messagingService.getName())
                 .withServiceConnection(messagingService.getConnection())
-                .withType(messagingService.getServiceType().value());
+                .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       default:
         throw new IllegalArgumentException(

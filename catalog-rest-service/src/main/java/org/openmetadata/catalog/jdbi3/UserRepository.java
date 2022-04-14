@@ -72,8 +72,6 @@ public class UserRepository extends EntityRepository<User> {
     Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
     // Get default role set up globally.
     daoCollection.roleDAO().getDefaultRolesIds().forEach(roleIdStr -> roleIds.add(UUID.fromString(roleIdStr)));
-    // Get default roles from the teams that the user belongs to.
-    getTeamDefaultRoles(user).forEach(roleRef -> roleIds.add(roleRef.getId()));
 
     // Assign roles.
     List<EntityReference> rolesRef = new ArrayList<>(roleIds.size());
@@ -93,7 +91,7 @@ public class UserRepository extends EntityRepository<User> {
         defaultRoles.addAll(team.getDefaultRoles());
       }
     }
-    return defaultRoles;
+    return defaultRoles.stream().distinct().collect(Collectors.toList());
   }
 
   @Override
@@ -183,7 +181,9 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
-    return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+    List<EntityReference> roles = EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+    roles.addAll(getTeamDefaultRoles(user));
+    return roles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 
   /* Add all the teams that user belongs to User entity */

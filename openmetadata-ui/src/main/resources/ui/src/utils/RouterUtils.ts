@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { IN_PAGE_SEARCH_ROUTES, ROUTES } from '../constants/constants';
+import {
+  IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_ROUTE_SERVICE_CAT,
+  ROUTES,
+} from '../constants/constants';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -34,4 +38,11 @@ export const inPageSearchOptions = (pathname: string): Array<string> => {
   }
 
   return strOptions;
+};
+
+export const getAddServicePath = (serviceCategory: string) => {
+  let path = ROUTES.ADD_SERVICE;
+  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
+
+  return path;
 };

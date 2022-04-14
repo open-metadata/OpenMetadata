@@ -58,7 +58,7 @@ CONFIG = """
   "sink": {
     "type": "file",
     "config": {
-        "filename": "/var/tmp/datasets.json"
+        "filename": "/var/tmp/vertica.json"
     }
   },
   "workflowConfig": {
@@ -213,7 +213,6 @@ class VerticaIngestionTest(TestCase):
         get_columns.return_value = MOCK_GET_COLUMN
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
-
         execute_workflow()
 
     def test_file_sink(self):

@@ -54,7 +54,7 @@ public class FullyQualifiedName {
     List<String> list = new ArrayList<>();
 
     public String[] split() {
-      return list.toArray(new String[list.size()]);
+      return list.toArray(new String[0]);
     }
 
     @Override

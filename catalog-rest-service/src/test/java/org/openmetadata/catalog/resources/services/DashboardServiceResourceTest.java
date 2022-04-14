@@ -78,7 +78,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     SupersetConnection supersetConnection =
         new SupersetConnection()
-            .withSupersetURL(new URI("http://localhost:8080"))
+            .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
             .withPassword("password");
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
@@ -93,7 +93,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         new DashboardConnection()
             .withConfig(
                 new SupersetConnection()
-                    .withSupersetURL(new URI("http://localhost:8080"))
+                    .withHostPort(new URI("http://localhost:8080"))
                     .withUsername("user")
                     .withPassword("password"));
     DashboardService service =
@@ -105,7 +105,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         new DashboardConnection()
             .withConfig(
                 new SupersetConnection()
-                    .withSupersetURL(new URI("http://localhost:9000"))
+                    .withHostPort(new URI("http://localhost:9000"))
                     .withUsername("user1")
                     .withPassword("password1"));
 
@@ -135,7 +135,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
               new DashboardConnection()
                   .withConfig(
                       new SupersetConnection()
-                          .withSupersetURL(new URI("http://localhost:8080"))
+                          .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
                           .withPassword("admin")))
           .withOwner(owner)
@@ -216,7 +216,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           actualSupersetConnection =
               JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class);
         }
-        assertEquals(expectedSupersetConnection.getSupersetURL(), actualSupersetConnection.getSupersetURL());
+        assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
         assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
         assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());

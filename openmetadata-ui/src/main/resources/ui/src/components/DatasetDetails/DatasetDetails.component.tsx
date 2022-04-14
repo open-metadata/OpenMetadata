@@ -758,8 +758,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 9 && !deleted && (
               <div>
                 <ManageTab
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={tableDetails.id}
+                  entityName={tableDetails.name}
+                  entityType={EntityType.TABLE}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
