@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
+import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   ConfigData,
   DataObj,
@@ -248,10 +250,13 @@ const AddService = ({
       <div className="tw-form-container">
         {addIngestion ? (
           <AddIngestion
-            handleAddIngestion={handleAddIngestion}
+            handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
+            heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+            pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
             serviceData={newServiceData as DataObj}
+            status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
           />
         ) : (

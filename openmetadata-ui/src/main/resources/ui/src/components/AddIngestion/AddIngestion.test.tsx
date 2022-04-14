@@ -13,7 +13,9 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
+import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 import AddIngestion from './AddIngestion.component';
 import { AddIngestionProps } from './addIngestion.interface';
@@ -22,10 +24,13 @@ const mockAddIngestionProps: AddIngestionProps = {
   serviceData: {
     name: 'serviceName',
   } as DataObj,
-  handleAddIngestion: jest.fn(),
+  handleCancelClick: jest.fn(),
   serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
   onAddIngestionSave: jest.fn(),
   handleViewServiceClick: jest.fn(),
+  pipelineType: PipelineType.Metadata,
+  heading: 'add ingestion',
+  status: FormSubmitType.ADD,
 };
 
 jest.mock('./Steps/ConfigureIngestion', () => {
