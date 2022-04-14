@@ -73,7 +73,7 @@ class OMetaServiceTest(TestCase):
             entity=DatabaseService, config=workflow_source
         )
         assert service
-        assert service.serviceType == DatabaseServiceType.MySQL
+        assert service.serviceType == DatabaseServiceType.Mysql
 
         # Check get
         assert service == self.metadata.get_service_or_create(

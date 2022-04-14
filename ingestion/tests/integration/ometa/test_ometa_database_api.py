@@ -56,7 +56,7 @@ class OMetaDatabaseTest(TestCase):
 
     service = CreateDatabaseServiceRequest(
         name="test-service-db",
-        serviceType=DatabaseServiceType.MySQL,
+        serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",

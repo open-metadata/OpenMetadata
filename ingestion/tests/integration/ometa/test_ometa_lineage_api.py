@@ -63,7 +63,7 @@ class OMetaLineageTest(TestCase):
 
     db_service = CreateDatabaseServiceRequest(
         name="test-service-db-lineage",
-        serviceType=DatabaseServiceType.MySQL,
+        serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
