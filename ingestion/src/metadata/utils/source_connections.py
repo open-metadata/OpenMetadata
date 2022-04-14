@@ -29,10 +29,10 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
-    DB2Connection,
+    Db2Connection,
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
-    HiveSQLConnection,
+    HiveConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
@@ -116,7 +116,7 @@ def get_connection_url(connection):
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
 @get_connection_url.register(VerticaConnection)
-@get_connection_url.register(DB2Connection)
+@get_connection_url.register(Db2Connection)
 def _(connection):
     return get_connection_url_common(connection)
 
@@ -245,7 +245,7 @@ def _(connection: SnowflakeConnection):
 
 
 @get_connection_url.register
-def _(connection: HiveSQLConnection):
+def _(connection: HiveConnection):
     url = get_connection_url_common(connection)
     if connection.authOptions:
         return f"{url};{connection.authOptions}"
