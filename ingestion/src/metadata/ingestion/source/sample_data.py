@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
 )
@@ -183,6 +184,7 @@ class SampleDataSource(Source[Entity]):
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.list_policies = []
 
         self.storage_service_json = json.load(
             open(
@@ -599,11 +601,15 @@ class SampleDataSource(Source[Entity]):
                         description=f"This is {user['teams']} description.",
                     )
                 ]
+                if not self.list_policies:
+                    self.list_policies = self.metadata.list_entities(entity=Policy)
+                    role_ref_id = self.list_policies.entities[0].id.__root__
                 roles = (
                     [
                         CreateRoleRequest(
                             name=role,
                             description=f"This is {role} description.",
+                            policies=[EntityReference(id=role_ref_id, type="policies")],
                         )
                         for role in user["roles"]
                     ]
