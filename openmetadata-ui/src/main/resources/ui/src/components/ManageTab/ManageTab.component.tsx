@@ -262,7 +262,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       <div className="tw-flex">
         <label htmlFor="join-team">Allow users to join this team</label>
         <div
-          className={classNames('toggle-switch ', teamJoinable ? 'open' : null)}
+          className={classNames('toggle-switch ', { open: teamJoinable })}
           data-testid="team-isJoinable-switch"
           id="join-team"
           onClick={() => setTeamJoinable((prev) => !prev)}>
