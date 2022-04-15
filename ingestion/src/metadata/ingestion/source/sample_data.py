@@ -184,6 +184,7 @@ class SampleDataSource(Source[Entity]):
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.list_policies = []
 
         self.storage_service_json = json.load(
             open(
@@ -600,8 +601,9 @@ class SampleDataSource(Source[Entity]):
                         description=f"This is {user['teams']} description.",
                     )
                 ]
-                list_policies = self.metadata.list_entities(entity=Policy)
-                role_ref_id = list_policies.entities[0].id.__root__
+                if not self.list_policies:
+                    self.list_policies = self.metadata.list_entities(entity=Policy)
+                    role_ref_id = self.list_policies.entities[0].id.__root__
                 roles = (
                     [
                         CreateRoleRequest(
