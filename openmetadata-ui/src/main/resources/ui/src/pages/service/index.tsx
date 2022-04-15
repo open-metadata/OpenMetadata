@@ -1203,8 +1203,12 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 5 && (
                   <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
                     <ManageTabComponent
+                      allowDelete
                       hideTier
                       currentUser={serviceDetails?.owner?.id}
+                      entityId={serviceDetails?.id}
+                      entityName={serviceDetails?.name}
+                      entityType={`services/${serviceCategory.slice(0, -1)}`}
                       hasEditAccess={hasEditAccess(
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''
