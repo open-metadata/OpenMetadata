@@ -33,18 +33,20 @@ const getModifiedPipelineStatus = (
   pipelineStatus: Pipeline['pipelineStatus'] = [],
   status: StatusType
 ) => {
-  const data = pipelineStatus.map((pipelineStatus) => {
-    return pipelineStatus.taskStatus?.map((task) => ({
-      executionDate: pipelineStatus.executionDate,
-      executionStatus: task.executionStatus,
-      name: task.name,
-    }));
-  });
+  const data = pipelineStatus
+    .map((pipelineStatus) => {
+      return pipelineStatus.taskStatus?.map((task) => ({
+        executionDate: pipelineStatus.executionDate,
+        executionStatus: task.executionStatus,
+        name: task.name,
+      }));
+    })
+    .flat(1);
 
   if (!status) {
-    return data.flat(1);
+    return data;
   } else {
-    return data.flat(1).filter((d) => d?.executionStatus === status);
+    return data.filter((d) => d?.executionStatus === status);
   }
 };
 
@@ -85,9 +87,16 @@ const STATUS_OPTIONS = [
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
 
-  const handleOnChange = (value: SingleValue<unknown>) => {
-    const selectedValue = value as Option;
-    setSelectedFilter(selectedValue.value);
+  const handleOnChange = (
+    value: SingleValue<unknown>,
+    { action }: { action: string }
+  ) => {
+    if (isNil(value) || action === 'clear') {
+      setSelectedFilter('');
+    } else {
+      const selectedValue = value as Option;
+      setSelectedFilter(selectedValue.value);
+    }
   };
 
   if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
@@ -103,6 +112,7 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
           <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
             <div />
             <Select
+              isClearable
               aria-label="Filter by Status"
               isSearchable={false}
               options={STATUS_OPTIONS}
