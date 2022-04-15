@@ -90,70 +90,68 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
     setSelectedFilter(selectedValue.value);
   };
 
-  if (isNil(pipelineStatus)) {
-    return null;
+  if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
+    return (
+      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+        <span>No Execution data available.</span>
+      </div>
+    );
   } else {
     return (
       <Fragment>
-        {pipelineStatus.length > 0 ? (
-          <div className={className} data-testid="pipeline-status-list">
-            <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
-              <div />
-              <Select
-                options={STATUS_OPTIONS}
-                placeholder="Status"
-                styles={reactSingleSelectCustomStyle}
-                onChange={handleOnChange}
-              />
-            </div>
-            <table
-              className="tw-w-full"
-              data-testid="pipeline-status-table"
-              id="pipeline-status-table">
-              <thead>
-                <tr className="tableHead-row">
-                  <th className="tableHead-cell">Task Name</th>
-                  <th className="tableHead-cell">Status</th>
-                  <th className="tableHead-cell">Date &amp; Time</th>
+        <div className={className} data-testid="pipeline-status-list">
+          <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
+            <div />
+            <Select
+              aria-label="Filter by Status"
+              isSearchable={false}
+              options={STATUS_OPTIONS}
+              placeholder="Status"
+              styles={reactSingleSelectCustomStyle}
+              onChange={handleOnChange}
+            />
+          </div>
+          <table
+            className="tw-w-full"
+            data-testid="pipeline-status-table"
+            id="pipeline-status-table">
+            <thead>
+              <tr className="tableHead-row">
+                <th className="tableHead-cell">Task Name</th>
+                <th className="tableHead-cell">Status</th>
+                <th className="tableHead-cell">Date &amp; Time</th>
+              </tr>
+            </thead>
+            <tbody className="tableBody">
+              {getModifiedPipelineStatus(
+                pipelineStatus,
+                selectedFilter as StatusType
+              ).map((status) => (
+                <tr
+                  className={classNames('tableBody-row')}
+                  data-testid="tableBody-row"
+                  key={uniqueId()}>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    {status?.name}
+                  </td>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    <div className="tw-flex tw-items-center">
+                      {getStatusBadge(status?.executionStatus as StatusType)}{' '}
+                      <span className="tw-ml-2">{status?.executionStatus}</span>
+                    </div>
+                  </td>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    {status?.executionDate
+                      ? moment(status?.executionDate).format(
+                          'DD-MM-YYYY hh:mm A'
+                        )
+                      : '--'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="tableBody">
-                {getModifiedPipelineStatus(
-                  pipelineStatus,
-                  selectedFilter as StatusType
-                ).map((status) => (
-                  <tr
-                    className={classNames('tableBody-row')}
-                    data-testid="tableBody-row"
-                    key={uniqueId()}>
-                    <td className="tableBody-cell" data-testid="tableBody-cell">
-                      {status?.name}
-                    </td>
-                    <td className="tableBody-cell" data-testid="tableBody-cell">
-                      <div className="tw-flex tw-items-center">
-                        {getStatusBadge(status?.executionStatus as StatusType)}{' '}
-                        <span className="tw-ml-2">
-                          {status?.executionStatus}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="tableBody-cell" data-testid="tableBody-cell">
-                      {status?.executionDate
-                        ? moment(status?.executionDate).format(
-                            'DD-MM-YYYY hh:mm A'
-                          )
-                        : '--'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-            <span>No Execution data available.</span>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Fragment>
     );
   }
