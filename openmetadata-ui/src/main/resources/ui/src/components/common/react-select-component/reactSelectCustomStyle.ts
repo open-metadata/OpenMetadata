@@ -47,7 +47,7 @@ export const reactSingleSelectCustomStyle: StylesConfig = {
     ...styles,
     backgroundColor: '#ffffff',
     boxShadow: 'none',
-    borderColor: isFocused ? primeryColor : 'none',
+    borderColor: isFocused ? primeryColor : `${borderColor}`,
     ':hover': {
       border: `1px solid ${primeryColor}`,
     },
