@@ -38,15 +38,23 @@ T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 class ESMixin(Generic[T]):
     client: REST
 
-    es_url: str = (
-        "/search/query?q=service:{} {}&from=0&size=10&index=table_search_index"
-    )
+    es_url: str = "/search/query?q=service:{} {}&from={}&size={}&index={}"
 
-    def search_tables_using_es(self, service_name, table_obj):
+    def search_entities_using_es(
+        self, service_name, table_obj, search_index, from_count: int = 0, size: int = 10
+    ):
         generate_es_string = " AND ".join(
-            ["%s:%s" % (key, value) for (key, value) in table_obj.items()]
+            [
+                "%s:%s" % (key, value)
+                for (key, value) in table_obj.items()
+                if value is not None
+            ]
         )
-        resp_es = self.client.get(self.es_url.format(service_name, generate_es_string))
+        resp_es = self.client.get(
+            self.es_url.format(
+                service_name, generate_es_string, from_count, size, search_index
+            )
+        )
         multiple_entities = []
         if resp_es:
             for table_hit in resp_es["hits"]["hits"]:
