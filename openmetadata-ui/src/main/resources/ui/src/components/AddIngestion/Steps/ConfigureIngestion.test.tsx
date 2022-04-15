@@ -30,24 +30,24 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
   dashboardFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   chartFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   schemaFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   tableFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   topicFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   includeView: false,
   enableDataProfiler: false,

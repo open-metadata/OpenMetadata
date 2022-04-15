@@ -179,7 +179,7 @@ public final class ChangeEventParser {
   private static EntityLink getEntityLink(String fieldName, Object entity) {
     EntityReference entityReference = Entity.getEntityReference(entity);
     String entityType = entityReference.getType();
-    String entityFQN = entityReference.getName();
+    String entityFQN = entityReference.getFullyQualifiedName();
     String arrayFieldName = null;
     String arrayFieldValue = null;
 

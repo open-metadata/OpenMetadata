@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import { AssetsType } from '../../enums/entity.enum';
+import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -67,7 +67,10 @@ const UserCard = ({
   const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return getPartialNameFromTableFQN(fqn, ['database', 'table']);
+        return getPartialNameFromTableFQN(fqn, [
+          FqnPart.Database,
+          FqnPart.Table,
+        ]);
 
       case AssetsType.DASHBOARD:
       case AssetsType.PIPELINE:
