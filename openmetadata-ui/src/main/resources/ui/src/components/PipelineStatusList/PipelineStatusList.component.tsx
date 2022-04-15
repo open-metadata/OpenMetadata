@@ -30,13 +30,13 @@ interface Option {
 }
 
 const getModifiedPipelineStatus = (
-  pipelineStatus: Pipeline['pipelineStatus'] = [],
-  status: StatusType
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
 ) => {
   const data = pipelineStatus
-    .map((pipelineStatus) => {
-      return pipelineStatus.taskStatus?.map((task) => ({
-        executionDate: pipelineStatus.executionDate,
+    .map((status) => {
+      return status.taskStatus?.map((task) => ({
+        executionDate: status.executionDate,
         executionStatus: task.executionStatus,
         name: task.name,
       }));
@@ -134,8 +134,8 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
             </thead>
             <tbody className="tableBody">
               {getModifiedPipelineStatus(
-                pipelineStatus,
-                selectedFilter as StatusType
+                selectedFilter as StatusType,
+                pipelineStatus
               ).map((status) => (
                 <tr
                   className={classNames('tableBody-row')}
