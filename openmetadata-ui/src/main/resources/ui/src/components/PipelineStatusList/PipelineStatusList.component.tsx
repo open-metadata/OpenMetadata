@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isNil, uniqueId } from 'lodash';
 import moment from 'moment';
 import React, { FC, Fragment, HTMLAttributes } from 'react';
+import Select from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 
@@ -64,6 +65,12 @@ const getStatusBadge = (status: StatusType) => {
   );
 };
 
+const STATUS_OPTIONS = [
+  { value: StatusType.Successful, label: StatusType.Successful },
+  { value: StatusType.Failed, label: StatusType.Failed },
+  { value: StatusType.Pending, label: StatusType.Pending },
+];
+
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   if (isNil(pipelineStatus)) {
     return null;
@@ -72,6 +79,10 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
       <Fragment>
         {pipelineStatus.length > 0 ? (
           <div className={className} data-testid="pipeline-status-list">
+            <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
+              <div />
+              <Select className="tw-border-primary" options={STATUS_OPTIONS} />
+            </div>
             <table
               className="tw-w-full"
               data-testid="pipeline-status-table"
