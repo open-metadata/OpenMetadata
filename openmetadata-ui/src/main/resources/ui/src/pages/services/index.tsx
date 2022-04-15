@@ -14,10 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { Paging, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { Link, useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
   deleteService,
@@ -38,6 +38,7 @@ import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServ
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
+  PAGE_SIZE,
   pagingObject,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -48,16 +49,13 @@ import {
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateAirflowPipeline } from '../../generated/api/operations/pipelines/createAirflowPipeline';
-import {
-  DashboardService,
-  DashboardServiceType,
-} from '../../generated/entity/services/dashboardService';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import {
   DataObj,
   EditObj,
@@ -69,8 +67,12 @@ import {
   getCountBadge,
   getServiceLogo,
 } from '../../utils/CommonUtils';
+import { getDashboardURL } from '../../utils/DashboardServiceUtils';
+import { getBrokers } from '../../utils/MessagingServiceUtils';
+import { getAddServicePath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type ServiceRecord = {
   databaseServices: Array<DatabaseService>;
@@ -97,7 +99,8 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
-  const showToast = useToastContext();
+  const history = useHistory();
+
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,12 +136,7 @@ const ServicesPage = () => {
     pipelineServices: 0,
   });
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
+  const [currentPage, setCurrentPage] = useState(1);
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -193,13 +191,13 @@ const ServicesPage = () => {
               for (const err of errors) {
                 const errMsg = getErrorText(err, '');
                 if (errMsg) {
-                  handleShowErrorToast(errMsg);
+                  showErrorToast(errMsg);
                 } else {
                   unexpectedResponses++;
                 }
               }
               if (unexpectedResponses > 0) {
-                handleShowErrorToast(
+                showErrorToast(
                   jsonData['api-error-messages']['unexpected-server-response']
                 );
               }
@@ -208,18 +206,20 @@ const ServicesPage = () => {
           setIsLoading(false);
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-services-error']
           );
-          handleShowErrorToast(errMsg);
         });
     }
   };
 
+  const goToAddService = () => {
+    history.push(getAddServicePath(serviceName));
+  };
+
   const handleAddService = () => {
-    setEditData(undefined);
-    setIsModalOpen(true);
+    goToAddService();
   };
   const handleClose = () => {
     setIsModalOpen(false);
@@ -314,14 +314,10 @@ const ServicesPage = () => {
           });
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['add-ingestion-error']
           );
-          showToast({
-            variant: 'error',
-            body: errMsg,
-          });
         });
     } else {
       setIsModalOpen(false);
@@ -358,14 +354,10 @@ const ServicesPage = () => {
         handleServiceSavePromise(serviceRes, ingestionList);
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['add-service-error']
         );
-        showToast({
-          variant: 'error',
-          body: errMsg,
-        });
       });
   };
 
@@ -393,11 +385,10 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['delete-service-error']
         );
-        handleShowErrorToast(errMsg);
       });
 
     handleCancelConfirmationModal();
@@ -475,10 +466,12 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
               <label className="tw-mb-0">Brokers:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {messagingService.connection.config?.bootstrapServers}
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="brokers">
+                {getBrokers(messagingService.connection.config)}
               </span>
             </div>
           </>
@@ -489,14 +482,12 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
-              <label className="tw-mb-0">
-                {dashboardService.serviceType === DashboardServiceType.Tableau
-                  ? 'Site URL:'
-                  : 'URL:'}
-              </label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {dashboardService.connection.config?.url}
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">URL:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="dashboard-url">
+                {getDashboardURL(dashboardService.connection.config)}
               </span>
             </div>
           </>
@@ -507,9 +498,11 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1" data-testid="additional-field">
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
               <label className="tw-mb-0">URL:</label>
-              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
                 {pipelineService.pipelineUrl}
               </span>
             </div>
@@ -522,7 +515,7 @@ const ServicesPage = () => {
     }
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     setIsLoading(true);
     const currentServicePaging = paging[serviceName];
     const pagingString = `${serviceName}?${cursorType}=${
@@ -543,16 +536,16 @@ const ServicesPage = () => {
             ...paging,
             [serviceName]: result.data.paging,
           });
+          setCurrentPage(activePage ?? 0);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError | string) => {
-        const msg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
-        handleShowErrorToast(msg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -590,8 +583,11 @@ const ServicesPage = () => {
     return !isNil(paging[serviceName].after) ||
       !isNil(paging[serviceName].before) ? (
       <NextPrevious
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
         paging={paging[serviceName]}
         pagingHandler={pagingHandler}
+        totalCount={paging[serviceName].total}
       />
     ) : null;
   };
@@ -634,8 +630,9 @@ const ServicesPage = () => {
           {serviceList.map((service, index) => (
             <div
               className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
+              data-testid="service-card"
               key={index}>
-              <div className="tw-flex-auto tw-flex tw-flex-col tw-justify-between">
+              <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
                 <div>
                   <Link to={getServiceDetailsPath(service.name, serviceName)}>
                     <button>
@@ -755,13 +752,21 @@ const ServicesPage = () => {
         if (res.data) {
           let allServiceCollectionArr: Array<ServiceCollection> = [];
           if (res.data.data?.length) {
-            allServiceCollectionArr = res.data.data.map(
-              (service: ServiceData) => {
-                return {
-                  name: service.collection.name,
-                  value: service.collection.name,
-                };
-              }
+            allServiceCollectionArr = res.data.data.reduce(
+              (prev: Array<ServiceCollection>, curr: ServiceData) => {
+                const sName = curr.collection.name as ServiceTypes;
+
+                return arrServiceTypes.includes(sName)
+                  ? [
+                      ...prev,
+                      {
+                        name: sName,
+                        value: sName,
+                      },
+                    ]
+                  : prev;
+              },
+              []
             );
             // Removed "setIsLoading(false)" from here,
             // If there are service categories available
@@ -777,13 +782,12 @@ const ServicesPage = () => {
         }
       })
       .catch((err: AxiosError | string) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-services-error']
         );
         setIsLoading(false);
         setErrorMessage(jsonData['message']['no-services']);
-        handleShowErrorToast(errMsg);
       });
   }, []);
 

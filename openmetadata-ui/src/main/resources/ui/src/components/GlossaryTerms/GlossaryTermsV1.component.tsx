@@ -28,16 +28,15 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
-import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -54,8 +53,9 @@ type Props = {
   assetData: GlossaryTermAssets;
   isHasAccess: boolean;
   glossaryTerm: GlossaryTerm;
+  currentPage: number;
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
-  onAssetPaginate: (num: number) => void;
+  onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
 };
 
@@ -66,8 +66,8 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
+  currentPage,
 }: Props) => {
-  const showToast = useToastContext();
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
@@ -85,13 +85,6 @@ const GlossaryTermsV1 = ({
   const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
     []
   );
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
 
   const tabs = [
     {
@@ -223,12 +216,7 @@ const GlossaryTermsV1 = ({
         setTagList(getTaglist(res.data));
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-tags-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
       })
       .finally(() => {
         setIsTagLoading(false);
@@ -361,9 +349,11 @@ const GlossaryTermsV1 = ({
             isActionVisible
             isIconVisible
             item={{
-              name: term.name || '',
-              description: term.displayName || '',
+              fqn: term.fullyQualifiedName || '',
+              displayName: term.displayName || term.name || '',
               id: term.id,
+              type: term.type,
+              name: term.name,
             }}
             key={term.name}
             onRemove={handleRemoveReviewer}
@@ -617,6 +607,7 @@ const GlossaryTermsV1 = ({
           {activeTab === 2 && (
             <AssetsTabs
               assetData={assetData}
+              currentPage={currentPage}
               onAssetPaginate={onAssetPaginate}
             />
           )}

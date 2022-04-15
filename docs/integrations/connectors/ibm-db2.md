@@ -112,7 +112,6 @@ Note: The `source.config` field in the configuration JSON will include the major
     "config": {
       "host_port": "hostname.domain.com:50000",
       "scheme": "db2+ibm_db",
-      "service_type" = "DatabaseServiceType.Db2.value",
       "username": "username",
       "password": "strong_password",
       "database": "db2_db",
@@ -161,14 +160,6 @@ Edit the value for `source.config.scheme` in `db2.json` for your Db2 deployment.
 
 ```javascript
 "scheme": "db2+ibm_db"
-```
-
-#### service\_type
-
-Edit the value for `source.config.service_type` as shown in the example below.
-
-```javascript
-"service_type": "DatabaseServiceType.Db2.value"
 ```
 
 #### username

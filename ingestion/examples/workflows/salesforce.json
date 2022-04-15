@@ -1,24 +1,31 @@
 {
   "source": {
     "type": "salesforce",
-    "config": {
-      "username": "username",
-      "password": "password",
-      "security_token": "secuirty_token",
-      "service_name": "local_salesforce",
-      "scheme": "salesforce",
-      "sobject_name": "Salesforce Object Name"
+    "serviceName": "local_salesforce",
+    "serviceConnection": {
+      "config": {
+        "type": "Salesforce",
+        "username": "username",
+        "password": "password",
+        "securityToken": "securityToken",
+        "scheme": "salesforce",
+        "sobjectName": "sobjectName"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "enableDataProfiler": false
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

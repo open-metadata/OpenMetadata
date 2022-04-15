@@ -19,7 +19,7 @@
       "$ref": "#/definitions/tableauType",
       "default": "Tableau"
     },
-    "server": {
+    "hostPort": {
       "description": "Tableau Server",
       "type": "string"
     },
@@ -40,11 +40,6 @@
       "description": "Tableau Site Name",
       "type": "string"
     },
-    "siteURL": {
-      "description": "Tableau Site URL",
-      "type": "string",
-      "format": "uri"
-    },
     "personalAccessTokenName": {
       "description": "Personal Access Token Name",
       "type": "string"
@@ -53,15 +48,12 @@
       "description": "Personal Access Token Secret",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "env": {
+      "description": "Tableau Environment Name",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

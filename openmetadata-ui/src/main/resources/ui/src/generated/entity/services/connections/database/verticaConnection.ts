@@ -16,8 +16,8 @@
  * Vertica Connection Config
  */
 export interface VerticaConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -36,10 +36,8 @@ export interface VerticaConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: VerticaScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */

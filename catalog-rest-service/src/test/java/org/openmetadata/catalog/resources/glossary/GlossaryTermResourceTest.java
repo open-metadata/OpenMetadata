@@ -24,6 +24,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossar
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
+import static org.openmetadata.catalog.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -55,6 +56,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -304,12 +306,13 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public GlossaryTermEntityInterface getEntityInterface(GlossaryTerm entity) {
+  public EntityInterface<GlossaryTerm> getEntityInterface(GlossaryTerm entity) {
     return new GlossaryTermEntityInterface(entity);
   }
 
   @Override
-  public void validateGetWithDifferentFields(GlossaryTerm term, boolean byName) throws HttpResponseException {
+  public EntityInterface<GlossaryTerm> validateGetWithDifferentFields(GlossaryTerm term, boolean byName)
+      throws HttpResponseException {
     String fields = "";
     term =
         byName
@@ -323,6 +326,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(term.getRelatedTerms(), term.getReviewers(), term.getTags());
+    assertListNotEmpty(term.getRelatedTerms(), term.getReviewers());
+    // Checks for other owner, tags, and followers is done in the base class
+    return getEntityInterface(term);
   }
 
   @Override

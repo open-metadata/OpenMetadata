@@ -19,20 +19,12 @@ import {
   EntityFieldThreadCount,
   EntityThread,
   ExtraInfo,
-  Paging,
   ServicesData,
 } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
-import {
-  addAirflowPipeline,
-  deleteAirflowPipelineById,
-  getAirflowPipelines,
-  triggerAirflowPipelineById,
-  updateAirflowPipeline,
-} from '../../axiosAPIs/airflowPipelineAPI';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
@@ -41,6 +33,13 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
+import {
+  addIngestionPipeline,
+  deleteIngestionPipelineById,
+  getIngestionPipelines,
+  triggerIngestionPipelineById,
+  updateIngestionPipeline,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
@@ -64,26 +63,24 @@ import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import {
-  AirflowPipeline,
-  PipelineType,
-  Schema,
-} from '../../generated/operations/pipelines/airflowPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { DataObj, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
@@ -101,11 +98,12 @@ import {
   getCurrentServiceTab,
   getIsIngestionEnable,
   getServiceCategoryFromType,
-  isRequiredDetailsAvailableForIngestion,
   servicePageTabs,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
+import { getErrorText } from '../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 type Data = Database & Topic & Dashboard;
 
@@ -135,10 +133,9 @@ const ServicePage: FunctionComponent = () => {
   const [isConnectionAvailable, setConnectionAvailable] =
     useState<boolean>(true);
   const [isError, setIsError] = useState(false);
-  const [ingestions, setIngestions] = useState<AirflowPipeline[]>([]);
+  const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
-  const showToast = useToastContext();
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
@@ -150,19 +147,8 @@ const ServicePage: FunctionComponent = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -295,51 +281,38 @@ const ServicePage: FunctionComponent = () => {
           setFeedCount(res.data.totalCount);
           setEntityFieldThreadCount(res.data.counts);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-count-error']
           );
         }
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-count-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['fetch-entity-feed-count-error']
+        );
       });
-  };
-
-  const getSchemaFromType = (type: AirflowPipeline['pipelineType']) => {
-    switch (type) {
-      case PipelineType.Metadata:
-        return Schema.DatabaseServiceMetadataPipeline;
-
-      case PipelineType.QueryUsage:
-        return Schema.DatabaseServiceQueryUsagePipeline;
-
-      default:
-        return;
-    }
   };
 
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getAirflowPipelines(['owner', 'pipelineStatuses'], serviceFQN, '', paging)
+    getIngestionPipelines(['owner'], serviceFQN, paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
           setIngestionPaging(res.data.paging);
         } else {
           setIngestionPaging({} as Paging);
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-ingestion-error']
           );
         }
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-ingestion-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['fetch-ingestion-error']
+        );
       })
       .finally(() => setIsloading(false));
   };
@@ -349,23 +322,23 @@ const ServicePage: FunctionComponent = () => {
     displayName: string
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      triggerAirflowPipelineById(id)
+      triggerIngestionPipelineById(id)
         .then((res) => {
           if (res.data) {
             resolve();
             getAllIngestionWorkflows();
           } else {
             reject();
-            handleShowErrorToast(
+            showErrorToast(
               `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
             );
           }
         })
         .catch((error: AxiosError) => {
-          const message =
-            error.response?.data?.message ||
-            `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+          );
           reject();
         })
         .finally(() => setIsloading(false));
@@ -377,25 +350,24 @@ const ServicePage: FunctionComponent = () => {
     displayName: string
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      deleteAirflowPipelineById(id)
+      deleteIngestionPipelineById(id)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
         })
         .catch((error: AxiosError) => {
-          const message =
-            error.response?.data?.message ||
-            `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`;
-
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            `${jsonData['api-error-messages']['delete-ingestion-error']} ${displayName}`
+          );
           reject();
         });
     }).finally(() => setIsloading(false));
   };
 
   const updateIngestion = (
-    data: AirflowPipeline,
-    oldData: AirflowPipeline,
+    data: IngestionPipeline,
+    oldData: IngestionPipeline,
     id: string,
     displayName: string,
     triggerIngestion?: boolean
@@ -403,94 +375,84 @@ const ServicePage: FunctionComponent = () => {
     const jsonPatch = compare(oldData, data);
 
     return new Promise<void>((resolve, reject) => {
-      updateAirflowPipeline(id, jsonPatch)
+      updateIngestionPipeline(id, jsonPatch)
         .then(() => {
           resolve();
           getAllIngestionWorkflows();
           if (triggerIngestion) {
             triggerIngestionById(id, displayName).catch((error: AxiosError) => {
-              const message =
-                error.response?.data?.message ||
-                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
-              handleShowErrorToast(message);
+              showErrorToast(
+                error,
+                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
+              );
             });
           }
         })
         .catch((error: AxiosError) => {
-          const message =
-            error.response?.data?.message ||
-            `${jsonData['api-error-messages']['update-ingestion-error']}`;
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            `${jsonData['api-error-messages']['update-ingestion-error']}`
+          );
           reject();
         });
     });
   };
 
-  const addIngestionWorkflowHandler = (
-    data: AirflowPipeline,
-    triggerIngestion?: boolean
-  ) => {
-    setIsloading(true);
-
-    const ingestionData: AirflowPipeline = {
-      ...data,
-      pipelineConfig: {
-        ...data.pipelineConfig,
-        schema: getSchemaFromType(data.pipelineType),
-      },
-      service: {
-        id: serviceDetails?.id,
-        type: 'databaseService',
-        name: data.service.name,
-      } as EntityReference,
-    };
-
-    addAirflowPipeline(ingestionData)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { id, displayName } = res.data;
-          setIsloading(false);
-          getAllIngestionWorkflows();
-          if (triggerIngestion) {
-            triggerIngestionById(id, displayName).catch((error: AxiosError) => {
-              const message =
-                error.response?.data?.message ||
-                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`;
-
-              handleShowErrorToast(message);
-            });
+  const onAddIngestionSave = (data: CreateIngestionPipeline) => {
+    return new Promise<void>((resolve, reject) => {
+      return addIngestionPipeline(data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            getAllIngestionWorkflows();
+            resolve();
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['create-ingestion-error']
+            );
+            reject();
           }
-        } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['add-ingestion-error']
+        })
+        .catch((error: AxiosError) => {
+          const message = getErrorText(
+            error,
+            jsonData['api-error-messages']['create-ingestion-error']
           );
-        }
-      })
-      .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['add-ingestion-error'];
-        if (message.includes('Connection refused')) {
-          setConnectionAvailable(false);
-        } else {
-          handleShowErrorToast(message);
-        }
-        setIsloading(false);
-      });
+          if (message.includes('Connection refused')) {
+            setConnectionAvailable(false);
+          } else {
+            showErrorToast(message);
+          }
+          reject();
+        });
+    });
   };
 
-  const handleConfigUpdate = (updatedData: ServicesData) => {
-    const configData = {
-      databaseConnection: updatedData.databaseConnection,
-      name: updatedData.name,
-      serviceType: updatedData.serviceType,
-      brokers: updatedData.brokers,
-      schemaRegistry: updatedData.schemaRegistry,
-      dashboardUrl: updatedData.dashboardUrl,
-      username: updatedData.username,
-      password: updatedData.password,
-      pipelineUrl: updatedData.pipelineUrl,
-    };
+  const handleConfigUpdate = (
+    updatedData: ServicesData,
+    serviceCategory: ServiceCategory
+  ) => {
+    const configData =
+      serviceCategory === ServiceCategory.PIPELINE_SERVICES
+        ? {
+            databaseConnection: updatedData.databaseConnection,
+            name: updatedData.name,
+            serviceType: updatedData.serviceType,
+            brokers: updatedData.brokers,
+            schemaRegistry: updatedData.schemaRegistry,
+            dashboardUrl: updatedData.dashboardUrl,
+            username: updatedData.username,
+            password: updatedData.password,
+            pipelineUrl: updatedData.pipelineUrl,
+          }
+        : {
+            name: serviceDetails?.name,
+            serviceType: serviceDetails?.serviceType,
+            description: serviceDetails?.description,
+            owner: serviceDetails?.owner,
+            connection: {
+              config: updatedData,
+            },
+          };
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
@@ -501,7 +463,7 @@ const ServicePage: FunctionComponent = () => {
               owner: res.data?.owner ?? serviceDetails?.owner,
             });
           } else {
-            handleShowErrorToast(
+            showErrorToast(
               `${jsonData['api-error-messages']['update-service-config-error']}`
             );
           }
@@ -510,10 +472,10 @@ const ServicePage: FunctionComponent = () => {
         })
         .catch((error: AxiosError) => {
           reject();
-          const message =
-            error.response?.data?.message ||
-            `${jsonData['api-error-messages']['update-service-config-error']}`;
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            `${jsonData['api-error-messages']['update-service-config-error']}`
+          );
         });
     });
   };
@@ -770,19 +732,17 @@ const ServicePage: FunctionComponent = () => {
           ]);
           getOtherDetails();
         } else {
-          handleShowErrorToast(
-            jsonData['api-error-messages']['fetch-service-error']
-          );
+          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
         }
       })
       .catch((error: AxiosError) => {
         if (error.response?.status === 404) {
           setIsError(true);
         } else {
-          const message =
-            error.response?.data?.message ||
-            jsonData['api-error-messages']['fetch-service-error'];
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['fetch-service-error']
+          );
         }
       })
       .finally(() => setIsloading(false));
@@ -821,9 +781,9 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.DASHBOARD_SERVICES:
         return {
-          dashboardUrl: serviceDetails?.dashboardUrl,
-          username: serviceDetails?.username,
-          password: serviceDetails?.password,
+          dashboardUrl: serviceDetails?.connection?.config?.dashboardURL,
+          username: serviceDetails?.connection?.config?.username,
+          password: serviceDetails?.connection?.config?.password,
         };
 
       case ServiceCategory.PIPELINE_SERVICES:
@@ -858,10 +818,10 @@ const ServicePage: FunctionComponent = () => {
           getEntityFeedCount();
         })
         .catch((error: AxiosError) => {
-          const message =
-            error.response?.data?.message ||
-            jsonData['api-error-messages']['update-description-error'];
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-description-error']
+          );
         });
     } else {
       setIsEdit(false);
@@ -882,17 +842,17 @@ const ServicePage: FunctionComponent = () => {
           if (res.data) {
             setServiceDetails(res.data);
           } else {
-            handleShowErrorToast(
+            showErrorToast(
               jsonData['api-error-messages']['update-owner-error']
             );
           }
           reject();
         })
         .catch((error: AxiosError) => {
-          const message =
-            error.response?.data?.message ||
-            jsonData['api-error-messages']['update-owner-error'];
-          handleShowErrorToast(message);
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-owner-error']
+          );
           reject();
         });
     });
@@ -902,19 +862,24 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(true);
   };
 
-  const pagingHandler = (cursorType: string) => {
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
     getOtherDetails(pagingString);
+    setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (cursorType: string) => {
+  const ingestionPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
       ingestionPaging[cursorType as keyof typeof paging]
     }`;
 
     getAllIngestionWorkflows(pagingString);
+    setIngestionCurrentPage(activePage ?? 1);
   };
   const fetchActivityFeed = () => {
     setIsentityThreadLoading(true);
@@ -924,16 +889,16 @@ const ServicePage: FunctionComponent = () => {
           const { data } = res.data;
           setEntityThread(data);
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['fetch-entity-feed-error']
           );
         }
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['fetch-entity-feed-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -959,16 +924,16 @@ const ServicePage: FunctionComponent = () => {
             });
           });
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['create-message-error']
           );
         }
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['create-message-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['create-message-error']
+        );
       });
   };
 
@@ -979,20 +944,20 @@ const ServicePage: FunctionComponent = () => {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
 
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          handleShowErrorToast(
+          showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
           );
         }
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['create-conversation-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['create-conversation-error']
+        );
       });
   };
 
@@ -1016,7 +981,7 @@ const ServicePage: FunctionComponent = () => {
                 });
               });
             } else {
-              handleShowErrorToast(
+              showErrorToast(
                 jsonData['api-error-messages'][
                   'fetch-updated-conversation-error'
                 ]
@@ -1024,23 +989,19 @@ const ServicePage: FunctionComponent = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const message =
-              error.response?.data?.message ||
-              jsonData['api-error-messages'][
-                'fetch-updated-conversation-error'
-              ];
-            handleShowErrorToast(message);
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-updated-conversation-error']
+            );
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message =
-          error.response?.data?.message ||
-          jsonData['api-error-messages']['delete-message-error'];
-        handleShowErrorToast(message);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['delete-message-error']
+        );
       });
   };
 
@@ -1179,8 +1140,11 @@ const ServicePage: FunctionComponent = () => {
                     </div>
                     {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
                       <NextPrevious
+                        currentPage={currentPage}
+                        pageSize={PAGE_SIZE}
                         paging={paging}
                         pagingHandler={pagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
                   </Fragment>
@@ -1205,23 +1169,20 @@ const ServicePage: FunctionComponent = () => {
                 )}
 
                 {activeTab === 3 && (
-                  <div
-                    className="tw-mt-4 tw-px-1"
-                    data-testid="ingestion-container">
+                  <div data-testid="ingestion-container">
                     {isConnectionAvailable ? (
                       <Ingestion
-                        addIngestion={addIngestionWorkflowHandler}
+                        isRequiredDetailsAvailable
+                        addIngestion={onAddIngestionSave}
+                        currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
                         ingestionList={ingestions}
-                        isRequiredDetailsAvailable={isRequiredDetailsAvailableForIngestion(
-                          serviceName as ServiceCategory,
-                          serviceDetails as ServicesData
-                        )}
                         paging={ingestionPaging}
                         pagingHandler={ingestionPagingHandler}
+                        serviceCategory={serviceName as ServiceCategory}
+                        serviceDetails={serviceDetails as DataObj}
                         serviceList={serviceList}
                         serviceName={serviceFQN}
-                        serviceType={serviceDetails?.serviceType}
                         triggerIngestion={triggerIngestionById}
                         updateIngestion={updateIngestion}
                       />
@@ -1242,8 +1203,12 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 5 && (
                   <div className="tw-bg-white tw-h-full tw-pt-4 tw-pb-6">
                     <ManageTabComponent
+                      allowDelete
                       hideTier
                       currentUser={serviceDetails?.owner?.id}
+                      entityId={serviceDetails?.id}
+                      entityName={serviceDetails?.name}
+                      entityType={`services/${serviceCategory.slice(0, -1)}`}
                       hasEditAccess={hasEditAccess(
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''

@@ -21,14 +21,14 @@ import React from 'react';
 import TagsViewer from './tags-viewer';
 
 const tags = [
-  { tagFQN: `tags:tag 1`, source: 'Tag' },
-  { tagFQN: `tags:tag 2`, source: 'Tag' },
+  { tagFQN: `tags.tag 1`, source: 'Tag' },
+  { tagFQN: `tags.tag 2`, source: 'Tag' },
 ];
 
 const tagsWithTerm = [
-  { tagFQN: `tags:tag 1`, source: 'Tag' },
-  { tagFQN: `tags:tag 2`, source: 'Tag' },
-  { tagFQN: `tags:term`, source: 'Glossary' },
+  { tagFQN: `tags.tag 1`, source: 'Tag' },
+  { tagFQN: `tags.tag 2`, source: 'Tag' },
+  { tagFQN: `tags.term`, source: 'Glossary' },
 ];
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -49,8 +49,8 @@ describe('Test TagsViewer Component', () => {
 
     expect(TagViewer).toHaveLength(2);
 
-    const tag1 = getByText(container, /tags:tag 1/);
-    const tag2 = getByText(container, /tags:tag 2/);
+    const tag1 = getByText(container, /tags.tag 1/);
+    const tag2 = getByText(container, /tags.tag 2/);
 
     expect(tag1).toBeInTheDocument();
     expect(tag2).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('Test TagsViewer Component', () => {
     expect(TagViewer).toHaveLength(3);
 
     const term = getByText(container, /term/);
-    const termFqn = queryByText(container, /tags:term/);
+    const termFqn = queryByText(container, /tags.term/);
 
     expect(term).toBeInTheDocument();
     expect(termFqn).not.toBeInTheDocument();

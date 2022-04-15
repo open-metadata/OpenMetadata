@@ -15,7 +15,6 @@ from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -53,26 +52,50 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return result
 
 
+def get_table_names(self, connection, schema=None, **kw):
+    query = "SHOW TABLES"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    tables_in_schema = connection.execute(query)
+    tables = []
+    for row in tables_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            tables.append(row[1])
+        else:
+            tables.append(row[0])
+    return tables
+
+
 HiveDialect.get_columns = get_columns
+HiveDialect.get_table_names = get_table_names
+
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
-    HiveSQLConnection,
+    HiveConnection,
 )
-
-
-class HiveConfig(HiveSQLConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        url = super().get_connection_url()
-        if self.authOptions:
-            return f"{url};{self.authOptions}"
-        return url
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 
 
 class HiveSource(SQLSource):
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    def prepare(self):
+        self.service_connection.database = "default"
+        return super().prepare()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = HiveConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: HiveConnection = WorkflowSource.parse_obj(config_dict)
+        connection: HiveConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, HiveConnection):
+            raise InvalidSourceException(
+                f"Expected HiveConnection, but got {connection}"
+            )
         return cls(config, metadata_config)

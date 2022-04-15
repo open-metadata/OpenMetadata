@@ -28,29 +28,17 @@
       "type": "string",
       "format": "password"
     },
-    "url": {
+    "hostPort": {
       "description": "URL to Looker instance.",
       "type": "string",
       "format": "uri"
     },
-    "platformName": {
-      "description": "Looker Platform Name",
-      "type": "string",
-      "default": "looker"
-    },
-    "actor": {
-      "description": "Looker actor.",
+    "env": {
+      "description": "Looker Environment",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

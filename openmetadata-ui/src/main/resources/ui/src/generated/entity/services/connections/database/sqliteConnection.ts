@@ -16,37 +16,37 @@
  * SQLite Database Connection Config
  */
 export interface SqliteConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in SingleStore.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Host and port of the data source. Blank for in-memory database.
    */
   hostPort?: string;
   /**
-   * password to connect  to the SingleStore.
+   * password to connect to SQLite. Blank for in-memory database.
    */
   password?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: SQLiteScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: SQLiteType;
   /**
-   * username to connect  to the SingleStore. This user should have privileges to read all the
-   * metadata in SingleStore.
+   * username to connect  to the SQLite. Blank for in-memory database.
    */
   username?: string;
 }

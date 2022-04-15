@@ -3,5 +3,11 @@
   "displayName": "Data Consumer",
   "description": "Users with Data Consumer role use different data assets for their day to day work.",
   "deleted": false,
-  "defaultRole": true
+  "defaultRole": true,
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DataConsumerAccessControlPolicy"
+    }
+  ]
 }

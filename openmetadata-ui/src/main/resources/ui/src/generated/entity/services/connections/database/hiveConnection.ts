@@ -20,8 +20,8 @@ export interface HiveConnection {
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
   authOptions?: string;
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -40,10 +40,7 @@ export interface HiveConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: HiveScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */

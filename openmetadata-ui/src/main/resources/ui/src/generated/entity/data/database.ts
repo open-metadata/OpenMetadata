@@ -163,6 +163,12 @@ export interface EntityReference {
    */
   displayName?: string;
   /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -171,8 +177,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**
@@ -191,7 +196,7 @@ export enum DatabaseServiceType {
   Athena = 'Athena',
   AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
+  Clickhouse = 'Clickhouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
   DeltaLake = 'DeltaLake',
@@ -200,13 +205,15 @@ export enum DatabaseServiceType {
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
+  Mssql = 'Mssql',
+  Mysql = 'Mysql',
   Oracle = 'Oracle',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
   SQLite = 'SQLite',
+  Salesforce = 'Salesforce',
+  SampleData = 'SampleData',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',

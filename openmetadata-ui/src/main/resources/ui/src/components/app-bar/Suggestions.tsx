@@ -15,14 +15,15 @@ import { AxiosError, AxiosResponse } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type SuggestionProp = {
   searchText: string;
@@ -62,7 +63,6 @@ type Option = {
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
-  const showToast = useToastContext();
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -96,13 +96,6 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
     );
-  };
-
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
   };
 
   const getGroupLabel = (index: string) => {
@@ -146,10 +139,12 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     name: string,
     index: string
   ) => {
-    const database =
-      index === SearchIndex.TABLE
-        ? getPartialNameFromFQN(fqdn, ['database'])
-        : undefined;
+    let database;
+    let schema;
+    if (index === SearchIndex.TABLE) {
+      database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
+      schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
+    }
 
     return (
       <div
@@ -166,7 +161,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           id={fqdn.replace(/\./g, '')}
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>
-          {database ? `${database}.${name}` : name}
+          {database && schema
+            ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
+            : name}
         </Link>
       </div>
     );
@@ -264,12 +261,10 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-suggestions-error']
           );
-
-          handleShowErrorToast(errMsg);
         });
     }
   }, [searchText]);

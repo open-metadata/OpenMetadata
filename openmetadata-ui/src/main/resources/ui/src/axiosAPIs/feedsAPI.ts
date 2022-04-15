@@ -12,37 +12,44 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isUndefined } from 'lodash';
 import { Post } from 'Models';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
-  entityLink?: string
+  entityLink?: string,
+  after?: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
       entityLink: entityLink,
+      after,
     },
   });
 };
 
 export const getFeedsWithFilter: Function = (
   userId?: string,
-  filterType?: FeedFilter
+  filterType?: FeedFilter,
+  after?: string
 ): Promise<AxiosResponse> => {
   let config = {};
-  if (!isUndefined(userId)) {
-    // if filter type is ALL, then skip the config
-    if (filterType !== FeedFilter.ALL) {
-      config = {
-        params: {
-          userId,
-          filterType,
-        },
-      };
-    }
+
+  if (filterType !== FeedFilter.ALL) {
+    config = {
+      params: {
+        userId,
+        filterType,
+        after,
+      },
+    };
+  } else {
+    config = {
+      params: {
+        after,
+      },
+    };
   }
 
   return APIClient.get(`/feed`, config);

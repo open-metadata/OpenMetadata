@@ -30,6 +30,10 @@ public abstract class EntityInterface<T> {
     this.entityType = entityType;
   }
 
+  public final String getEntityType() {
+    return entityType;
+  }
+
   public abstract UUID getId();
 
   public abstract String getDescription();
@@ -67,7 +71,8 @@ public abstract class EntityInterface<T> {
   public final EntityReference getEntityReference() {
     return new EntityReference()
         .withId(getId())
-        .withName(getFullyQualifiedName())
+        .withName(getName())
+        .withFullyQualifiedName(getFullyQualifiedName())
         .withDescription(getDescription())
         .withDisplayName(getDisplayName())
         .withType(entityType)

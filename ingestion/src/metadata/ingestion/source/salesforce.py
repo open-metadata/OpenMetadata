@@ -18,20 +18,27 @@ from pydantic import SecretStr, ValidationError
 from simple_salesforce import Salesforce
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
     Table,
     TableData,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+    Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.source.sql_source import SQLConnectionConfig
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -54,35 +61,30 @@ class SalesforceSourceStatus(SourceStatus):
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
-from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
-    SalesforceConnection,
-)
-
-
-class SalesforceConfig(SalesforceConnection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
-
-
 class SalesforceSource(Source[OMetaDatabaseAndTable]):
-    def __init__(
-        self, config: SalesforceConfig, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
-        self.service = get_database_service_or_create(
-            config=config, metadata_config=metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
-            username=self.config.username,
-            password=self.config.password.get_secret_value(),
-            security_token=self.config.securityToken,
+            username=self.config.serviceConnection.__root__.config.username,
+            password=self.config.serviceConnection.__root__.config.password.get_secret_value(),
+            security_token=self.config.serviceConnection.__root__.config.securityToken,
         )
 
     @classmethod
-    def create(cls, config: dict, metadata_config: OpenMetadataServerConfig):
-        config = SalesforceConfig.parse_obj(config)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: SalesforceConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SalesforceConnection):
+            raise InvalidSourceException(
+                f"Expected SalesforceConnection, but got {connection}"
+            )
+
         return cls(config, metadata_config)
 
     def column_type(self, column_type: str):
@@ -127,7 +129,10 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
             row_order = 1
             table_columns = []
             md = self.sf.restful(
-                "sobjects/{}/describe/".format(self.config.sobjectName), params=None
+                "sobjects/{}/describe/".format(
+                    self.config.serviceConnection.__root__.config.sobjectName
+                ),
+                params=None,
             )
 
             for column in md["fields"]:
@@ -150,28 +155,47 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                     )
                 )
                 row_order += 1
-            table_data = self.fetch_sample_data(self.config.sobjectName)
+            table_data = self.fetch_sample_data(
+                self.config.serviceConnection.__root__.config.sobjectName
+            )
             logger.info("Successfully Ingested the sample data")
             table_entity = Table(
                 id=uuid.uuid4(),
-                name=self.config.sobjectName,
+                name=self.config.serviceConnection.__root__.config.sobjectName,
                 tableType="Regular",
                 description=" ",
                 columns=table_columns,
                 sampleData=table_data,
             )
-            self.status.scanned(f"{self.config.scheme}.{self.config.sobjectName}")
+            self.status.scanned(
+                f"{self.config.serviceConnection.__root__.config.scheme}.{self.config.serviceConnection.__root__.config.sobjectName}"
+            )
+
             database_entity = Database(
-                name=self.config.scheme,
-                service=EntityReference(id=self.service.id, type=self.config.type),
+                id=uuid.uuid4(),
+                name="default",
+                service=EntityReference(id=self.service.id, type="databaseService"),
+            )
+            schema_entity = DatabaseSchema(
+                id=uuid.uuid4(),
+                name=self.config.serviceConnection.__root__.config.scheme.name,
+                database=EntityReference(id=database_entity.id, type="databaseSchema"),
+                service=EntityReference(id=self.service.id, type="databaseService"),
             )
             table_and_db = OMetaDatabaseAndTable(
-                table=table_entity, database=database_entity
+                table=table_entity,
+                database=database_entity,
+                database_schema=schema_entity,
             )
+
             yield table_and_db
+
         except ValidationError as err:
             logger.error(err)
-            self.status.failure("{}".format(self.config.sobjectName), err)
+            self.status.failure(
+                "{}".format(self.config.serviceConnection.__root__.config.sobjectName),
+                err,
+            )
 
     def prepare(self):
         pass
@@ -180,4 +204,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         return self.status
 
     def close(self):
+        pass
+
+    def test_connection(self) -> None:
         pass

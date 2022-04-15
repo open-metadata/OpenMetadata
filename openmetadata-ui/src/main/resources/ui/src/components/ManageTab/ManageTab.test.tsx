@@ -21,7 +21,7 @@ import {
 import React from 'react';
 import ManageTab from './ManageTab.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -151,5 +151,22 @@ describe('Test Manage tab Component', () => {
     expect(isJoinableSwitch).not.toHaveClass('open');
 
     expect(isJoinableSwitch).toBeInTheDocument();
+  });
+
+  it('Should render danger zone if allowDelete, entityId, entityName and entityType is present', async () => {
+    const { container } = render(
+      <ManageTab
+        allowDelete
+        hasEditAccess
+        entityId="testid"
+        entityName="testEntity"
+        entityType="testType"
+        onSave={mockFunction}
+      />
+    );
+
+    const dangerZone = await findByTestId(container, 'danger-zone');
+
+    expect(dangerZone).toBeInTheDocument();
   });
 });

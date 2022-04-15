@@ -17,7 +17,6 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
-import { DatasetOwner } from '../../components/DatasetDetails/DatasetDetails.interface';
 import Explore from '../../components/Explore/Explore.component';
 import { ExploreSearchData } from '../../components/Explore/explore.interface';
 import MyData from '../../components/MyData/MyData.component';
@@ -38,6 +37,8 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
@@ -130,8 +131,11 @@ const TourPage = () => {
             fetchData={() => {
               setMyDataSearchResult(mockFeedData);
             }}
+            fetchFeedHandler={handleOnClick}
             followedData={[]}
+            isFeedLoading={false}
             ownedData={[]}
+            paging={{} as Paging}
             postFeedHandler={handleOnClick}
             userDetails={AppState.userDetails}
           />
@@ -181,6 +185,7 @@ const TourPage = () => {
             entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
+            fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
@@ -198,7 +203,8 @@ const TourPage = () => {
             joins={mockDatasetData.joins as unknown as TableJoins}
             lineageLeafNodes={{} as LeafNodes}
             loadNodeHandler={handleCountChange}
-            owner={undefined as unknown as DatasetOwner}
+            owner={undefined as unknown as EntityReference}
+            paging={{} as Paging}
             postFeedHandler={handleCountChange}
             qualityTestFormHandler={handleCountChange}
             removeLineageHandler={handleCountChange}

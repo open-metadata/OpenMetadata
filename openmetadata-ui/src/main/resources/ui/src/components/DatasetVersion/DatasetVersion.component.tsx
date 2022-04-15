@@ -16,6 +16,7 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { FqnPart } from '../../enums/entity.enum';
 import {
   ChangeDescription,
   Column,
@@ -23,7 +24,7 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getDescriptionDiff,
   getDiffByFieldName,
@@ -407,9 +408,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   <div className="tw-col-span-full">
                     <SchemaTab
                       isReadOnly
-                      columnName={getPartialNameFromFQN(
+                      columnName={getPartialNameFromTableFQN(
                         datasetFQN,
-                        ['column'],
+                        [FqnPart.Column],
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}

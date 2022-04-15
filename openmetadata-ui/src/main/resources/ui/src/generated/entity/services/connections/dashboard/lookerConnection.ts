@@ -17,41 +17,27 @@
  */
 export interface LookerConnection {
   /**
-   * Looker actor.
+   * Looker Environment
    */
-  actor?: string;
+  env?: string;
+  /**
+   * URL to Looker instance.
+   */
+  hostPort?: string;
   /**
    * password to connect  to the Looker.
    */
   password?: string;
-  /**
-   * Looker Platform Name
-   */
-  platformName?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: LookerType;
   /**
-   * URL to Looker instance.
-   */
-  url?: string;
-  /**
    * username to connect  to the Looker. This user should have privileges to read all the
    * metadata in Looker.
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

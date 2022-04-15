@@ -20,7 +20,7 @@ import {
 } from '../../mocks/Glossary.mock';
 import AddGlossaryTerm from './AddGlossaryTerm.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -38,6 +38,10 @@ jest.mock('../../axiosAPIs/glossaryAPI', () => ({
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
 });
 
 const mockOnCancel = jest.fn();

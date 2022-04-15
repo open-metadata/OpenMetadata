@@ -19,7 +19,7 @@ export interface DynamoDBConnection {
   /**
    * AWS Access key ID.
    */
-  awsAccessKeyId?: any;
+  awsAccessKeyId?: string;
   /**
    * AWS Region Name.
    */
@@ -32,8 +32,8 @@ export interface DynamoDBConnection {
    * AWS Session Token.
    */
   awsSessionToken?: string;
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -48,10 +48,7 @@ export interface DynamoDBConnection {
    * Host and port of the DynamoDB
    */
   hostPort?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */

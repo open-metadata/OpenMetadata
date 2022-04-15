@@ -20,14 +20,15 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
+import { ServiceCategory } from '../../enums/service.enum';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import Ingestion from './Ingestion.component';
-import { mockIngestionWorkFlow } from './Ingestion.mock';
+import { mockIngestionWorkFlow, mockService } from './Ingestion.mock';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
+      isAuthDisabled: true,
       isAuthenticated: true,
       isProtectedRoute: jest.fn().mockReturnValue(true),
       isTourRoute: jest.fn().mockReturnValue(false),
@@ -38,7 +39,7 @@ jest.mock('../../auth-provider/AuthProvider', () => {
 
 const mockPaging = {
   after: 'after',
-  before: 'befor',
+  before: 'before',
   total: 1,
 };
 
@@ -73,16 +74,16 @@ jest.mock('../common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
-jest.mock('../IngestionModal/IngestionModal.component', () => {
+jest.mock('../AddIngestion/AddIngestion.component', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="ingestion-modal">IngestionModal</div>
+      <div data-testid="ingestion-form">AddIngestion</div>
     ));
 });
 
-jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest.fn().mockImplementation(() => <div>ConfirmationModal</div>);
+jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
+  return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
 });
 
 describe('Test Ingestion page', () => {
@@ -91,12 +92,15 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
         serviceList={[]}
         triggerIngestion={mockTriggerIngestion}
         updateIngestion={mockFunction}
@@ -126,14 +130,17 @@ describe('Test Ingestion page', () => {
   it('Table should render necessary fields', async () => {
     const { container } = render(
       <Ingestion
+        isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
-        isRequiredDetailsAvailable={false}
         paging={mockPaging}
         pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
         serviceList={[]}
         triggerIngestion={mockTriggerIngestion}
         updateIngestion={mockFunction}
@@ -173,17 +180,21 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
     const { container } = render(
       <Ingestion
+        isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
-        isRequiredDetailsAvailable={false}
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
         serviceList={[]}
         triggerIngestion={mockTriggerIngestion}
         updateIngestion={mockFunction}
@@ -202,20 +213,23 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
         serviceList={[]}
-        serviceType="BigQuery"
         triggerIngestion={mockTriggerIngestion}
         updateIngestion={mockFunction}
       />,
@@ -228,7 +242,7 @@ describe('Test Ingestion page', () => {
     const editButton = await findByTestId(container, 'edit');
     fireEvent.click(editButton);
 
-    const ingestionModal = await findByTestId(container, 'ingestion-modal');
+    const ingestionModal = await findByTestId(container, 'ingestion-form');
 
     expect(ingestionModal).toBeInTheDocument();
   });
@@ -237,20 +251,23 @@ describe('Test Ingestion page', () => {
     const mockPagingAfter = {
       after: 'afterKey',
       before: 'beforeKey',
+      total: 0,
     };
 
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as AirflowPipeline[]
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPagingAfter}
         pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
         serviceList={[]}
-        serviceType="BigQuery"
         triggerIngestion={mockTriggerIngestion}
         updateIngestion={mockFunction}
       />,
@@ -258,17 +275,6 @@ describe('Test Ingestion page', () => {
         wrapper: MemoryRouter,
       }
     );
-
-    // on click of add ingestion
-    const addIngestionButton = await findByTestId(
-      container,
-      'add-new-ingestion-button'
-    );
-    fireEvent.click(addIngestionButton);
-
-    const ingestionModal = await findByTestId(container, 'ingestion-modal');
-
-    expect(ingestionModal).toBeInTheDocument();
 
     // on click of run button
 
@@ -285,7 +291,18 @@ describe('Test Ingestion page', () => {
     fireEvent.click(deleteButton);
 
     expect(
-      await findByText(container, /ConfirmationModal/i)
+      await findByText(container, /EntityDeleteModal/i)
     ).toBeInTheDocument();
+
+    // on click of add ingestion
+    const addIngestionButton = await findByTestId(
+      container,
+      'add-new-ingestion-button'
+    );
+    fireEvent.click(addIngestionButton);
+
+    const ingestionModal = await findByTestId(container, 'ingestion-form');
+
+    expect(ingestionModal).toBeInTheDocument();
   });
 });

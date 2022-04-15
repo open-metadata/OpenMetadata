@@ -19,9 +19,9 @@ from typing import Optional, Union
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.orm_profiler.orm.registry import CustomTypes, Dialects
+from metadata.orm_profiler.orm.registry import CustomTypes
 
 Base = declarative_base()
 
@@ -85,7 +85,7 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
 
 
 def ometa_to_orm(
-    table: Table, database: Union[Database, str], dialect: Optional[str] = None
+    table: Table, schema: Union[DatabaseSchema, str], dialect: Optional[str] = None
 ) -> DeclarativeMeta:
     """
     Given an OpenMetadata instance, prepare
@@ -110,7 +110,7 @@ def ometa_to_orm(
         {
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
-                "schema": get_db_name(database, dialect),
+                "schema": get_schema_name(schema),
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
             },
             **cols,
@@ -124,7 +124,7 @@ def ometa_to_orm(
 
 
 @singledispatch
-def get_db_name(arg, *_) -> str:
+def get_schema_name(arg, *_) -> str:
     """
     Return the database name to pass the table schema info
     to the ORM object.
@@ -132,10 +132,10 @@ def get_db_name(arg, *_) -> str:
     :param arg: Database or str
     :return: db name
     """
-    raise NotImplementedError(f"Cannot extract db name from {arg}")
+    raise NotImplementedError(f"Cannot extract schema name from {type(arg)}: {arg}")
 
 
-@get_db_name.register
+@get_schema_name.register
 def _(arg: str, *_) -> str:
     """
     Return string as is
@@ -146,18 +146,14 @@ def _(arg: str, *_) -> str:
     return arg
 
 
-@get_db_name.register
-def _(arg: Database, dialect: Optional[str] = None) -> str:
+@get_schema_name.register
+def _(arg: DatabaseSchema) -> str:
     """
     Get the db name from the database entity
 
     :param arg: database
-    :param dialect: Database dialect. Just for snowflake cleaning
     :return: db name
     """
     name = str(arg.name.__root__)
-
-    if dialect == Dialects.Snowflake:
-        return "_".join(name.split("_")[1:])
 
     return name

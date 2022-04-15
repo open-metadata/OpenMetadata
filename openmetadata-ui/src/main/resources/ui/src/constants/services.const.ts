@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ServiceTypes } from 'Models';
+import { ServiceTypes, StepperStepType } from 'Models';
 import noDataFound from '../assets/img/no-data-placeholder.png';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
@@ -115,4 +115,16 @@ export const servicesDisplayName = {
   messagingServices: 'Messaging Service',
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
+};
+
+export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
+  { name: 'Select Service Type', step: 1 },
+  { name: 'Configure Service', step: 2 },
+  { name: 'Connection Details', step: 3 },
+];
+
+export const COMMON_UI_SCHEMA = {
+  supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  type: { 'ui:widget': 'hidden' },
 };

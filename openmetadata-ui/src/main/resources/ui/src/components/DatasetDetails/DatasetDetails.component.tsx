@@ -14,23 +14,28 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import React, { RefObject, useEffect, useState } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   JoinedWith,
   Table,
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getPartialNameFromFQN,
+  getEntityName,
+  getEntityPlaceHolder,
+  getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   getUserTeams,
 } from '../../utils/CommonUtils';
@@ -51,6 +56,7 @@ import PageContainer from '../containers/PageContainer';
 import DataQualityTab from '../DataQualityTab/DataQualityTab';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
 import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import SampleDataTable, {
@@ -122,6 +128,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   handleSelectedColumn,
   selectedColumn,
   deletePostHandler,
+  paging,
+  fetchFeedHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -137,6 +145,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -168,7 +178,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -293,9 +303,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           );
 
           return {
-            name: getPartialNameFromFQN(
+            name: getPartialNameFromTableFQN(
               tableFQN,
-              ['database', 'table'],
+              [FqnPart.Database, FqnPart.Table],
               FQN_SEPARATOR_CHAR
             ),
             fullyQualifiedName: tableFQN,
@@ -320,8 +330,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -487,6 +500,20 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -503,6 +530,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   useEffect(() => {
     setTableJoinData(joins);
   }, [joins]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
+  }, [paging, isentityThreadLoading, isInView]);
 
   return (
     <PageContainer>
@@ -574,9 +605,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
                 <div className="tw-col-span-full">
                   <SchemaTab
-                    columnName={getPartialNameFromFQN(
+                    columnName={getPartialNameFromTableFQN(
                       datasetFQN,
-                      ['column'],
+                      [FqnPart['Column']],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
@@ -623,7 +654,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
             {activeTab === 2 && (
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
@@ -633,7 +664,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isLoading={isentityThreadLoading}
                   postFeedHandler={postFeedHandler}
                 />
                 <div />
@@ -728,13 +758,23 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 9 && !deleted && (
               <div>
                 <ManageTab
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={tableDetails.id}
+                  entityName={tableDetails.name}
+                  entityType={EntityType.TABLE}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
               </div>
             )}
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
           </div>
         </div>
       </div>

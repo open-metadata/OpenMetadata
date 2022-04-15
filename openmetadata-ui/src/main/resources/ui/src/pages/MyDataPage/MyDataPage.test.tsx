@@ -163,10 +163,6 @@ jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
   return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
 });
 
-jest.mock('../../components/common/Toast/Toast', () => {
-  return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
-});
-
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);

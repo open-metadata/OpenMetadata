@@ -16,8 +16,8 @@
  * Salesforce Connection Config
  */
 export interface SalesforceConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Host and port of the Redshift.
    */
@@ -38,10 +38,7 @@ export interface SalesforceConnection {
    * Salesforce Object Name.
    */
   sobjectName?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */

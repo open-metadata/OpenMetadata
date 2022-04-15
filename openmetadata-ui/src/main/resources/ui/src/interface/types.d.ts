@@ -13,6 +13,23 @@
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+  export interface EntityReference {
+    deleted?: boolean;
+
+    description?: string;
+
+    displayName?: string;
+
+    fullyQualifiedName?: string;
+
+    href?: string;
+
+    id: string;
+
+    name?: string;
+
+    type: string;
+  }
 
   export type Match = {
     params: {
@@ -187,9 +204,10 @@ declare module 'Models' {
   export type FormatedTableData = {
     id: string;
     name: string;
+    displayName: string;
     description: string;
     fullyQualifiedName: string;
-    owner: string;
+    owner: EntityReference;
     tableType?: string;
     tags: string[] | TagLabel[];
     dailyStats?: number;
@@ -205,6 +223,7 @@ declare module 'Models' {
     };
     index: string;
     database?: string;
+    databaseSchema?: string;
     deleted?: boolean;
     entityType?: string;
   };

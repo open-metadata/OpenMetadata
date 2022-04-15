@@ -18,6 +18,7 @@ export enum EntityType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   DATABASE = 'database',
+  DATABASE_SCHEMA = 'databaseSchema',
   GLOSSARY = 'glossary',
   GLOSSARY_TERM = 'glossaryTerm',
   DATABASE_SERVICE = 'databaseService',
@@ -61,4 +62,13 @@ export enum TabSpecificField {
   TASKS = 'tasks',
   TABLE_QUERIES = 'tableQueries',
   TESTS = 'tests',
+}
+
+export enum FqnPart {
+  Service,
+  Database,
+  Schema,
+  Table,
+  Column,
+  NestedColumn,
 }

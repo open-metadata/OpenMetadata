@@ -1,25 +1,25 @@
 {
   "source": {
     "type": "mariadb",
-    "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "database": "openmetadata_db",
-      "service_name": "local_mariadb",
-      "schema_filter_pattern": {
-        "excludes": ["information_schema.*", "performance_schema.*", "sys.*"]
+    "serviceName": "local_mariadb",
+    "serviceConnection": {
+      "config": {
+        "type": "MariaDB",
+        "username": "openmetadata_user",
+        "password": "openmetadata_password",
+        "hostPort": "localhost:3306"
       }
-    }
+    },
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

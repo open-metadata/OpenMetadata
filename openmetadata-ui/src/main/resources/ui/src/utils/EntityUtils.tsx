@@ -24,7 +24,7 @@ import {
   getTeamDetailsPath,
 } from '../constants/constants';
 import { ColumnTestType } from '../enums/columnTest.enum';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -34,7 +34,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getPartialNameFromFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import SVGIcons from './SvgUtils';
 import {
   getDataTypeString,
@@ -90,9 +90,9 @@ export const getEntityOverview = (
     case EntityType.TABLE: {
       const { fullyQualifiedName, owner, tags, usageSummary, tableProfile } =
         entityDetail;
-      const [service, database] = getPartialNameFromFQN(
+      const [service, database] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
-        ['service', 'database'],
+        [FqnPart.Service, FqnPart.Database],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
       const ownerValue = getOwnerFromId(owner?.id);
@@ -116,9 +116,9 @@ export const getEntityOverview = (
           name: 'Database',
           value: database,
           url: getDatabaseDetailsPath(
-            getPartialNameFromFQN(
+            getPartialNameFromTableFQN(
               fullyQualifiedName ?? '',
-              ['service', 'database'],
+              [FqnPart.Service, FqnPart.Database],
               FQN_SEPARATOR_CHAR
             )
           ),

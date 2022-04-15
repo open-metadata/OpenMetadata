@@ -22,7 +22,6 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -57,15 +56,11 @@ import {
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  EntityReference,
-  Pipeline,
-  Task,
-} from '../../generated/entity/data/pipeline';
-import { User } from '../../generated/entity/teams/user';
+import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
@@ -80,13 +75,12 @@ import {
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
-  const showToast = useToastContext();
 
   const { pipelineFQN, tab } = useParams() as Record<string, string>;
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
@@ -96,8 +90,8 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
+  const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
@@ -131,6 +125,7 @@ const PipelineDetailsPage = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -147,20 +142,6 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
   const getEntityFeedCount = () => {
     getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
       .then((res: AxiosResponse) => {
@@ -172,11 +153,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-count-error']
         );
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -202,15 +182,37 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-lineage-error']
         );
-        handleShowErrorToast(errMsg);
       })
       .finally(() => {
         setIsLineageLoading(false);
       });
+  };
+
+  const getFeedData = (after?: string) => {
+    setIsentityThreadLoading(true);
+    getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN), after)
+      .then((res: AxiosResponse) => {
+        const { data, paging: pagingObj } = res.data;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
+      })
+      .finally(() => setIsentityThreadLoading(false));
   };
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
@@ -282,12 +284,10 @@ const PipelineDetailsPage = () => {
         if (err.response?.status === 404) {
           setIsError(true);
         } else {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-pipeline-details-error']
           );
-
-          handleShowErrorToast(errMsg);
         }
       })
       .finally(() => setLoading(false));
@@ -307,27 +307,7 @@ const PipelineDetailsPage = () => {
         break;
       }
       case TabSpecificField.ACTIVITY_FEED: {
-        setIsentityThreadLoading(true);
-        getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
-          .then((res: AxiosResponse) => {
-            const { data } = res.data;
-            if (data) {
-              setEntityThread(data);
-            } else {
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
-            }
-          })
-          .catch((err: AxiosError) => {
-            const errMsg = getErrorText(
-              err,
-              jsonData['api-error-messages']['fetch-entity-feed-error']
-            );
-
-            handleShowErrorToast(errMsg);
-          })
-          .finally(() => setIsentityThreadLoading(false));
+        getFeedData();
 
         break;
       }
@@ -349,11 +329,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-entity-follow-error']
         );
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -371,12 +350,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-entity-unfollow-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -394,12 +371,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-description-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -419,11 +394,10 @@ const PipelineDetailsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-entity-error']
           );
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -442,12 +416,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-tags-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -462,12 +434,10 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['update-task-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -492,20 +462,25 @@ const PipelineDetailsPage = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.name, node.type)
+    getLineageByFQN(node.fullyQualifiedName, node.type)
       .then((res: AxiosResponse) => {
-        setLeafNode(res.data, pos);
-        setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        if (res.data) {
+          setLeafNode(res.data, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
         setTimeout(() => {
           setNodeLoading((prev) => ({ ...prev, state: false }));
         }, 500);
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-lineage-node-error']
         );
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -522,11 +497,10 @@ const PipelineDetailsPage = () => {
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['add-lineage-error']
           );
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
@@ -539,11 +513,10 @@ const PipelineDetailsPage = () => {
       data.toEntity,
       data.toId
     ).catch((err: AxiosError) => {
-      const errMsg = getErrorText(
+      showErrorToast(
         err,
         jsonData['api-error-messages']['delete-lineage-error']
       );
-      handleShowErrorToast(errMsg);
     });
   };
 
@@ -573,11 +546,7 @@ const PipelineDetailsPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['add-feed-error']
-        );
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -587,19 +556,20 @@ const PipelineDetailsPage = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['create-conversation-error']
         );
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -629,30 +599,21 @@ const PipelineDetailsPage = () => {
             }
           })
           .catch((error: AxiosError) => {
-            const errMsg = getErrorText(
+            showErrorToast(
               error,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
-
-            handleShowErrorToast(errMsg);
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['delete-message-error']
         );
-        handleShowErrorToast(message);
       });
   };
-
-  useEffect(() => {
-    getEntityFeedCount();
-  }, []);
 
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
@@ -661,12 +622,14 @@ const PipelineDetailsPage = () => {
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setEntityLineage({} as EntityLineage);
+    getEntityFeedCount();
   }, [pipelineFQN]);
 
   useEffect(() => {
     if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentPipelineTab(tab));
     }
+    setEntityThread([]);
   }, [tab]);
 
   return (
@@ -692,6 +655,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           entityThread={entityThread}
           feedCount={feedCount}
+          fetchFeedHandler={getFeedData}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}
@@ -699,7 +663,8 @@ const PipelineDetailsPage = () => {
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
-          owner={owner}
+          owner={owner as EntityReference}
+          paging={paging}
           pipelineDetails={pipelineDetails}
           pipelineFQN={pipelineFQN}
           pipelineTags={tags}

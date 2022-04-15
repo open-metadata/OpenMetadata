@@ -35,18 +35,17 @@ import {
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import useToastContext from '../../hooks/useToastContext';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
-  const showToast = useToastContext();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
   const [countServices, setCountServices] = useState<number>();
@@ -63,12 +62,7 @@ const MyDataPage = () => {
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
-  const handleShowErrorToast = (msg: string) => {
-    showToast({
-      variant: 'error',
-      body: msg,
-    });
-  };
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
@@ -100,11 +94,9 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          )
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountTables(0);
       });
@@ -119,11 +111,9 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          )
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountTopics(0);
       });
@@ -138,11 +128,9 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          )
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountPipelines(0);
       });
@@ -157,11 +145,9 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        handleShowErrorToast(
-          getErrorText(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          )
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountDashboards(0);
       });
@@ -176,11 +162,9 @@ const MyDataPage = () => {
           setCountServices(total);
         })
         .catch((err: AxiosError) => {
-          handleShowErrorToast(
-            getErrorText(
-              err,
-              jsonData['api-error-messages']['unexpected-server-response']
-            )
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['unexpected-server-response']
           );
           setCountServices(0);
         });
@@ -192,7 +176,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.OWNER, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.OWNER,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex
@@ -202,7 +190,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.FOLLOWERS,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex
@@ -225,19 +217,21 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (feedFilter: FeedFilter) => {
+  const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
     const currentUserId = AppState.userDetails?.id;
-    getFeedsWithFilter(currentUserId, feedFilter)
+    getFeedsWithFilter(currentUserId, filterType, after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
-        setEntityThread(data);
+        const { data, paging: pagingObj } = res.data;
+        setPaging(pagingObj);
+
+        setEntityThread((prevData) => [...prevData, ...data]);
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while fetching the Activity Feed',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-activity-feed-error']
+        );
       })
       .finally(() => {
         setIsFeedLoading(false);
@@ -266,11 +260,8 @@ const MyDataPage = () => {
           });
         }
       })
-      .catch(() => {
-        showToast({
-          variant: 'error',
-          body: 'Error while posting feed',
-        });
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
       });
   };
 
@@ -295,20 +286,13 @@ const MyDataPage = () => {
           })
           .catch((error) => {
             const message = error?.message;
-            showToast({
-              variant: 'error',
-              body: message ?? onUpdatedConversastionError,
-            });
+            showErrorToast(message ?? onUpdatedConversastionError);
           });
-
-        showToast({
-          variant: 'success',
-          body: onConfirmText,
-        });
+        showSuccessToast(onConfirmText);
       })
       .catch((error) => {
         const message = error?.message;
-        showToast({ variant: 'error', body: message ?? onErrorText });
+        showErrorToast(message ?? onErrorText);
       });
   };
 
@@ -322,12 +306,10 @@ const MyDataPage = () => {
         }
       })
       .catch((err: AxiosError) => {
-        showToast({
-          variant: 'error',
-          body:
-            err.response?.data?.message ||
-            jsonData['api-error-messages']['unexpected-server-response'],
-        });
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
         setIsSandbox(false);
       });
   };
@@ -339,6 +321,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     getFeedData(feedFilter);
+    setEntityThread([]);
   }, [feedFilter]);
 
   useEffect(() => {
@@ -370,9 +353,11 @@ const MyDataPage = () => {
             feedData={entityThread || []}
             feedFilter={feedFilter}
             feedFilterHandler={feedFilterHandler}
+            fetchFeedHandler={getFeedData}
             followedData={followedData || []}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
+            paging={paging}
             postFeedHandler={postFeedHandler}
           />
           {isSandbox ? <GithubStarButton /> : null}

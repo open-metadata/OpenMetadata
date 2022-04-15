@@ -12,11 +12,14 @@
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
 @reflection.cache
@@ -26,13 +29,8 @@ def get_pk_constraint(self, bind, table_name, schema=None, **kw):
 
 DB2Dialect.get_pk_constraint = get_pk_constraint
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
-    DB2Connection,
+    Db2Connection,
 )
-
-
-class Db2Config(DB2Connection, SQLConnectionConfig):
-    def get_connection_url(self):
-        return super().get_connection_url()
 
 
 class Db2Source(SQLSource):
@@ -40,6 +38,11 @@ class Db2Source(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = Db2Config.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: Db2Connection = config.serviceConnection.__root__.config
+        if not isinstance(connection, Db2Connection):
+            raise InvalidSourceException(
+                f"Expected Db2Connection, but got {connection}"
+            )
         return cls(config, metadata_config)

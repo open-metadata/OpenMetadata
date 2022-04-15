@@ -35,9 +35,14 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "sample-data",
-    "serviceName": "bigquery_gcp",
-    "serviceConnection": "",
+    "type": "sample_data",
+    "serviceName": "sample_data",
+    "serviceConnection": {
+      "config": {
+        "type": "SampleData",
+        "sampleDataFolder": "./examples/sample_data"
+      }
+    },
     "sourceConfig": {}
   },
   "sink": {
@@ -46,14 +51,11 @@ config = """
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    },
-    "config": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
-
 """
 
 

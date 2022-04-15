@@ -16,8 +16,8 @@
  * Clickhouse Connection Config
  */
 export interface ClickhouseConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -40,10 +40,8 @@ export interface ClickhouseConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: ClickhouseScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
@@ -68,5 +66,5 @@ export enum ClickhouseScheme {
  * Service type.
  */
 export enum ClickhouseType {
-  ClickHouse = 'ClickHouse',
+  Clickhouse = 'Clickhouse',
 }

@@ -13,7 +13,7 @@
 
 import { UserPermissions } from 'Models';
 import React from 'react';
-import { useAuthContext } from '../../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
 import PopOver from '../popover/PopOver';

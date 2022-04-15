@@ -12,15 +12,17 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import { LeafNodes, LoadingNodeState, TableDetail } from 'Models';
+import { LeafNodes, LoadingNodeState } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import DashboardDetails from './DashboardDetails.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -61,7 +63,7 @@ const DashboardDetailsProps = {
   entityLineage: {} as EntityLineage,
   entityName: '',
   activeTab: 1,
-  owner: {} as TableDetail['owner'],
+  owner: {} as EntityReference,
   description: '',
   tier: {} as TagLabel,
   followers: [],
@@ -91,7 +93,17 @@ const DashboardDetailsProps = {
   createThread: jest.fn(),
   dashboardFQN: '',
   deletePostHandler: jest.fn(),
+  paging: {} as Paging,
+  fetchFeedHandler: jest.fn(),
 };
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
 
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
@@ -139,6 +151,8 @@ jest.mock('../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
   getUserTeams: () => mockUserTeam,
   getHtmlForNonAdminAction: jest.fn(),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
+  getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
 describe('Test DashboardDetails component', () => {
@@ -212,5 +226,20 @@ describe('Test DashboardDetails component', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <DashboardDetails {...DashboardDetailsProps} activeTab={4} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

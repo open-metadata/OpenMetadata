@@ -1,22 +1,31 @@
 {
   "source": {
     "type": "presto",
-    "config": {
-      "service_name": "local_presto",
-      "host_port": "localhost:8080",
-      "catalog": "tpcds"
+    "serviceName": "local_presto",
+    "serviceConnection": {
+      "config": {
+        "type": "Presto",
+        "hostPort": "localhost:8080",
+        "catalog": "tpcds",
+        "username": "admin",
+        "password": "password",
+        "database": "database"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "generateSampleData": false
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {
-    }
+    "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-  	  "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

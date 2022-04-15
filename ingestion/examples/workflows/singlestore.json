@@ -1,26 +1,26 @@
 {
-    "source": {
-      "type": "singlestore",
+  "source": {
+    "type": "singlestore",
+    "serviceName": "local_singlestore",
+    "serviceConnection": {
       "config": {
+        "type": "SingleStore",
         "username": "openmetadata_user",
         "password": "openmetadata_password",
-        "database": "openmetadata_db",
-        "service_name": "local_singlestore",
-        "schema_filter_pattern": {
-          "includes": ["test_delete.*"]
-        }
+        "hostPort": "localhost:3306",
+        "database": "custom_database_name"
       }
     },
-    "sink": {
-      "type": "metadata-rest",
-      "config": {}
-    },
-    "metadata_server": {
-      "type": "metadata-server",
-      "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-      }
+    "sourceConfig": {"config": {"enableDataProfiler": false}}
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
-  
+}

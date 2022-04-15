@@ -22,13 +22,18 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.engines import get_engine
 
@@ -38,47 +43,34 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeConnection,
-)
-
-
-class SnowflakeConfig(SnowflakeConnection, SQLConnectionConfig):
-    result_limit: int = 1000
-    duration: Optional[int]
-
-    def get_connection_url(self):
-        connect_string = super().get_connection_url()
-        options = {
-            "account": self.account,
-            "warehouse": self.warehouse,
-            "role": self.role,
-        }
-        params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
-        if params:
-            connect_string = f"{connect_string}{params}"
-        return connect_string
-
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config):
-        if config.connect_args.get("private_key"):
-            private_key = config.connect_args["private_key"]
-            p_key = serialization.load_pem_private_key(
-                bytes(private_key, "utf-8"),
-                password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
-                backend=default_backend(),
-            )
-            pkb = p_key.private_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-            config.connect_args["private_key"] = pkb
+        connection_arguments = (
+            config.serviceConnection.__root__.config.connectionArguments
+        )
+        if connection_arguments:
+            if connection_arguments.private_key:
+                private_key = connection_arguments.private_key
+                p_key = serialization.load_pem_private_key(
+                    bytes(private_key, "utf-8"),
+                    password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
+                    backend=default_backend(),
+                )
+                pkb = p_key.private_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+                config.serviceConnection.__root__.config.connectionArguments.private_key = (
+                    pkb
+                )
+
         super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
-        if self.config.database != None:
+
+        if self.config.serviceConnection.__root__.config.database != None:
             yield from super().get_databases()
         else:
             query = "SHOW DATABASES"
@@ -89,12 +81,9 @@ class SnowflakeSource(SQLSource):
                 use_db_query = f"USE DATABASE {row[1]}"
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
-                self.config.database = row[1]
-                self.engine = get_engine(self.config)
+                self.config.serviceConnection.__root__.config.database = row[1]
+                self.engine = get_engine(self.config.serviceConnection)
                 yield inspect(self.engine)
-
-    def get_table_fqn(self, service_name, schema, table_name) -> str:
-        return f"{service_name}{FQDN_SEPARATOR}{self.config.database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}"
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)
@@ -116,8 +105,13 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = SnowflakeConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: SnowflakeConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SnowflakeConnection):
+            raise InvalidSourceException(
+                f"Expected SnowflakeConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
 

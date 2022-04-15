@@ -25,20 +25,26 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
+    SupersetConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardService,
     DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+    Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.superset_rest import SupersetAPIClient, SupersetConfig
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -159,35 +165,38 @@ class SupersetSource(Source[Entity]):
 
     """
 
-    config: SupersetConfig
-    metadata_config: OpenMetadataServerConfig
+    config: WorkflowSource
+    metadata_config: OpenMetadataConnection
     status: SourceStatus
     platform = "superset"
     service_type = DashboardServiceType.Superset.value
 
     def __init__(
         self,
-        config: SupersetConfig,
-        metadata_config: OpenMetadataServerConfig,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
+        self.service_connection = self.config.serviceConnection.__root__.config
+        self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
-        self.metadata_client = OpenMetadata(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
+
         self.status = SourceStatus()
         self.client = SupersetAPIClient(self.config)
-        self.service = get_dashboard_service_or_create(
-            service_name=config.service_name,
-            dashboard_service_type=DashboardServiceType.Superset.name,
-            username=config.username,
-            password=config.password.get_secret_value(),
-            dashboard_url=config.url,
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
-        config = SupersetConfig.parse_obj(config_dict)
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+        config = WorkflowSource.parse_obj(config_dict)
+        connection: SupersetConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SupersetConnection):
+            raise InvalidSourceException(
+                f"Expected SupersetConnection, but got {connection}"
+            )
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -200,7 +209,9 @@ class SupersetSource(Source[Entity]):
     def _build_dashboard(self, dashboard_json) -> Dashboard:
         dashboard_id = dashboard_json["id"]
         name = dashboard_json["dashboard_title"]
-        dashboard_url = f"{self.config.url[:-1]}{dashboard_json['url']}"
+        dashboard_url = (
+            f"{self.service_connection.hostPort[:-1]}{dashboard_json['url']}"
+        )
         last_modified = (
             dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp()
             * 1000
@@ -263,18 +274,18 @@ class SupersetSource(Source[Entity]):
         return None
 
     def _check_lineage(self, chart_id, datasource_text):
-        if datasource_text and self.config.db_service_name:
+        if datasource_text and hasattr(self.service_connection, "dbServiceName"):
             chart_data = self.client.fetch_charts_with_id(chart_id)
             dashboards = chart_data["result"].get("dashboards")
             for dashboard in dashboards:
                 try:
-                    from_entity = self.metadata_client.get_by_name(
+                    from_entity = self.metadata.get_by_name(
                         entity=Table,
-                        fqdn=f"{self.config.db_service_name}.{datasource_text}",
+                        fqdn=f"{self.service_connection.dbServiceName}.{datasource_text}",
                     )
-                    to_entity = self.metadata_client.get_by_name(
+                    to_entity = self.metadata.get_by_name(
                         entity=Lineage_Dashboard,
-                        fqdn=f"{self.config.service_name}.{dashboard['id']}",
+                        fqdn=f"{self.config.serviceName}.{dashboard['id']}",
                     )
                     if from_entity and to_entity:
                         lineage = AddLineageRequest(
@@ -301,7 +312,7 @@ class SupersetSource(Source[Entity]):
             dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
         )
         chart_type = chart_json["viz_type"]
-        chart_url = f"{self.config.url}{chart_json['url']}"
+        chart_url = f"{self.service_connection.hostPort}{chart_json['url']}"
         datasource_id = chart_json["datasource_id"]
         datasource_fqn = self._get_datasource_from_id(datasource_id)
         owners = get_owners(chart_json["owners"])
@@ -352,4 +363,7 @@ class SupersetSource(Source[Entity]):
         return self.status
 
     def close(self):
+        pass
+
+    def test_connection(self) -> None:
         pass

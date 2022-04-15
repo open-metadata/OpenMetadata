@@ -17,6 +17,10 @@
  */
 export interface MetabaseConnection {
   /**
+   * Database Service Name for creation of lineage
+   */
+  dbServiceName?: string;
+  /**
    * Host and Port of Metabase instance.
    */
   hostPort?: string;
@@ -24,10 +28,7 @@ export interface MetabaseConnection {
    * password to connect  to the Metabase.
    */
   password?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -37,13 +38,6 @@ export interface MetabaseConnection {
    * metadata in Metabase.
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

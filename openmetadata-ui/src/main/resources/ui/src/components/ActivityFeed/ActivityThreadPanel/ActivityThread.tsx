@@ -15,9 +15,9 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import useToastContext from '../../../hooks/useToastContext';
 import jsonData from '../../../jsons/en';
 import { getReplyText } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import { ActivityThreadProp } from './ActivityThreadPanel.interface';
@@ -28,7 +28,6 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   postFeed,
   onConfirmation,
 }) => {
-  const showToast = useToastContext();
   const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
@@ -44,11 +43,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
         setThreadData(res.data);
       })
       .catch((err: AxiosError) => {
-        const message = err.response?.data?.message;
-        showToast({
-          variant: 'error',
-          body: message || jsonData['api-error-messages']['fetch-feed-error'],
-        });
+        showErrorToast(err, jsonData['api-error-messages']['fetch-feed-error']);
       });
   }, [selectedThread]);
 

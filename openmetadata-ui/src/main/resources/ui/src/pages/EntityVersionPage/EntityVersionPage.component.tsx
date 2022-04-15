@@ -44,13 +44,14 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -58,10 +59,13 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import useToastContext from '../../hooks/useToastContext';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getPartialNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 export type VersionData = Partial<Table> &
   Partial<Topic> &
@@ -70,7 +74,6 @@ export type VersionData = Partial<Table> &
 
 const EntityVersionPage: FunctionComponent = () => {
   const history = useHistory();
-  const showToast = useToastContext();
   const [tier, setTier] = useState<TagLabel>();
   const [owner, setOwner] = useState<
     Table['owner'] & { displayName?: string }
@@ -140,16 +143,24 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, database, service, serviceType } =
-              res.data;
+            const {
+              id,
+              owner,
+              tags,
+              name,
+              database,
+              service,
+              serviceType,
+              databaseSchema,
+            } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -162,8 +173,19 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: getPartialNameFromFQN(database.name, ['database']),
-                url: getDatabaseDetailsPath(database.name),
+                name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
+                  FqnPart.Database,
+                ]),
+                url: getDatabaseDetailsPath(database.fullyQualifiedName),
+              },
+              {
+                name: getPartialNameFromTableFQN(
+                  databaseSchema.fullyQualifiedName,
+                  [FqnPart.Schema]
+                ),
+                url: getDatabaseSchemaDetailsPath(
+                  databaseSchema.fullyQualifiedName
+                ),
               },
               {
                 name: name,
@@ -178,19 +200,14 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body: msg ?? `Error while fetching ${entityFQN} versions`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} versions`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while fetching ${entityFQN} versions`,
-            });
+            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
           });
 
         break;
@@ -230,19 +247,14 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body: msg ?? `Error while fetching ${entityFQN} versions`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} versions`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while fetching ${entityFQN} versions`,
-            });
+            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
           });
 
         break;
@@ -283,19 +295,14 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body: msg ?? `Error while fetching ${entityFQN} versions`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} versions`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while fetching ${entityFQN} versions`,
-            });
+            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
           });
 
         break;
@@ -336,19 +343,14 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsloading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body: msg ?? `Error while fetching ${entityFQN} versions`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} versions`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body: msg ?? `Error while fetching ${entityFQN} versions`,
-            });
+            showErrorToast(err, `Error while fetching ${entityFQN} versions`);
           });
 
         break;
@@ -364,14 +366,15 @@ const EntityVersionPage: FunctionComponent = () => {
     switch (entityType) {
       case EntityType.TABLE: {
         getTableDetailsByFQN(
-          getPartialNameFromFQN(
+          getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, database, name, service, serviceType } = res.data;
+            const { id, database, name, service, serviceType, databaseSchema } =
+              res.data;
             getTableVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -389,8 +392,20 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: getPartialNameFromFQN(database.name, ['database']),
-                    url: getDatabaseDetailsPath(database.name),
+                    name: getPartialNameFromTableFQN(
+                      database.fullyQualifiedName,
+                      [FqnPart.Database]
+                    ),
+                    url: getDatabaseDetailsPath(database.fullyQualifiedName),
+                  },
+                  {
+                    name: getPartialNameFromTableFQN(
+                      databaseSchema.fullyQualifiedName,
+                      [FqnPart.Schema]
+                    ),
+                    url: getDatabaseSchemaDetailsPath(
+                      databaseSchema.fullyQualifiedName
+                    ),
                   },
                   {
                     name: name,
@@ -401,22 +416,17 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ??
-                    `Error while fetching ${entityFQN} version ${version}`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} version ${version}`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body:
-                msg ?? `Error while fetching ${entityFQN}  version ${version}`,
-            });
+            showErrorToast(
+              err,
+              `Error while fetching ${entityFQN}  version ${version}`
+            );
           });
 
         break;
@@ -457,22 +467,17 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ??
-                    `Error while fetching ${entityFQN} version ${version}`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} version ${version}`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body:
-                msg ?? `Error while fetching ${entityFQN}  version ${version}`,
-            });
+            showErrorToast(
+              err,
+              `Error while fetching ${entityFQN}  version ${version}`
+            );
           });
 
         break;
@@ -512,22 +517,17 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ??
-                    `Error while fetching ${entityFQN} version ${version}`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} version ${version}`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body:
-                msg ?? `Error while fetching ${entityFQN}  version ${version}`,
-            });
+            showErrorToast(
+              err,
+              `Error while fetching ${entityFQN}  version ${version}`
+            );
           });
 
         break;
@@ -567,22 +567,17 @@ const EntityVersionPage: FunctionComponent = () => {
                 setIsVersionLoading(false);
               })
               .catch((err: AxiosError) => {
-                const msg = err.message;
-                showToast({
-                  variant: 'error',
-                  body:
-                    msg ??
-                    `Error while fetching ${entityFQN} version ${version}`,
-                });
+                showErrorToast(
+                  err,
+                  `Error while fetching ${entityFQN} version ${version}`
+                );
               });
           })
           .catch((err: AxiosError) => {
-            const msg = err.message;
-            showToast({
-              variant: 'error',
-              body:
-                msg ?? `Error while fetching ${entityFQN}  version ${version}`,
-            });
+            showErrorToast(
+              err,
+              `Error while fetching ${entityFQN}  version ${version}`
+            );
           });
 
         break;

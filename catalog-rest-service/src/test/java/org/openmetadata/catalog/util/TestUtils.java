@@ -132,7 +132,7 @@ public final class TestUtils {
           new DashboardConnection()
               .withConfig(
                   new SupersetConnection()
-                      .withSupersetURL(new URI("http://localhost:8080"))
+                      .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {
@@ -263,19 +263,33 @@ public final class TestUtils {
   }
 
   public static void validateEntityReference(EntityReference ref) {
-    assertNotNull(ref.getId());
-    assertNotNull(ref.getHref());
-    assertNotNull(ref.getName());
-    assertNotNull(ref.getType());
+    assertNotNull(ref.getId(), invalidEntityReference(ref, "null Id"));
+    assertNotNull(ref.getHref(), invalidEntityReference(ref, "null href"));
+    assertNotNull(ref.getName(), invalidEntityReference(ref, "null name"));
+    assertNotNull(ref.getFullyQualifiedName(), invalidEntityReference(ref, "null fqn"));
+    assertNotNull(ref.getType(), invalidEntityReference(ref, "null type"));
     // Ensure data entities use fully qualified name
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
         .contains(ref.getType())) {
       // FullyQualifiedName has "." as separator
-      assertTrue(ref.getName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
+      assertTrue(
+          ref.getFullyQualifiedName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
     }
   }
 
+  public static String invalidEntityReference(EntityReference ref, String message) {
+    return String.format("%s:%s %s", ref.getType(), ref.getId(), message);
+  }
+
   public static void validateEntityReferences(List<EntityReference> list) {
+    validateEntityReferences(list, false);
+  }
+
+  public static void validateEntityReferences(List<EntityReference> list, boolean expectedNotEmpty) {
+    if (expectedNotEmpty) {
+      assertNotNull(list);
+      assertListNotEmpty(list);
+    }
     listOrEmpty(list).forEach(TestUtils::validateEntityReference);
   }
 
@@ -384,6 +398,14 @@ public final class TestUtils {
     int index = 0;
     for (Object value : values) {
       Assertions.assertNotNull(value, "Object at index " + index + " is null");
+      index++;
+    }
+  }
+
+  public static void assertListNotEmpty(List... values) {
+    int index = 0;
+    for (List value : values) {
+      Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
       index++;
     }
   }

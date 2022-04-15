@@ -124,6 +124,8 @@ export interface DatabaseConnection {
 }
 
 /**
+ * Google BigQuery Connection Config
+ *
  * AWS Athena Connection Config
  *
  * Azure SQL Connection Config
@@ -133,6 +135,8 @@ export interface DatabaseConnection {
  * Databricks Connection Config
  *
  * DB2 Connection Config
+ *
+ * DeltaLake Database Connection Config
  *
  * Druid Connection Config
  *
@@ -167,16 +171,12 @@ export interface DatabaseConnection {
  * Trino Connection Config
  *
  * Vertica Connection Config
+ *
+ * Sample Data Connection Config
  */
 export interface Connection {
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -223,6 +223,10 @@ export interface Connection {
    * attempts to scan all the databases in SingleStore.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   *
+   * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
    * attempts to scan all the databases in Oracle.
    *
@@ -244,7 +248,7 @@ export interface Connection {
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Trino.
+   * attempts to scan all the databases in the selected catalog in Trino.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -252,6 +256,12 @@ export interface Connection {
    */
   database?: string;
   /**
+   * Enable importing policy tags of BigQuery into OpenMetadata
+   */
+  enablePolicyTagImport?: boolean;
+  /**
+   * BigQuery APIs URL
+   *
    * Host and port of the Athena
    *
    * Host and port of the Clickhouse
@@ -264,11 +274,15 @@ export interface Connection {
    *
    * Host and port of the DynamoDB
    *
+   * Host and port of the Glue
+   *
    * Host and port of the Hive.
    *
    * Host and port of the data source.
    *
    * Host and port of the MsSQL.
+   *
+   * Host and port of the data source. Blank for in-memory database.
    *
    * Host and port of the Oracle.
    *
@@ -278,55 +292,35 @@ export interface Connection {
    */
   hostPort?: string;
   /**
-   * password to connect  to the Athena.
-   *
-   * password to connect to the Clickhouse.
-   *
-   * password to connect to the Databricks.
-   *
-   * password to connect to the DB2.
-   *
-   * password to connect to the Druid.
-   *
-   * password to connect  to the Hive.
-   *
-   * password to connect  to the MariaDB.
-   *
-   * password to connect  to the MsSQL.
-   *
-   * password to connect  to the SingleStore.
-   *
-   * password to connect  to the Oracle.
-   *
-   * password to connect  to the Postgres.
-   *
-   * password to connect  to the Redshift.
-   *
-   * password to connect  to the MYSQL.
-   *
-   * password to connect  to the Snowflake.
-   *
-   * password to connect  to the Trino.
-   *
-   * password to connect  to the Vertica.
+   * Column name on which bigquery table will be partitioned
    */
-  password?: string;
+  partitionField?: string;
   /**
-   * S3 Staging Directory.
+   * Partitioning query for bigquery tables
    */
-  s3StagingDir?: string;
+  partitionQuery?: string;
+  /**
+   * Duration for partitioning bigquery tables
+   */
+  partitionQueryDuration?: number;
+  /**
+   * Google BigQuery project id.
+   */
+  projectID?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
+   */
+  tagCategoryName?: string;
   /**
    * Service Type
    */
-  serviceType?: AthenaType;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  type?: DatabaseServiceType;
   /**
    * username to connect  to the Athena. This user should have privileges to read all the
    * metadata in Athena.
@@ -358,6 +352,8 @@ export interface Connection {
    * username to connect  to the SingleStore. This user should have privileges to read all the
    * metadata in SingleStore.
    *
+   * username to connect  to the SQLite. Blank for in-memory database.
+   *
    * username to connect  to the Oracle. This user should have privileges to read all the
    * metadata in Oracle.
    *
@@ -373,10 +369,59 @@ export interface Connection {
    * username to connect  to the Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    *
+   * username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
+   *
    * username to connect  to the Vertica. This user should have privileges to read all the
    * metadata in Vertica.
    */
   username?: string;
+  /**
+   * AWS Athena AWS Region.
+   *
+   * AWS Region Name.
+   */
+  awsRegion?: string;
+  /**
+   * password to connect  to the Athena.
+   *
+   * password to connect to the Clickhouse.
+   *
+   * password to connect to the Databricks.
+   *
+   * password to connect to the DB2.
+   *
+   * password to connect to the Druid.
+   *
+   * password to connect  to the Hive.
+   *
+   * password to connect  to the MariaDB.
+   *
+   * password to connect  to the MsSQL.
+   *
+   * password to connect  to the SingleStore.
+   *
+   * password to connect to SQLite. Blank for in-memory database.
+   *
+   * password to connect  to the Oracle.
+   *
+   * password to connect  to the Postgres.
+   *
+   * password to connect  to the Redshift.
+   *
+   * password to connect  to the MYSQL.
+   *
+   * password to connect  to the Snowflake.
+   *
+   * password to connect  to the Trino.
+   *
+   * password to connect  to the Vertica.
+   */
+  password?: string;
+  /**
+   * S3 Staging Directory.
+   */
+  s3StagingDir?: string;
   /**
    * Athena workgroup.
    */
@@ -386,14 +431,25 @@ export interface Connection {
    */
   driver?: string;
   /**
-   * Service Type
-   */
-  type?: Type;
-  /**
    * Clickhouse SQL connection duration
    */
   duration?: number;
+  /**
+   * Generated Token to connect to Databricks
+   */
   token?: string;
+  /**
+   * pySpark App Name
+   */
+  appName?: string;
+  /**
+   * File path of local Hive Metastore.
+   */
+  metastoreFilePath?: string;
+  /**
+   * Host and port of remote Hive Metastore.
+   */
+  metastoreHostPort?: string;
   /**
    * AWS Access key ID.
    */
@@ -408,14 +464,39 @@ export interface Connection {
   awsSessionToken?: string;
   /**
    * EndPoint URL for the Dynamo DB
+   *
+   * EndPoint URL for the Glue
    */
   endPointURL?: string;
+  /**
+   * AWS pipelineServiceName Name.
+   */
+  pipelineServiceName?: string;
+  /**
+   * AWS storageServiceName Name.
+   */
+  storageServiceName?: string;
   /**
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
   authOptions?: string;
   /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
+   * How to run the SQLite database. :memory: by default.
+   */
+  databaseMode?: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
+  /**
    * Presto catalog
+   *
+   * Catalog of the data source.
    */
   catalog?: string;
   /**
@@ -438,6 +519,18 @@ export interface Connection {
    * Snowflake warehouse.
    */
   warehouse?: string;
+  /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: any };
+  /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: any };
+  /**
+   * Sample Data File Path
+   */
+  sampleDataFolder?: string;
 }
 
 /**
@@ -445,6 +538,7 @@ export interface Connection {
  */
 export enum Scheme {
   AwsathenaREST = 'awsathena+rest',
+  Bigquery = 'bigquery',
   ClickhouseHTTP = 'clickhouse+http',
   DatabricksConnector = 'databricks+connector',
   Db2IBMDB = 'db2+ibm_db',
@@ -469,34 +563,31 @@ export enum Scheme {
  * Service Type
  *
  * Service type.
- */
-export enum AthenaType {
-  Athena = 'Athena',
-}
-
-/**
- * Service Type
  *
- * Service type.
+ * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  */
-export enum Type {
+export enum DatabaseServiceType {
+  Athena = 'Athena',
   AzureSQL = 'AzureSQL',
-  ClickHouse = 'ClickHouse',
+  BigQuery = 'BigQuery',
+  Clickhouse = 'Clickhouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
+  Mssql = 'Mssql',
+  Mysql = 'Mysql',
   Oracle = 'Oracle',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
   SQLite = 'SQLite',
   Salesforce = 'Salesforce',
+  SampleData = 'SampleData',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
@@ -528,6 +619,12 @@ export interface EntityReference {
    */
   displayName?: string;
   /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -536,8 +633,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**
@@ -545,33 +641,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
- */
-export enum DatabaseServiceType {
-  Athena = 'Athena',
-  AzureSQL = 'AzureSQL',
-  BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
-  Databricks = 'Databricks',
-  Db2 = 'Db2',
-  DeltaLake = 'DeltaLake',
-  Druid = 'Druid',
-  DynamoDB = 'DynamoDB',
-  Glue = 'Glue',
-  Hive = 'Hive',
-  MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
-  Oracle = 'Oracle',
-  Postgres = 'Postgres',
-  Presto = 'Presto',
-  Redshift = 'Redshift',
-  SQLite = 'SQLite',
-  SingleStore = 'SingleStore',
-  Snowflake = 'Snowflake',
-  Trino = 'Trino',
-  Vertica = 'Vertica',
 }

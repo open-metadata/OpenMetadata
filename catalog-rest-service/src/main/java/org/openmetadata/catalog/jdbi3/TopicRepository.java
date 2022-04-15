@@ -42,7 +42,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public static String getFQN(Topic topic) {
     return (topic != null && topic.getService() != null)
-        ? FullyQualifiedName.add(topic.getService().getName(), topic.getName())
+        ? FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName())
         : null;
   }
 

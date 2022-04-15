@@ -14,18 +14,23 @@
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { EntityTags, TagOption } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../auth-provider/AuthProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityName,
+  getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
@@ -49,6 +54,7 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import Entitylineage from '../EntityLineage/EntityLineage.component';
+import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -98,6 +104,8 @@ const DashboardDetails = ({
   createThread,
   dashboardFQN,
   deletePostHandler,
+  paging,
+  fetchFeedHandler,
 }: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -116,6 +124,7 @@ const DashboardDetails = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -130,7 +139,7 @@ const DashboardDetails = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -192,8 +201,11 @@ const DashboardDetails = ({
       value:
         owner?.type === 'team'
           ? getTeamDetailsPath(owner?.name || '')
-          : owner?.displayName || owner?.name || '',
-      placeholderText: owner?.displayName || owner?.name || '',
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -376,6 +388,20 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreThread = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -385,6 +411,10 @@ const DashboardDetails = ({
   useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
+
+  useEffect(() => {
+    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
+  }, [paging, isentityThreadLoading, isInView]);
 
   return (
     <PageContainer>
@@ -599,7 +629,7 @@ const DashboardDetails = ({
             )}
             {activeTab === 2 && (
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                 id="activityfeed">
                 <div />
                 <ActivityFeedList
@@ -609,7 +639,6 @@ const DashboardDetails = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isLoading={isentityThreadLoading}
                   postFeedHandler={postFeedHandler}
                 />
                 <div />
@@ -634,13 +663,23 @@ const DashboardDetails = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={dashboardDetails.id}
+                  entityName={dashboardDetails.name}
+                  entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
               </div>
             )}
+            <div
+              data-testid="observer-element"
+              id="observer-element"
+              ref={elementRef as RefObject<HTMLDivElement>}>
+              {getLoader()}
+            </div>
           </div>
         </div>
       </div>

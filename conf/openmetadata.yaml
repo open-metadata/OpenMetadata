@@ -155,10 +155,11 @@ airflowConfiguration:
   metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
   authProvider: "no-auth"
 
+
 slackEventPublishers:
   - name: "slack events"
-    webhookUrl: "slackIncomingWebhook URL"
-    openMetadataUrl: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}
+    webhookUrl: ${SLACK_WEBHOOK_URL:-""}
+    openMetadataUrl: ${OPENMETADATA_SERVER_URL}
     filters:
       - eventType: "entityCreated"
         entities:

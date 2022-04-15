@@ -56,6 +56,7 @@ class TableESDocument(BaseModel):
     table_id: str
     deleted: bool
     database: str
+    database_schema: str
     service: str
     service_type: str
     service_category: str
@@ -76,7 +77,7 @@ class TableESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: str
+    owner: EntityReference = None
     followers: List[str]
     change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
@@ -98,7 +99,7 @@ class TopicESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: str
+    owner: EntityReference = None
     followers: List[str]
     change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
@@ -122,7 +123,7 @@ class DashboardESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: str
+    owner: EntityReference = None
     followers: List[str]
     monthly_stats: int
     monthly_percentile_rank: int
@@ -152,7 +153,7 @@ class PipelineESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: str
+    owner: EntityReference = None
     followers: List[str]
     change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
@@ -204,7 +205,6 @@ class GlossaryTermESDocument(BaseModel):
     status: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-
     doc_as_upsert: bool = True
 
 

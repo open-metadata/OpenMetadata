@@ -9,21 +9,21 @@
     "mssqlType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["MSSQL"],
-      "default": "MSSQL"
+      "enum": ["Mssql"],
+      "default": "Mssql"
     },
     "mssqlScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
-      "default": "mysql+pymysql"
+      "default": "mssql+pytds"
     }
   },
   "properties": {
     "type": {
       "description": "Service Type",
       "$ref": "#/definitions/mssqlType",
-      "default": "MSSQL"
+      "default": "Mssql"
     },
     "scheme": {
       "description": "SQLAlchemy driver scheme options.",
@@ -52,20 +52,18 @@
       "type": "string"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

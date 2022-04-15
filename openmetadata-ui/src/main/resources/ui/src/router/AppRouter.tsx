@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import { useAuthContext } from '../auth-provider/AuthProvider';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Appbar from '../components/app-bar/Appbar';
 import Loader from '../components/Loader/Loader';
 import { ROUTES } from '../constants/constants';
@@ -37,7 +37,8 @@ const AppRouter = () => {
     <Loader />
   ) : (
     <>
-      {authConfig?.provider === AuthTypes.GOOGLE ? (
+      {authConfig?.provider === AuthTypes.GOOGLE ||
+      authConfig?.provider === AuthTypes.CUSTOM_OIDC ? (
         <AuthenticatedAppRouter />
       ) : (
         <>

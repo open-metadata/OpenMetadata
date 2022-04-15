@@ -36,6 +36,7 @@ import {
   linkRegEx,
   mentionRegEx,
 } from '../constants/feed.constants';
+import { getEntityPlaceHolder } from './CommonUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -146,7 +147,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
         return {
           id: hit._id,
-          value: `@${hit._source.name ?? hit._source.display_name}`,
+          value: getEntityPlaceHolder(
+            `@${hit._source.name ?? hit._source.display_name}`,
+            hit._source.deleted
+          ),
           link: `${document.location.protocol}//${document.location.host}/${
             entityUrlMap[entityType as keyof typeof entityUrlMap]
           }/${hit._source.name}`,
@@ -161,7 +165,10 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
 
         return {
           id: hit._id,
-          value: `@${hit._source.name ?? hit._source.display_name}`,
+          value: getEntityPlaceHolder(
+            `@${hit._source.name ?? hit._source.display_name}`,
+            hit._source.deleted
+          ),
           link: `${document.location.protocol}//${document.location.host}/${
             entityUrlMap[entityType as keyof typeof entityUrlMap]
           }/${hit._source.name}`,

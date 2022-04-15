@@ -31,8 +31,8 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
-import { TabSpecificField } from '../enums/entity.enum';
+import { FQN_REGEX, UrlEntityCharRegEx } from '../constants/regex.constants';
+import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
   EntityReference,
@@ -92,6 +92,45 @@ export const getPartialNameFromFQN = (
   }
 
   return arrPartialName.join(joinSeperator);
+};
+
+export const getPartialNameFromTableFQN = (
+  fqn: string,
+  fqnParts: Array<FqnPart> = [],
+  joinSeparator = '/'
+): string => {
+  if (!fqn) {
+    return '';
+  }
+  // if nested column is requested, then ignore all the other
+  // parts and just return the nested column name
+  if (fqnParts.includes(FqnPart.NestedColumn)) {
+    const splitFqn = fqn.split(FQN_SEPARATOR_CHAR);
+    // Remove the first 4 parts (service, database, schema, table)
+
+    return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
+  }
+  const arrFqn = fqn.match(FQN_REGEX) || [];
+  const arrPartialName = [];
+  if (arrFqn.length > 0) {
+    if (fqnParts.includes(FqnPart.Service)) {
+      arrPartialName.push(arrFqn[0]);
+    }
+    if (fqnParts.includes(FqnPart.Database) && arrFqn.length > 1) {
+      arrPartialName.push(arrFqn[1]);
+    }
+    if (fqnParts.includes(FqnPart.Schema) && arrFqn.length > 2) {
+      arrPartialName.push(arrFqn[2]);
+    }
+    if (fqnParts.includes(FqnPart.Table) && arrFqn.length > 3) {
+      arrPartialName.push(arrFqn[3]);
+    }
+    if (fqnParts.includes(FqnPart.Column) && arrFqn.length > 4) {
+      arrPartialName.push(arrFqn[4]);
+    }
+  }
+
+  return arrPartialName.join(joinSeparator);
 };
 
 export const getCurrentUserId = (): string => {
@@ -293,16 +332,29 @@ export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
 
 export const getOwnerIds = (
   filter: Ownership,
-  userDetails: User
+  userDetails: User,
+  nonSecureUserDetails: User
 ): Array<string> => {
-  if (filter === Ownership.OWNER && userDetails.teams) {
-    const userTeams = !isEmpty(userDetails)
-      ? userDetails.teams.map((team) => team.id)
-      : [];
-
-    return [...userTeams, getCurrentUserId()];
+  if (filter === Ownership.OWNER) {
+    if (!isEmpty(userDetails)) {
+      return [
+        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        userDetails.id,
+      ];
+    } else {
+      if (!isEmpty(nonSecureUserDetails)) {
+        return [
+          ...(nonSecureUserDetails.teams?.map(
+            (team) => team.id
+          ) as Array<string>),
+          nonSecureUserDetails.id,
+        ];
+      } else {
+        return [];
+      }
+    }
   } else {
-    return [getCurrentUserId()];
+    return [userDetails.id || nonSecureUserDetails.id];
   }
 };
 
@@ -508,4 +560,49 @@ export const isUrlFriendlyName = (value: string) => {
  */
 export const getNonDeletedTeams = (teams: EntityReference[]) => {
   return teams.filter((t) => !t.deleted);
+};
+
+/**
+ * prepare label for given entity type and fqn
+ * @param type - entity type
+ * @param fqn - entity fqn
+ * @param withQuotes - boolean value
+ * @returns - label for entity
+ */
+export const prepareLabel = (type: string, fqn: string, withQuotes = true) => {
+  let label = '';
+  if (type === EntityType.TABLE) {
+    label = getPartialNameFromTableFQN(fqn, [FqnPart.Table]);
+  } else {
+    label = getPartialNameFromFQN(fqn, ['database']);
+  }
+
+  if (withQuotes) {
+    return label;
+  } else {
+    return label.replace(/(^"|"$)/g, '');
+  }
+};
+
+/**
+ * Check if entity is deleted and return with "(Deactivated) text"
+ * @param value - entity name
+ * @param isDeleted - boolean
+ * @returns - entity placeholder
+ */
+export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
+  if (isDeleted) {
+    return `${value} (Deactivated)`;
+  } else {
+    return value;
+  }
+};
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity: EntityReference) => {
+  return entity?.displayName || entity?.name || '';
 };

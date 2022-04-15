@@ -49,7 +49,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   public static String getFQN(Metrics metrics) {
     return (metrics != null && metrics.getService() != null)
-        ? FullyQualifiedName.add(metrics.getService().getName(), metrics.getName())
+        ? FullyQualifiedName.add(metrics.getService().getFullyQualifiedName(), metrics.getName())
         : null;
   }
 

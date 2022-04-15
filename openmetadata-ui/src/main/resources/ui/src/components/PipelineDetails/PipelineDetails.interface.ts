@@ -19,15 +19,13 @@ import {
   LeafNodes,
   LineagePos,
   LoadingNodeState,
-  TableDetail,
 } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
-import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
@@ -43,10 +41,10 @@ export interface PipeLineDetailsProp {
   users: Array<User>;
   pipelineDetails: Pipeline;
   activeTab: number;
-  owner: TableDetail['owner'];
+  owner: EntityReference;
   description: string;
   tier: TagLabel;
-  followers: Array<User>;
+  followers: Array<EntityReference>;
   pipelineTags: Array<EntityTags>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
@@ -57,6 +55,8 @@ export interface PipeLineDetailsProp {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  paging: Paging;
+  fetchFeedHandler: (after?: string) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;

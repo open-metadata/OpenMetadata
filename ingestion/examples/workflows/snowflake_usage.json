@@ -1,16 +1,22 @@
 {
   "source": {
     "type": "snowflake-usage",
-    "config": {
-      "host_port": "account.region.service.snowflakecomputing.com",
-      "username": "username",
-      "password": "strong_password",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "account_name",
-      "warehouse": "COMPUTE_WH",
-      "service_name": "snowflake",
-      "result_limit": 1000,
-      "duration": 2
+    "serviceName": "snowflake",
+    "serviceConnection": {
+      "config": {
+        "type": "Snowflake",
+        "hostPort": "account.region.service.snowflakecomputing.com",
+        "username": "username",
+        "password": "strong_password",
+        "database": "SNOWFLAKE_SAMPLE_DATA",
+        "warehouse": "COMPUTE_WH",
+        "account": "account_name"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "resultLimit":1000
+      }
     }
   },
   "processor": {
@@ -25,17 +31,16 @@
       "filename": "/tmp/snowflake_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/snowflake_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

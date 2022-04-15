@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const FOLLOWERS_VIEW_CAP = 20;
@@ -21,7 +22,7 @@ export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
-export const LOCALSTORAGE_RECENTLY_SEARCHED = 'recentlySearchedData';
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
 export const isAdminUpdated = 'isAdminUpdated';
 export const imageTypes = {
@@ -42,8 +43,10 @@ const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
+const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
-const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
+
+export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
@@ -55,7 +58,7 @@ const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 const PLACEHOLDER_USER_NAME = ':username';
 
-export const pagingObject = { after: '', before: '' };
+export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
@@ -76,7 +79,14 @@ export const versionTypes = [
 
 export const DESCRIPTIONLENGTH = 100;
 
-export const visibleFilters = ['service', 'tier', 'tags', 'database'];
+export const visibleFilters = [
+  'service',
+  'tier',
+  'tags',
+  'database',
+  'databaseschema',
+  'servicename',
+];
 
 export const tableSortingFields = [
   {
@@ -117,6 +127,14 @@ export const facetFilterPlaceholder = [
     name: 'Database',
     value: 'Database',
   },
+  {
+    name: 'DatabaseSchema',
+    value: 'Schema',
+  },
+  {
+    name: 'ServiceName',
+    value: 'Service Name',
+  },
 ];
 
 export const ROUTES = {
@@ -139,6 +157,7 @@ export const ROUTES = {
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
   USERS: '/users',
   SCORECARD: '/scorecard',
@@ -154,7 +173,9 @@ export const ROUTES = {
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
+  SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
   DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SCHEMA_DETAILS_WITH_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   USER_LIST: '/user-list',
@@ -235,6 +256,20 @@ export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
 export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
   let path = tab ? ROUTES.DATABASE_DETAILS_WITH_TAB : ROUTES.DATABASE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDatabaseSchemaDetailsPath = (
+  schemaFQN: string,
+  tab?: string
+) => {
+  let path = tab ? ROUTES.SCHEMA_DETAILS_WITH_TAB : ROUTES.SCHEMA_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -340,8 +375,6 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
-export const LIST_TYPES = ['numbered-list', 'bulleted-list'];
-
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -372,10 +405,3 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
-
-// Entity Lineage Constant
-export const positionX = 150;
-export const positionY = 60;
-
-export const nodeWidth = 240;
-export const nodeHeight = 40;

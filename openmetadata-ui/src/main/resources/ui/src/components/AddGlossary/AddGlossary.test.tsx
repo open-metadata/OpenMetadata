@@ -16,7 +16,7 @@ import { LoadingState } from 'Models';
 import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('../../auth-provider/AuthProvider', () => {
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -30,6 +30,10 @@ jest.mock('../../auth-provider/AuthProvider', () => {
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditor</p>);
 });
 
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({

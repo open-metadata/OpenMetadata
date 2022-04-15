@@ -16,12 +16,16 @@
  * Trino Connection Config
  */
 export interface TrinoConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  /**
+   * Catalog of the data source.
+   */
+  catalog?: string;
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Trino.
+   * attempts to scan all the databases in the selected catalog in Trino.
    */
   database?: string;
   /**
@@ -29,24 +33,29 @@ export interface TrinoConnection {
    */
   hostPort?: string;
   /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: any };
+  /**
    * password to connect  to the Trino.
    */
   password?: string;
   /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: any };
+  /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: TrinoScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: TrinoType;
   /**
-   * username to connect  to the Snowflake. This user should have privileges to read all the
-   * metadata in Snowflake.
+   * username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
    */
   username?: string;
 }

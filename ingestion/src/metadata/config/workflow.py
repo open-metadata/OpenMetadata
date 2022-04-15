@@ -16,13 +16,16 @@ import importlib
 import logging
 from typing import Type, TypeVar
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Processor as WorkflowProcessor,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.common import DynamicTypedConfig
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
@@ -58,7 +61,7 @@ def get_class(key: str) -> Type[T]:
 def get_ingestion_source(
     source_type: str,
     source_config: WorkflowSource,
-    metadata_config: OpenMetadataServerConfig,
+    metadata_config: OpenMetadataConnection,
 ) -> Source:
     """
     Import the required source class and configure it.
@@ -85,8 +88,8 @@ def get_ingestion_source(
 
 def get_sink(
     sink_type: str,
-    sink_config: DynamicTypedConfig,
-    metadata_config: OpenMetadataServerConfig,
+    sink_config: WorkflowSink,
+    metadata_config: OpenMetadataConnection,
     _from: str = "ingestion",
 ) -> Sink:
     """
@@ -118,8 +121,8 @@ def get_sink(
 
 def get_processor(
     processor_type: str,
-    processor_config: DynamicTypedConfig,
-    metadata_config: OpenMetadataServerConfig,
+    processor_config: WorkflowProcessor,
+    metadata_config: OpenMetadataConnection,
     _from: str = "ingestion",
     **kwargs,
 ) -> Processor:

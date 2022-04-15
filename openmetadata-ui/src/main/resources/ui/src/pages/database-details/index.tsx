@@ -16,17 +16,20 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
+import React, {
+  Fragment,
+  FunctionComponent,
+  RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { default as AppState, default as appState } from '../../AppState';
 import {
   getDatabaseDetailsByFQN,
+  getDatabaseSchemas,
   patchDatabaseDetails,
 } from '../../axiosAPIs/databaseAPI';
 import {
@@ -35,7 +38,6 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
-import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
@@ -49,23 +51,25 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
-  getTableDetailsPath,
   getTeamDetailsPath,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
-import { Table } from '../../generated/entity/data/table';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/teams/user';
-import useToastContext from '../../hooks/useToastContext';
+import { Paging } from '../../generated/type/paging';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import { hasEditAccess, isEven } from '../../utils/CommonUtils';
 import {
@@ -82,19 +86,18 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
-  // User Id for getting followers
-  const [slashedTableName, setSlashedTableName] = useState<
+  const [slashedDatabaseName, setSlashedDatabaseName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const showToast = useToastContext();
   const { databaseFQN, tab } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
-  const [tableData, setTableData] = useState<Array<Table>>([]);
+  const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
@@ -102,8 +105,10 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
-  const [tablePaging, setTablePaging] = useState<Paging>(pagingObject);
-  const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
+  const [databaseSchemaPaging, setSchemaPaging] =
+    useState<Paging>(pagingObject);
+  const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
+    useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDatabaseDetailsTab(tab)
@@ -120,20 +125,23 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const history = useHistory();
   const isMounting = useRef(true);
 
   const tabs = [
     {
-      name: 'Tables',
+      name: 'Schemas',
       icon: {
-        alt: 'tables',
-        name: 'table-grey',
-        title: 'Tables',
-        selectedName: 'table',
+        alt: 'schemas',
+        name: 'schema-grey',
+        title: 'Schemas',
+        selectedName: 'schemas',
       },
-      count: tableInstanceCount,
+      count: databaseSchemaInstanceCount,
       isProtected: false,
       position: 1,
     },
@@ -178,56 +186,36 @@ const DatabaseDetails: FunctionComponent = () => {
     },
   ];
 
-  const handleShowErrorToast = (errMessage: string) => {
-    showToast({
-      variant: 'error',
-      body: errMessage,
-    });
-  };
-
-  const handleShowSuccessToast = (message: string) => {
-    showToast({
-      variant: 'success',
-      body: message,
-    });
-  };
-
-  const fetchDatabaseTables = (paging?: string) => {
+  const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
-      getDatabaseTables(databaseFQN, paging, [
-        'owner',
-        'tags',
-        'columns',
-        'usageSummary',
-      ])
+      getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
         .then((res: AxiosResponse) => {
           if (res.data.data) {
-            setTableData(res.data.data);
-            setTablePaging(res.data.paging);
-            setTableInstanceCount(res.data.paging.total);
+            setSchemaData(res.data.data);
+            setSchemaPaging(res.data.paging);
+            setSchemaInstanceCount(res.data.paging.total);
           } else {
-            setTableData([]);
-            setTablePaging(pagingObject);
+            setSchemaData([]);
+            setSchemaPaging(pagingObject);
 
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
           resolve();
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-database-tables-error']
+            jsonData['api-error-messages']['fetch-database-schemas-error']
           );
 
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
   };
 
-  const fetchDatabaseTablesAndDBTModels = () => {
+  const fetchDatabaseSchemasAndDBTModels = () => {
     setIsLoading(true);
-    Promise.allSettled([fetchDatabaseTables()]).finally(() => {
+    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
       setIsLoading(false);
     });
   };
@@ -258,12 +246,10 @@ const DatabaseDetails: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-count-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -279,7 +265,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
           setServiceType(serviceType);
 
-          setSlashedTableName([
+          setSlashedDatabaseName([
             {
               name: service.name,
               url: service.name
@@ -296,7 +282,7 @@ const DatabaseDetails: FunctionComponent = () => {
               activeTitle: true,
             },
           ]);
-          fetchDatabaseTablesAndDBTModels();
+          fetchDatabaseSchemasAndDBTModels();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -307,7 +293,7 @@ const DatabaseDetails: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-database-details-error']
         );
         setError(errMsg);
-        handleShowErrorToast(errMsg);
+        showErrorToast(errMsg);
       })
       .finally(() => {
         setIsLoading(false);
@@ -349,11 +335,10 @@ const DatabaseDetails: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-database-error']
           );
-          handleShowErrorToast(errMsg);
         })
         .finally(() => {
           setIsEdit(false);
@@ -378,14 +363,18 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const tablePagingHandler = (cursorType: string) => {
+  const databaseSchemaPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
     const pagingString = `&${cursorType}=${
-      tablePaging[cursorType as keyof typeof tablePaging]
+      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
     }`;
     setIsLoading(true);
-    fetchDatabaseTables(pagingString).finally(() => {
+    fetchDatabaseSchemas(pagingString).finally(() => {
       setIsLoading(false);
     });
+    setCurrentPage(activePage ?? 1);
   };
 
   const handleUpdateOwner = (owner: Database['owner']) => {
@@ -407,34 +396,32 @@ const DatabaseDetails: FunctionComponent = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
+          showErrorToast(
             err,
             jsonData['api-error-messages']['update-database-error']
           );
-          handleShowErrorToast(errMsg);
           reject();
         });
     });
   };
 
-  const fetchActivityFeed = () => {
+  const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getAllFeeds(getEntityFeedLink(EntityType.DATABASE, databaseFQN), after)
       .then((res: AxiosResponse) => {
-        const { data } = res.data;
+        const { data, paging: pagingObj } = res.data;
         if (data) {
-          setEntityThread(data);
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
-
-        handleShowErrorToast(errMsg);
       })
       .finally(() => setIsentityThreadLoading(false));
   };
@@ -465,12 +452,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['add-feed-error']
-        );
-
-        handleShowErrorToast(errMsg);
+        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
       });
   };
 
@@ -480,20 +462,20 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          handleShowSuccessToast(
+          showSuccessToast(
             jsonData['api-success-messages']['create-conversation']
           );
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          showErrorToast(
+            jsonData['api-error-messages']['unexpected-server-response']
+          );
         }
       })
       .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
+        showErrorToast(
           err,
           jsonData['api-error-messages']['create-conversation-error']
         );
-
-        handleShowErrorToast(errMsg);
       });
   };
 
@@ -517,32 +499,42 @@ const DatabaseDetails: FunctionComponent = () => {
                 });
               });
             } else {
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
+              showErrorToast(
+                jsonData['api-error-messages']['unexpected-server-response']
+              );
             }
           })
           .catch((error) => {
-            const errMsg = getErrorText(
+            showErrorToast(
               error,
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
-
-            handleShowErrorToast(errMsg);
           });
 
-        handleShowSuccessToast(
-          jsonData['api-success-messages']['delete-message']
-        );
+        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
-        const message = getErrorText(
+        showErrorToast(
           error,
           jsonData['api-error-messages']['delete-message-error']
         );
-        handleShowErrorToast(message);
       });
   };
+
+  const getLoader = () => {
+    return isentityThreadLoading ? <Loader /> : null;
+  };
+
+  const fetchMoreFeed = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isFeedLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isFeedLoading) {
+      fetchActivityFeed(pagingObj.after);
+    }
+  };
+
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -570,8 +562,14 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
+    } else {
+      setEntityThread([]);
     }
   }, [tab]);
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isentityThreadLoading);
+  }, [isInView, paging, isentityThreadLoading]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -592,7 +590,7 @@ const DatabaseDetails: FunctionComponent = () => {
           <div
             className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
             data-testid="page-container">
-            <TitleBreadcrumb titleLinks={slashedTableName} />
+            <TitleBreadcrumb titleLinks={slashedDatabaseName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap">
               {extraInfo.map((info, index) => (
@@ -635,16 +633,16 @@ const DatabaseDetails: FunctionComponent = () => {
               />
               <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
                 {activeTab === 1 && (
-                  <>
+                  <Fragment>
                     <table
                       className="tw-bg-white tw-w-full tw-mb-4"
-                      data-testid="database-tables">
+                      data-testid="database-databaseSchemas">
                       <thead data-testid="table-header">
                         <tr className="tableHead-row">
                           <th
                             className="tableHead-cell"
                             data-testid="header-name">
-                            Table Name
+                            Schema Name
                           </th>
                           <th
                             className="tableHead-cell"
@@ -661,16 +659,11 @@ const DatabaseDetails: FunctionComponent = () => {
                             data-testid="header-usage">
                             Usage
                           </th>
-                          <th
-                            className="tableHead-cell tw-w-60"
-                            data-testid="header-tags">
-                            Tags
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="tableBody">
-                        {tableData.length > 0 ? (
-                          tableData.map((table, index) => (
+                        {schemaData.length > 0 ? (
+                          schemaData.map((schema, index) => (
                             <tr
                               className={classNames(
                                 'tableBody-row',
@@ -681,19 +674,19 @@ const DatabaseDetails: FunctionComponent = () => {
                               <td className="tableBody-cell">
                                 <Link
                                   to={
-                                    table.fullyQualifiedName
-                                      ? getTableDetailsPath(
-                                          table.fullyQualifiedName
+                                    schema.fullyQualifiedName
+                                      ? getDatabaseSchemaDetailsPath(
+                                          schema.fullyQualifiedName
                                         )
                                       : ''
                                   }>
-                                  {table.name}
+                                  {schema.name}
                                 </Link>
                               </td>
                               <td className="tableBody-cell">
-                                {table.description?.trim() ? (
+                                {schema.description?.trim() ? (
                                   <RichTextEditorPreviewer
-                                    markdown={table.description}
+                                    markdown={schema.description}
                                   />
                                 ) : (
                                   <span className="tw-no-description">
@@ -703,32 +696,19 @@ const DatabaseDetails: FunctionComponent = () => {
                               </td>
                               <td className="tableBody-cell">
                                 <p>
-                                  {getOwnerFromId(table?.owner?.id)
+                                  {getOwnerFromId(schema?.owner?.id)
                                     ?.displayName ||
-                                    getOwnerFromId(table?.owner?.id)?.name ||
+                                    getOwnerFromId(schema?.owner?.id)?.name ||
                                     '--'}
                                 </p>
                               </td>
                               <td className="tableBody-cell">
                                 <p>
                                   {getUsagePercentile(
-                                    table.usageSummary?.weeklyStats
+                                    schema.usageSummary?.weeklyStats
                                       ?.percentileRank || 0
                                   )}
                                 </p>
-                              </td>
-                              <td className="tableBody-cell">
-                                <TagsViewer
-                                  sizeCap={-1}
-                                  tags={(table.tags || []).map((tag) => ({
-                                    ...tag,
-                                    tagFQN: tag.tagFQN?.startsWith(
-                                      `Tier${FQN_SEPARATOR_CHAR}Tier`
-                                    )
-                                      ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-                                      : tag.tagFQN,
-                                  }))}
-                                />
                               </td>
                             </tr>
                           ))
@@ -744,18 +724,22 @@ const DatabaseDetails: FunctionComponent = () => {
                       </tbody>
                     </table>
                     {Boolean(
-                      !isNil(tablePaging.after) || !isNil(tablePaging.before)
+                      !isNil(databaseSchemaPaging.after) ||
+                        !isNil(databaseSchemaPaging.before)
                     ) && (
                       <NextPrevious
-                        paging={tablePaging}
-                        pagingHandler={tablePagingHandler}
+                        currentPage={currentPage}
+                        pageSize={PAGE_SIZE}
+                        paging={databaseSchemaPaging}
+                        pagingHandler={databaseSchemaPagingHandler}
+                        totalCount={paging.total}
                       />
                     )}
-                  </>
+                  </Fragment>
                 )}
                 {activeTab === 2 && (
                   <div
-                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw-bg-body-main tw--mx-7 tw--my-4 tw-h-screen"
+                    className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                     id="activityfeed">
                     <div />
                     <ActivityFeedList
@@ -765,7 +749,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       deletePostHandler={deletePostHandler}
                       entityName={databaseName}
                       feedList={entityThread}
-                      isLoading={isentityThreadLoading}
                       postFeedHandler={postFeedHandler}
                     />
                     <div />
@@ -773,8 +756,12 @@ const DatabaseDetails: FunctionComponent = () => {
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
                     currentUser={database?.owner?.id}
+                    entityId={database?.id}
+                    entityName={database?.name}
+                    entityType={EntityType.DATABASE}
                     hasEditAccess={hasEditAccess(
                       database?.owner?.type || '',
                       database?.owner?.id || ''
@@ -782,6 +769,12 @@ const DatabaseDetails: FunctionComponent = () => {
                     onSave={handleUpdateOwner}
                   />
                 )}
+                <div
+                  data-testid="observer-element"
+                  id="observer-element"
+                  ref={elementRef as RefObject<HTMLDivElement>}>
+                  {getLoader()}
+                </div>
               </div>
             </div>
             {threadLink ? (

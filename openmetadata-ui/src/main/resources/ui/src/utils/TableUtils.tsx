@@ -22,6 +22,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
   getGlossaryPath,
   getPipelineDetailsPath,
@@ -216,6 +217,9 @@ export const getEntityLink = (
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
 
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       return getGlossaryPath();
@@ -277,12 +281,10 @@ export const makeRow = (column: Column) => {
 export const makeData = (
   columns: ModifiedTableColumn[] = []
 ): Array<Column & { subRows: Column[] | undefined }> => {
-  const data = columns.map((column) => ({
+  return columns.map((column) => ({
     ...makeRow(column),
     subRows: column.children ? makeData(column.children) : undefined,
   }));
-
-  return data;
 };
 
 export const getDataTypeString = (dataType: string): string => {

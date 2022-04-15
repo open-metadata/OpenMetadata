@@ -79,6 +79,8 @@ public class Common {
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
   By topics = By.xpath("(//button[@data-testid='tab'])[2]");
+  By dashboard = By.xpath("(//button[@data-testid='tab'])[3]");
+  By pipeline = By.xpath("(//button[@data-testid='tab'])[4]");
   By selectTable = By.xpath("(//button[@data-testid=\"table-link\"])[1]");
   By addTag = By.xpath("(//div[@data-testid='tag-container'])[1]");
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");

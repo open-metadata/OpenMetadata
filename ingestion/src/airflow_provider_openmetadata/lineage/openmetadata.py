@@ -79,12 +79,12 @@ class OpenMetadataLineageBackend(LineageBackend):
 
         try:
             config: AirflowLineageConfig = get_lineage_config()
-            client = OpenMetadata(config.metadata_config)
+            metadata = OpenMetadata(config.metadata_config)
 
             op_inlets = get_xlets(operator, "_inlets")
             op_outlets = get_xlets(operator, "_outlets")
 
-            parse_lineage(config, context, operator, op_inlets, op_outlets, client)
+            parse_lineage(config, context, operator, op_inlets, op_outlets, metadata)
         except Exception as exc:  # pylint: disable=broad-except
             operator.log.error(traceback.format_exc())
             operator.log.error(exc)
