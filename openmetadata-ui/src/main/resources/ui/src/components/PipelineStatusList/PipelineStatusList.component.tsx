@@ -18,71 +18,20 @@ import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import Select, { SingleValue } from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
+import {
+  getModifiedPipelineStatus,
+  getStatusBadgeClass,
+  STATUS_OPTIONS,
+} from '../../utils/PipelineDetailsUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
   pipelineStatus: Pipeline['pipelineStatus'];
 }
-
 interface Option {
   value: string;
   label: string;
 }
-
-const getModifiedPipelineStatus = (
-  status: StatusType,
-  pipelineStatus: Pipeline['pipelineStatus'] = []
-) => {
-  const data = pipelineStatus
-    .map((status) => {
-      return status.taskStatus?.map((task) => ({
-        executionDate: status.executionDate,
-        executionStatus: task.executionStatus,
-        name: task.name,
-      }));
-    })
-    .flat(1);
-
-  if (!status) {
-    return data;
-  } else {
-    return data.filter((d) => d?.executionStatus === status);
-  }
-};
-
-const getStatusBadge = (status: StatusType) => {
-  let className = '';
-
-  switch (status) {
-    case StatusType.Successful:
-      className = 'tw-bg-status-success';
-
-      break;
-
-    case StatusType.Failed:
-      className = 'tw-bg-status-failed';
-
-      break;
-
-    case StatusType.Pending:
-      className = 'tw-bg-status-queued';
-
-      break;
-
-    default:
-      break;
-  }
-
-  return (
-    <div className={classNames(className, 'tw-w-4 tw-h-4 tw-rounded-sm')} />
-  );
-};
-
-const STATUS_OPTIONS = [
-  { value: StatusType.Successful, label: StatusType.Successful },
-  { value: StatusType.Failed, label: StatusType.Failed },
-  { value: StatusType.Pending, label: StatusType.Pending },
-];
 
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
@@ -146,7 +95,14 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
                   </td>
                   <td className="tableBody-cell" data-testid="tableBody-cell">
                     <div className="tw-flex tw-items-center">
-                      {getStatusBadge(status?.executionStatus as StatusType)}{' '}
+                      <div
+                        className={classNames(
+                          getStatusBadgeClass(
+                            status?.executionStatus as StatusType
+                          ),
+                          'tw-w-4 tw-h-4 tw-rounded-sm'
+                        )}
+                      />{' '}
                       <span className="tw-ml-2">{status?.executionStatus}</span>
                     </div>
                   </td>

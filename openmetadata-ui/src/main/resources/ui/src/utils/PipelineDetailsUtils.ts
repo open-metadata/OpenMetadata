@@ -12,6 +12,7 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
+import { Pipeline, StatusType } from '../generated/entity/data/pipeline';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
 ${TabSpecificField.TASKS}`;
@@ -73,4 +74,47 @@ export const getCurrentPipelineTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getModifiedPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  const data = pipelineStatus
+    .map((statusValue) => {
+      return statusValue.taskStatus?.map((task) => ({
+        executionDate: statusValue.executionDate,
+        executionStatus: task.executionStatus,
+        name: task.name,
+      }));
+    })
+    .flat(1);
+
+  if (!status) {
+    return data;
+  } else {
+    return data.filter((d) => d?.executionStatus === status);
+  }
+};
+
+export const STATUS_OPTIONS = [
+  { value: StatusType.Successful, label: StatusType.Successful },
+  { value: StatusType.Failed, label: StatusType.Failed },
+  { value: StatusType.Pending, label: StatusType.Pending },
+];
+
+export const getStatusBadgeClass = (status: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return 'tw-bg-status-success';
+
+    case StatusType.Failed:
+      return 'tw-bg-status-failed';
+
+    case StatusType.Pending:
+      return 'tw-bg-status-queued';
+
+    default:
+      return '';
+  }
 };
