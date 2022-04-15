@@ -15,12 +15,18 @@ import classNames from 'classnames';
 import { isNil, uniqueId } from 'lodash';
 import moment from 'moment';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
-import Select from 'react-select';
+import Select, { SingleValue } from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
+import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
   pipelineStatus: Pipeline['pipelineStatus'];
+}
+
+interface Option {
+  value: string;
+  label: string;
 }
 
 const getModifiedPipelineStatus = (
@@ -79,6 +85,11 @@ const STATUS_OPTIONS = [
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
 
+  const handleOnChange = (value: SingleValue<unknown>) => {
+    const selectedValue = value as Option;
+    setSelectedFilter(selectedValue.value);
+  };
+
   if (isNil(pipelineStatus)) {
     return null;
   } else {
@@ -91,7 +102,8 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
               <Select
                 options={STATUS_OPTIONS}
                 placeholder="Status"
-                onChange={(value) => setSelectedFilter(value?.value ?? '')}
+                styles={reactSingleSelectCustomStyle}
+                onChange={handleOnChange}
               />
             </div>
             <table

@@ -41,3 +41,23 @@ export const reactSelectCustomStyle: StylesConfig = {
     },
   }),
 };
+
+export const reactSingleSelectCustomStyle: StylesConfig = {
+  control: (styles, { isFocused }) => ({
+    ...styles,
+    backgroundColor: '#ffffff',
+    boxShadow: 'none',
+    borderColor: isFocused ? primeryColor : 'none',
+    ':hover': {
+      border: `1px solid ${primeryColor}`,
+    },
+    ':focus': {
+      border: `1px solid ${primeryColor}`,
+    },
+  }),
+  option: (styles, { isSelected }) => ({
+    ...styles,
+    background: isSelected ? `${primeryColor}` : '#ffffff',
+    color: isSelected ? '#ffffff' : `${bodyTextColor}`,
+  }),
+};
