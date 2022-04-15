@@ -64,3 +64,12 @@ export enum TabSpecificField {
   TESTS = 'tests',
   PIPELINE_STATUS = 'pipelineStatus',
 }
+
+export enum FqnPart {
+  Service,
+  Database,
+  Schema,
+  Table,
+  Column,
+  NestedColumn,
+}

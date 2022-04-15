@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
@@ -18,55 +19,104 @@ import {
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/ingestion.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
+import { FormSubmitType } from '../../enums/form.enum';
 import {
+  ConfigClass,
   CreateIngestionPipeline,
-  PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  FilterPattern,
+  IngestionPipeline,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
-import { AddIngestionProps, PatternType } from './addIngestion.interface';
+import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
+  heading,
+  status,
+  pipelineType,
+  data,
   serviceData,
   serviceCategory,
+  showSuccessScreen = true,
+  onUpdateIngestion,
+  onSuccessSave,
   onAddIngestionSave,
-  handleAddIngestion,
+  handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
   const [activeStepperStep, setActiveStepperStep] = useState(1);
   const [ingestionName] = useState(
-    `${serviceData.name}_${PipelineType.Metadata}`
+    data?.name ?? `${serviceData.name}_${pipelineType}`
   );
   const [repeatFrequency, setRepeatFrequency] = useState(
-    INGESTION_SCHEDULER_INITIAL_VALUE
+    data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
-  const [startDate, setStartDate] = useState(getCurrentDate());
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(
+    data?.airflowConfig.startDate ?? getCurrentDate()
+  );
+  const [endDate, setEndDate] = useState(data?.airflowConfig?.endDate ?? '');
 
-  const [showDashboardFilter, setShowDashboardFilter] = useState(false);
-  const [showSchemaFilter, setShowSchemaFilter] = useState(false);
-  const [showTableFilter, setShowTableFilter] = useState(false);
-  const [showTopicFilter, setShowTopicFilter] = useState(false);
-  const [showChartFilter, setShowChartFilter] = useState(false);
-  const [includeView, setIncludeView] = useState(false);
-  const [enableDataProfiler, setEnableDataProfiler] = useState(true);
-  const [ingestSampleData, setIngestSampleData] = useState(true);
+  const [showDashboardFilter, setShowDashboardFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
+    )
+  );
+  const [showSchemaFilter, setShowSchemaFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern
+    )
+  );
+  const [showTableFilter, setShowTableFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern
+    )
+  );
+  const [showTopicFilter, setShowTopicFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern
+    )
+  );
+  const [showChartFilter, setShowChartFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern
+    )
+  );
+  const [includeView, setIncludeView] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.includeViews ?? false
+  );
+  const [enableDataProfiler, setEnableDataProfiler] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
+      true
+  );
+  const [ingestSampleData, setIngestSampleData] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
+      true
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
-    useState<PatternType>(INITIAL_FILTER_PATTERN);
-  const [schemaFilterPattern, setSchemaFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+    useState<FilterPattern>(
+      (data?.source.sourceConfig.config as ConfigClass)
+        ?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN
+    );
+  const [schemaFilterPattern, setSchemaFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [tableFilterPattern, setTableFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [tableFilterPattern, setTableFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [topicFilterPattern, setTopicFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [topicFilterPattern, setTopicFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [chartFilterPattern, setChartFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [chartFilterPattern, setChartFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
@@ -74,24 +124,24 @@ const AddIngestion = ({
       case FilterPatternEnum.DASHBOARD:
         setDashboardFilterPattern({
           ...dashboardFilterPattern,
-          include: value,
+          includes: value,
         });
 
         break;
       case FilterPatternEnum.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, include: value });
+        setSchemaFilterPattern({ ...schemaFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, include: value });
+        setTableFilterPattern({ ...tableFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.TOPIC:
-        setTopicFilterPattern({ ...topicFilterPattern, include: value });
+        setTopicFilterPattern({ ...topicFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, include: value });
+        setChartFilterPattern({ ...topicFilterPattern, includes: value });
 
         break;
     }
@@ -101,24 +151,24 @@ const AddIngestion = ({
       case FilterPatternEnum.DASHBOARD:
         setDashboardFilterPattern({
           ...dashboardFilterPattern,
-          exclude: value,
+          excludes: value,
         });
 
         break;
       case FilterPatternEnum.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, exclude: value });
+        setSchemaFilterPattern({ ...schemaFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, exclude: value });
+        setTableFilterPattern({ ...tableFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.TOPIC:
-        setTopicFilterPattern({ ...topicFilterPattern, exclude: value });
+        setTopicFilterPattern({ ...topicFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, exclude: value });
+        setChartFilterPattern({ ...topicFilterPattern, excludes: value });
 
         break;
     }
@@ -150,7 +200,7 @@ const AddIngestion = ({
   };
 
   const handleConfigureIngestionCancelClick = () => {
-    handleAddIngestion(false);
+    handleCancelClick();
   };
 
   const handleConfigureIngestionNextClick = () => {
@@ -161,22 +211,22 @@ const AddIngestion = ({
     setActiveStepperStep(1);
   };
 
-  const getFilterPatternData = (data: PatternType) => {
-    const { include, exclude } = data;
+  const getFilterPatternData = (data: FilterPattern) => {
+    const { includes, excludes } = data;
 
-    return include.length === 0 && exclude.length === 0
+    return isUndefined(includes) && isUndefined(excludes)
       ? undefined
       : {
-          includes: include.length > 0 ? include : undefined,
-          excludes: exclude.length > 0 ? exclude : undefined,
+          includes: includes && includes.length > 0 ? includes : undefined,
+          excludes: excludes && excludes.length > 0 ? excludes : undefined,
         };
   };
 
-  const handleScheduleIntervalDeployClick = () => {
+  const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         startDate: startDate as unknown as Date,
-        endDate: startDate as unknown as Date,
+        endDate: endDate as unknown as Date,
         scheduleInterval: repeatFrequency,
         forceDeploy: true,
       },
@@ -186,7 +236,7 @@ const AddIngestion = ({
         id: getCurrentUserId(),
         type: 'user',
       },
-      pipelineType: PipelineType.Metadata,
+      pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,
         type: serviceCategory.slice(0, -1),
@@ -206,13 +256,64 @@ const AddIngestion = ({
     };
 
     onAddIngestionSave(ingestionDetails).then(() => {
-      setActiveStepperStep(3);
+      if (showSuccessScreen) {
+        setActiveStepperStep(3);
+      } else {
+        onSuccessSave?.();
+      }
     });
+  };
+
+  const updateIngestion = () => {
+    if (data) {
+      const updatedData: IngestionPipeline = {
+        ...data,
+        airflowConfig: {
+          ...data.airflowConfig,
+          startDate: startDate as unknown as Date,
+          endDate: endDate as unknown as Date,
+          scheduleInterval: repeatFrequency,
+        },
+        source: {
+          ...data.source,
+          sourceConfig: {
+            config: {
+              ...(data.source.sourceConfig.config as ConfigClass),
+              enableDataProfiler: enableDataProfiler,
+              generateSampleData: ingestSampleData,
+              includeViews: includeView,
+              schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
+              tableFilterPattern: getFilterPatternData(tableFilterPattern),
+              chartFilterPattern: getFilterPatternData(chartFilterPattern),
+              dashboardFilterPattern: getFilterPatternData(
+                dashboardFilterPattern
+              ),
+              topicFilterPattern: getFilterPatternData(topicFilterPattern),
+            },
+          },
+        },
+      };
+
+      onUpdateIngestion &&
+        onUpdateIngestion(updatedData, data, data.id as string, data.name).then(
+          () => {
+            onSuccessSave?.();
+          }
+        );
+    }
+  };
+
+  const handleScheduleIntervalDeployClick = () => {
+    if (status === FormSubmitType.ADD) {
+      createNewIngestion();
+    } else {
+      updateIngestion();
+    }
   };
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">Add New Ingestion</h6>
+      <h6 className="tw-heading tw-text-base">{heading}</h6>
 
       <IngestionStepper
         activeStep={activeStepperStep}
@@ -254,20 +355,20 @@ const AddIngestion = ({
 
         {activeStepperStep === 2 && (
           <ScheduleInterval
-            endDate={endDate}
+            endDate={endDate as string}
             handleEndDateChange={(value: string) => setEndDate(value)}
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
             }
             handleStartDateChange={(value: string) => setStartDate(value)}
             repeatFrequency={repeatFrequency}
-            startDate={startDate}
+            startDate={startDate as string}
             onBack={handleScheduleIntervalBackClick}
             onDeloy={handleScheduleIntervalDeployClick}
           />
         )}
 
-        {activeStepperStep > 2 && (
+        {activeStepperStep > 2 && handleViewServiceClick && (
           <SuccessScreen
             handleViewServiceClick={handleViewServiceClick}
             name={ingestionName}
