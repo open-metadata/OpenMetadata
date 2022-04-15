@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { isNil, uniqueId } from 'lodash';
 import moment from 'moment';
-import React, { FC, Fragment, HTMLAttributes } from 'react';
+import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import Select from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
@@ -24,7 +24,8 @@ interface Prop extends HTMLAttributes<HTMLDivElement> {
 }
 
 const getModifiedPipelineStatus = (
-  pipelineStatus: Pipeline['pipelineStatus'] = []
+  pipelineStatus: Pipeline['pipelineStatus'] = [],
+  status: StatusType
 ) => {
   const data = pipelineStatus.map((pipelineStatus) => {
     return pipelineStatus.taskStatus?.map((task) => ({
@@ -34,7 +35,11 @@ const getModifiedPipelineStatus = (
     }));
   });
 
-  return data.flat(1);
+  if (!status) {
+    return data.flat(1);
+  } else {
+    return data.flat(1).filter((d) => d?.executionStatus === status);
+  }
 };
 
 const getStatusBadge = (status: StatusType) => {
@@ -72,6 +77,8 @@ const STATUS_OPTIONS = [
 ];
 
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
+  const [selectedFilter, setSelectedFilter] = useState('');
+
   if (isNil(pipelineStatus)) {
     return null;
   } else {
@@ -81,7 +88,11 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
           <div className={className} data-testid="pipeline-status-list">
             <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
               <div />
-              <Select className="tw-border-primary" options={STATUS_OPTIONS} />
+              <Select
+                options={STATUS_OPTIONS}
+                placeholder="Status"
+                onChange={(value) => setSelectedFilter(value?.value ?? '')}
+              />
             </div>
             <table
               className="tw-w-full"
@@ -95,7 +106,10 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
                 </tr>
               </thead>
               <tbody className="tableBody">
-                {getModifiedPipelineStatus(pipelineStatus).map((status) => (
+                {getModifiedPipelineStatus(
+                  pipelineStatus,
+                  selectedFilter as StatusType
+                ).map((status) => (
                   <tr
                     className={classNames('tableBody-row')}
                     data-testid="tableBody-row"
