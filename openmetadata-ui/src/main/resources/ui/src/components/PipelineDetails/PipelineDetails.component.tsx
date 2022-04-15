@@ -594,8 +594,12 @@ const PipelineDetails = ({
             {activeTab === 5 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={pipelineDetails.id}
+                  entityName={pipelineDetails.name}
+                  entityType={EntityType.PIPELINE}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
