@@ -96,6 +96,37 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     this.supportsAuthorizedMetadataOperations = false;
   }
 
+  public void setupUsers(TestInfo test) throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
+    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
+
+    USER2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
+    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
+
+    USER_WITH_DATA_STEWARD_ROLE =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-steward", "", "", null)
+                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    USER_WITH_DATA_CONSUMER_ROLE =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-consumer", "", "", null)
+                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
+  }
+
   @Test
   @Override
   public void post_entity_as_non_admin_401(TestInfo test) {

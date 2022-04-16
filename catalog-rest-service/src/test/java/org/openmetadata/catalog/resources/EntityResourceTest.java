@@ -30,9 +30,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -54,7 +52,6 @@ import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,23 +78,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateChart;
-import org.openmetadata.catalog.api.data.CreateDatabase;
-import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
-import org.openmetadata.catalog.api.data.CreateGlossary;
-import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.api.data.TermReference;
-import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
-import org.openmetadata.catalog.api.services.CreateMessagingService;
-import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
-import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.api.teams.CreateTeam;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
@@ -111,54 +93,31 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
-import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
-import org.openmetadata.catalog.resources.charts.ChartResourceTest;
-import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
-import org.openmetadata.catalog.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
-import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MessagingConnection;
-import org.openmetadata.catalog.type.StorageServiceType;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -268,7 +227,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
@@ -276,206 +234,20 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       webhookResourceTest.startWebhookSubscription();
       webhookResourceTest.startWebhookEntitySubscriptions(entityType);
     }
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    DATA_CONSUMER_ROLE =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
-    UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
 
-    USER2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
+    new RoleResourceTest().setupRoles(test);
+    new UserResourceTest().setupUsers(test);
 
-    DATA_STEWARD_ROLE =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
-    USER_WITH_DATA_STEWARD_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-steward", "", "", null)
-                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    new TagResourceTest().setupTags();
+    new GlossaryResourceTest().setupGlossaries();
 
-    USER_WITH_DATA_CONSUMER_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-consumer", "", "", null)
-                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    new DatabaseServiceResourceTest().setupDatabaseServices(test);
+    new MessagingServiceResourceTest().setupMessagingServices();
+    new PipelineServiceResourceTest().setupPipelineServices(test);
+    new StorageServiceResourceTest().setupStorageServices();
+    new DashboardServiceResourceTest().setupDashboardServices(test);
 
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
-
-    ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
-
-    // Create snowflake database service
-    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
-    CreateDatabaseService createDatabaseService =
-        databaseServiceResourceTest
-            .createRequest(test, 1)
-            .withServiceType(DatabaseServiceType.Snowflake)
-            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
-    DatabaseService databaseService =
-        new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("redshiftDB")
-        .withServiceType(DatabaseServiceType.Redshift)
-        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("bigQueryDB")
-        .withServiceType(DatabaseServiceType.BigQuery)
-        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("mysqlDB")
-        .withServiceType(DatabaseServiceType.Mysql)
-        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    // Create Kafka messaging service
-    MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessaging =
-        new CreateMessagingService()
-            .withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka)
-            .withConnection(TestUtils.KAFKA_CONNECTION);
-    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
-
-    // Create Pulsar messaging service
-    createMessaging
-        .withName("pulsar")
-        .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
-
-    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
-
-    // Create Airflow pipeline service
-    PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
-    CreatePipelineService createPipeline =
-        pipelineServiceResourceTest
-            .createRequest("airflow", "", "", null)
-            .withServiceType(PipelineServiceType.Airflow)
-            .withPipelineUrl(new URI("http://localhost:0"));
-    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
-
-    // Create Prefect pipeline service
-    createPipeline
-        .withName("prefect")
-        .withServiceType(PipelineServiceType.Prefect)
-        .withPipelineUrl(new URI("http://localhost:0"));
-    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
-
-    // Create AWS storage service, S3
-    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
-    CreateStorageService createService =
-        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    AWS_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
-
-    // Create GCP storage service, GCS
-    createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
-
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
-    PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
-    PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
-    TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
-    TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
-
-    DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService =
-        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
-
-    DashboardService dashboardService =
-        new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
-
-    createDashboardService.withName("looker").withServiceType(DashboardServiceType.Looker);
-    dashboardService = new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    LOOKER_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
-    CHART_REFERENCES = new ArrayList<>();
-    ChartResourceTest chartResourceTest = new ChartResourceTest();
-    for (int i = 0; i < 3; i++) {
-      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
-      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
-      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
-    }
-
-    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
-    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
-
-    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
-    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
-
-    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
-    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_REF = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
-
-    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
-    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_REF = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
-
-    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
-    CreateGlossaryTerm createGlossaryTerm =
-        glossaryTermResourceTest
-            .createRequest("g1t1", null, "", null)
-            .withRelatedTerms(null)
-            .withGlossary(GLOSSARY1_REF);
-    GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY1_TERM1).getEntityReference();
-    GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
-
-    createGlossaryTerm =
-        glossaryTermResourceTest
-            .createRequest("g2t1", null, "", null)
-            .withRelatedTerms(null)
-            .withGlossary(GLOSSARY2_REF);
-    GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY2_TERM1).getEntityReference();
-    GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
-
-    COLUMNS =
-        Arrays.asList(
-            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
-            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
-  }
-
-  private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
-    return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
-  }
-
-  private TagLabel getTagLabel(GlossaryTerm term) {
-    return new TagLabel()
-        .withTagFQN(term.getFullyQualifiedName())
-        .withDescription(term.getDescription())
-        .withSource(Source.GLOSSARY);
+    new TableResourceTest().setupDatabaseSchemas(test);
   }
 
   @AfterAll
@@ -619,7 +391,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       }
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", include);
-      ;
 
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);

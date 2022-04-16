@@ -55,10 +55,23 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
-
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", null);
     this.supportsAuthorizedMetadataOperations = false;
+  }
+
+  public void setupRoles(TestInfo test) throws HttpResponseException {
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    DATA_CONSUMER_ROLE =
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
+
+    DATA_STEWARD_ROLE =
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
+
+    ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
   }
 
   @Test
