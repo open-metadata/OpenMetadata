@@ -362,7 +362,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
           break;
         }
       case "status":
-        @SuppressWarnings("unchecked")
         Status expectedStatus = (Status) expected;
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);
