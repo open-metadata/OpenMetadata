@@ -118,6 +118,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -701,14 +702,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   @Test
-  void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
-    String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
+  void post_entityWithDots_200() throws HttpResponseException {
+    String name = String.format("%s_foo.bar", entityType);
     final K request = createRequest(name, null, null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    String[] split = entityInterface.getFullyQualifiedName().split("/");
+    String[] split = FullyQualifiedName.split(entityInterface.getFullyQualifiedName());
+    System.out.println("XXX fqn is " + entityInterface.getFullyQualifiedName());
     String actualName = split[split.length - 1];
-    assertTrue(actualName.contains("foo.bar"));
+    assertEquals(name, actualName);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
