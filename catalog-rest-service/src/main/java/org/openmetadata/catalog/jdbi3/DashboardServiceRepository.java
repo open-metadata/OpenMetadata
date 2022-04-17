@@ -31,6 +31,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private static final String UPDATE_FIELDS = "owner";
@@ -140,7 +141,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override

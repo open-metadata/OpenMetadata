@@ -385,23 +385,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Predicate<User> isUser1 = u -> u.getId().equals(user1.getId());
     Predicate<User> isUser2 = u -> u.getId().equals(user2.getId());
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("team", team1.getName());
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("team", team1.getName());
+
     ResultList<User> users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(2, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
 
-    queryParams =
-        new HashMap<>() {
-          {
-            put("team", team2.getName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("team", team2.getName());
+
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(1, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser2));

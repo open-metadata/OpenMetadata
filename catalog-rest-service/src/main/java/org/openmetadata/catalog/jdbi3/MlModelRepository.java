@@ -59,7 +59,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   public static String getFQN(MlModel model) {
-    return model.getName();
+    return FullyQualifiedName.build(model.getName());
   }
 
   @Override

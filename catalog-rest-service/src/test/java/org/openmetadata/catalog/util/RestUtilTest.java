@@ -13,21 +13,20 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import javax.ws.rs.core.UriInfo;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 @Slf4j
 class RestUtilTest {
   @Test
-  public void hrefTests() throws URISyntaxException {
+  void hrefTests() throws URISyntaxException {
     URI baseUri = URI.create("http://base");
     assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
     assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash

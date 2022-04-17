@@ -13,13 +13,6 @@
 
 package org.openmetadata.catalog.util;
 
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.common.utils.CommonUtil;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
@@ -29,6 +22,12 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.common.utils.CommonUtil;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
