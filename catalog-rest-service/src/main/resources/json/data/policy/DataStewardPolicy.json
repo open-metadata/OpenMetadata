@@ -11,28 +11,24 @@
       "name": "DataStewardPolicy-UpdateDescription",
       "operation": "UpdateDescription",
       "allow": true,
-      "enabled": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-UpdateLineage",
       "operation": "UpdateLineage",
       "allow": true,
-      "enabled": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-UpdateOwner",
       "operation": "UpdateOwner",
       "allow": true,
-      "enabled": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-UpdateTags",
       "operation": "UpdateTags",
       "allow": true,
-      "enabled": true,
       "priority": 1000
     }
   ]
