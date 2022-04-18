@@ -756,8 +756,12 @@ const DatabaseDetails: FunctionComponent = () => {
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
                     currentUser={database?.owner?.id}
+                    entityId={database?.id}
+                    entityName={database?.name}
+                    entityType={EntityType.DATABASE}
                     hasEditAccess={hasEditAccess(
                       database?.owner?.type || '',
                       database?.owner?.id || ''

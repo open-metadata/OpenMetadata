@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
@@ -56,6 +57,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public final class EntityUtil {
@@ -167,10 +169,7 @@ public final class EntityUtil {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
-        ref.withDescription(ref2.getDescription())
-            .withName(ref2.getName())
-            .withDisplayName(ref2.getDisplayName())
-            .withFullyQualifiedName(ref2.getFullyQualifiedName());
+        EntityUtil.copy(ref2, ref);
       }
     }
     return list;
@@ -221,6 +220,10 @@ public final class EntityUtil {
         tags.add(derivedTag);
       }
     }
+  }
+
+  public static List<String> getJsonDataResources(String path) throws IOException {
+    return CommonUtil.getResources(Pattern.compile(path));
   }
 
   @RequiredArgsConstructor
@@ -320,5 +323,14 @@ public final class EntityUtil {
                 new EventFilter()
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
+  }
+
+  public static EntityReference copy(EntityReference from, EntityReference to) {
+    return to.withType(from.getType())
+        .withId(from.getId())
+        .withName(from.getName())
+        .withDisplayName(from.getDisplayName())
+        .withFullyQualifiedName(from.getFullyQualifiedName())
+        .withDeleted(from.getDeleted());
   }
 }

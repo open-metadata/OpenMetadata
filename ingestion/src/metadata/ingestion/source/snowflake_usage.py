@@ -19,11 +19,11 @@ from typing import Any, Dict, Iterable, Iterator, Union
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -80,9 +80,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Snowflake.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -103,7 +101,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         self.report = SQLSourceStatus()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
@@ -143,6 +141,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
+                if not row["database_name"] and self.service_connection.database:
+                    TableQuery.database = self.service_connection.database
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
@@ -160,6 +160,9 @@ class SnowflakeUsageSource(Source[TableQuery]):
         Returns:
         """
         return self.report
+
+    def test_connection(self) -> None:
+        pass
 
     def close(self):
         self.alchemy_helper.close()

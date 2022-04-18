@@ -29,8 +29,8 @@ from metadata.generated.schema.api.services.createMessagingService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, Constraint, Table
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
@@ -80,7 +80,7 @@ class SampleEntitySource(Source[Entity]):
     def __init__(
         self,
         config: SampleEntitySourceConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.faker = Faker()
@@ -113,7 +113,7 @@ class SampleEntitySource(Source[Entity]):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = SampleEntitySourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

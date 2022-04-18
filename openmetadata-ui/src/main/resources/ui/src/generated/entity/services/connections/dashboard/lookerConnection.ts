@@ -28,10 +28,7 @@ export interface LookerConnection {
    * password to connect  to the Looker.
    */
   password?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -41,13 +38,6 @@ export interface LookerConnection {
    * metadata in Looker.
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

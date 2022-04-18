@@ -35,6 +35,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -52,6 +53,7 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CommonUtil;
@@ -114,7 +116,8 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     LOG.info("Webhook subscription started for {}", webhook.getName());
   }
 
-  public void updateWebhookPublisher(Webhook webhook) throws InterruptedException {
+  @SneakyThrows
+  public void updateWebhookPublisher(Webhook webhook) {
     if (Boolean.TRUE.equals(webhook.getEnabled())) { // Only add webhook that is enabled for publishing
       // If there was a previous webhook either in disabled state or stopped due
       // to errors, update it and restart publishing
@@ -187,7 +190,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override

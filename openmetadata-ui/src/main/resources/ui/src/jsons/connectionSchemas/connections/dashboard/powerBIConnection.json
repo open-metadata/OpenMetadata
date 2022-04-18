@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerBIConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PowerBIConnection",
+  "description": "PowerBI Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.dashboard.PowerBIConnection",
+  "definitions": {
+    "powerBiType": {
+      "description": "PowerBI service type",
+      "type": "string",
+      "enum": ["PowerBI"],
+      "default": "PowerBI"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/powerBiType",
+      "default": "PowerBI"
+    },
+    "clientId": {
+      "description": "client_id for the PowerBI.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "description": "clientSecret for the PowerBI.",
+      "type": "string",
+      "format": "password"
+    },
+    "credentials": {
+      "description": "Credentials for the PowerBI.",
+      "type": "string"
+    },
+    "redirectURI": {
+      "description": "Dashboard redirect URI for the PowerBI.",
+      "type": "string"
+    },
+    "dashboardURL": {
+      "description": "Dashboard URL for the power BI.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://analysis.windows.net/powerbi"
+    },
+    "scope": {
+      "description": "PowerBI secrets.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

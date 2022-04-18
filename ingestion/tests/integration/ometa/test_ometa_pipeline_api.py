@@ -28,12 +28,12 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -48,7 +48,7 @@ class OMetaPipelineTest(TestCase):
 
     service_entity_id = None
 
-    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()

@@ -20,8 +20,8 @@ export interface DeltaLakeConnection {
    * pySpark App Name
    */
   appName?: string;
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * File path of local Hive Metastore.
    */
@@ -30,25 +30,11 @@ export interface DeltaLakeConnection {
    * Host and port of remote Hive Metastore.
    */
   metastoreHostPort?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: DeltaLakeType;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**

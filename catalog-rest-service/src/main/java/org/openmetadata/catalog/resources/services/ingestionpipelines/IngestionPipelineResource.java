@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -53,13 +54,13 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
@@ -67,9 +68,11 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -81,7 +84,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private AirflowRESTClient airflowRESTClient;
-  private OpenMetadataServerConfig serverConfig;
+  private AirflowConfiguration airflowConfiguration;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -95,12 +98,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public void initialize(CatalogApplicationConfig config) {
-    this.airflowRESTClient = new AirflowRESTClient(config);
-    this.serverConfig =
-        new OpenMetadataServerConfig()
-            .withHostPort(config.getAirflowConfiguration().getApiEndpoint())
-            .withAuthProvider(
-                OpenMetadataServerConfig.AuthProvider.valueOf(config.getAirflowConfiguration().getAuthProvider()));
+    this.airflowConfiguration = config.getAirflowConfiguration();
+    this.airflowRESTClient = new AirflowRESTClient(config.getAirflowConfiguration());
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -405,7 +404,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
       throws IOException {
     Source source = buildIngestionSource(create);
-
+    OpenMetadataServerConnection openMetadataServerConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     return new IngestionPipeline()
         .withId(UUID.randomUUID())
         .withName(create.getName())
@@ -413,7 +413,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
-        .withOpenMetadataServerConnection(serverConfig)
+        .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSource(source)
         .withOwner(create.getOwner())
         .withService(create.getService())
@@ -438,7 +438,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceConnection(databaseService.getConnection())
                 .withServiceName(databaseService.getName())
-                .withType(databaseService.getServiceType().value());
+                .withType(databaseService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.DASHBOARD_SERVICE:
         DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -446,7 +446,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(dashboardService.getName())
                 .withServiceConnection(dashboardService.getConnection())
-                .withType(dashboardService.getServiceType().value());
+                .withType(dashboardService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.MESSAGING_SERVICE:
         MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -454,7 +454,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(messagingService.getName())
                 .withServiceConnection(messagingService.getConnection())
-                .withType(messagingService.getServiceType().value());
+                .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       default:
         throw new IllegalArgumentException(

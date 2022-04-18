@@ -1,6 +1,8 @@
 package org.openmetadata.catalog.slack;
 
+import static org.openmetadata.catalog.Entity.FIELD_DELETED;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.net.URI;
@@ -29,9 +31,9 @@ import org.openmetadata.catalog.type.FieldChange;
 
 @Slf4j
 public class SlackWebhookEventPublisher extends AbstractEventPublisher {
-  private Invocation.Builder target;
-  private Client client;
-  private String openMetadataUrl;
+  private final Invocation.Builder target;
+  private final Client client;
+  private final String openMetadataUrl;
 
   public SlackWebhookEventPublisher(SlackPublisherConfiguration config) {
     super(config.getBatchSize(), config.getFilters());
@@ -126,7 +128,8 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         } else if (fieldChange.getName().equals(FIELD_OWNER)) {
           title.append("Added ownership");
           attachment.setText(parseOwnership((String) fieldChange.getOldValue(), (String) fieldChange.getNewValue()));
-        } else if (fieldChange.getName().equals("followers")) {
+        } else if (fieldChange.getName().equals(FIELD_FOLLOWERS)) {
+          @SuppressWarnings("unchecked")
           String followers = parseFollowers((List<EntityReference>) fieldChange.getNewValue());
           String entityUrl = getEntityUrl(event);
           attachment.setText(followers + " started following " + entityUrl);
@@ -150,7 +153,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         && !changeDescription.getFieldsUpdated().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
         // when the entity is deleted we will get deleted set as true. We do not need to parse this for slack messages.
-        if (!fieldChange.getName().equals("deleted")) {
+        if (!fieldChange.getName().equals(FIELD_DELETED)) {
           SlackAttachment attachment = new SlackAttachment();
           attachment.setTitle("Updated " + fieldChange.getName());
           if (fieldChange.getName().equals(FIELD_OWNER)) {
@@ -186,7 +189,8 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
           title.append("Deleted columns ");
           attachment.setText(parseColumns((String) fieldChange.getOldValue(), event));
           attachment.setTitle(title.toString());
-        } else if (fieldChange.getName().equals("followers")) {
+        } else if (fieldChange.getName().equals(FIELD_FOLLOWERS)) {
+          @SuppressWarnings("unchecked")
           String followers = parseFollowers((List<EntityReference>) fieldChange.getOldValue());
           String entityUrl = getEntityUrl(event);
           attachment.setText(followers + " unfollowed " + entityUrl);

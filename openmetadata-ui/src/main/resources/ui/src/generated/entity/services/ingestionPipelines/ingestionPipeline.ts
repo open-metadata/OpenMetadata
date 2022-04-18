@@ -50,7 +50,7 @@ export interface IngestionPipeline {
    * Name that identifies this pipeline instance uniquely.
    */
   name: string;
-  openMetadataServerConnection: OpenMetadataServerConfig;
+  openMetadataServerConnection: OpenMetadataConnection;
   /**
    * Owner of this Pipeline.
    */
@@ -200,9 +200,9 @@ export interface FieldChange {
 }
 
 /**
- * OpenMetadata Server Connection Details.
+ * OpenMetadata Connection Config
  */
-export interface OpenMetadataServerConfig {
+export interface OpenMetadataConnection {
   /**
    * OpenMetadata server API version to use.
    */
@@ -219,7 +219,7 @@ export interface OpenMetadataServerConfig {
   /**
    * OpenMetadata Client security configuration.
    */
-  securityConfig?: SsoConfig;
+  securityConfig?: SsoClientConfig;
 }
 
 /**
@@ -228,6 +228,7 @@ export interface OpenMetadataServerConfig {
  */
 export enum AuthProvider {
   Auth0 = 'auth0',
+  Azure = 'azure',
   CustomOidc = 'custom-oidc',
   Google = 'google',
   NoAuth = 'no-auth',
@@ -243,11 +244,11 @@ export enum AuthProvider {
  *
  * Auth0 SSO client security configs.
  *
- * Azure SSO client security configs.
+ * Azure SSO Client security config to connect to OpenMetadata.
  *
  * Custom OIDC SSO client security configs.
  */
-export interface SsoConfig {
+export interface SsoClientConfig {
   /**
    * Google SSO audience URL
    */
@@ -287,7 +288,7 @@ export interface SsoConfig {
    *
    * Azure Client ID.
    */
-  scopes?: string[] | boolean | number | { [key: string]: any } | null | string;
+  scopes?: string[];
   /**
    * Auth0 Domain.
    */
@@ -389,6 +390,8 @@ export interface Source {
  * Dashboard Connection.
  *
  * Database Connection.
+ *
+ * Metadata Service Connection.
  */
 export interface ServiceConnection {
   config?: Connection;
@@ -455,9 +458,13 @@ export interface ServiceConnection {
  *
  * Vertica Connection Config
  *
+ * Sample Data Connection Config
+ *
  * Kafka Connection Config
  *
  * Pulsar Connection Config
+ *
+ * Amundsen Connection Config
  */
 export interface Connection {
   /**
@@ -470,6 +477,8 @@ export interface Connection {
    * URL to Looker instance.
    *
    * Host and Port of Metabase instance.
+   *
+   * URL for the superset instance
    *
    * Tableau Server
    *
@@ -502,6 +511,8 @@ export interface Connection {
    * Host and port of the Postgres.
    *
    * Host and port of the Redshift.
+   *
+   * Host and port of the Amundsen Neo4j Connection.
    */
   hostPort?: string;
   /**
@@ -546,16 +557,15 @@ export interface Connection {
    * password to connect  to the Trino.
    *
    * password to connect  to the Vertica.
+   *
+   * password to connect to the Amundsen Neo4j Connection.
    */
   password?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: Type;
+  type?: AmundsenType;
   /**
    * username to connect  to the Looker. This user should have privileges to read all the
    * metadata in Looker.
@@ -621,6 +631,8 @@ export interface Connection {
    *
    * username to connect  to the Vertica. This user should have privileges to read all the
    * metadata in Vertica.
+   *
+   * username to connect to the Amundsen Neo4j Connection.
    */
   username?: string;
   /**
@@ -672,10 +684,6 @@ export interface Connection {
    */
   provider?: string;
   /**
-   * URL for the superset instance
-   */
-  supersetURL?: string;
-  /**
    * Tableau API version
    */
   apiVersion?: string;
@@ -691,7 +699,7 @@ export interface Connection {
    * Tableau Site Name
    */
   siteName?: string;
-  connectionArguments?: ConnectionArguments;
+  connectionArguments?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -775,6 +783,18 @@ export interface Connection {
    */
   enablePolicyTagImport?: boolean;
   /**
+   * Column name on which bigquery table will be partitioned
+   */
+  partitionField?: string;
+  /**
+   * Partitioning query for bigquery tables
+   */
+  partitionQuery?: string;
+  /**
+   * Duration for partitioning bigquery tables
+   */
+  partitionQueryDuration?: number;
+  /**
    * Google BigQuery project id.
    */
   projectID?: string;
@@ -782,6 +802,7 @@ export interface Connection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
+  supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
    */
@@ -797,10 +818,6 @@ export interface Connection {
    */
   s3StagingDir?: string;
   /**
-   * Service Type
-   */
-  serviceType?: AthenaType;
-  /**
    * Athena workgroup.
    */
   workgroup?: string;
@@ -812,6 +829,9 @@ export interface Connection {
    * Clickhouse SQL connection duration
    */
   duration?: number;
+  /**
+   * Generated Token to connect to Databricks
+   */
   token?: string;
   /**
    * pySpark App Name
@@ -903,6 +923,10 @@ export interface Connection {
    */
   proxies?: { [key: string]: any };
   /**
+   * Sample Data File Path
+   */
+  sampleDataFolder?: string;
+  /**
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
   bootstrapServers?: string;
@@ -910,17 +934,22 @@ export interface Connection {
    * Confluent Kafka Schema Registry URL.
    */
   schemaRegistryURL?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
   /**
-   * HTTP path of databricks cluster
+   * Enable Encyption for the Amundsen Neo4j Connection.
    */
-  http_path?: string;
+  encrypted?: boolean;
+  /**
+   * Maximum connection lifetime for the Amundsen Neo4j Connection.
+   */
+  maxConnectionLifeTime?: number;
+  /**
+   * Model Class for the Amundsen Neo4j Connection.
+   */
+  modelClass?: string;
+  /**
+   * Enable SSL validation for the Amundsen Neo4j Connection.
+   */
+  validateSSL?: boolean;
 }
 
 /**
@@ -952,15 +981,6 @@ export enum Scheme {
 /**
  * Service Type
  *
- * Service type.
- */
-export enum AthenaType {
-  Athena = 'Athena',
-}
-
-/**
- * Service Type
- *
  * Looker service type
  *
  * Metabase service type
@@ -978,11 +998,15 @@ export enum AthenaType {
  * Kafka service type
  *
  * Pulsar service type
+ *
+ * Amundsen service type
  */
-export enum Type {
+export enum AmundsenType {
+  Amundsen = 'Amundsen',
+  Athena = 'Athena',
   AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
+  Clickhouse = 'Clickhouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
   DeltaLake = 'DeltaLake',
@@ -994,8 +1018,8 @@ export enum Type {
   Looker = 'Looker',
   MariaDB = 'MariaDB',
   Metabase = 'Metabase',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
+  Mssql = 'Mssql',
+  Mysql = 'Mysql',
   Oracle = 'Oracle',
   Postgres = 'Postgres',
   PowerBI = 'PowerBI',
@@ -1005,6 +1029,7 @@ export enum Type {
   Redshift = 'Redshift',
   SQLite = 'SQLite',
   Salesforce = 'Salesforce',
+  SampleData = 'SampleData',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Superset = 'Superset',

@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
@@ -76,6 +78,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
@@ -85,6 +89,8 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
@@ -149,6 +155,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
+  }
+
+  public void setupDatabaseSchemas(TestInfo test) throws IOException {
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
+    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+
+    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
+
+    COLUMNS =
+        Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
   }
 
   @Test
@@ -1542,12 +1566,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "all");
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "all");
+
     table = getEntity(table.getId(), queryParams, "location", ADMIN_AUTH_HEADERS);
     assertNotNull(table.getLocation(), "The location is missing");
     assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
@@ -1589,14 +1610,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains("owner")) {
+    if (fields.contains(FIELD_OWNER)) {
       assertNotNull(table.getOwner());
     } else {
       assertNull(table.getOwner());
     }
     if (fields.contains("columns")) {
       assertNotNull(table.getColumns());
-      if (fields.contains("tags")) {
+      if (fields.contains(FIELD_TAGS)) {
         table.getColumns().forEach(column -> assertNotNull(column.getTags()));
       } else {
         table.getColumns().forEach(column -> assertNull(column.getTags()));
@@ -1609,7 +1630,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getTableConstraints());
     }
-    if (fields.contains("tags")) {
+    if (fields.contains(FIELD_TAGS)) {
       assertNotNull(table.getTags());
     } else {
       assertNull(table.getTags());
@@ -2073,7 +2094,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
-    } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS) && !fieldName.endsWith("description")) {
       @SuppressWarnings("unchecked")
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

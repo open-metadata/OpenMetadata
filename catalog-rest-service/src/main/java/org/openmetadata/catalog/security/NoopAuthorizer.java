@@ -21,12 +21,10 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.RoleRepository;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -34,18 +32,8 @@ import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
-  private UserRepository userRepository;
-
   @Override
   public void init(AuthorizerConfiguration config, Jdbi jdbi) {
-    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
-    this.userRepository = new UserRepository(collectionDAO);
-    // TODO: fixme
-    // RoleRepository and TeamRepository needs to be instantiated for Entity.DAO_MAP to populated.
-    // As we create default admin/bots we need to have RoleRepository and TeamRepository available in DAO_MAP.
-    // This needs to be handled better in future releases.
-    RoleRepository roleRepository = new RoleRepository(collectionDAO);
-    TeamRepository teamRepository = new TeamRepository(collectionDAO);
     addAnonymousUser();
   }
 
@@ -84,7 +72,7 @@ public class NoopAuthorizer implements Authorizer {
   private void addAnonymousUser() {
     String username = "anonymous";
     try {
-      userRepository.getByName(null, username, Fields.EMPTY_FIELDS);
+      Entity.getEntityRepository(Entity.USER).getByName(null, username, Fields.EMPTY_FIELDS);
     } catch (EntityNotFoundException ex) {
       User user =
           new User()
@@ -101,6 +89,7 @@ public class NoopAuthorizer implements Authorizer {
 
   private void addOrUpdateUser(User user) {
     try {
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (IOException exception) {

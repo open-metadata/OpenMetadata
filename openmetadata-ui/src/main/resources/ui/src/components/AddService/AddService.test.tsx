@@ -38,10 +38,19 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
+jest.mock('../ServiceConfig/ConnectionConfigForm', () => () => (
+  <>ConnectionConfigForm</>
+));
+
 describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(
-      <AddService serviceCategory={ServiceCategory.DASHBOARD_SERVICES} />
+      <AddService
+        newServiceData={undefined}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        onAddIngestionSave={jest.fn()}
+        onAddServiceSave={jest.fn()}
+      />
     );
 
     const pageLayout = await findByTestId(container, 'PageLayout');

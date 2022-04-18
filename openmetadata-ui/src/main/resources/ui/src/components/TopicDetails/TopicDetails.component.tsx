@@ -433,8 +433,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={topicDetails.id}
+                  entityName={topicDetails.name}
+                  entityType={EntityType.TOPIC}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />

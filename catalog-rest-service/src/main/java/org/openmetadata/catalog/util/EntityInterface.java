@@ -30,6 +30,10 @@ public abstract class EntityInterface<T> {
     this.entityType = entityType;
   }
 
+  public final String getEntityType() {
+    return entityType;
+  }
+
   public abstract UUID getId();
 
   public abstract String getDescription();

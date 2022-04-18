@@ -26,8 +26,8 @@ from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTes
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableProfile
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
@@ -72,7 +72,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def __init__(
         self,
         config: ProfilerProcessorConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
         session: Session,
     ):
         super().__init__()
@@ -92,7 +92,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def create(
         cls,
         config_dict: dict,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
         **kwargs,
     ):
         """

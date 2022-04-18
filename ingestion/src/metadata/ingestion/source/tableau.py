@@ -33,12 +33,10 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -48,7 +46,6 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
 
@@ -70,24 +67,22 @@ class TableauSource(Source[Entity]):
     """
 
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
     status: SourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
         self.connection_config = self.config.serviceConnection.__root__.config
         self.client = self.tableau_client()
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Tableau.name,
-            config=self.config.serviceConnection.__root__.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
         self.status = SourceStatus()
         self.metadata_client = OpenMetadata(self.metadata_config)
@@ -135,7 +130,7 @@ class TableauSource(Source[Entity]):
         return conn
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TableauConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, TableauConnection):

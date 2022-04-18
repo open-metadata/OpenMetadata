@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   MessagingConnection,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
+import kafkaConnection from '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json';
 
 export const getBrokers = (config: MessagingConnection['config']) => {
   let retVal: string | undefined;
@@ -26,4 +28,14 @@ export const getBrokers = (config: MessagingConnection['config']) => {
   }
 
   return !isUndefined(retVal) ? retVal : '--';
+};
+
+export const getMessagingConfig = (config: MessagingConnection['config']) => {
+  let schema = {};
+  const uiSchema = { ...COMMON_UI_SCHEMA };
+  if (config?.type === MessagingServiceType.Kafka) {
+    schema = kafkaConnection;
+  }
+
+  return cloneDeep({ schema, uiSchema });
 };

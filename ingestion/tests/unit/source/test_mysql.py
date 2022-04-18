@@ -35,39 +35,43 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 CONFIG = """
 {
-  "source": {
-    "type": "mysql",
-    "serviceName": "local_mysql",
-    "serviceConnection": {
-      "config": {
-        "type": "MySQL",
-        "username": "openmetadata_user",
-        "password": "openmetadata_password",
-        "hostPort": "localhost:3306",
-        "database": "openmetadata_db"
-      }
+    "source": {
+        "type": "mysql",
+        "serviceName": "local_mysql",
+        "serviceConnection": {
+            "config": {
+                "type": "Mysql",
+                "username": "openmetadata_user",
+                "password": "openmetadata_password",
+                "hostPort": "localhost:3306",
+                "database": "openmetadata_db"
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "enableDataProfiler": false,
+                "schemaFilterPattern": {
+                    "excludes": [
+                        "system.*",
+                        "information_schema.*",
+                        "INFORMATION_SCHEMA.*"
+                    ]
+                }
+            }
+        }
     },
-      "sourceConfig": {
+    "sink": {
+        "type": "file",
         "config": {
-        "enableDataProfiler": false,
-        "schemaFilterPattern":{
-          "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
+            "filename": "/var/tmp/datasets.json"
         }
-        }
-      }
     },
-  "sink": {
-    "type": "file",
-    "config": {
-        "filename": "/var/tmp/datasets.json"
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth"
+        }
     }
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
 }
 """
 
@@ -278,14 +282,13 @@ class MySqlIngestionTest(TestCase):
 
         execute_workflow()
 
-    def test_file_sink(self):
         config = json.loads(CONFIG)
         file_data = open(config["sink"]["config"]["filename"])
         data = json.load(file_data)
         for i in data:
             table = i.get("table")
-            omdtable_obj: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
-            table_obj: Table = Table.parse_obj(table)
+            _: OMetaDatabaseAndTable = OMetaDatabaseAndTable.parse_obj(i)
+            _: Table = Table.parse_obj(table)
 
             assert table.get("description") == GET_TABLE_DESCRIPTIONS.get("text")
 
@@ -293,7 +296,7 @@ class MySqlIngestionTest(TestCase):
                 assert table.get("name") in MOCK_GET_TABLE_NAMES
 
             for column in table.get("columns"):
-                column_obj: Column = Column.parse_obj(column)
+                _: Column = Column.parse_obj(column)
                 if column in MOCK_UNIQUE_CONSTRAINTS[0].get("column_names"):
                     assert Column.constraint.UNIQUE == column.get("constraint")
                 if column in MOCK_PK_CONSTRAINT.get("constrained_columns"):
