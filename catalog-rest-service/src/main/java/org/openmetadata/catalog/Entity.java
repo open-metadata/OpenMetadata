@@ -58,6 +58,10 @@ public final class Entity {
   // Common field names
   public static final String FIELD_OWNER = "owner";
   public static final String FIELD_DESCRIPTION = "description";
+  public static final String FIELD_SERVICE = "service";
+  public static final String FIELD_FOLLOWERS = "followers";
+  public static final String FIELD_TAGS = "tags";
+  public static final String FIELD_DELETED = "deleted";
 
   //
   // Services

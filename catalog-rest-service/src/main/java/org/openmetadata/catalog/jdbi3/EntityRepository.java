@@ -13,8 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DELETED;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.getEntityFields;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
@@ -140,9 +143,9 @@ public abstract class EntityRepository<T> {
     this.putFields = getFields(putFields);
     this.entityType = entityType;
 
-    this.supportsTags = allowedFields.contains("tags");
-    this.supportsOwner = allowedFields.contains("owner");
-    this.supportsFollower = allowedFields.contains("followers");
+    this.supportsTags = allowedFields.contains(FIELD_TAGS);
+    this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     Entity.registerEntity(entityClass, entityType, dao, this);
   }
 
@@ -445,7 +448,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("followers").withNewValue(List.of(Entity.getEntityReference(user))));
+        .add(new FieldChange().withName(FIELD_FOLLOWERS).withNewValue(List.of(Entity.getEntityReference(user))));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -535,7 +538,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName("followers").withOldValue(List.of(Entity.getEntityReference(user))));
+        .add(new FieldChange().withName(FIELD_FOLLOWERS).withOldValue(List.of(Entity.getEntityReference(user))));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -914,7 +917,7 @@ public abstract class EntityRepository<T> {
         updateDescription();
         updateDisplayName();
         updateOwner();
-        updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
+        updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         entitySpecificUpdate();
       }
 
@@ -942,16 +945,16 @@ public abstract class EntityRepository<T> {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
         if (updated.isDeleted() != original.isDeleted() && Boolean.TRUE.equals(updated.isDeleted())) {
-          throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, "deleted"));
+          throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
         if (Boolean.TRUE.equals(original.isDeleted())) {
           updated.setDeleted(false);
-          recordChange("deleted", true, false);
+          recordChange(FIELD_DELETED, true, false);
           entityRestored = true;
         }
       } else {
-        recordChange("deleted", original.isDeleted(), updated.isDeleted());
+        recordChange(FIELD_DELETED, original.isDeleted(), updated.isDeleted());
       }
     }
 
