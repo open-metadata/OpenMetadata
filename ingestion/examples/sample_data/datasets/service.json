@@ -10,7 +10,6 @@
       "privateKey": "privateKey",
       "clientEmail": "clientEmail",
       "clientId": "clientId",
-      "hostPort": "localhost:1234",
       "projectID": "project_id"
     }
   },
