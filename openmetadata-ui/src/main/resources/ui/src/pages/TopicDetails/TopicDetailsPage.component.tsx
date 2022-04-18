@@ -51,6 +51,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
@@ -219,13 +220,14 @@ const TopicDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TOPIC,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
