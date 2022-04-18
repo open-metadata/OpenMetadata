@@ -216,6 +216,8 @@ class OMetaLineageMixin(Generic[T]):
 
         try:
             result = LineageRunner(query)
+            if not result.target_tables:
+                return False
             for intermediate_table in result.intermediate_tables:
                 for source_table in result.source_tables:
                     self._create_lineage_by_table_name(
@@ -231,5 +233,6 @@ class OMetaLineageMixin(Generic[T]):
                         self._create_lineage_by_table_name(
                             source_table, target_table, service_name, database
                         )
+            return True
         except Exception as err:
             logger.error(str(err))

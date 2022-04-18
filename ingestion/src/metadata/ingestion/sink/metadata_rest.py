@@ -14,6 +14,7 @@ import traceback
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
+from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -226,11 +227,22 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if db_schema_and_table.table.viewDefinition is not None:
-                self.metadata.ingest_lineage_by_query(
+                lineage_status = self.metadata.ingest_lineage_by_query(
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
                     database=db_schema_and_table.database.name.__root__,
                 )
+                if not lineage_status:
+                    parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
+                    to_table_name = db_schema_and_table.table.name.__root__
+                    for from_table_name in parser.tables:
+
+                        self.metadata._create_lineage_by_table_name(
+                            f"{db_schema.name.__root__}.{from_table_name}",
+                            f"{db_schema.name.__root__}.{to_table_name}",
+                            db.service.name,
+                            db_schema_and_table.database.name.__root__,
+                        )
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
