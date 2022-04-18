@@ -10,6 +10,9 @@ from importlib_metadata import SelectableGroups
 from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -20,7 +23,10 @@ from metadata.generated.schema.entity.services.connections.metadata.atlasConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -101,9 +107,9 @@ class AtlasSource(Source):
 
     def prepare(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            self.service = self.metadata.get_service_or_create(
-                entity=DatabaseService,
-                config=self.config,
+            self.service = self.get_database_service_or_create(
+                self.config.serviceName,
+                self.service_connection.serviceType,
             )
             self.tables[key] = self.atlas_client.list_entities(entityType=key)
         for key in self.service_connection.entityTypes.get("Topic", []):
@@ -241,10 +247,16 @@ class AtlasSource(Source):
         lineage_relations = lineage_response["relations"]
         tbl_entity = self.atlas_client.get_entity(lineage_response["baseEntityGuid"])
         for key in tbl_entity["referredEntities"].keys():
+            if not tbl_entity["entities"][0]["relationshipAttributes"].get(
+                self.service_connection.entityTypes["Table"][name]["db"]
+            ):
+                continue
             db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
                 self.service_connection.entityTypes["Table"][name]["db"]
             ]
-            db = self.get_database_entity(db_entity["displayText"])
+            db = self._get_database(db_entity["displayText"])
+            if not tbl_entity["referredEntities"].get(key):
+                continue
             table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
                 "table"
             ]["displayText"]
@@ -298,6 +310,25 @@ class AtlasSource(Source):
             if not pipeline:
                 return
             return EntityReference(id=pipeline.id.__root__, type="pipeline")
+
+    def get_database_service_or_create(
+        self, service_name: str, service_type: str
+    ) -> DatabaseService:
+        metadata = OpenMetadata(self.metadata_config)
+        service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+        if service is not None:
+            return service
+        else:
+            service = {
+                "name": service_name,
+                "description": "",
+                "serviceType": DatabaseServiceType.BigQuery.value,
+                "connection": {"config": {}},
+            }
+            created_service = metadata.create_or_update(
+                CreateDatabaseServiceRequest(**service)
+            )
+            return created_service
 
     def test_connection(self) -> None:
         pass
