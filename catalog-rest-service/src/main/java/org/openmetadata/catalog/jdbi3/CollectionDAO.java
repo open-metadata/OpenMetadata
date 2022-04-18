@@ -1500,7 +1500,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
       return listBefore(
-          getTableName(), getNameColumn(), filter.getCondition(), team, limit, before, Relationship.HAS.ordinal());
+          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
@@ -1535,8 +1535,8 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE te.name = :team "
-            + "AND <cond> "
+            + " <cond> "
+            + "AND te.name = :team "
             + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "

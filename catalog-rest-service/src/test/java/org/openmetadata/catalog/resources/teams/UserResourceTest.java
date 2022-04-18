@@ -23,6 +23,8 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
@@ -404,6 +406,68 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertTrue(users.getData().stream().anyMatch(isUser0));
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
+  }
+
+  @Test
+  void get_listUsersWithTeamsPagination(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    List<UUID> team = of(team1.getId());
+
+    // create 15 users and add them to team1
+    for (int i = 0; i < 15; i++) {
+      CreateUser create = createRequest(test, i).withTeams(team);
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("team", team1.getName());
+
+    ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // First page must contain "after" and should not have "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    User user1 = users.getData().get(0);
+
+    String after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Second page must contain both "after" and "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user2 = users.getData().get(0);
+
+    after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Third page must contain only "before" since it is the last page
+    assertNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user3 = users.getData().get(0);
+    assertNotEquals(user2, user3);
+
+    // Now fetch previous pages using before pointer
+    String before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Second page must contain both "after" and "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    assertEquals(user2, users.getData().get(0));
+
+    before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // First page must contain only "after"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    assertEquals(user1, users.getData().get(0));
   }
 
   @Test
