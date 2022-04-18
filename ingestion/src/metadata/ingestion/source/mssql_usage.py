@@ -43,7 +43,7 @@ class MssqlUsageSource(Source[TableQuery]):
         self.analysis_date = start
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.report = SQLSourceStatus()
-        self.engine_connecter = get_engine(self.config.serviceConnection)
+        self.engine = get_engine(self.config.serviceConnection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
@@ -61,7 +61,7 @@ class MssqlUsageSource(Source[TableQuery]):
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
 
-        rows = self.engine_connecter.execute(self.sql_stmt)
+        rows = self.engine.execute(self.sql_stmt)
         for row in rows:
             yield row
 

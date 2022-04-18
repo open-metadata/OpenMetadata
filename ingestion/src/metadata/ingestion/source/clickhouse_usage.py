@@ -46,7 +46,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
             start_time=start, end_time=end
         )
         self.report = SQLSourceStatus()
-        self.engine_connecter = get_engine(self.config.serviceConnection)
+        self.engine = get_engine(self.config.serviceConnection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
@@ -64,7 +64,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
 
-        rows = self.engine_connecter.execute(self.sql_stmt)
+        rows = self.engine.execute(self.sql_stmt)
         for row in rows:
             yield row
 
