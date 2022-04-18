@@ -153,7 +153,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
-    // bootstrap.addBundle(new CatalogJdbiExceptionsBundle());
     super.initialize(bootstrap);
   }
 
@@ -180,7 +179,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException, IOException {
+          InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {

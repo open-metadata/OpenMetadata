@@ -40,6 +40,7 @@ import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
@@ -55,32 +56,30 @@ public class ChangeEventHandler implements EventHandler {
     String method = requestContext.getMethod();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
-      if (changeEvent != null) {
-        LOG.info(
-            "Recording change event {}:{}:{}:{}",
-            changeEvent.getTimestamp(),
-            changeEvent.getEntityId(),
-            changeEvent.getEventType(),
-            changeEvent.getEntityType());
-        EventPubSub.publish(changeEvent);
-        if (changeEvent.getEntity() != null) {
-          Object entity = changeEvent.getEntity();
-          changeEvent = copyChangeEvent(changeEvent);
-          changeEvent.setEntity(JsonUtils.pojoToJson(entity));
-        }
-        dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      if (changeEvent == null) {
+        return null;
+      }
+      LOG.info(
+          "Recording change event {}:{}:{}:{}",
+          changeEvent.getTimestamp(),
+          changeEvent.getEntityId(),
+          changeEvent.getEventType(),
+          changeEvent.getEntityType());
+      EventPubSub.publish(changeEvent);
+      if (changeEvent.getEntity() != null) {
+        Object entity = changeEvent.getEntity();
+        changeEvent = copyChangeEvent(changeEvent);
+        changeEvent.setEntity(JsonUtils.pojoToJson(entity));
+      }
+      dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
-        // Add a new thread to the entity for every change event
-        // for the event to appear in activity feeds
-        if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
-          List<Thread> threads = getThreads(responseContext);
-          if (threads != null) {
-            for (var thread : threads) {
-              // Don't create a thread if there is no message
-              if (!thread.getMessage().isEmpty()) {
-                feedDao.create(thread);
-              }
-            }
+      // Add a new thread to the entity for every change event
+      // for the event to appear in activity feeds
+      if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
+        for (var thread : CommonUtil.listOrEmpty(getThreads(responseContext))) {
+          // Don't create a thread if there is no message
+          if (!thread.getMessage().isEmpty()) {
+            feedDao.create(thread);
           }
         }
       }

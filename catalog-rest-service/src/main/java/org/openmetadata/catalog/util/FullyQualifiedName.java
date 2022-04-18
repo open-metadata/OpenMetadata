@@ -21,6 +21,10 @@ public class FullyQualifiedName {
   // Quoted name of format "sss" or sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
+  private FullyQualifiedName() {
+    /* Utility class with private constructor */
+  }
+
   /** Add to an existing valid FQN the given string */
   public static String add(String fqn, String part) {
     return fqn + Entity.SEPARATOR + quoteName(part);
