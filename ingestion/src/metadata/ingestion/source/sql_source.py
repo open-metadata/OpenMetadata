@@ -62,7 +62,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiles.default import DefaultProfiler
+from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -121,8 +121,8 @@ def get_dbt_local(config) -> Optional[Tuple[str, str]]:
                 dbt_manifest = manifest.read()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.print_exc())
-        logger.debug(f"Error fetching dbt files {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Error fetching dbt files from local {repr(exc)}")
     return None
 
 
@@ -134,8 +134,8 @@ def get_dbt_http(config) -> Optional[Tuple[str, str]]:
         dbt_manifest = manifest_file.read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.print_exc())
-        logger.debug(f"Error fetching dbt files {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Error fetching dbt files from http {repr(exc)}")
     return None
 
 
@@ -173,8 +173,8 @@ def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
         else:
             return None
     except Exception as exc:
-        logger.debug(traceback.print_exc())
-        logger.debug(f"Error fetching dbt files {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Error fetching dbt files from gcs {repr(exc)}")
     return None
 
 
@@ -192,8 +192,8 @@ def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
                     dbt_catalog = bucket_object.get()["Body"].read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.print_exc())
-        logger.debug(f"Error fetching dbt files {repr(exc)}")
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Error fetching dbt files from s3 {repr(exc)}")
     return None
 
 
@@ -202,14 +202,15 @@ def get_dbt_details(config) -> Optional[Tuple[str, str]]:
         if config.dbtProvider:
             if config.dbtProvider.value == "s3":
                 return get_dbt_s3(config)
-            elif "gcs" in config.dbtProvider.value:
+            if "gcs" in config.dbtProvider.value:
                 return get_dbt_gcs(config)
-            elif config.dbtProvider.value == "http":
+            if config.dbtProvider.value == "http":
                 return get_dbt_http(config)
-            elif config.dbtProvider.value == "local":
+            if config.dbtProvider.value == "local":
                 return get_dbt_local(config)
+            raise Exception("Invalid DBT provider")
     except Exception as exc:
-        logger.debug(traceback.print_exc())
+        logger.debug(traceback.format_exc())
         logger.debug(f"Error fetching dbt files {repr(exc)}")
     return None
 

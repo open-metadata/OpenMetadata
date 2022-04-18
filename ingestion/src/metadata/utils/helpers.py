@@ -224,6 +224,10 @@ def create_credential_temp_file(credentials: dict) -> str:
 
 
 def store_gcs_credentials(options) -> bool:
+    """
+    Method to store GCS credentials from the config file or from a file whose path is provided
+    into the environment variable as required by GCS
+    """
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         if options.get("credentials_path"):
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options["credentials_path"]
