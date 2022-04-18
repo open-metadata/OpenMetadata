@@ -24,7 +24,7 @@ on:
       - "openmetadata-ui/**"
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: maven-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
   test:
