@@ -546,7 +546,7 @@ def test_powerbi():
                 "clientId": "client_id",
                 "clientSecret": "client_secret",
                 "redirectURI": "http://localhost:8585/callback",
-                "dashboardURL": "https://analysis.windows.net/powerbi",
+                "hostPort": "https://analysis.windows.net/powerbi",
                 "scope": [
                     "scope",
                     "https://analysis.windows.net/powerbi/api/App.Read.All",
@@ -590,7 +590,8 @@ def test_redash():
         "serviceConnection": {
             "config": {
                 "type": "Redash",
-                "redashURL": "http://localhost:5000",
+                "hostPort": "http://localhost:5000",
+                "username": "random",
                 "apiKey": "api_key",
             }
         },
