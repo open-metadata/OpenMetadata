@@ -378,6 +378,34 @@
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
+  .rjsf .btn {
+    @apply tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer tw-leading-5 
+    tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none tw-rounded-lg 
+    tw-text-sm tw-text-white tw-border tw-border-transparent;
+  }
+
+  .rjsf .btn.btn-block {
+    @apply tw-w-full;
+  }
+
+  .rjsf .btn.array-item-remove {
+    @apply tw-mt-4 tw-p-4;
+    background: url(../assets/svg/ic-delete.svg) center center no-repeat;
+    background-size: 35%;
+  }
+
+  .rjsf .row {
+    @apply tw-flex tw-items-center tw-w-full tw--m-1;
+  }
+
+  .rjsf .col-xs-5 {
+    @apply tw-flex-1 tw-p-1;
+  }
+
+  .rjsf .col-xs-2 {
+    @apply tw-w-1/12 tw-p-1;
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;
