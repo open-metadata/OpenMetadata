@@ -84,6 +84,7 @@ import { DataObj, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityMissingError,
+  getEntityName,
   hasEditAccess,
   isEven,
 } from '../../utils/CommonUtils';
@@ -724,7 +725,7 @@ const ServicePage: FunctionComponent = () => {
           setDescription(description);
           setSlashedTableName([
             {
-              name: serviceFQN,
+              name: getEntityName(resService.data),
               url: '',
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               activeTitle: true,

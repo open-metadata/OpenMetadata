@@ -67,6 +67,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -333,14 +334,14 @@ const DashboardDetailsPage = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: displayName,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName,
+            displayName: getEntityName(res.data),
             entityType: EntityType.DASHBOARD,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
