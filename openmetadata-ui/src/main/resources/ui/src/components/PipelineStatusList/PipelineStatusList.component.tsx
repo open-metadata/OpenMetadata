@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isNil, uniqueId } from 'lodash';
 import moment from 'moment';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
-import Select, { components, OptionProps, SingleValue } from 'react-select';
+import Select, { SingleValue } from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 import {
@@ -25,6 +25,7 @@ import {
 } from '../../utils/PipelineDetailsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import CustomOption from './CustomOption';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
   pipelineStatus: Pipeline['pipelineStatus'];
@@ -33,21 +34,6 @@ interface Option {
   value: string;
   label: string;
 }
-
-const CustomOption = (props: OptionProps) => {
-  return (
-    <components.Option {...props}>
-      <div className="tw-flex tw-items-center">
-        <SVGIcons
-          alt={props.label}
-          icon={getStatusBadgeIcon(props.label as StatusType)}
-          width="16px"
-        />
-        <span className="tw-ml-2">{props.label}</span>
-      </div>
-    </components.Option>
-  );
-};
 
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
@@ -66,7 +52,9 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
 
   if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
     return (
-      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+      <div
+        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        data-testid="no-data">
         <span>No Execution data available.</span>
       </div>
     );
@@ -76,16 +64,18 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
         <div className={className} data-testid="pipeline-status-list">
           <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
             <div />
-            <Select
-              isClearable
-              aria-label="Filter by Status"
-              components={{ Option: CustomOption }}
-              isSearchable={false}
-              options={STATUS_OPTIONS}
-              placeholder="Status..."
-              styles={reactSingleSelectCustomStyle}
-              onChange={handleOnChange}
-            />
+            <div data-testid="filter-dropdown">
+              <Select
+                isClearable
+                aria-label="Filter by Status"
+                components={{ Option: CustomOption }}
+                isSearchable={false}
+                options={STATUS_OPTIONS}
+                placeholder="Status..."
+                styles={reactSingleSelectCustomStyle}
+                onChange={handleOnChange}
+              />
+            </div>
           </div>
           <table
             className="tw-w-full"
