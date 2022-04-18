@@ -20,9 +20,10 @@ import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 import {
   getModifiedPipelineStatus,
-  getStatusBadgeClass,
+  getStatusBadgeIcon,
   STATUS_OPTIONS,
 } from '../../utils/PipelineDetailsUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
@@ -37,12 +38,11 @@ const CustomOption = (props: OptionProps) => {
   return (
     <components.Option {...props}>
       <div className="tw-flex tw-items-center">
-        <div
-          className={classNames(
-            getStatusBadgeClass(props.label as StatusType),
-            'tw-w-4 tw-h-4 tw-rounded-sm'
-          )}
-        />{' '}
+        <SVGIcons
+          alt={props.label}
+          icon={getStatusBadgeIcon(props.label as StatusType)}
+          width="16px"
+        />
         <span className="tw-ml-2">{props.label}</span>
       </div>
     </components.Option>
@@ -112,14 +112,13 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
                   </td>
                   <td className="tableBody-cell" data-testid="tableBody-cell">
                     <div className="tw-flex tw-items-center">
-                      <div
-                        className={classNames(
-                          getStatusBadgeClass(
-                            status?.executionStatus as StatusType
-                          ),
-                          'tw-w-4 tw-h-4 tw-rounded-sm'
+                      <SVGIcons
+                        alt={status?.executionStatus ?? ''}
+                        icon={getStatusBadgeIcon(
+                          status?.executionStatus as StatusType
                         )}
-                      />{' '}
+                        width="16px"
+                      />
                       <span className="tw-ml-2">{status?.executionStatus}</span>
                     </div>
                   </td>

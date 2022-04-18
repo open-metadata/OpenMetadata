@@ -13,6 +13,7 @@
 
 import { TabSpecificField } from '../enums/entity.enum';
 import { Pipeline, StatusType } from '../generated/entity/data/pipeline';
+import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
 ${TabSpecificField.TASKS}`;
@@ -103,16 +104,16 @@ export const STATUS_OPTIONS = [
   { value: StatusType.Pending, label: StatusType.Pending },
 ];
 
-export const getStatusBadgeClass = (status: StatusType) => {
+export const getStatusBadgeIcon = (status: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return 'tw-bg-status-success';
+      return Icons.SUCCESS_BADGE;
 
     case StatusType.Failed:
-      return 'tw-bg-status-failed';
+      return Icons.FAIL_BADGE;
 
     case StatusType.Pending:
-      return 'tw-bg-status-queued';
+      return Icons.PENDING_BADGE;
 
     default:
       return '';
