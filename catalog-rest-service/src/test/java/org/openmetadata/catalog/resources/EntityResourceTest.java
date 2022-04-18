@@ -25,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_DELETED;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
@@ -220,9 +224,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.allFields = fields;
 
     List<String> allowedFields = Entity.getEntityFields(entityClass);
-    this.supportsFollowers = allowedFields.contains("followers");
-    this.supportsOwner = allowedFields.contains("owner");
-    this.supportsTags = allowedFields.contains("tags");
+    this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
+    this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    this.supportsTags = allowedFields.contains(FIELD_TAGS);
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
   }
 
@@ -682,7 +686,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Delete team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entityInterface.getId(), "owner", ADMIN_AUTH_HEADERS);
+    entity = getEntity(entityInterface.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
     assertTrue(entityInterface.getOwner().getDeleted());
   }
@@ -775,7 +779,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    FieldChange fieldChange = new FieldChange().withName("owner").withNewValue(TEAM_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
     request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
     ChangeDescription change =
         getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
@@ -785,7 +789,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    fieldChange = new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
     change =
         getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -930,7 +934,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "deleted");
     EntityInterface<T> entityInterface =
-        getEntityInterface(getEntity(entityId, queryParams, "followers", ADMIN_AUTH_HEADERS));
+        getEntityInterface(getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS));
     TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
   }
 
@@ -983,7 +987,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Set the owner for the table.
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
     entityInterface.setOwner(USER_OWNER1);
     entity =
         patchEntityAndCheck(
@@ -1028,7 +1032,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
     if (supportsOwner) {
       entityInterface.setOwner(TEAM_OWNER1);
-      change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(TEAM_OWNER1));
+      change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1));
     }
     if (supportsTags) {
       entityInterface.setTags(new ArrayList<>());
@@ -1038,7 +1042,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       change
           .getFieldsAdded()
-          .add(new FieldChange().withName("tags").withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
+          .add(
+              new FieldChange()
+                  .withName(FIELD_TAGS)
+                  .withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
     }
     change
         .getFieldsAdded()
@@ -1068,12 +1075,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.setOwner(USER_OWNER1);
       change
           .getFieldsUpdated()
-          .add(new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
+          .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
     }
 
     if (supportsTags) {
       entityInterface.getTags().add(TIER1_TAG_LABEL);
-      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(TIER1_TAG_LABEL)));
+      change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(TIER1_TAG_LABEL)));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1093,10 +1100,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     change = getChangeDescription(entityInterface.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
     if (supportsOwner) {
-      change.getFieldsDeleted().add(new FieldChange().withName("owner").withOldValue(USER_OWNER1));
+      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1));
     }
     if (supportsTags) {
-      change.getFieldsDeleted().add(new FieldChange().withName("tags").withOldValue(removedTags));
+      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_TAGS).withOldValue(removedTags));
     }
 
     patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1115,7 +1122,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertResponse(
         () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        readOnlyAttribute(entityType, "deleted"));
+        readOnlyAttribute(entityType, FIELD_DELETED));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1158,7 +1165,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
-      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withNewValue(false).withOldValue(true));
       updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     } else {
       assertEntityDeleted(entityInterface, true);
@@ -1292,7 +1299,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       EntityInterface<T> getEntityInterface = getEntityInterface(getEntity);
       assertEquals(expectedVersion, getEntityInterface.getVersion());
       ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withOldValue(false).withNewValue(true));
+      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withOldValue(false).withNewValue(true));
       assertEquals(change, getEntityInterface.getChangeDescription());
     } else { // Hard delete
       validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entityInterface.getVersion(), authHeaders);
@@ -1689,11 +1696,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (expected == actual) {
       return;
     }
-    if (fieldName.endsWith("owner")) {
+    if (fieldName.endsWith(FIELD_OWNER)) {
       EntityReference expectedRef = (EntityReference) expected;
       EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedRef.getId(), actualRef.getId());
-    } else if (fieldName.endsWith("tags")) {
+    } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);

@@ -15,6 +15,8 @@
 
 package org.openmetadata.catalog.elasticsearch;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -162,7 +164,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     fieldAddParams.put("last_updated_timestamp", event.getTimestamp());
     scriptTxt.append("ctx._source.last_updated_timestamp=params.last_updated_timestamp;");
     for (FieldChange fieldChange : fieldsAdded) {
-      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
@@ -175,7 +177,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
-      if (fieldChange.getName().equalsIgnoreCase("followers")) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
         List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
         for (EntityReference follower : entityReferences) {
@@ -451,7 +453,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       DatabaseService databaseService = (DatabaseService) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("service", databaseService.getName()));
+      request.setQuery(new TermQueryBuilder(Entity.FIELD_SERVICE, databaseService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
@@ -460,7 +462,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       PipelineService pipelineService = (PipelineService) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.PIPELINE_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("service", pipelineService.getName()));
+      request.setQuery(new TermQueryBuilder(Entity.FIELD_SERVICE, pipelineService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
@@ -469,7 +471,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       MessagingService messagingService = (MessagingService) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("service", messagingService.getName()));
+      request.setQuery(new TermQueryBuilder(Entity.FIELD_SERVICE, messagingService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
@@ -478,7 +480,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       DashboardService dashboardService = (DashboardService) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("service", dashboardService.getName()));
+      request.setQuery(new TermQueryBuilder(Entity.FIELD_SERVICE, dashboardService.getName()));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }

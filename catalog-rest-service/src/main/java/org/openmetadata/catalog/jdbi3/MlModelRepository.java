@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.MLMODEL;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
@@ -66,8 +68,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
-    mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);
+    mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
+    mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
     return mlModel;
