@@ -18,7 +18,7 @@ on:
     branches: [ main ]
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: py-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
   py-checkstyle:
