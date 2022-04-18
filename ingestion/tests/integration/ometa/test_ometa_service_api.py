@@ -74,6 +74,10 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
+        assert (
+            service.connection.config.password.get_secret_value()
+            == "openmetadata_password"
+        )
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -109,6 +113,10 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mssql
+        assert (
+            service.connection.config.password.get_secret_value()
+            == "openmetadata_password"
+        )
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -144,6 +152,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
+        assert service.connection.config.password.get_secret_value() == "looker_pwd"
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -179,6 +188,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Tableau
+        assert service.connection.config.password.get_secret_value() == "tb_pwd"
 
         # Check get
         assert service == self.metadata.get_service_or_create(
