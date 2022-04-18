@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isNil, uniqueId } from 'lodash';
 import moment from 'moment';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
-import Select, { SingleValue } from 'react-select';
+import Select, { components, OptionProps, SingleValue } from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 import {
@@ -32,6 +32,22 @@ interface Option {
   value: string;
   label: string;
 }
+
+const CustomOption = (props: OptionProps) => {
+  return (
+    <components.Option {...props}>
+      <div className="tw-flex tw-items-center">
+        <div
+          className={classNames(
+            getStatusBadgeClass(props.label as StatusType),
+            'tw-w-4 tw-h-4 tw-rounded-sm'
+          )}
+        />{' '}
+        <span className="tw-ml-2">{props.label}</span>
+      </div>
+    </components.Option>
+  );
+};
 
 const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
@@ -63,9 +79,10 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
             <Select
               isClearable
               aria-label="Filter by Status"
+              components={{ Option: CustomOption }}
               isSearchable={false}
               options={STATUS_OPTIONS}
-              placeholder="Status"
+              placeholder="Status..."
               styles={reactSingleSelectCustomStyle}
               onChange={handleOnChange}
             />

@@ -54,10 +54,11 @@ export const reactSingleSelectCustomStyle: StylesConfig = {
     ':focus': {
       border: `1px solid ${primeryColor}`,
     },
+    minWidth: '120px',
   }),
   option: (styles, { isSelected }) => ({
     ...styles,
-    background: isSelected ? `${primeryColor}` : '#ffffff',
-    color: isSelected ? '#ffffff' : `${bodyTextColor}`,
+    background: isSelected ? `#DBD1F9` : '#ffffff',
+    color: `${bodyTextColor}`,
   }),
 };
