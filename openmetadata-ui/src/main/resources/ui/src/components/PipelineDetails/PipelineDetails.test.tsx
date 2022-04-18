@@ -142,6 +142,12 @@ jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
 });
 
+jest.mock('../PipelineStatusList/PipelineStatusList.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="pipeline-status-list">Pipeline Status</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -200,6 +206,21 @@ describe('Test PipelineDetails component', () => {
     const activityFeedList = await findByText(container, /ActivityFeedList/i);
 
     expect(activityFeedList).toBeInTheDocument();
+  });
+
+  it('Check if active tab is executions', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const pipelineStatus = await findByTestId(
+      container,
+      'pipeline-status-list'
+    );
+
+    expect(pipelineStatus).toBeInTheDocument();
   });
 
   it('Check if active tab is lineage', async () => {
