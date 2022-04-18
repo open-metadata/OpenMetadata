@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
@@ -1608,14 +1610,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains("owner")) {
+    if (fields.contains(FIELD_OWNER)) {
       assertNotNull(table.getOwner());
     } else {
       assertNull(table.getOwner());
     }
     if (fields.contains("columns")) {
       assertNotNull(table.getColumns());
-      if (fields.contains("tags")) {
+      if (fields.contains(FIELD_TAGS)) {
         table.getColumns().forEach(column -> assertNotNull(column.getTags()));
       } else {
         table.getColumns().forEach(column -> assertNull(column.getTags()));
@@ -1628,7 +1630,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getTableConstraints());
     }
-    if (fields.contains("tags")) {
+    if (fields.contains(FIELD_TAGS)) {
       assertNotNull(table.getTags());
     } else {
       assertNull(table.getTags());
@@ -2092,7 +2094,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
-    } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS) && !fieldName.endsWith("description")) {
       @SuppressWarnings("unchecked")
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

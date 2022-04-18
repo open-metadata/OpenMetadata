@@ -43,6 +43,9 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   }
 
   public final Fields getFields(String fields) {
+    if (fields != null && fields.equals("*")) {
+      return new Fields(allowedFields, String.join(",", allowedFields));
+    }
     return new Fields(allowedFields, fields);
   }
 
