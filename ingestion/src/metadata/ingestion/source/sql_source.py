@@ -134,7 +134,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             entity=DatabaseService, config=config
         )
 
-        self.engine = get_engine(service_connection=self.config.serviceConnection)
+        self.engine = get_engine(self.config.serviceConnection.__root__.config)
         self.test_connection()
 
         self._session = None  # We will instantiate this just if needed
