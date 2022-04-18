@@ -23,7 +23,7 @@
       "description": "username for the Redash",
       "type": "string"
     },
-    "redashURL": {
+    "hostPort": {
       "description": "URL for the redash instance",
       "type": "string",
       "format": "uri",
@@ -37,5 +37,10 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "apiKey"
+  ]
 }

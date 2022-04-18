@@ -13,6 +13,7 @@
 OpenMetadata Airflow Lineage Backend
 """
 import logging
+import traceback
 from typing import TYPE_CHECKING, Dict
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
@@ -61,6 +62,7 @@ def failure_callback(context: Dict[str, str]) -> None:
         )
 
     except Exception as exc:  # pylint: disable=broad-except
+        logging.error(traceback.format_exc())
         logging.error("Lineage Callback exception %s", exc)
 
 
@@ -82,12 +84,12 @@ def success_callback(context: Dict[str, str]) -> None:
 
         operator.log.info("Updating pipeline status on success...")
 
-        airflow_service_entity = metadata.get_by_name(
+        airflow_service_entity: PipelineService = metadata.get_by_name(
             entity=PipelineService, fqdn=config.airflow_service_name
         )
         pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqdn=f"{airflow_service_entity.name}.{dag.dag_id}",
+            fqdn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         )
 
         add_status(
@@ -98,4 +100,5 @@ def success_callback(context: Dict[str, str]) -> None:
         )
 
     except Exception as exc:  # pylint: disable=broad-except
+        logging.error(traceback.format_exc())
         logging.error("Lineage Callback exception %s", exc)
