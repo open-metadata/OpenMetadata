@@ -30,7 +30,7 @@
     },
     "hostPort": {
       "description": "Host and Port of Metabase instance.",
-      "type": "string"
+      "format": "uri"
     },
     "dbServiceName": {
       "description": "Database Service Name for creation of lineage",

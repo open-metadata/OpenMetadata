@@ -21,7 +21,8 @@
     },
     "hostPort": {
       "description": "Tableau Server",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "username": {
       "description": "username for the Tableau",
