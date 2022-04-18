@@ -641,6 +641,7 @@ def test_salesforce():
         "serviceConnection": {
             "config": {
                 "type": "Salesforce",
+                "hostPort": "localhost",
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
