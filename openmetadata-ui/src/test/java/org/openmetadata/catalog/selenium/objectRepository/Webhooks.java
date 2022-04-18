@@ -21,4 +21,12 @@ public class Webhooks {
   By allEntities = By.xpath("(//input[@type='checkbox'])[2]");
   By checkWebhook = By.xpath("//button[@data-testid='webhook-link']");
   By toast = By.xpath("(//div[@data-testid='toast']/div)[2]");
+  By selectWebhook = By.xpath("(//button[@data-testid='webhook-link'])[1]");
+  By deleteWebhook = By.xpath("//button[@data-testid='delete-webhook']");
+  By save = By.xpath("//button[@data-testid='save-button']");
+  By checkFilter = By.xpath("//div[@data-testid='card-body']/div/span/span");
+
+  public By selectFilter(int index) {
+    return By.xpath("(//div[@data-testid='filter-containers-1']/div/div/input)[" + index + "]");
+  }
 }
