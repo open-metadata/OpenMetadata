@@ -18,7 +18,7 @@ on:
     branches: [ main ]
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: java-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
   java-checkstyle:
