@@ -2,9 +2,9 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/atlasConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AtlasConnection",
-  "description": "Atlas Database Connection Config",
+  "description": "Atlas Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.AtlasConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.AtlasConnection",
   "definitions": {
     "atlasType": {
       "description": "Service type.",
