@@ -13,6 +13,7 @@
 Build and document all supported Engines
 """
 import logging
+from functools import singledispatch
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
@@ -22,9 +23,6 @@ from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
-)
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnection,
 )
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -38,20 +36,20 @@ class SourceConnectionException(Exception):
     """
 
 
-def get_engine(service_connection: ServiceConnection, verbose: bool = False) -> Engine:
+@singledispatch
+def get_engine(connection, verbose: bool = False) -> Engine:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
-    service_connection_config = service_connection.__root__.config
 
-    options = service_connection_config.connectionOptions
+    options = connection.connectionOptions
     if not options:
         options = ConnectionOptions()
 
     engine = create_engine(
-        get_connection_url(service_connection_config),
+        get_connection_url(connection),
         **options.dict(),
-        connect_args=get_connection_args(service_connection_config),
+        connect_args=get_connection_args(connection),
         echo=verbose,
     )
 
