@@ -21,7 +21,7 @@ on:
     - 'catalog-rest-service/src/main/resources/json/schema/**'
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: openmetadata-ingestion-core-version-comment-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
   py-ingestion-core-comment:
