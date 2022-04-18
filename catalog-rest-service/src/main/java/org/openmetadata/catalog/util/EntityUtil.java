@@ -169,10 +169,7 @@ public final class EntityUtil {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
-        ref.withDescription(ref2.getDescription())
-            .withName(ref2.getName())
-            .withDisplayName(ref2.getDisplayName())
-            .withFullyQualifiedName(ref2.getFullyQualifiedName());
+        EntityUtil.copy(ref2, ref);
       }
     }
     return list;
@@ -326,5 +323,14 @@ public final class EntityUtil {
                 new EventFilter()
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
+  }
+
+  public static EntityReference copy(EntityReference from, EntityReference to) {
+    return to.withType(from.getType())
+        .withId(from.getId())
+        .withName(from.getName())
+        .withDisplayName(from.getDisplayName())
+        .withFullyQualifiedName(from.getFullyQualifiedName())
+        .withDeleted(from.getDeleted());
   }
 }

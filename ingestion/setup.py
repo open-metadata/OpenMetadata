@@ -46,6 +46,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
+    "MarkupSafe>=2.0",
 }
 
 report_requirements = {

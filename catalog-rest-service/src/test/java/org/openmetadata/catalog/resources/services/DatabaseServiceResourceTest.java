@@ -69,6 +69,40 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     this.supportsAuthorizedMetadataOperations = false;
   }
 
+  public void setupDatabaseServices(TestInfo test) throws HttpResponseException {
+    // Create snowflake database service
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createDatabaseService =
+        databaseServiceResourceTest
+            .createRequest(test, 1)
+            .withServiceType(DatabaseServiceType.Snowflake)
+            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
+    DatabaseService databaseService =
+        new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("redshiftDB")
+        .withServiceType(DatabaseServiceType.Redshift)
+        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("bigQueryDB")
+        .withServiceType(DatabaseServiceType.BigQuery)
+        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("mysqlDB")
+        .withServiceType(DatabaseServiceType.Mysql)
+        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+  }
+
   @Test
   void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create database service with different optional fields

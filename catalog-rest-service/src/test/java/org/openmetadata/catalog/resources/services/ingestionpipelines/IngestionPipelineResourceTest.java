@@ -566,12 +566,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate("2021-11-21"));
     IngestionPipeline IngestionPipeline3 = createAndCheckEntity(requestPipeline_3, ADMIN_AUTH_HEADERS);
     // List charts by filtering on service name and ensure right charts in the response
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("service", bigqueryRef.getName());
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", bigqueryRef.getName());
+
     Predicate<IngestionPipeline> isPipelineBigquery1 = p -> p.getId().equals(pipelineBigquery1.getId());
     Predicate<IngestionPipeline> isPipelineBigquery2 = u -> u.getId().equals(pipelineBigquery2.getId());
     Predicate<IngestionPipeline> isPipelineBigquery3 = u -> u.getId().equals(IngestionPipeline3.getId());
@@ -579,12 +576,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(2, actualBigqueryPipelines.size());
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery1));
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery2));
-    queryParams =
-        new HashMap<>() {
-          {
-            put("service", snowflakeRef.getName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("service", snowflakeRef.getName());
+
     List<IngestionPipeline> actualSnowflakePipelines = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     assertEquals(1, actualSnowflakePipelines.size());
     assertTrue(actualSnowflakePipelines.stream().anyMatch(isPipelineBigquery3));

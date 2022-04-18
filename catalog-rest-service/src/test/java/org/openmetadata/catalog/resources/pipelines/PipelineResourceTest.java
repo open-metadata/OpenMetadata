@@ -188,12 +188,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List Pipelines by filtering on service name and ensure right Pipelines in the response
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Pipeline> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Pipeline db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
