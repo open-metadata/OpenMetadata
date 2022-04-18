@@ -4,7 +4,7 @@
       "serviceName": "local_clickhouse",
       "serviceConnection": {
         "config": {
-          "type": "ClickHouse",
+          "type": "Clickhouse",
           "username":"default",
           "password":"",
           "hostPort": "localhost:8123",
