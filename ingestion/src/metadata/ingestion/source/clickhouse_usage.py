@@ -30,7 +30,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.engines import get_engine
+from metadata.utils.engines import get_engine, test_connection
 from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
@@ -108,4 +108,4 @@ class ClickhouseUsageSource(Source[TableQuery]):
         return self.report
 
     def test_connection(self) -> None:
-        pass
+        test_connection(self.engine)

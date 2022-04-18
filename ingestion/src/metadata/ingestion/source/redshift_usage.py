@@ -31,7 +31,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.engines import get_engine
+from metadata.utils.engines import get_engine, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
@@ -111,4 +111,4 @@ class RedshiftUsageSource(Source[TableQuery]):
         return self.status
 
     def test_connection(self) -> None:
-        pass
+        test_connection(self.engine)
