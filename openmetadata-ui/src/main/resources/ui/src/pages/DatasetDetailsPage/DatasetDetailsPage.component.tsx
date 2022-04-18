@@ -88,6 +88,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
   getFields,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -325,7 +326,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               ),
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
@@ -336,6 +337,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           }
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TABLE,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
