@@ -4,7 +4,8 @@
   "serviceConnection": {
     "config": {
       "type": "BigQuery",
-      "hostPort": "localhost:1234"
+      "hostPort": "localhost:1234",
+      "projectID": "project_id"
     }
   },
   "sourceConfig": {
