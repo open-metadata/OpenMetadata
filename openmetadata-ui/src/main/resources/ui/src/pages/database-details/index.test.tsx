@@ -186,6 +186,7 @@ jest.mock('../../utils/CommonUtils', () => ({
     .fn()
     .mockReturnValue('5d5ca778-8bee-4ea0-bcb6-b17d92f7ef96'),
   isEven: jest.fn().mockReturnValue(true),
+  getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
 jest.mock('../../components/tags/tags', () => {
