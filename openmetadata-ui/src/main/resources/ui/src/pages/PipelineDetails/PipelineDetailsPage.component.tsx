@@ -66,6 +66,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
@@ -258,14 +259,14 @@ const PipelineDetailsPage = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: displayName,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName,
+            displayName: getEntityName(res.data),
             entityType: EntityType.PIPELINE,
             fqn: fullyQualifiedName,
             serviceType: serviceType,

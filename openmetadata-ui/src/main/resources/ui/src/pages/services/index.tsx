@@ -54,6 +54,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -65,6 +66,7 @@ import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   getServiceLogo,
 } from '../../utils/CommonUtils';
 import { getDashboardURL } from '../../utils/DashboardServiceUtils';
@@ -638,9 +640,11 @@ const ServicesPage = () => {
                     <button>
                       <h6
                         className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                        data-testid={`service-name-${service.name}`}
-                        title={service.name}>
-                        {service.name}
+                        data-testid={`service-name-${getEntityName(
+                          service as EntityReference
+                        )}`}
+                        title={getEntityName(service as EntityReference)}>
+                        {getEntityName(service as EntityReference)}
                       </h6>
                     </button>
                   </Link>
