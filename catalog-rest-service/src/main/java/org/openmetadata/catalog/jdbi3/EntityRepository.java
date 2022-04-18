@@ -774,11 +774,7 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
-        entityReference
-            .withType(ref.getType())
-            .withName(ref.getName())
-            .withDisplayName(ref.getDisplayName())
-            .withFullyQualifiedName(ref.getFullyQualifiedName());
+        EntityUtil.copy(ref, entityReference);
       }
     }
   }
@@ -788,11 +784,7 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
-        entityReference
-            .withType(ref.getType())
-            .withName(ref.getName())
-            .withDisplayName(ref.getDisplayName())
-            .withFullyQualifiedName(ref.getFullyQualifiedName());
+        EntityUtil.copy(ref, entityReference);
       }
     }
   }
@@ -808,7 +800,7 @@ public abstract class EntityRepository<T> {
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {
-    return Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+    return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
 
   public EntityReference getOriginalOwner(T entity) throws IOException {
@@ -816,14 +808,12 @@ public abstract class EntityRepository<T> {
       return null;
     }
     // Try to find the owner if entity exists
-    try {
-      String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, getFields(FIELD_OWNER));
-      return getEntityInterface(entity).getOwner();
-    } catch (EntityNotFoundException e) {
-      // If entity is not found, we can return null for owner and ignore this exception
+    String json = dao.findJsonByFqn(getFullyQualifiedName(entity), Include.NON_DELETED);
+    if (json == null) {
+      return null; // Entity does not exist
     }
-    return null;
+    entity = JsonUtils.readValue(json, entityClass);
+    return getOwner(entity);
   }
 
   public EntityReference populateOwner(EntityReference owner) throws IOException {
@@ -831,7 +821,7 @@ public abstract class EntityRepository<T> {
       return null;
     }
     EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
-    return owner.withName(ref.getName()).withDisplayName(ref.getDisplayName()).withDeleted(ref.getDeleted());
+    return EntityUtil.copy(ref, owner);
   }
 
   protected void storeOwner(T entity, EntityReference owner) {

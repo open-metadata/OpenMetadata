@@ -15,6 +15,7 @@ import org.openmetadata.catalog.FqnParser;
 import org.openmetadata.catalog.FqnParser.FqnContext;
 import org.openmetadata.catalog.FqnParser.QuotedNameContext;
 import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 
 public class FullyQualifiedName {
   // Quoted name of format "sss" or sss
@@ -72,7 +73,7 @@ public class FullyQualifiedName {
   public static String quoteName(String name) {
     Matcher matcher = namePattern.matcher(name);
     if (!matcher.find() || matcher.end() != name.length()) {
-      throw new IllegalArgumentException("Invalid name " + name);
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
     }
 
     // Name matches quoted string "sss".
@@ -88,7 +89,22 @@ public class FullyQualifiedName {
     if (!unquotedName.contains("\"")) {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
-    throw new IllegalArgumentException("Invalid name " + name);
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+  }
+
+  /** Adds quotes to name as required */
+  public static String unquoteName(String name) {
+    Matcher matcher = namePattern.matcher(name);
+    if (!matcher.find() || matcher.end() != name.length()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
+
+    // Name matches quoted string "sss".
+    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if (matcher.group(1) != null) {
+      return matcher.group(2);
+    }
+    return name;
   }
 
   public static String getTableFQN(String columnFQN) {

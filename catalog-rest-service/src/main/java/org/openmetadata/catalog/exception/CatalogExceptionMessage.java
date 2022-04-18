@@ -41,6 +41,10 @@ public final class CatalogExceptionMessage {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
 
+  public static String invalidName(String name) {
+    return String.format("Invalid name %s", name);
+  }
+
   public static String invalidField(String field) {
     return String.format("Invalid field name %s", field);
   }

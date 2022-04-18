@@ -118,6 +118,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -701,14 +702,25 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   @Test
-  void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
-    String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
-    final K request = createRequest(name, null, null, null);
+  void post_entityWithDots_200() throws HttpResponseException {
+    // Entity without "." should not have quoted fullyQualifiedName
+    String name = String.format("%s_foo_bar", entityType);
+    K request = createRequest(name, null, null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    String[] split = entityInterface.getFullyQualifiedName().split("/");
+    assertFalse(entityInterface.getFullyQualifiedName().contains("\""));
+
+    // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
+    name = String.format("%s_foo.bar", entityType);
+    request = createRequest(name, null, null, null);
+    entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    entityInterface = getEntityInterface(entity);
+    assertTrue(entityInterface.getFullyQualifiedName().contains("\""));
+    String[] split = FullyQualifiedName.split(entityInterface.getFullyQualifiedName());
+    System.out.println("XXX fqn is " + entityInterface.getFullyQualifiedName());
     String actualName = split[split.length - 1];
-    assertTrue(actualName.contains("foo.bar"));
+    assertEquals(name, entityInterface.getName());
+    assertEquals(FullyQualifiedName.quoteName(name), actualName);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -915,12 +927,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "deleted");
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "deleted");
     EntityInterface<T> entityInterface =
         getEntityInterface(getEntity(entityId, queryParams, "followers", ADMIN_AUTH_HEADERS));
     TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
@@ -1277,12 +1285,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
 
       // Validate that the entity version is updated after soft delete
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("include", Include.DELETED.value());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", Include.DELETED.value());
+
       T getEntity = getEntity(id, queryParams, allFields, authHeaders);
       EntityInterface<T> getEntityInterface = getEntityInterface(getEntity);
       assertEquals(expectedVersion, getEntityInterface.getVersion());
