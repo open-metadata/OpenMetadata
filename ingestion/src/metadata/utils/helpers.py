@@ -195,9 +195,9 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
 
 def datetime_to_ts(date: datetime) -> int:
     """
-    Convert a given date to a timestamp as an Int
+    Convert a given date to a timestamp as an Int in milliseconds
     """
-    return int(date.timestamp())
+    return int(date.timestamp() * 1_000)
 
 
 def _get_formmated_table_name(table_name):
