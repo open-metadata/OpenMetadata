@@ -71,7 +71,7 @@ const EntityDeleteModal: FC<Prop> = ({
           <input
             autoComplete="off"
             className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="confirmation-text"
+            data-testid="confirmation-text-input"
             disabled={loadingState === 'waiting'}
             name="entityName"
             placeholder={`${entityType}/${entityName}`}
@@ -83,7 +83,7 @@ const EntityDeleteModal: FC<Prop> = ({
         <div className={classNames('tw-modal-footer tw-justify-end')}>
           <Button
             className={classNames('tw-mr-2')}
-            data-testid="cancel"
+            data-testid="discard-button"
             disabled={loadingState === 'waiting'}
             size="regular"
             theme="primary"

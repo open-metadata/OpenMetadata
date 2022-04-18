@@ -5,10 +5,6 @@
   "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
   "type": "object",
   "definitions": {
-    "policyName": {
-      "description": "Name that identifies this Policy.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
     "policyType": {
       "javaType": "org.openmetadata.catalog.type.PolicyType",
       "description": "This schema defines the type used for describing different types of policies.",
@@ -45,14 +41,14 @@
     },
     "name": {
       "description": "Name that uniquely identifies this Policy.",
-      "$ref": "#/definitions/policyName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a Policy.",
-      "$ref": "#/definitions/policyName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Title for this Policy.",
+      "description": "Display name for this Policy.",
       "type": "string"
     },
     "description": {
@@ -99,9 +95,11 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "rules": {
+      "description": "Rules that the policy has.",
       "$ref": "#/definitions/rules"
     },
     "location": {
+      "description": "Location to which a policy is applied. This field is relevant only for `lifeCycle` policies.",
       "$ref": "../../type/entityReference.json",
       "default": null
     },

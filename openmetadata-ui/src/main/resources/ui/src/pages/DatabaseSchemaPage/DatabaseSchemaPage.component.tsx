@@ -62,7 +62,7 @@ import {
   getTeamDetailsPath,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -258,7 +258,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             },
             {
               name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                'database',
+                FqnPart.Database,
               ]),
               url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
@@ -672,8 +672,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
                     currentUser={databaseSchema?.owner?.id}
+                    entityId={databaseSchema?.id}
+                    entityName={databaseSchema?.name}
+                    entityType={EntityType.DATABASE_SCHEMA}
                     hasEditAccess={hasEditAccess(
                       databaseSchema?.owner?.type || '',
                       databaseSchema?.owner?.id || ''

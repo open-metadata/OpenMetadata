@@ -15,7 +15,9 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
@@ -102,11 +104,11 @@ public class TableRepository extends EntityRepository<Table> {
     setDefaultFields(table);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setOwner(fields.contains(FIELD_OWNER) ? getOwner(table) : null);
-    table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
+    table.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(table) : null);
     table.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId()) : null);
-    table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
-    getColumnTags(fields.contains("tags"), table.getColumns());
+    table.setTags(fields.contains(FIELD_TAGS) ? getTags(table.getFullyQualifiedName()) : null);
+    getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
@@ -1099,7 +1101,7 @@ public class TableRepository extends EntityRepository<Table> {
         updateColumnDataLength(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), "tags"),
+            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);

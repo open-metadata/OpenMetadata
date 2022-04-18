@@ -43,7 +43,11 @@ import {
   positionX,
   positionY,
 } from '../constants/Lineage.constants';
-import { EntityLineageDirection, EntityType } from '../enums/entity.enum';
+import {
+  EntityLineageDirection,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import {
   Edge as LineageEdge,
   EntityLineage,
@@ -425,8 +429,8 @@ export const getDataLabel = (
   isTextOnly = false,
   type?: string
 ) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, ['database']);
-  const schemaName = getPartialNameFromTableFQN(fqn, ['schema']);
+  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
+  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
 
   let label = '';
   if (displayName) {
@@ -527,7 +531,7 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
   if (selectedEdge.source.type === EntityType.TABLE) {
     sourceEntity = getPartialNameFromTableFQN(
       selectedEdge.source.name as string,
-      ['table']
+      [FqnPart.Table]
     );
   } else {
     sourceEntity = getPartialNameFromFQN(selectedEdge.source.name as string, [
@@ -538,7 +542,7 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
   if (selectedEdge.target.type === EntityType.TABLE) {
     targetEntity = getPartialNameFromTableFQN(
       selectedEdge.target.name as string,
-      ['table']
+      [FqnPart.Table]
     );
   } else {
     targetEntity = getPartialNameFromFQN(selectedEdge.target.name as string, [

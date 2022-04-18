@@ -141,6 +141,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
+                if not row["database_name"] and self.service_connection.database:
+                    TableQuery.database = self.service_connection.database
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
@@ -158,6 +160,9 @@ class SnowflakeUsageSource(Source[TableQuery]):
         Returns:
         """
         return self.report
+
+    def test_connection(self) -> None:
+        pass
 
     def close(self):
         self.alchemy_helper.close()
