@@ -19,7 +19,7 @@ on:
       - 'catalog-rest-service/src/main/resources/json/**'
 
 concurrency: 
-  group: ${{ github.head_ref }}
+  group: py-generate-${{ github.head_ref }}
   cancel-in-progress: true
 jobs:
   validate:
