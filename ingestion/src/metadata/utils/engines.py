@@ -24,6 +24,9 @@ from sqlalchemy.orm.session import Session
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
 
@@ -49,6 +52,37 @@ def get_engine(connection, verbose: bool = False) -> Engine:
     engine = create_engine(
         get_connection_url(connection),
         **options.dict(),
+        connect_args=get_connection_args(connection),
+        echo=verbose,
+    )
+
+    return engine
+
+
+@get_engine.register
+def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
+    """
+    BigQuery connection specifics
+    """
+
+    connection_options = {
+        "credentials": {
+            "type": connection.credentialsType,
+            "project_id": connection.projectID,
+            "private_key_id": connection.privateKeyId,
+            "private_key": connection.privateKey,
+            "client_email": connection.clientEmail,
+            "client_id": connection.clientId,
+            "auth_uri": connection.authURI,
+            "token_uri": connection.tokenURI,
+            "auth_provider_x509_cert_url": connection.authProviderX509CertUrl,
+            "client_x509_cert_url": connection.clientX509CertUrl,
+        }
+    }
+
+    engine = create_engine(
+        get_connection_url(connection),
+        **connection_options,
         connect_args=get_connection_args(connection),
         echo=verbose,
     )

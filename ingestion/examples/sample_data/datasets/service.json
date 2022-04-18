@@ -4,7 +4,12 @@
   "serviceConnection": {
     "config": {
       "type": "BigQuery",
-      "hostPort": "localhost:1234"
+      "hostPort": "localhost:1234",
+      "clientX509CertUrl": "clientX509CertUrl",
+      "privateKeyId": "privateKeyId",
+      "privateKey": "privateKey",
+      "clientEmail": "clientEmail",
+      "clientId": "clientId"
     }
   },
   "sourceConfig": {

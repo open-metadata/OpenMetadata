@@ -43,6 +43,49 @@
       "description": "Google BigQuery project id.",
       "type": "string"
     },
+    "credentialsType": {
+      "description": "How to connect to BigQuery",
+      "type": "string",
+      "default": "service_account"
+    },
+    "privateKeyId": {
+      "description": "Private key ID to connect.",
+      "type": "string"
+    },
+    "privateKey": {
+      "description": "Private key to connect.",
+      "type": "string"
+    },
+    "clientEmail": {
+      "description": "Client email for BiqQuery account.",
+      "type": "string"
+    },
+    "clientId": {
+      "description": "Client ID for BigQuery account.",
+      "type": "string"
+    },
+    "authURI": {
+      "description": "URI to validate the account.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://accounts.google.com/o/oauth2/auth"
+    },
+    "tokenURI": {
+      "description": "URI to validate the token.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://oauth2.googleapis.com/token"
+    },
+    "authProviderX509CertUrl": {
+      "description": "Certificate provider URL.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://www.googleapis.com/oauth2/v1/certs"
+    },
+    "clientX509CertUrl": {
+      "description": "Client certificate provider.",
+      "type": "string"
+    },
     "enablePolicyTagImport": {
       "description": "Enable importing policy tags of BigQuery into OpenMetadata",
       "type": "boolean",
@@ -87,6 +130,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "projectID"
+    "projectID", "clientX509CertUrl", "privateKeyId", "privateKey", "clientEmail", "clientId"
   ]
 }
