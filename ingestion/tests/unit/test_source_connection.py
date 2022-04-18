@@ -17,8 +17,8 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveConnection,
     HiveScheme,
-    HiveSQLConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -53,14 +53,14 @@ class SouceConnectionTest(TestCase):
 
     def test_hive_url(self):
         expected_result = "hive://localhost:10000/default"
-        databricks_conn_obj = HiveSQLConnection(
+        databricks_conn_obj = HiveConnection(
             scheme=HiveScheme.hive, hostPort="localhost:10000", database="default"
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url_auth(self):
         expected_result = "hive://localhost:10000/default;auth=CUSTOM"
-        databricks_conn_obj = HiveSQLConnection(
+        databricks_conn_obj = HiveConnection(
             scheme=HiveScheme.hive,
             hostPort="localhost:10000",
             database="default",

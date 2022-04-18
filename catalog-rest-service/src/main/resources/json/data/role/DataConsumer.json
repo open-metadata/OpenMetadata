@@ -7,7 +7,7 @@
   "policies" : [
     {
       "type" : "policy",
-      "name" : "DataConsumerAccessControlPolicy"
+      "name" : "DataConsumerPolicy"
     }
   ]
 }

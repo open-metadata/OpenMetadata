@@ -142,6 +142,10 @@ class OMetaLineageMixin(Generic[T]):
             )
             return None
 
+    def _separate_fqn(self, database, fqn):
+        database_schema, table = fqn.split(".")[-2:]
+        return {"database": database, "database_schema": database_schema, "name": table}
+
     def _create_lineage_by_table_name(
         self, from_table: str, to_table: str, service_name: str, database: str
     ):
@@ -156,7 +160,15 @@ class OMetaLineageMixin(Generic[T]):
                 _get_formmated_table_name(str(from_table)),
             )
             from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
-
+            if not from_entity:
+                table_obj = self._separate_fqn(database=database, fqn=from_fqdn)
+                multiple_from_fqns = self.search_entities_using_es(
+                    service_name=service_name,
+                    table_obj=table_obj,
+                    search_index="table_search_index",
+                )
+            else:
+                multiple_from_fqns = [from_entity]
             to_fqdn = get_fqdn(
                 AddLineageRequest,
                 service_name,
@@ -164,23 +176,33 @@ class OMetaLineageMixin(Generic[T]):
                 _get_formmated_table_name(str(to_table)),
             )
             to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
+            if not to_entity:
+                table_obj = self._separate_fqn(database=database, fqn=to_fqdn)
+                multiple_to_fqns = self.search_entities_using_es(
+                    service_name=service_name,
+                    table_obj=table_obj,
+                    search_index="table_search_index",
+                )
+            else:
+                multiple_to_fqns = [to_entity]
             if not from_entity or not to_entity:
                 return None
-
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=from_entity.id.__root__,
-                        type="table",
-                    ),
-                    toEntity=EntityReference(
-                        id=to_entity.id.__root__,
-                        type="table",
-                    ),
-                )
-            )
-            created_lineage = self.add_lineage(lineage)
-            logger.info(f"Successfully added Lineage {created_lineage}")
+            for from_entity in multiple_from_fqns:
+                for to_entity in multiple_to_fqns:
+                    lineage = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_entity.id.__root__,
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id.__root__,
+                                type="table",
+                            ),
+                        )
+                    )
+                    created_lineage = self.add_lineage(lineage)
+                    logger.info(f"Successfully added Lineage {created_lineage}")
 
         except Exception as err:
             logger.debug(traceback.print_exc())

@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
@@ -59,7 +60,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public static String getFQN(Policy policy) {
-    return policy.getName();
+    return FullyQualifiedName.build(policy.getName());
   }
 
   /** Find the location to which this policy applies to. * */

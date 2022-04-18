@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { IngestionType } from '../../enums/service.enum';
+import { IngestionType, ServiceCategory } from '../../enums/service.enum';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
+import {
+  Connection,
+  IngestionPipeline,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
+import { DataObj } from '../../interface/service.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -48,23 +53,29 @@ export interface IngestionData {
   endDate?: string;
 }
 
-export interface Props {
-  serviceType?: string;
+export interface IngestionProps {
+  serviceDetails: DataObj;
   serviceName?: string;
+  serviceCategory: ServiceCategory;
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
-  ingestionList: Array<AirflowPipeline>;
+  ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
   currrentPage: number;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  addIngestion: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
+  addIngestion: (data: CreateIngestionPipeline) => Promise<void>;
   updateIngestion: (
-    data: AirflowPipeline,
-    oldData: AirflowPipeline,
+    data: IngestionPipeline,
+    oldData: IngestionPipeline,
     id: string,
     displayName: string,
     triggerIngestion?: boolean
   ) => Promise<void>;
+}
+
+export interface ModifiedConfig extends Connection {
+  supportsMetadataExtraction: boolean;
+  supportsUsageExtraction: boolean;
 }

@@ -81,7 +81,7 @@ class SampleUsageSource(Source[TableQuery]):
                 starttime="",
                 endtime="",
                 analysis_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                database="shopify",
+                database="ecommerce_db",
                 aborted=False,
                 sql=row["query"],
                 service_name=self.config.serviceName,

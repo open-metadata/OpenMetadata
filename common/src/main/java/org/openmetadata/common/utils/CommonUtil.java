@@ -151,7 +151,6 @@ public final class CommonUtil {
 
   /** Get SHA256 Hash-based Message Authentication Code */
   public static String calculateHMAC(String secretKey, String message) {
-    //    return message;
     try {
       Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
       SecretKeySpec secretKeySpec =

@@ -191,6 +191,92 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     }
   };
 
+  const getDeleteEntityWidget = () => {
+    return allowDelete && entityId && entityName && entityType ? (
+      <div className="tw-mt-9" data-testid="danger-zone">
+        <hr className="tw-border-main tw-mb-4" />
+        <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
+          <div data-testid="danger-zone-text">
+            <h4 className="tw-text-base" data-testid="danger-zone-text-title">
+              Delete {entityType} {entityName}
+            </h4>
+            <p data-testid="danger-zone-text-para">
+              {`Once you delete this ${entityType}, it would be removed permanently`}
+            </p>
+          </div>
+          <Button
+            className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
+            data-testid="delete-button"
+            size="custom"
+            theme="primary"
+            type="button"
+            variant="outlined"
+            onClick={handleOnEntityDelete}>
+            Delete this {entityType}
+          </Button>
+        </div>
+      </div>
+    ) : null;
+  };
+
+  const getTierCards = () => {
+    if (!hideTier) {
+      return isLoadingTierData ? (
+        <Loader />
+      ) : (
+        <div className="tw-flex tw-flex-col" data-testid="cards">
+          {tierData.map((card, i) => (
+            <NonAdminAction
+              html={
+                <Fragment>
+                  <p>You need to be owner to perform this action</p>
+                  <p>Claim ownership from above </p>
+                </Fragment>
+              }
+              isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+              key={i}
+              permission={Operation.UpdateTags}
+              position="left">
+              <CardListItem
+                card={card}
+                isActive={activeTier === card.id}
+                onSelect={handleCardSelection}
+              />
+            </NonAdminAction>
+          ))}
+        </div>
+      );
+    } else {
+      return null;
+    }
+  };
+
+  const getJoinableWidget = () => {
+    const isActionAllowed =
+      isAdminUser ||
+      isAuthDisabled ||
+      userPermissions[Operation.UpdateTeam] ||
+      !hasEditAccess;
+
+    const joinableSwitch = isActionAllowed ? (
+      <div className="tw-flex">
+        <label htmlFor="join-team">Allow users to join this team</label>
+        <div
+          className={classNames('toggle-switch ', { open: teamJoinable })}
+          data-testid="team-isJoinable-switch"
+          id="join-team"
+          onClick={() => setTeamJoinable((prev) => !prev)}>
+          <div className="switch" />
+        </div>
+      </div>
+    ) : null;
+
+    return !isUndefined(isJoinable) ? (
+      <div className="tw-mt-3 tw-mb-1">{joinableSwitch}</div>
+    ) : null;
+  };
+
+  const ownerName = getOwnerById();
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
@@ -224,8 +310,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
         );
       });
   };
-
-  const ownerName = getOwnerById();
 
   useEffect(() => {
     if (!hideTier) {
@@ -328,55 +412,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             )}
           </span>
         </div>
-        {!isUndefined(isJoinable) ? (
-          <div className="tw-mt-3 tw-mb-1">
-            {isAdminUser ||
-            isAuthDisabled ||
-            userPermissions[Operation.UpdateTeam] ||
-            !hasEditAccess ? (
-              <div className="tw-flex">
-                <label htmlFor="join-team">Allow users to join this team</label>
-                <div
-                  className={classNames(
-                    'toggle-switch ',
-                    teamJoinable ? 'open' : null
-                  )}
-                  data-testid="team-isJoinable-switch"
-                  id="join-team"
-                  onClick={() => setTeamJoinable((prev) => !prev)}>
-                  <div className="switch" />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {getJoinableWidget()}
       </div>
-      {!hideTier &&
-        (isLoadingTierData ? (
-          <Loader />
-        ) : (
-          <div className="tw-flex tw-flex-col" data-testid="cards">
-            {tierData.map((card, i) => (
-              <NonAdminAction
-                html={
-                  <>
-                    <p>You need to be owner to perform this action</p>
-                    <p>Claim ownership from above </p>
-                  </>
-                }
-                isOwner={hasEditAccess || Boolean(owner && !currentUser)}
-                key={i}
-                permission={Operation.UpdateTags}
-                position="left">
-                <CardListItem
-                  card={card}
-                  isActive={activeTier === card.id}
-                  onSelect={handleCardSelection}
-                />
-              </NonAdminAction>
-            ))}
-          </div>
-        ))}
+      {getTierCards()}
       <div className="tw-mt-6 tw-text-right" data-testid="buttons">
         <Button
           size="regular"
@@ -415,31 +453,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           </Button>
         )}
       </div>
-      {allowDelete ? (
-        <div className="tw-mt-9" data-testid="danger-zone">
-          <hr className="tw-border-main tw-mb-4" />
-          <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
-            <div data-testid="danger-zone-text">
-              <h4 className="tw-text-base" data-testid="danger-zone-text-title">
-                Delete {entityType} {entityName}
-              </h4>
-              <p data-testid="danger-zone-text-para">
-                {`Once you delete this ${entityType}, it would be removed permanently`}
-              </p>
-            </div>
-            <Button
-              className="tw-px-2 tw-py-0 tw-rounded tw-h-8 tw-self-center tw-shadow"
-              data-testid="delete-button"
-              size="custom"
-              theme="primary"
-              type="button"
-              variant="outlined"
-              onClick={handleOnEntityDelete}>
-              Delete this {entityType}
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      {getDeleteEntityWidget()}
       {getDeleteModal()}
     </div>
   );
