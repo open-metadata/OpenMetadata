@@ -74,6 +74,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
     supportsAuthorizedMetadataOperations = false; // TODO why?
+    supportsEmptyDescription = false;
   }
 
   @Order(0)

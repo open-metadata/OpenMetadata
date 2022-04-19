@@ -1275,9 +1275,13 @@ public interface CollectionDAO {
         @Bind("state") int state);
 
     @SqlQuery(
-        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' "
-            + "AS description FROM tag_usage tu "
-            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
+            + "t.json ->> '$.description' AS description1, "
+            + "g.json ->> '$.description' AS description2 "
+            + "FROM tag_usage tu "
+            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
+            + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
+            + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
@@ -1295,12 +1299,14 @@ public interface CollectionDAO {
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
+        String description1 = r.getString("description1");
+        String description2 = r.getString("description2");
         return new TagLabel()
             .withSource(TagLabel.Source.values()[r.getInt("source")])
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
-            .withDescription(r.getString("description"));
+            .withDescription(description1 == null ? description2 : description1);
       }
     }
   }
