@@ -18,7 +18,7 @@ import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
 
-export const searchData: Function = (
+export const searchData = (
   queryString: string,
   from: number,
   size: number,

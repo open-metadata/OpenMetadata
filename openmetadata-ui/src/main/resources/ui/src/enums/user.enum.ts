@@ -16,3 +16,8 @@ export enum UserType {
   ISADMIN = 'isAdmin',
   ISUSER = 'user',
 }
+
+export enum OwnerType {
+  USER = 'user',
+  TEAM = 'team',
+}

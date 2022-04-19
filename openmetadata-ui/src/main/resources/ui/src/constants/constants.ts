@@ -50,6 +50,7 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
+const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
@@ -151,6 +152,8 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS: '/teams',
   TEAM_DETAILS: `/teams/${PLACEHOLDER_ROUTE_TEAM}`,
+  TEAMS_AND_USERS: '/teams-and-users',
+  TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -306,6 +309,16 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getTeamAndUserDetailsPath = (name?: string) => {
+  let path = ROUTES.TEAMS_AND_USERS;
+  if (name) {
+    path = ROUTES.TEAMS_AND_USERS_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_TEAM_AND_USER, name);
   }
 
   return path;
