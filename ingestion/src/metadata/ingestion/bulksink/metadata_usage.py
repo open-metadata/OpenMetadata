@@ -12,6 +12,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import List
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -98,7 +99,7 @@ class MetadataUsageBulkSink(BulkSink):
                     },
                     search_index="table_search_index",
                 )
-                table_entities = es_result if es_result else []
+                table_entities = es_result
             self.service_name = table_usage.service_name
             for table_entity in table_entities:
                 if table_entity is not None:
@@ -237,7 +238,7 @@ class MetadataUsageBulkSink(BulkSink):
 
     def __get_table_entity(
         self, database_name: str, database_schema: str, table_name: str
-    ) -> Table:
+    ) -> List[Table]:
         table_fqn = get_fqdn(
             Table, self.service_name, database_name, database_schema, table_name
         )
@@ -254,9 +255,7 @@ class MetadataUsageBulkSink(BulkSink):
             },
             search_index="table_search_index",
         )
-        if es_result:
-            return es_result
-        return []
+        return es_result
 
     def get_status(self):
         return self.status

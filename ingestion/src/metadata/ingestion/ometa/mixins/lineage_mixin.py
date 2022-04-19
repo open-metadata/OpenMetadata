@@ -144,7 +144,7 @@ class OMetaLineageMixin(Generic[T]):
 
     def _separate_fqn(self, database, fqn):
         database_schema, table = fqn.split(".")[-2:]
-        if database_schema == "":
+        if not database_schema:
             database_schema = None
         return {"database": database, "database_schema": database_schema, "name": table}
 
@@ -189,12 +189,7 @@ class OMetaLineageMixin(Generic[T]):
                 )
             else:
                 multiple_to_fqns = [to_entity]
-            if (
-                not multiple_to_fqns
-                or multiple_to_fqns == []
-                or not multiple_from_fqns
-                or multiple_from_fqns == []
-            ):
+            if not multiple_to_fqns or not multiple_from_fqns:
                 return None
             for from_entity in multiple_from_fqns:
                 for to_entity in multiple_to_fqns:
