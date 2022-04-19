@@ -223,7 +223,7 @@ class AmundsenSource(Source[Entity]):
             service_entity = get_dashboard_service_or_create(
                 service_name,
                 DashboardServiceType.Superset.name,
-                {},
+                {"username": "", "hostPort": ""},
                 self.metadata_config,
             )
             self.status.scanned(dashboard["name"])
@@ -246,7 +246,7 @@ class AmundsenSource(Source[Entity]):
         service_entity = get_dashboard_service_or_create(
             service_name,
             DashboardServiceType.Superset.name,
-            {},
+            {"username": "", "hostPort": ""},
             self.metadata_config,
         )
 
