@@ -151,12 +151,7 @@ class MetadataSource(Source[Entity]):
         self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        if self.service_connection.type.value == "OpenMetadata":
-            self.metadata = OpenMetadata(
-                OpenMetadataConnection.parse_obj(self.service_connection)
-            )
-        elif self.service_connection.type.value == "MetadataES":
-            self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = None
         self.tables = None
         self.topics = None
 
@@ -165,21 +160,7 @@ class MetadataSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection = config.serviceConnection.__root__.config
-        if connection.type.value == "OpenMetadata" and not isinstance(
-            connection, OpenMetadataConnection
-        ):
-            raise InvalidSourceException(
-                f"Expected OpenMetadataConnection, but got {connection}"
-            )
-        elif connection.type.value == "MetadataES" and not isinstance(
-            connection, MetadataESConnection
-        ):
-            raise InvalidSourceException(
-                f"Expected MetadataESConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
+        raise NotImplementedError("Create Method not implemented")
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()
