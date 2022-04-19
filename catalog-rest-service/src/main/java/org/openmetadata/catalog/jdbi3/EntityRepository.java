@@ -609,8 +609,6 @@ public abstract class EntityRepository<T> {
       // Add entity level tags by adding tag to the entity relationship
       EntityInterface<T> entityInterface = getEntityInterface(entity);
       applyTags(entityInterface.getTags(), entityInterface.getFullyQualifiedName());
-      // Update tag to handle additional derived tags
-      entityInterface.setTags(getTags(entityInterface.getFullyQualifiedName()));
     }
   }
 

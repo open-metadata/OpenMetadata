@@ -299,7 +299,7 @@ public final class TestUtils {
       return;
     }
     actualList = listOrEmpty(actualList);
-    actualList.forEach(l -> validateTagLabel(l));
+    actualList.forEach(TestUtils::validateTagLabel);
 
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags

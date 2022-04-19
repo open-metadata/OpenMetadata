@@ -1284,15 +1284,6 @@ public interface CollectionDAO {
             + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
-    //    @SqlQuery(
-    //            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' AS description "
-    //                    + "FROM tag_usage tu "
-    //                    + "LEFT JOIN "
-    //                    + "glossary_term_entity t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN
-    // "
-    //                    + "ORDER BY tu.tagFQN")
-    //    List<TagLabel> getGlossaryTags(@Bind("targetFQN") String targetFQN);
-
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
     int getTagCount(@Bind("source") int source, @Bind("fqnPrefix") String fqnPrefix);
 

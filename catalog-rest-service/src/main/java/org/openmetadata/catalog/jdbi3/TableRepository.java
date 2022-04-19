@@ -523,7 +523,7 @@ public class TableRepository extends EntityRepository<Table> {
         });
   }
 
-  private void addDerivedColumnTags(List<Column> columns) throws IOException {
+  private void addDerivedColumnTags(List<Column> columns) {
     if (columns == null || columns.isEmpty()) {
       return;
     }
@@ -673,7 +673,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void validateColumnFQNs(List<JoinedWith> joinedWithList) throws IOException {
+  private void validateColumnFQNs(List<JoinedWith> joinedWithList) {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());

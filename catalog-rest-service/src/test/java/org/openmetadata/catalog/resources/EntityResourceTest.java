@@ -1329,14 +1329,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return createAndCheckEntity(create, authHeaders, create);
   }
 
-  /**
-   * Helper function to create an entity, submit POST API request and validate response.
-   *
-   * @param create entity to be created
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param created expected response from POST API after entity has been created
-   * @return entity response from the POST API
-   */
+  /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
@@ -1434,17 +1427,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
   }
 
-  /**
-   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
-   *
-   * @param updated entity to compare with response from PATCH API
-   * @param originalJson JSON representation of entity before the update
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param updateType type of update, see {@link TestUtils.UpdateType}
-   * @param expectedChange change description that is expected from the PATCH API response
-   * @param update entity used to diff against originalJson to generate JSON PATCH for PATCH API test
-   * @return entity response from the PATCH API
-   */
+  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,
