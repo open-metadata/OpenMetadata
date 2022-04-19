@@ -25,14 +25,16 @@ const RecentlyViewed: FunctionComponent = () => {
   const prepareData = () => {
     if (recentlyViewedData.length) {
       setIsloading(true);
-      const formatedData = recentlyViewedData.map((data) => {
-        return {
-          serviceType: data.serviceType,
-          name: data.displayName || prepareLabel(data.entityType, data.fqn),
-          fullyQualifiedName: data.fqn,
-          index: data.entityType,
-        };
-      });
+      const formatedData = recentlyViewedData
+        .map((data) => {
+          return {
+            serviceType: data.serviceType,
+            name: data.displayName || prepareLabel(data.entityType, data.fqn),
+            fullyQualifiedName: data.fqn,
+            index: data.entityType,
+          };
+        })
+        .filter((item) => item.name);
       setData(formatedData as unknown as FormatedTableData[]);
       setIsloading(false);
     }
