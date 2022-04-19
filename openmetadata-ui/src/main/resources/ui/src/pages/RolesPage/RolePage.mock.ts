@@ -11,15 +11,17 @@ export const mockGetRole = {
       updatedBy: 'admin',
       href: 'http://localhost:8585/api/v1/roles/c605dad7-a90b-4672-954b-37e9cae2eae9',
       deleted: false,
-      policy: {
-        id: 'noRule',
-        type: 'policy',
-        name: 'DataConsumerRoleAccessControlPolicy',
-        description:
-          'Policy for Data Consumer Role to perform operations on metadata entities',
-        displayName: 'Data Consumer Role Access Control Policy',
-        href: 'http://localhost:8585/api/v1/policies/8d6b23bd-400b-4537-a1f0-29acb4c6f366',
-      },
+      policies: [
+        {
+          id: 'noRule',
+          type: 'policy',
+          name: 'DataConsumerRoleAccessControlPolicy',
+          description:
+            'Policy for Data Consumer Role to perform operations on metadata entities',
+          displayName: 'Data Consumer Role Access Control Policy',
+          href: 'http://localhost:8585/api/v1/policies/8d6b23bd-400b-4537-a1f0-29acb4c6f366',
+        },
+      ],
       users: [],
     },
     {
@@ -33,15 +35,17 @@ export const mockGetRole = {
       updatedBy: 'admin',
       href: 'http://localhost:8585/api/v1/roles/bff587a4-fcc4-4dd0-aae6-394bef7c3751',
       deleted: false,
-      policy: {
-        id: 'withRule',
-        type: 'policy',
-        name: 'DataStewardRoleAccessControlPolicy',
-        description:
-          'Policy for Data Steward Role to perform operations on metadata entities',
-        displayName: 'Data Steward Role Access Control Policy',
-        href: 'http://localhost:8585/api/v1/policies/f1c8f8a3-6d76-4352-8686-376fc0c7f86f',
-      },
+      policies: [
+        {
+          id: 'withRule',
+          type: 'policy',
+          name: 'DataStewardRoleAccessControlPolicy',
+          description:
+            'Policy for Data Steward Role to perform operations on metadata entities',
+          displayName: 'Data Steward Role Access Control Policy',
+          href: 'http://localhost:8585/api/v1/policies/f1c8f8a3-6d76-4352-8686-376fc0c7f86f',
+        },
+      ],
       users: [
         {
           id: 'dbd39398-f25c-48f4-9bc3-a4687c2d324c',
