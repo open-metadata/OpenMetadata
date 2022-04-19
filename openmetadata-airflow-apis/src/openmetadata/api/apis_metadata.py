@@ -48,7 +48,7 @@ APIS_METADATA = [
         "post_arguments": [
             {
                 "name": "service_connection",
-                "description": "ServiceConnectionModel config to test",
+                "description": "TestServiceConnectionRequest config to test",
                 "required": True,
             },
         ],
