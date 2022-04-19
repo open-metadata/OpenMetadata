@@ -36,7 +36,7 @@
       "description": "Dashboard redirect URI for the PowerBI.",
       "type": "string"
     },
-    "dashboardURL": {
+    "hostPort": {
       "description": "Dashboard URL for the power BI.",
       "type": "string",
       "format": "uri",
@@ -56,5 +56,6 @@
       "default": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort", "clientId", "clientSecret"]
 }
