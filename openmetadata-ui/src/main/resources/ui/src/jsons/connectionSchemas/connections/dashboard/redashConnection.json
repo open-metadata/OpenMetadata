@@ -23,7 +23,7 @@
       "description": "username for the Redash",
       "type": "string"
     },
-    "redashURL": {
+    "hostPort": {
       "description": "URL for the redash instance",
       "type": "string",
       "format": "uri",
@@ -39,5 +39,6 @@
       "default": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "apiKey"]
 }

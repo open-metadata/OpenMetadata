@@ -172,20 +172,19 @@ def test_bigquery():
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
-                "projectID": "project_id",
                 "enablePolicyTagImport": True,
-                "connectionOptions": {
-                    "credentials": {
+                "credentials": {
+                    "gcsConfig": {
                         "type": "service_account",
-                        "project_id": "project_id",
-                        "private_key_id": "private_key_id",
-                        "private_key": "private_key",
-                        "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
-                        "client_id": "client_id",
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                        "client_x509_cert_url": "",
+                        "projectId": "projectID",
+                        "privateKeyId": "privateKeyId",
+                        "privateKey": "privateKey",
+                        "clientEmail": "clientEmail",
+                        "clientId": "clientId",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://cert.url",
                     }
                 },
             }
