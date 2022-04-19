@@ -16,6 +16,10 @@
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus",
       "description": "This defines runtime status of Pipeline.",
       "properties": {
+        "runId": {
+          "description": "Pipeline unique run ID.",
+          "type": "string"
+        },
         "state": {
           "description": "Pipeline status denotes if its failed or succeeded.",
           "type": "string"
