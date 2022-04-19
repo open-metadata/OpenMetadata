@@ -21,15 +21,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
-import org.openmetadata.catalog.airflow.models.AirflowDagRun;
-import org.openmetadata.catalog.airflow.models.AirflowListResponse;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus;
@@ -172,17 +169,7 @@ public class AirflowRESTClient {
               .build();
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
-        AirflowListResponse airflowListResponse = JsonUtils.readValue(response.body(), AirflowListResponse.class);
-        ingestionPipeline.setNextExecutionDate(airflowListResponse.getNextRun());
-        List<PipelineStatus> statuses = new ArrayList<>();
-        for (AirflowDagRun dagRun : airflowListResponse.getDagRuns()) {
-          PipelineStatus pipelineStatus =
-              new PipelineStatus()
-                  .withState(dagRun.getState())
-                  .withStartDate(dagRun.getStartDate())
-                  .withEndDate(dagRun.getEndDate());
-          statuses.add(pipelineStatus);
-        }
+        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
         return ingestionPipeline;
       }
