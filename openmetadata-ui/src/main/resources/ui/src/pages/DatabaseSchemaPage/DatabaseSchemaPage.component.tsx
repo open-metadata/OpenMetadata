@@ -71,6 +71,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEntityName,
   getPartialNameFromTableFQN,
   hasEditAccess,
   isEven,
@@ -263,7 +264,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
