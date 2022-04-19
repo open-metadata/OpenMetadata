@@ -38,7 +38,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
-import FormModal from '../../components/Modals/FormModal';
+import AddRoleModal from '../../components/Modals/RoleModal/AddRoleModal';
 import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { DEFAULT_UPDATE_POLICY_STATE } from '../../constants/role.constants';
@@ -208,6 +208,7 @@ const RolesPage = () => {
         description: description || '',
         name,
         displayName: displayName || '',
+        policies: [],
       })
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -373,7 +374,7 @@ const RolesPage = () => {
       const updatedPolicy = {
         name: updatingPolicy?.name || '',
         policyType: updatingPolicy?.policyType || '',
-        rules: [...(updatingPolicy?.rules as Rule[]), newRule],
+        rules: [...(updatingPolicy?.rules || []), newRule],
       };
 
       updatePolicy(updatedPolicy)
@@ -417,7 +418,7 @@ const RolesPage = () => {
       const updatedPolicy = {
         name: editingPolicy?.name || '',
         policyType: editingPolicy?.policyType || '',
-        rules: rules as Rule[],
+        rules: rules || [],
       };
 
       updatePolicy(updatedPolicy)
@@ -449,19 +450,20 @@ const RolesPage = () => {
       const updatedPolicy = {
         name: updatingPolicy?.name || '',
         policyType: updatingPolicy?.policyType || '',
-        rules: updatingPolicy?.rules?.filter(
-          (rule) => rule.operation !== data.operation
-        ) as Rule[],
+        rules:
+          updatingPolicy?.rules?.filter(
+            (rule) => rule.operation !== data.operation
+          ) || [],
       };
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
           if (res.data) {
             setCurrentRolePolicies((policies) => {
-              return policies.map((preVPolicy) => {
-                if (updatingPolicy?.id === preVPolicy.id) {
+              return policies.map((prevPolicy) => {
+                if (updatingPolicy?.id === prevPolicy.id) {
                   return res.data;
                 } else {
-                  return preVPolicy;
+                  return prevPolicy;
                 }
               });
             });
@@ -820,7 +822,7 @@ const RolesPage = () => {
 
   const getAddRoleForm = () => {
     return isAddingRole ? (
-      <FormModal
+      <AddRoleModal
         errorData={errorData}
         form={Form}
         header="Adding new role"

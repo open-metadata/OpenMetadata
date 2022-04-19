@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { EntityReference } from '../generated/type/entityReference';
 import { Policy } from '../pages/RolesPage/role.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -34,7 +35,7 @@ export const getRoleByName = (
 };
 
 export const createRole = (
-  data: Record<string, string>
+  data: Record<string, string | Array<EntityReference>>
 ): Promise<AxiosResponse> => {
   return APIClient.post('/roles', data);
 };
