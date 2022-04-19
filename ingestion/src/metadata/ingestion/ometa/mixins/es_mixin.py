@@ -50,15 +50,21 @@ class ESMixin(Generic[T]):
                 if value is not None
             ]
         )
-        resp_es = self.client.get(
-            self.es_url.format(
-                service_name, generate_es_string, from_count, size, search_index
-            )
-        )
         multiple_entities = []
-        if resp_es:
-            for table_hit in resp_es["hits"]["hits"]:
-                multiple_entities.append(
-                    self.get_by_name(entity=Table, fqdn=table_hit["_source"]["fqdn"])
+        try:
+            resp_es = self.client.get(
+                self.es_url.format(
+                    service_name, generate_es_string, from_count, size, search_index
                 )
+            )
+
+            if resp_es:
+                for table_hit in resp_es["hits"]["hits"]:
+                    multiple_entities.append(
+                        self.get_by_name(
+                            entity=Table, fqdn=table_hit["_source"]["fqdn"]
+                        )
+                    )
+        except Exception as err:
+            logger.error(f"Elasticsearch failed for query: {generate_es_string}")
         return multiple_entities
