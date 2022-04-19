@@ -119,7 +119,6 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
