@@ -33,8 +33,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.bigquery import BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
@@ -50,7 +50,13 @@ class BigqueryUsageSource(Source[TableQuery]):
         self.metadata_config = metadata_config
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
-        self.project_id = self.service_connection.projectID
+
+        # Used as db
+        self.project_id = (
+            self.service_connection.projectId
+            or self.service_connection.credentials.gcsConfig.projectId
+        )
+
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
 
@@ -58,28 +64,15 @@ class BigqueryUsageSource(Source[TableQuery]):
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigQueryConnection = config.serviceConnection.__root__.config
-        options = connection.connectionOptions.dict()
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            if options.get("credentials_path"):
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options[
-                    "credentials_path"
-                ]
-                del connection.connectionOptions.credentials_path
-            elif options.get("credentials"):
-                cls.temp_credentials = BigquerySource.create_credential_temp_file(
-                    credentials=options["credentials"]
-                )
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
-                del connection.connectionOptions.credentials
-            else:
-                logger.warning(
-                    "Please refer to the BigQuery connector documentation, especially the credentials part "
-                    "https://docs.open-metadata.org/connectors/bigquery"
-                )
+
+        set_google_credentials(
+            gcs_credentials=config.serviceConnection.__root__.config.credentials
+        )
+
         return cls(config, metadata_config)
 
     def prepare(self):
