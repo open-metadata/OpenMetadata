@@ -79,20 +79,15 @@
         }
       ]
     },
-    "dbtFileNames": {
-      "description": "DBT file names",
-      "type": "object",
-      "properties": {
-        "dbtCatalogFileName": {
-          "description": "DBT Catalog file name",
-          "type": "string"
-        },
-        "dbtManifestFileName": {
-          "description": "DBT Manifest file name",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
+    "dbtCatalogFileName": {
+      "description": "DBT Catalog file name",
+      "type": "string",
+      "default": "catalog.json"
+    },
+    "dbtManifestFileName": {
+      "description": "DBT Manifest file name",
+      "type": "string",
+      "default": "manifest.json"
     }
   },
   "additionalProperties": false
