@@ -208,14 +208,19 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def ingest_lineage_by_query(self, query: str, database: str, service_name: str):
+    def ingest_lineage_by_query(
+        self, query: str, database: str, service_name: str
+    ) -> bool:
         """
-        This method parses the query to get source, target and intermediate table names to create lineage
+        This method parses the query to get source, target and intermediate table names to create lineage,
+        and returns True if target table is found to create lineage otherwise returns False.
         """
         from sqllineage.runner import LineageRunner
 
         try:
             result = LineageRunner(query)
+            if not result.target_tables:
+                return False
             for intermediate_table in result.intermediate_tables:
                 for source_table in result.source_tables:
                     self._create_lineage_by_table_name(
@@ -231,5 +236,6 @@ class OMetaLineageMixin(Generic[T]):
                         self._create_lineage_by_table_name(
                             source_table, target_table, service_name, database
                         )
+            return True
         except Exception as err:
             logger.error(str(err))
