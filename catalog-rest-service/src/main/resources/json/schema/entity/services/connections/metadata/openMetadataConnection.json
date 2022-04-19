@@ -58,37 +58,37 @@
     "includeTopics": {
       "description": "Include Topics for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeTables": {
       "description": "Include Tables for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeDashboards": {
       "description": "Include Dashboards for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includePipelines": {
       "description": "Include Pipelines for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeUsers": {
       "description": "Include Users for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeTeams": {
       "description": "Include Teams for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "includeGlossaryTerms": {
       "description": "Include Glossary Terms for Indexing",
       "type": "boolean",
-      "default": "true"
+      "default": true
     },
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",

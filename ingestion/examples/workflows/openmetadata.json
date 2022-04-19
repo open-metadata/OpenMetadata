@@ -7,10 +7,10 @@
         "type": "OpenMetadata",
         "hostPort": "{scheme}://{host}:{port}/api",
         "authProvider": "no-auth",
-        "includeTables": "true",
-        "includeUsers": "true",
-        "includeTopics": "true",
-        "includeDashboards": "true",
+        "includeTables": true,
+        "includeUsers": true,
+        "includeTopics": true,
+        "includeDashboards": true,
         "limitRecords": 10
       }
     },
