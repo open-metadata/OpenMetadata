@@ -229,7 +229,7 @@ class MetadataUsageBulkSink(BulkSink):
         table_entities = self.__get_table_entity(
             database, database_schema, table_column.table
         )
-        if table_entities is None or table_entities == []:
+        if not table_entities:
             return None
         for table_entity in table_entities:
             for tbl_column in table_entity.columns:
