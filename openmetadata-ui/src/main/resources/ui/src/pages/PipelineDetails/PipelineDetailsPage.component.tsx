@@ -90,6 +90,8 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [isPipelineStatusLoading, setIsPipelineStatusLoading] =
+    useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -127,6 +129,10 @@ const PipelineDetailsPage = () => {
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [pipeLineStatus, setPipelineStatus] = useState<
+    Pipeline['pipelineStatus']
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -214,6 +220,28 @@ const PipelineDetailsPage = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const getPipeLineStatus = () => {
+    setIsPipelineStatusLoading(true);
+    getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { pipelineStatus: status } = res.data;
+          setPipelineStatus(status);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-pipeline-status-error']
+        );
+      })
+      .finally(() => {
+        setIsPipelineStatusLoading(false);
+      });
   };
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
@@ -309,6 +337,11 @@ const PipelineDetailsPage = () => {
       }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
+
+        break;
+      }
+      case TabSpecificField.PIPELINE_STATUS: {
+        getPipeLineStatus();
 
         break;
       }
@@ -661,6 +694,7 @@ const PipelineDetailsPage = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isPipelineStatusLoading={isPipelineStatusLoading}
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
@@ -668,6 +702,7 @@ const PipelineDetailsPage = () => {
           paging={paging}
           pipelineDetails={pipelineDetails}
           pipelineFQN={pipelineFQN}
+          pipelineStatus={pipeLineStatus}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
           postFeedHandler={postFeedHandler}
