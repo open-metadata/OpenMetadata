@@ -43,7 +43,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
             start_time=start, end_time=end
         )
         self.report = SQLSourceStatus()
-        self.engine = get_engine(self.config.serviceConnection)
+        self.engine = get_engine(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):

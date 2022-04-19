@@ -70,7 +70,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
         self.report = SQLSourceStatus()
-        self.engine = get_engine(self.config.serviceConnection)
+        self.engine = get_engine(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
