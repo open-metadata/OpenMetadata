@@ -60,7 +60,11 @@ const textDark = '#000000';
 const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
 
 module.exports = {
-  purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+  purge: [
+    './src/**/*.{js,jsx,ts,tsx}',
+    './src/styles/tailwind.css',
+    './public/index.html',
+  ],
   darkMode: false,
   prefix: 'tw-',
   theme: {
