@@ -173,7 +173,9 @@ class REST_API(AppBuilderBaseView):
 
         try:
             service_connection_model = ServiceConnectionModel(**json_request)
-            response = test_source_connection(service_connection_model)
+            response = test_source_connection(
+                service_connection_model.serviceConnection.__root__.config
+            )
 
             return response
 
