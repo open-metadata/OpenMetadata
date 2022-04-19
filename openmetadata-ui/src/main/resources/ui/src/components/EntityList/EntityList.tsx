@@ -12,8 +12,10 @@
  */
 
 import { FormatedTableData } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
+import { EntityReference } from '../../generated/type/entityReference';
+import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 
 interface Prop {
@@ -30,7 +32,7 @@ const EntityList: FunctionComponent<Prop> = ({
   testIDText,
 }: Prop) => {
   return (
-    <>
+    <Fragment>
       <h6 className="tw-heading tw-mb-3" data-testid="filter-heading">
         {headerText}
       </h6>
@@ -39,7 +41,9 @@ const EntityList: FunctionComponent<Prop> = ({
             return (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2"
-                data-testid={`${testIDText}-${item.name}`}
+                data-testid={`${testIDText}-${getEntityName(
+                  item as unknown as EntityReference
+                )}`}
                 key={index}>
                 <div className="tw-flex">
                   {getEntityIcon(item.index)}
@@ -48,8 +52,8 @@ const EntityList: FunctionComponent<Prop> = ({
                     to={getEntityLink(item.index, item.fullyQualifiedName)}>
                     <button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline tw-w-52 tw-truncate tw-text-left"
-                      title={item.name}>
-                      {item.name}
+                      title={getEntityName(item as unknown as EntityReference)}>
+                      {getEntityName(item as unknown as EntityReference)}
                     </button>
                   </Link>
                 </div>
@@ -57,7 +61,7 @@ const EntityList: FunctionComponent<Prop> = ({
             );
           })
         : noDataPlaceholder}
-    </>
+    </Fragment>
   );
 };
 

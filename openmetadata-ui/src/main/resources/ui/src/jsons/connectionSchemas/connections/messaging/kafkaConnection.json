@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/kafkaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KafkaConnection",
+  "description": "Kafka Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.messaging.KafkaConnection",
+  "definitions": {
+    "kafkaType": {
+      "description": "Kafka service type",
+      "type": "string",
+      "enum": ["Kafka"],
+      "default": "Kafka"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/kafkaType",
+      "default": "Kafka"
+    },
+    "bootstrapServers": {
+      "description": "Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092",
+      "type": "string",
+      "default": "localhost:9092"
+    },
+    "schemaRegistryURL": {
+      "description": "Confluent Kafka Schema Registry URL.",
+      "type": "string",
+      "format": "uri",
+      "default": "http://localhost:8081"
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

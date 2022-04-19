@@ -12,7 +12,6 @@
 Python API REST wrapper and helpers
 """
 import datetime
-import logging
 import time
 from typing import Callable, List, Optional
 
@@ -21,8 +20,9 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class RetryException(Exception):

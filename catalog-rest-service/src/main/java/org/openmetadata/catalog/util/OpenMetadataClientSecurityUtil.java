@@ -34,6 +34,10 @@ public final class OpenMetadataClientSecurityUtil {
   public static final List<String> AZURE_SSO_CONFIGS = List.of(CLIENT_SECRET, CLIENT_ID, AUTHORITY, SCOPES);
   public static final List<String> CUSTOM_OIDC_SSO_CONFIGS = List.of(CLIENT_ID, SECRET_KEY, TOKEN_ENDPOINT);
 
+  private OpenMetadataClientSecurityUtil() {
+    /* Utility class with private constructor */
+  }
+
   public static OpenMetadataServerConnection buildOpenMetadataServerConfig(AirflowConfiguration airflowConfiguration) {
     AuthProvider authProvider = AuthProvider.fromValue(airflowConfiguration.getAuthProvider());
     String openMetadataURL = airflowConfiguration.getMetadataApiEndpoint();

@@ -36,6 +36,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -68,6 +69,27 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         MessagingServiceResource.FIELDS);
     supportsPatch = false;
     supportsAuthorizedMetadataOperations = false;
+  }
+
+  public void setupMessagingServices() throws HttpResponseException {
+    // Create Kafka messaging service
+    MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createMessaging =
+        new CreateMessagingService()
+            .withName("kafka")
+            .withServiceType(MessagingServiceType.Kafka)
+            .withConnection(TestUtils.KAFKA_CONNECTION);
+    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
+
+    // Create Pulsar messaging service
+    createMessaging
+        .withName("pulsar")
+        .withServiceType(MessagingServiceType.Pulsar)
+        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
+
+    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
+    PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
   }
 
   @Test

@@ -663,8 +663,12 @@ const DashboardDetails = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={dashboardDetails.id}
+                  entityName={dashboardDetails.name}
+                  entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />

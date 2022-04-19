@@ -71,7 +71,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import { hasEditAccess, isEven } from '../../utils/CommonUtils';
+import { getEntityName, hasEditAccess, isEven } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
@@ -277,7 +277,7 @@ const DatabaseDetails: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
@@ -756,8 +756,12 @@ const DatabaseDetails: FunctionComponent = () => {
                 )}
                 {activeTab === 3 && (
                   <ManageTabComponent
+                    allowDelete
                     hideTier
                     currentUser={database?.owner?.id}
+                    entityId={database?.id}
+                    entityName={database?.name}
+                    entityType={EntityType.DATABASE}
                     hasEditAccess={hasEditAccess(
                       database?.owner?.type || '',
                       database?.owner?.id || ''

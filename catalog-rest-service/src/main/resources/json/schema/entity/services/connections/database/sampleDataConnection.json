@@ -16,7 +16,8 @@
   "properties": {
     "type": {
       "description": "Service Type",
-      "$ref": "#/definitions/sampleDataType"
+      "$ref": "#/definitions/sampleDataType",
+      "default": "SampleData"
     },
     "sampleDataFolder": {
       "description": "Sample Data File Path",

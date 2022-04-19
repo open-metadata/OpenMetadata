@@ -353,6 +353,59 @@
     transform: rotate(180deg);
   }
 
+  .rjsf.no-header #root__title,
+  .rjsf.no-header #root__description {
+    @apply tw-hidden;
+  }
+
+  .rjsf .form-group.field {
+    @apply tw-my-3;
+  }
+
+  .rjsf .control-label {
+    @apply tw-capitalize;
+  }
+  .rjsf .control-label .required {
+    @apply tw-text-red-600 tw-ml-0.5;
+  }
+
+  .rjsf .field-description {
+    @apply tw-text-grey-muted tw-text-xs tw-my-0.5;
+  }
+
+  .rjsf .form-control {
+    @apply tw-w-full tw-px-3 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
+    focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
+  }
+
+  .rjsf .btn {
+    @apply tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer tw-leading-5 
+    tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none tw-rounded-lg 
+    tw-text-sm tw-text-white tw-border tw-border-transparent;
+  }
+
+  .rjsf .btn.btn-block {
+    @apply tw-w-full;
+  }
+
+  .rjsf .btn.array-item-remove {
+    @apply tw-mt-4 tw-p-4;
+    background: url(../assets/svg/ic-delete.svg) center center no-repeat;
+    background-size: 35%;
+  }
+
+  .rjsf .row {
+    @apply tw-flex tw-items-center tw-w-full tw--m-1;
+  }
+
+  .rjsf .col-xs-5 {
+    @apply tw-flex-1 tw-p-1;
+  }
+
+  .rjsf .col-xs-2 {
+    @apply tw-w-1/12 tw-p-1;
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;
@@ -365,7 +418,7 @@
   /* react tostify */
 
   .Toastify__toast-container {
-    @apply tw-font-sans tw-break-words;
+    @apply tw-font-sans tw-break-all;
   }
 
   .Toastify__toast-body {

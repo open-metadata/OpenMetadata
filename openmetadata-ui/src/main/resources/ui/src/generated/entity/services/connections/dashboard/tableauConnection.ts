@@ -44,10 +44,7 @@ export interface TableauConnection {
    * Tableau Site Name
    */
   siteName?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -56,13 +53,6 @@ export interface TableauConnection {
    * username for the Tableau
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

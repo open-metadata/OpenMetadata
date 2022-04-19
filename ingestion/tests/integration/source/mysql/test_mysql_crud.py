@@ -65,7 +65,7 @@ def create_delete_database(client: OpenMetadata):
     data = {
         "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_mysql",
-        "serviceType": "MySQL",
+        "serviceType": "Mysql",
         "description": "local mysql env",
     }
     create_mysql_service = CreateDatabaseServiceRequest(**data)

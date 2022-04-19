@@ -30,7 +30,10 @@ const jsonData = {
     'create-tag-category-error': 'Error while creating tag category!',
     'create-tag-error': 'Error while creating tag!',
     'create-team-error': 'Error while creating team!',
+    'create-ingestion-error': 'Error while creating ingestion workflow!',
+    'create-service-error': 'Error while creating service!',
 
+    'delete-entity-error': 'Error while deleting entity!',
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
     'delete-ingestion-error': 'Error while deleting ingestion workflow',
@@ -74,6 +77,7 @@ const jsonData = {
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
+    'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
     'fetch-roles-error': 'Error while fetching roles!',
     'fetch-sample-data-error': 'Error while fetching sample data!',
@@ -126,13 +130,15 @@ const jsonData = {
     'create-conversation': 'Conversation created successfully!',
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
+    'delete-entity-success': 'Entity deleted successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
   },
   label: {
-    // Add UI label texts here
+    'delete-entity-text':
+      'Once you delete this entity, it would be removed permanently.',
   },
   message: {
     'no-services': 'No services',

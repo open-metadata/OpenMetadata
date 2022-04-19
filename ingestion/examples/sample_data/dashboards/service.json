@@ -1,12 +1,15 @@
 {
-  "name": "sample_superset",
-  "serviceType": "Superset",
-  "description": "Superset Service",
-  "dashboardConnection": {
+  "type": "superset",
+  "serviceName": "sample_superset",
+  "serviceConnection": {
     "config": {
-      "supersetURL": "http://localhost:8088",
+      "type": "Superset",
+      "hostPort": "http://localhost:8088",
       "username": "admin",
       "password": "admin"
     }
+  },
+  "sourceConfig": {
+    "config": {}
   }
 }

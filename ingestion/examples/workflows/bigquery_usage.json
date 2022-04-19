@@ -1,16 +1,29 @@
 {
   "source": {
     "type": "bigquery-usage",
-    "config": {
-      "project_id": "project_id",
-      "host_port": "https://bigquery.googleapis.com",
-      "username": "gcpuser@project_id.iam.gserviceaccount.com",
-      "service_name": "gcp_bigquery",
-      "duration": 2,
-      "options": {
-        "credentials_path": "examples/creds/bigquery-cred.json"
+    "serviceName": "local_bigquery",
+    "serviceConnection": {
+      "config": {
+        "type": "BigQuery",
+        "projectID": "project_id",
+        "enablePolicyTagImport": true,
+        "connectionOptions": {
+          "credentials": {
+            "type": "service_account",
+            "project_id": "project_id",
+            "private_key_id": "private_key_id",
+            "private_key": "private_key",
+            "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
+            "client_id": "client_id",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": ""
+          }
+        }
       }
-    }
+    },
+    "sourceConfig": {"config": {"queryLogDuration": "1"}}
   },
   "processor": {
     "type": "query-parser",
@@ -24,17 +37,16 @@
       "filename": "/tmp/bigquery_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/bigquery_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": { 
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

@@ -36,9 +36,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -48,7 +46,6 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
 
@@ -81,13 +78,11 @@ class TableauSource(Source[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
         self.connection_config = self.config.serviceConnection.__root__.config
         self.client = self.tableau_client()
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Tableau.name,
-            config=self.config.serviceConnection.__root__.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
         self.status = SourceStatus()
         self.metadata_client = OpenMetadata(self.metadata_config)

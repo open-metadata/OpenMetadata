@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/amundsenConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AmundsenConnection",
+  "description": "Amundsen Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.AmundsenConnection",
+  "definitions": {
+    "amundsenType": {
+      "description": "Amundsen service type",
+      "type": "string",
+      "enum": ["Amundsen"],
+      "default": "Amundsen"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/amundsenType",
+      "default": "Amundsen"
+    },
+    "username": {
+      "description": "username to connect to the Amundsen Neo4j Connection.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to the Amundsen Neo4j Connection.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "description": "Host and port of the Amundsen Neo4j Connection.",
+      "type": "string"
+    },
+    "maxConnectionLifeTime": {
+      "description": "Maximum connection lifetime for the Amundsen Neo4j Connection.",
+      "type": "integer",
+      "default": "50"
+    },
+    "validateSSL": {
+      "description": "Enable SSL validation for the Amundsen Neo4j Connection.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "encrypted": {
+      "description": "Enable Encyption for the Amundsen Neo4j Connection.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "modelClass": {
+      "description": "Model Class for the Amundsen Neo4j Connection.",
+      "type": "string"
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

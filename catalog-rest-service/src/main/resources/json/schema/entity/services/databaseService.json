@@ -10,11 +10,11 @@
       "type": "string",
       "enum": [
         "BigQuery",
-        "MySQL",
+        "Mysql",
         "Redshift",
         "Snowflake",
         "Postgres",
-        "MSSQL",
+        "Mssql",
         "Hive",
         "Oracle",
         "Athena",
@@ -25,7 +25,7 @@
         "MariaDB",
         "Druid",
         "Db2",
-        "ClickHouse",
+        "Clickhouse",
         "Databricks",
         "DynamoDB",
         "AzureSQL",
@@ -40,7 +40,7 @@
           "name": "BigQuery"
         },
         {
-          "name": "MySQL"
+          "name": "Mysql"
         },
         {
           "name": "Redshift"
@@ -52,7 +52,7 @@
           "name": "Postgres"
         },
         {
-          "name": "MSSQL"
+          "name": "Mssql"
         },
         {
           "name": "Oracle"
@@ -85,7 +85,7 @@
           "name": "Db2"
         },
         {
-          "name": "ClickHouse"
+          "name": "Clickhouse"
         },
         {
           "name": "Databricks"

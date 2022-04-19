@@ -35,7 +35,7 @@ jobs:
         os:
           - ubuntu-latest
         node-version:
-          - 12.x
+          - 16.x
 
     steps:
       - name: install libssl

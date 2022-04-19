@@ -72,7 +72,7 @@ import { ServiceResponse } from '../interface/service.interface';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
       return MYSQL;
 
     case DatabaseServiceType.Redshift:
@@ -117,7 +117,7 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.AzureSQL:
       return AZURESQL;
 
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
       return CLICKHOUSE;
 
     case DatabaseServiceType.Databricks:
@@ -323,7 +323,7 @@ export const getAirflowPipelineTypes = (
     case DatabaseServiceType.Redshift:
     case DatabaseServiceType.BigQuery:
     case DatabaseServiceType.Snowflake:
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
     case DatabaseServiceType.Mssql:
       return onlyMetaData
         ? [PipelineType.Metadata]
@@ -332,7 +332,7 @@ export const getAirflowPipelineTypes = (
     // need to add additional config feild to support trino
     // case DatabaseServiceType.Trino:
     case DatabaseServiceType.Hive:
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
     case DatabaseServiceType.Postgres:
     case DatabaseServiceType.Vertica:
     case DatabaseServiceType.MariaDB:
@@ -349,18 +349,18 @@ export const getAirflowPipelineTypes = (
 export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
+    case ServiceCategory.MESSAGING_SERVICES:
+    case ServiceCategory.DASHBOARD_SERVICES:
       return true;
 
-    case ServiceCategory.MESSAGING_SERVICES:
     case ServiceCategory.PIPELINE_SERVICES:
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return false;
-
     default:
-      break;
+      return false;
   }
+};
 
-  return false;
+export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
+  return getIsIngestionEnable(serviceCategory);
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {

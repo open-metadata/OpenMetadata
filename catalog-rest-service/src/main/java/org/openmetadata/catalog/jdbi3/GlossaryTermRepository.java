@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
@@ -66,7 +67,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
-    entity.setTags(fields.contains("tags") ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
     return entity;
   }

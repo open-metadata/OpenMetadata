@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/salesforceConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SalesforceConnection",
+  "description": "Salesforce Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SalesforceConnection",
+  "definitions": {
+    "salesforceType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Salesforce"],
+      "default": "Salesforce"
+    },
+    "salesforceScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["salesforce"],
+      "default": "salesforce"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/salesforceType",
+      "default": "Salesforce"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/salesforceScheme",
+      "default": "salesforce"
+    },
+    "username": {
+      "description": "username to connect  to the Redshift. This user should have privileges to read all the metadata in Redshift.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect  to the Redshift.",
+      "type": "string",
+      "format": "password"
+    },
+    "securityToken": {
+      "description": "Salesforce Security Token.",
+      "type": "string"
+    },
+    "hostPort": {
+      "description": "Host and port of the Redshift.",
+      "type": "string"
+    },
+    "sobjectName": {
+      "description": "Salesforce Object Name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -13,8 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_DELETED;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.getEntityFields;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Include.DELETED;
@@ -35,7 +38,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
-import java.util.regex.Pattern;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -72,7 +74,6 @@ import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CommonUtil;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -142,9 +143,9 @@ public abstract class EntityRepository<T> {
     this.putFields = getFields(putFields);
     this.entityType = entityType;
 
-    this.supportsTags = allowedFields.contains("tags");
-    this.supportsOwner = allowedFields.contains("owner");
-    this.supportsFollower = allowedFields.contains("followers");
+    this.supportsTags = allowedFields.contains(FIELD_TAGS);
+    this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     Entity.registerEntity(entityClass, entityType, dao, this);
   }
 
@@ -219,16 +220,16 @@ public abstract class EntityRepository<T> {
    * org.openmetadata.catalog.resources.teams.RoleResource#initialize(CatalogApplicationConfig)}
    */
   public void initSeedDataFromResources() throws IOException {
-    Pattern pattern = Pattern.compile(String.format(".*json/data/%s/.*\\.json$", entityType));
-    List<String> jsonDataFiles = CommonUtil.getResources(pattern);
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(String.format(".*json/data/%s/.*\\.json$", entityType));
     jsonDataFiles.forEach(
         jsonDataFile -> {
           try {
             String json =
                 IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(jsonDataFile)));
             initSeedData(JsonUtils.readValue(json, entityClass));
-          } catch (IOException e) {
-            LOG.warn("Failed to initialize the {} from file {}: {}", entityType, jsonDataFile, e.getMessage());
+          } catch (Exception e) {
+            LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
   }
@@ -246,7 +247,7 @@ public abstract class EntityRepository<T> {
     LOG.info("{} {} is not initialized", entityType, entityInterface.getFullyQualifiedName());
     entityInterface.setUpdateDetails("admin", System.currentTimeMillis());
     entityInterface.setId(UUID.randomUUID());
-    storeEntity(entityInterface.getEntity(), false);
+    create(null, entityInterface.getEntity());
     LOG.info("Created a new {} {}", entityType, entityInterface.getFullyQualifiedName());
   }
 
@@ -447,7 +448,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
         .getFieldsAdded()
-        .add(new FieldChange().withName("followers").withNewValue(List.of(Entity.getEntityReference(user))));
+        .add(new FieldChange().withName(FIELD_FOLLOWERS).withNewValue(List.of(Entity.getEntityReference(user))));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -504,7 +505,7 @@ public abstract class EntityRepository<T> {
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
     EntityInterface<T> entityInterface = getEntityInterface(updated);
-    if (supportsSoftDelete && hardDelete == false) {
+    if (supportsSoftDelete && !hardDelete) {
       entityInterface.setUpdateDetails(updatedBy, System.currentTimeMillis());
       entityInterface.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
@@ -537,7 +538,7 @@ public abstract class EntityRepository<T> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
     change
         .getFieldsDeleted()
-        .add(new FieldChange().withName("followers").withOldValue(List.of(Entity.getEntityReference(user))));
+        .add(new FieldChange().withName(FIELD_FOLLOWERS).withOldValue(List.of(Entity.getEntityReference(user))));
 
     ChangeEvent changeEvent =
         new ChangeEvent()
@@ -776,11 +777,7 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
-        entityReference
-            .withType(ref.getType())
-            .withName(ref.getName())
-            .withDisplayName(ref.getDisplayName())
-            .withFullyQualifiedName(ref.getFullyQualifiedName());
+        EntityUtil.copy(ref, entityReference);
       }
     }
   }
@@ -790,11 +787,7 @@ public abstract class EntityRepository<T> {
       entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
-        entityReference
-            .withType(ref.getType())
-            .withName(ref.getName())
-            .withDisplayName(ref.getDisplayName())
-            .withFullyQualifiedName(ref.getFullyQualifiedName());
+        EntityUtil.copy(ref, entityReference);
       }
     }
   }
@@ -810,7 +803,7 @@ public abstract class EntityRepository<T> {
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {
-    return Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+    return !supportsOwner ? null : Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
   }
 
   public EntityReference getOriginalOwner(T entity) throws IOException {
@@ -818,14 +811,12 @@ public abstract class EntityRepository<T> {
       return null;
     }
     // Try to find the owner if entity exists
-    try {
-      String fqn = getFullyQualifiedName(entity);
-      entity = getByName(null, fqn, getFields(FIELD_OWNER));
-      return getEntityInterface(entity).getOwner();
-    } catch (EntityNotFoundException e) {
-      // If entity is not found, we can return null for owner and ignore this exception
+    String json = dao.findJsonByFqn(getFullyQualifiedName(entity), Include.NON_DELETED);
+    if (json == null) {
+      return null; // Entity does not exist
     }
-    return null;
+    entity = JsonUtils.readValue(json, entityClass);
+    return getOwner(entity);
   }
 
   public EntityReference populateOwner(EntityReference owner) throws IOException {
@@ -833,7 +824,7 @@ public abstract class EntityRepository<T> {
       return null;
     }
     EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
-    return owner.withName(ref.getName()).withDisplayName(ref.getDisplayName()).withDeleted(ref.getDeleted());
+    return EntityUtil.copy(ref, owner);
   }
 
   protected void storeOwner(T entity, EntityReference owner) {
@@ -926,7 +917,7 @@ public abstract class EntityRepository<T> {
         updateDescription();
         updateDisplayName();
         updateOwner();
-        updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
+        updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         entitySpecificUpdate();
       }
 
@@ -954,16 +945,16 @@ public abstract class EntityRepository<T> {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
         if (updated.isDeleted() != original.isDeleted() && Boolean.TRUE.equals(updated.isDeleted())) {
-          throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, "deleted"));
+          throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
         if (Boolean.TRUE.equals(original.isDeleted())) {
           updated.setDeleted(false);
-          recordChange("deleted", true, false);
+          recordChange(FIELD_DELETED, true, false);
           entityRestored = true;
         }
       } else {
-        recordChange("deleted", original.isDeleted(), updated.isDeleted());
+        recordChange(FIELD_DELETED, original.isDeleted(), updated.isDeleted());
       }
     }
 

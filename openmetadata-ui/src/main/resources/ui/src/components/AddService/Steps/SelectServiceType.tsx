@@ -101,7 +101,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Discard</span>
+          <span>Back</span>
         </Button>
 
         <Button
