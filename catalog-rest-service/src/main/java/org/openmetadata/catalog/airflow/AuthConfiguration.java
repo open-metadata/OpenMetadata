@@ -13,23 +13,23 @@
 
 package org.openmetadata.catalog.airflow;
 
-import javax.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
+import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
+import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
+import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 
-public class AirflowConfiguration {
+public class AuthConfiguration {
 
-  @NotEmpty @Getter @Setter private String apiEndpoint;
+  @Getter @Setter private GoogleSSOClientConfig google;
 
-  @NotEmpty @Getter @Setter private String username;
+  @Getter @Setter private OktaSSOClientConfig okta;
 
-  @NotEmpty @Getter @Setter private String password;
+  @Getter @Setter private Auth0SSOClientConfig auth0;
 
-  @Getter @Setter private Integer timeout = 30;
+  @Getter @Setter private AzureSSOClientConfig azure;
 
-  @NotEmpty @Getter @Setter private String metadataApiEndpoint;
-
-  @NotEmpty @Getter @Setter private String authProvider;
-
-  @Getter @Setter private AuthConfiguration authConfig;
+  @Getter @Setter private CustomOIDCSSOClientConfig customOidc;
 }

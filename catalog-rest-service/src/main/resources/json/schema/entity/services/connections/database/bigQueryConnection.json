@@ -39,9 +39,13 @@
       "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
       "type": "string"
     },
-    "projectID": {
-      "description": "Google BigQuery project id.",
+    "projectId": {
+      "description": "BigQuery project ID. Inform it here if passing the credentials path.",
       "type": "string"
+    },
+    "credentials": {
+      "description": "GCS Credentials",
+      "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
     "enablePolicyTagImport": {
       "description": "Enable importing policy tags of BigQuery into OpenMetadata",
@@ -87,6 +91,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "projectID"
+    "credentials"
   ]
 }
