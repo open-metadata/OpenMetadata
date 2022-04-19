@@ -58,6 +58,7 @@ import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -102,6 +103,8 @@ const PipelineDetails = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  pipelineStatus,
+  isPipelineStatusLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -163,6 +166,17 @@ const PipelineDetails = ({
       count: feedCount,
     },
     {
+      name: 'Executions',
+      icon: {
+        alt: 'execution',
+        name: 'execution',
+        title: 'Execution',
+        selectedName: 'execution-color',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -171,7 +185,7 @@ const PipelineDetails = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Manage',
@@ -184,7 +198,7 @@ const PipelineDetails = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -556,6 +570,12 @@ const PipelineDetails = ({
               </div>
             )}
             {activeTab === 3 && (
+              <PipelineStatusList
+                isLoading={isPipelineStatusLoading}
+                pipelineStatus={pipelineStatus}
+              />
+            )}
+            {activeTab === 4 && (
               <div className="tw-h-full">
                 <Entitylineage
                   addLineageHandler={addLineageHandler}
@@ -571,7 +591,7 @@ const PipelineDetails = ({
                 />
               </div>
             )}
-            {activeTab === 4 && !deleted && (
+            {activeTab === 5 && !deleted && (
               <div>
                 <ManageTabComponent
                   allowDelete

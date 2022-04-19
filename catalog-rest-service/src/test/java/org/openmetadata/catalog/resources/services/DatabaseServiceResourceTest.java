@@ -364,7 +364,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   public static void validateBigQueryConnection(
       BigQueryConnection expectedBigQueryConnection, BigQueryConnection actualBigQueryConnection) {
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
-    assertEquals(expectedBigQueryConnection.getProjectID(), actualBigQueryConnection.getProjectID());
+    assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     assertEquals(expectedBigQueryConnection.getUsername(), actualBigQueryConnection.getUsername());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
     assertEquals(expectedBigQueryConnection.getDatabase(), actualBigQueryConnection.getDatabase());

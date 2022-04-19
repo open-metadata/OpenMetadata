@@ -15,9 +15,6 @@ from a WorkflowSource
 from flask import Response
 from openmetadata.api.response import ApiResponse
 
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnectionModel,
-)
 from metadata.utils.engines import (
     SourceConnectionException,
     get_engine,
@@ -25,15 +22,13 @@ from metadata.utils.engines import (
 )
 
 
-def test_source_connection(
-    service_connection_model: ServiceConnectionModel,
-) -> Response:
+def test_source_connection(connection) -> Response:
     """
     Create the engine and test the connection
     :param workflow_source: Source to test
     :return: None or exception
     """
-    engine = get_engine(service_connection_model.serviceConnection)
+    engine = get_engine(connection)
 
     try:
         test_connection(engine)
