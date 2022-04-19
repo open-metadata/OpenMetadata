@@ -31,6 +31,13 @@ jest.mock('../../axiosAPIs/rolesAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockGetRole })),
   updatePolicy: jest.fn(),
   updateRole: jest.fn(),
+  getPolicies: jest.fn().mockImplementation(() => {
+    return Promise.resolve({
+      data: {
+        data: [],
+      },
+    });
+  }),
 }));
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
