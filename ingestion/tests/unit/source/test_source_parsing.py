@@ -173,16 +173,20 @@ def test_bigquery():
             "config": {
                 "type": "BigQuery",
                 "enablePolicyTagImport": True,
-                "credentialsType": "service_account",
-                "projectID": "projectID",
-                "privateKeyId": "privateKeyId",
-                "privateKey": "privateKey",
-                "clientEmail": "clientEmail",
-                "clientId": "clientId",
-                "authURI": "https://accounts.google.com/o/oauth2/auth",
-                "tokenURI": "https://oauth2.googleapis.com/token",
-                "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
-                "clientX509CertUrl": "clientX509CertUrl",
+                "credentials": {
+                    "gcsConfig": {
+                        "type": "service_account",
+                        "projectId": "projectID",
+                        "privateKeyId": "privateKeyId",
+                        "privateKey": "privateKey",
+                        "clientEmail": "clientEmail",
+                        "clientId": "clientId",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://cert.url",
+                    }
+                },
             }
         },
         "sourceConfig": {"config": {"enableDataProfiler": False}},
