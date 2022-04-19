@@ -432,8 +432,8 @@ export const servicePageTabs = (entity: string) => [
     path: 'ingestions',
   },
   {
-    name: 'Connection Config',
-    path: 'connection_config',
+    name: 'Connection',
+    path: 'connection',
   },
   {
     name: 'Manage',
@@ -449,7 +449,7 @@ export const getCurrentServiceTab = (tab: string) => {
 
       break;
 
-    case 'connection_config':
+    case 'connection':
       currentTab = 3;
 
       break;

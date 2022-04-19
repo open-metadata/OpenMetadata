@@ -158,7 +158,7 @@ const ServicePage: FunctionComponent = () => {
       count: ingestions.length,
     },
     {
-      name: 'Connection Config',
+      name: 'Connection',
       icon: {
         alt: 'sample_data',
         name: 'sample-data',
