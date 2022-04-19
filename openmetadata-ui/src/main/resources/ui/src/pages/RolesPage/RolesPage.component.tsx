@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -42,6 +41,7 @@ import ConfirmationModal from '../../components/Modals/ConfirmationModal/Confirm
 import FormModal from '../../components/Modals/FormModal';
 import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { DEFAULT_UPDATE_POLICY_STATE } from '../../constants/role.constants';
 import {
   Operation,
   Rule,
@@ -63,7 +63,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import AddUsersModal from '../teams/AddUsersModal';
 import Form from '../teams/Form';
 import UserCard from '../teams/UserCard';
-import { Policy } from './policy.interface';
+import { Policy, UpdatePolicyState } from './role.interface';
 
 const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';
@@ -74,24 +74,24 @@ const RolesPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [currentRole, setCurrentRole] = useState<Role>();
-  const [currentPolicy, setCurrentPolicy] = useState<Policy>();
+  const [currentRolePolicies, setCurrentRolePolicies] = useState<Policy[]>([]);
   const [error, setError] = useState<string>('');
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState<boolean>(false);
   const [isAddingRole, setIsAddingRole] = useState<boolean>(false);
-  const [isAddingRule, setIsAddingRule] = useState<boolean>(false);
+  const [isAddingRule, setIsAddingRule] = useState<UpdatePolicyState>(
+    DEFAULT_UPDATE_POLICY_STATE
+  );
   const [errorData, setErrorData] = useState<FormErrorData>();
   const [isEditable, setIsEditable] = useState<boolean>(false);
-  const [deletingRule, setDeletingRule] = useState<{
-    rule: Rule | undefined;
-    state: boolean;
-  }>({ rule: undefined, state: false });
+  const [deletingRule, setDeletingRule] = useState<UpdatePolicyState>(
+    DEFAULT_UPDATE_POLICY_STATE
+  );
 
-  const [editingRule, setEditingRule] = useState<{
-    rule: Rule | undefined;
-    state: boolean;
-  }>({ rule: undefined, state: false });
+  const [editingRule, setEditingRule] = useState<UpdatePolicyState>(
+    DEFAULT_UPDATE_POLICY_STATE
+  );
 
   const [isSettingDefaultRole, setIsSettingDefaultRole] =
     useState<boolean>(false);
@@ -161,7 +161,7 @@ const RolesPage = () => {
     )
       .then((res: AxiosResponse) => {
         if (res.data) {
-          setCurrentPolicy(res.data);
+          setCurrentRolePolicies((preV) => [...preV, res.data]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -231,7 +231,7 @@ const RolesPage = () => {
   const fetchCurrentRole = (name: string, update = false) => {
     if (currentRole?.name !== name || update) {
       setIsLoading(true);
-      getRoleByName(name, ['users', 'policy', 'teams'])
+      getRoleByName(name, ['users', 'policies', 'teams'])
         .then((res: AxiosResponse) => {
           if (res.data) {
             setCurrentRole(res.data);
@@ -299,7 +299,7 @@ const RolesPage = () => {
     setIsSettingDefaultRole(false);
   };
 
-  const addTeams = (data: Team[]) => {
+  const addTeamsToRole = (data: Team[]) => {
     const currentRoleReference: EntityReference = {
       id: currentRole?.id as string,
       type: 'role',
@@ -364,22 +364,30 @@ const RolesPage = () => {
 
   const createRule = (data: Rule) => {
     const errData = validateRuleData(data, true);
-    if (!Object.values(errData).length) {
+    const updatingPolicy = isAddingRule.policy;
+    if (!Object.values(errData).length && !isUndefined(updatingPolicy)) {
       const newRule = {
         ...data,
-        name: `${currentPolicy?.name}-${data.operation}`,
-        userRoleAttr: currentRole?.name,
+        name: `${updatingPolicy?.name}-${data.operation}`,
       };
       const updatedPolicy = {
-        name: currentPolicy?.name as string,
-        policyType: currentPolicy?.policyType as string,
-        rules: [...(currentPolicy?.rules as Rule[]), newRule],
+        name: updatingPolicy?.name as string,
+        policyType: updatingPolicy?.policyType as string,
+        rules: [...(updatingPolicy?.rules as Rule[]), newRule],
       };
 
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setCurrentPolicy(res.data);
+            setCurrentRolePolicies((preVPolicies) => {
+              return preVPolicies.map((preVPolicy) => {
+                if (updatingPolicy?.id === preVPolicy.id) {
+                  return res.data;
+                } else {
+                  return preVPolicy;
+                }
+              });
+            });
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
@@ -390,63 +398,87 @@ const RolesPage = () => {
             jsonData['api-error-messages']['create-rule-error']
           );
         })
-        .finally(() => setIsAddingRule(false));
+        .finally(() => setIsAddingRule(DEFAULT_UPDATE_POLICY_STATE));
     }
   };
 
-  const onRuleUpdate = (data: Rule) => {
-    const rules = currentPolicy?.rules?.map((rule) => {
-      if (rule.name === data.name) {
-        return data;
-      } else {
-        return rule;
-      }
-    });
+  const updateRule = (data: Rule) => {
+    const editingPolicy = editingRule.policy;
 
-    const updatedPolicy = {
-      name: currentPolicy?.name as string,
-      policyType: currentPolicy?.policyType as string,
-      rules: rules as Rule[],
-    };
-    updatePolicy(updatedPolicy)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setCurrentPolicy(res.data);
+    if (!isUndefined(editingPolicy)) {
+      const rules = editingPolicy?.rules?.map((rule) => {
+        if (rule.name === data.name) {
+          return data;
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          return rule;
         }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, `Error while updating ${data.name} rule`);
-      })
-      .finally(() => setEditingRule({ rule: undefined, state: false }));
+      });
+
+      const updatedPolicy = {
+        name: editingPolicy?.name as string,
+        policyType: editingPolicy?.policyType as string,
+        rules: rules as Rule[],
+      };
+
+      updatePolicy(updatedPolicy)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setCurrentRolePolicies((preVPolicies) => {
+              return preVPolicies.map((preVPolicy) => {
+                if (editingPolicy?.id === preVPolicy.id) {
+                  return res.data;
+                } else {
+                  return preVPolicy;
+                }
+              });
+            });
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(err, `Error while updating ${data.name} rule`);
+        })
+        .finally(() => setEditingRule(DEFAULT_UPDATE_POLICY_STATE));
+    }
   };
 
   const deleteRule = (data: Rule) => {
-    const updatedPolicy = {
-      name: currentPolicy?.name as string,
-      policyType: currentPolicy?.policyType as string,
-      rules: currentPolicy?.rules?.filter(
-        (rule) => rule.operation !== data.operation
-      ) as Rule[],
-    };
-    updatePolicy(updatedPolicy)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setCurrentPolicy(res.data);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-rule-error']
-        );
-      })
-      .finally(() => {
-        setDeletingRule({ rule: undefined, state: false });
-      });
+    const updatingPolicy = deletingRule.policy;
+    if (!isUndefined(updatingPolicy)) {
+      const updatedPolicy = {
+        name: updatingPolicy?.name as string,
+        policyType: updatingPolicy?.policyType as string,
+        rules: updatingPolicy?.rules?.filter(
+          (rule) => rule.operation !== data.operation
+        ) as Rule[],
+      };
+      updatePolicy(updatedPolicy)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setCurrentRolePolicies((preVPolicies) => {
+              return preVPolicies.map((preVPolicy) => {
+                if (updatingPolicy?.id === preVPolicy.id) {
+                  return res.data;
+                } else {
+                  return preVPolicy;
+                }
+              });
+            });
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['delete-rule-error']
+          );
+        })
+        .finally(() => {
+          setDeletingRule(DEFAULT_UPDATE_POLICY_STATE);
+        });
+    }
   };
 
   const getDefaultBadge = (className?: string) => {
@@ -472,11 +504,11 @@ const RolesPage = () => {
               1,
               currentTab
             )}`}
-            data-testid="policy"
+            data-testid="policies"
             onClick={() => {
               setCurrentTab(1);
             }}>
-            Policy
+            Policies
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
@@ -507,29 +539,13 @@ const RolesPage = () => {
 
   const fetchLeftPanel = (roles: Array<Role>) => {
     return (
-      <>
+      <Fragment>
         <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
           <h6
             className="tw-heading tw-text-base"
             data-testid="left-panel-title">
             Roles
           </h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-role"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => {
-                setErrorData(undefined);
-                setIsAddingRole(true);
-              }}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </NonAdminAction>
         </div>
         {roles &&
           roles.map((role) => (
@@ -549,11 +565,13 @@ const RolesPage = () => {
               {role.defaultRole ? getDefaultBadge() : null}
             </div>
           ))}
-      </>
+      </Fragment>
     );
   };
 
-  const getPolicyRules = (rules: Array<Rule>) => {
+  const getRolePolicy = (policyObj: Policy) => {
+    const rules = policyObj.rules ?? [];
+
     if (!rules.length) {
       return (
         <div className="tw-text-center tw-py-5">
@@ -563,67 +581,103 @@ const RolesPage = () => {
     }
 
     return (
-      <div className="tw-bg-white">
-        <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
-          <thead>
-            <tr className="tableHead-row">
-              <th className="tableHead-cell" data-testid="table-heading">
-                Operation
-              </th>
-              <th className="tableHead-cell" data-testid="table-heading">
-                Access
-              </th>
-              <th className="tableHead-cell" data-testid="table-heading">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="tw-text-sm" data-testid="table-body">
-            {rules.map((rule, index) => (
-              <tr
-                className={`tableBody-row ${!isEven(index + 1) && 'odd-row'}`}
-                key={index}>
-                <td className="tableBody-cell">
-                  <p>{rule.operation}</p>
-                </td>
-                <td className="tableBody-cell">
-                  <p
-                    className={classNames(
-                      rule.allow
-                        ? 'tw-text-status-success'
-                        : 'tw-text-status-failed'
-                    )}>
-                    {rule.allow ? 'ALLOW' : 'DENY'}
-                  </p>
-                </td>
-                <td className="tableBody-cell">
-                  <div className="tw-flex">
-                    <span onClick={() => setEditingRule({ rule, state: true })}>
-                      <SVGIcons
-                        alt="icon-edit"
-                        className="tw-cursor-pointer"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="12"
-                      />
-                    </span>
-                    <span
-                      onClick={() => setDeletingRule({ rule, state: true })}>
-                      <SVGIcons
-                        alt="icon-delete"
-                        className="tw-ml-4 tw-cursor-pointer"
-                        icon="icon-delete"
-                        title="Delete"
-                        width="12"
-                      />
-                    </span>
-                  </div>
-                </td>
+      <Fragment>
+        <div className="tw-flex tw-justify-between tw-items-center">
+          <div className="">
+            <h6>{getEntityName(policyObj as unknown as EntityReference)}</h6>
+          </div>
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
+              data-testid="add-new-rule-button"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingRule({ state: true, policy: policyObj });
+              }}>
+              Add new rule
+            </Button>
+          </NonAdminAction>
+        </div>
+        <div className="tw-bg-white">
+          <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
+            <thead>
+              <tr className="tableHead-row">
+                <th className="tableHead-cell" data-testid="table-heading">
+                  Operation
+                </th>
+                <th className="tableHead-cell" data-testid="table-heading">
+                  Access
+                </th>
+                <th className="tableHead-cell" data-testid="table-heading">
+                  Action
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="tw-text-sm" data-testid="table-body">
+              {rules.map((rule, index) => (
+                <tr
+                  className={`tableBody-row ${!isEven(index + 1) && 'odd-row'}`}
+                  key={index}>
+                  <td className="tableBody-cell">
+                    <p>{rule.operation}</p>
+                  </td>
+                  <td className="tableBody-cell">
+                    <p
+                      className={classNames(
+                        rule.allow
+                          ? 'tw-text-status-success'
+                          : 'tw-text-status-failed'
+                      )}>
+                      {rule.allow ? 'ALLOW' : 'DENY'}
+                    </p>
+                  </td>
+                  <td className="tableBody-cell">
+                    <div className="tw-flex">
+                      <span
+                        onClick={() =>
+                          setEditingRule({
+                            rule,
+                            state: true,
+                            policy: policyObj,
+                          })
+                        }>
+                        <SVGIcons
+                          alt="icon-edit"
+                          className="tw-cursor-pointer"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12"
+                        />
+                      </span>
+                      <span
+                        onClick={() =>
+                          setDeletingRule({
+                            rule,
+                            state: true,
+                            policy: policyObj,
+                          })
+                        }>
+                        <SVGIcons
+                          alt="icon-delete"
+                          className="tw-ml-4 tw-cursor-pointer"
+                          icon="icon-delete"
+                          title="Delete"
+                          width="12"
+                        />
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
     );
   };
 
@@ -750,12 +804,12 @@ const RolesPage = () => {
   };
 
   const getAddRuleForm = () => {
-    return isAddingRule ? (
+    return isAddingRule.state ? (
       <AddRuleModal
         errorData={errorData}
         header={`Adding new rule for ${toLower(currentRole?.displayName)}`}
         initialData={{ name: '', operation: '' as Operation } as Rule}
-        onCancel={() => setIsAddingRule(false)}
+        onCancel={() => setIsAddingRule(DEFAULT_UPDATE_POLICY_STATE)}
         onChange={(data) => validateRuleData(data as Rule)}
         onSave={createRule}
       />
@@ -768,8 +822,8 @@ const RolesPage = () => {
         isEditing
         header={`Edit rule ${editingRule.rule?.name}`}
         initialData={editingRule.rule as Rule}
-        onCancel={() => setEditingRule({ rule: undefined, state: false })}
-        onSave={onRuleUpdate}
+        onCancel={() => setEditingRule(DEFAULT_UPDATE_POLICY_STATE)}
+        onSave={updateRule}
       />
     ) : null;
   };
@@ -781,7 +835,7 @@ const RolesPage = () => {
         cancelText="Cancel"
         confirmText="Confirm"
         header="Deleting rule"
-        onCancel={() => setDeletingRule({ rule: undefined, state: false })}
+        onCancel={() => setDeletingRule(DEFAULT_UPDATE_POLICY_STATE)}
         onConfirm={() => {
           deleteRule(deletingRule.rule as Rule);
         }}
@@ -823,7 +877,7 @@ const RolesPage = () => {
         list={getUniqueTeamList() as EntityReference[]}
         searchPlaceHolder="Search for teams..."
         onCancel={() => setIsAddingTeams(false)}
-        onSave={(data) => addTeams(data as Team[])}
+        onSave={(data) => addTeamsToRole(data as Team[])}
       />
     ) : null;
   };
@@ -885,18 +939,18 @@ const RolesPage = () => {
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                className={classNames('tw-h-8 tw-px-2 tw-mb-4', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
-                data-testid="add-new-rule-button"
+                data-testid="add-role"
                 size="small"
                 theme="primary"
                 variant="contained"
                 onClick={() => {
                   setErrorData(undefined);
-                  setIsAddingRule(true);
+                  setIsAddingRole(true);
                 }}>
-                Add new rule
+                Add new role
               </Button>
             </NonAdminAction>
           </div>
@@ -918,7 +972,11 @@ const RolesPage = () => {
             {isLoadingPolicy ? (
               <Loader />
             ) : (
-              <Fragment>{getPolicyRules(currentPolicy?.rules ?? [])}</Fragment>
+              <Fragment>
+                {currentRolePolicies.map((policy, index) => (
+                  <Fragment key={index}>{getRolePolicy(policy)}</Fragment>
+                ))}
+              </Fragment>
             )}
           </Fragment>
         ) : null}
@@ -946,6 +1004,7 @@ const RolesPage = () => {
   }, [AppState.userTeams]);
 
   useEffect(() => {
+    setCurrentRolePolicies([]);
     fetchCurrentRolePolicies();
   }, [currentRole]);
 

@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Policy } from '../pages/RolesPage/policy.interface';
+import { Policy } from '../pages/RolesPage/role.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
