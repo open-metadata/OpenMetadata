@@ -621,7 +621,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 unique_columns.extend(constraint.get("column_names"))
 
         table_columns = []
-        columns = inspector.get_columns(table, schema, db_name=self.service_connection.database)
+        columns = inspector.get_columns(
+            table, schema, db_name=self.service_connection.database
+        )
         try:
             for column in columns:
                 try:
