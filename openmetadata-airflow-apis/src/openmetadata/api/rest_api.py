@@ -39,8 +39,9 @@ from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import TestServiceConnectionRequest
-
+from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
