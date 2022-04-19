@@ -26,10 +26,6 @@ export interface Rule {
    */
   deleted?: boolean;
   /**
-   * Is the rule enabled.
-   */
-  enabled?: boolean;
-  /**
    * Entity tag that the rule should match on.
    */
   entityTagAttr?: string;

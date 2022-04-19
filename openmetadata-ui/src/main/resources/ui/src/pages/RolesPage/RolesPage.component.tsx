@@ -177,7 +177,7 @@ const RolesPage = () => {
 
   const fetchRoles = () => {
     setIsLoading(true);
-    getRoles(['policy', 'users', 'teams'])
+    getRoles(['policies', 'users', 'teams'])
       .then((res: AxiosResponse) => {
         if (res.data) {
           const { data } = res.data;
@@ -574,9 +574,6 @@ const RolesPage = () => {
                 Access
               </th>
               <th className="tableHead-cell" data-testid="table-heading">
-                Enabled
-              </th>
-              <th className="tableHead-cell" data-testid="table-heading">
                 Action
               </th>
             </tr>
@@ -598,19 +595,6 @@ const RolesPage = () => {
                     )}>
                     {rule.allow ? 'ALLOW' : 'DENY'}
                   </p>
-                </td>
-                <td className="tableBody-cell">
-                  <div
-                    className={classNames(
-                      'toggle-switch tw-ml-4',
-                      rule.enabled ? 'open' : null
-                    )}
-                    data-testid="rule-switch"
-                    onClick={() =>
-                      onRuleUpdate({ ...rule, enabled: !rule.enabled })
-                    }>
-                    <div className="switch" />
-                  </div>
                 </td>
                 <td className="tableBody-cell">
                   <div className="tw-flex">
@@ -747,6 +731,211 @@ const RolesPage = () => {
     );
   };
 
+  const getAddRoleForm = () => {
+    return isAddingRole ? (
+      <FormModal
+        errorData={errorData}
+        form={Form}
+        header="Adding new role"
+        initialData={{
+          name: '',
+          description: '',
+          displayName: '',
+        }}
+        onCancel={() => setIsAddingRole(false)}
+        onChange={(data) => onNewDataChange(data as Role)}
+        onSave={(data) => createNewRole(data as Role)}
+      />
+    ) : null;
+  };
+
+  const getAddRuleForm = () => {
+    return isAddingRule ? (
+      <AddRuleModal
+        errorData={errorData}
+        header={`Adding new rule for ${toLower(currentRole?.displayName)}`}
+        initialData={{ name: '', operation: '' as Operation } as Rule}
+        onCancel={() => setIsAddingRule(false)}
+        onChange={(data) => validateRuleData(data as Rule)}
+        onSave={createRule}
+      />
+    ) : null;
+  };
+
+  const getEditRuleModal = () => {
+    return editingRule.state ? (
+      <AddRuleModal
+        isEditing
+        header={`Edit rule ${editingRule.rule?.name}`}
+        initialData={editingRule.rule as Rule}
+        onCancel={() => setEditingRule({ rule: undefined, state: false })}
+        onSave={onRuleUpdate}
+      />
+    ) : null;
+  };
+
+  const getDeleteRuleModal = () => {
+    return deletingRule.state ? (
+      <ConfirmationModal
+        bodyText={`Are you sure want to delete ${deletingRule.rule?.name}?`}
+        cancelText="Cancel"
+        confirmText="Confirm"
+        header="Deleting rule"
+        onCancel={() => setDeletingRule({ rule: undefined, state: false })}
+        onConfirm={() => {
+          deleteRule(deletingRule.rule as Rule);
+        }}
+      />
+    ) : null;
+  };
+
+  const getSetDefaultRoleModal = () => {
+    return isSettingDefaultRole ? (
+      <ConfirmationModal
+        bodyText={
+          <Fragment>
+            {userCounts} users will be assigned{' '}
+            <span className="tw-font-medium">
+              {currentRole?.displayName ?? currentRole?.name}
+            </span>{' '}
+            role and unassigned{' '}
+            <span className="tw-font-medium">
+              {defaultRole?.displayName ?? defaultRole?.name}
+            </span>{' '}
+            role.
+          </Fragment>
+        }
+        cancelText="Cancel"
+        confirmText="Confirm"
+        header={`Set ${currentRole?.name} as default role`}
+        onCancel={cancelSetDefaultRole}
+        onConfirm={onSetDefaultRole}
+      />
+    ) : null;
+  };
+
+  const getAddTeamModal = () => {
+    return isAddingTeams ? (
+      <AddUsersModal
+        header={`Adding teams to ${
+          currentRole?.displayName ?? currentRole?.name
+        } role`}
+        list={getUniqueTeamList() as EntityReference[]}
+        searchPlaceHolder="Search for teams..."
+        onCancel={() => setIsAddingTeams(false)}
+        onSave={(data) => addTeams(data as Team[])}
+      />
+    ) : null;
+  };
+
+  const getErrorPlaceHolder = () => {
+    return (
+      <ErrorPlaceHolder>
+        <p className="w-text-lg tw-text-center">No Roles Added.</p>
+        <p className="w-text-lg tw-text-center">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={() => {
+                setErrorData(undefined);
+                setIsAddingRole(true);
+              }}>
+              Click here
+            </Button>
+            {' to add new Role'}
+          </NonAdminAction>
+        </p>
+      </ErrorPlaceHolder>
+    );
+  };
+
+  const getRolesComponent = () => {
+    return (
+      <Fragment>
+        <div
+          className="tw-flex tw-justify-between tw-items-center"
+          data-testid="header">
+          <div
+            className="tw-heading tw-text-link tw-text-base"
+            data-testid="header-title">
+            {currentRole?.displayName}
+            {currentRole?.defaultRole ? getDefaultBadge('tw-ml-2') : null}
+          </div>
+          <div className="tw-flex">
+            {!currentRole?.defaultRole ? (
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className={classNames('tw-h-8 tw-rounded tw-mb-3 tw-mr-2', {
+                    'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                  })}
+                  data-testid="set-as-default-button"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={startSetDefaultRole}>
+                  Set as default
+                </Button>
+              </NonAdminAction>
+            ) : null}
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                })}
+                data-testid="add-new-rule-button"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={() => {
+                  setErrorData(undefined);
+                  setIsAddingRule(true);
+                }}>
+                Add new rule
+              </Button>
+            </NonAdminAction>
+          </div>
+        </div>
+        <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
+          <Description
+            blurWithBodyBG
+            description={currentRole?.description || ''}
+            entityName={currentRole?.displayName}
+            isEdit={isEditable}
+            onCancel={onCancel}
+            onDescriptionEdit={onDescriptionEdit}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </div>
+        {getTabs()}
+        {currentTab === 1 ? (
+          <Fragment>
+            {isLoadingPolicy ? (
+              <Loader />
+            ) : (
+              <Fragment>{getPolicyRules(currentPolicy?.rules ?? [])}</Fragment>
+            )}
+          </Fragment>
+        ) : null}
+        {currentTab === 2 ? getRoleTeams(currentRole?.teams ?? []) : null}
+        {currentTab === 3 ? getRoleUsers(currentRole?.users ?? []) : null}
+      </Fragment>
+    );
+  };
+
+  const fetchCurrentRolePolicies = () => {
+    if (currentRole) {
+      currentRole?.policies?.forEach((policy) => {
+        fetchPolicy(policy.id);
+      });
+    }
+  };
+
   useEffect(() => {
     fetchRoles();
     fetchUserCounts();
@@ -757,15 +946,13 @@ const RolesPage = () => {
   }, [AppState.userTeams]);
 
   useEffect(() => {
-    if (currentRole) {
-      fetchPolicy(currentRole?.policy?.id as string);
-    }
+    fetchCurrentRolePolicies();
   }, [currentRole]);
 
   return (
-    <>
+    <Fragment>
       {error ? (
-        <ErrorPlaceHolder />
+        <ErrorPlaceHolder>{error}</ErrorPlaceHolder>
       ) : (
         <PageContainerV1 className="tw-py-4">
           <PageLayout leftPanel={fetchLeftPanel(roles)}>
@@ -773,209 +960,24 @@ const RolesPage = () => {
               <Loader />
             ) : (
               <div className="tw-pb-3" data-testid="role-container">
-                {roles.length > 0 ? (
-                  <>
-                    <div
-                      className="tw-flex tw-justify-between tw-items-center"
-                      data-testid="header">
-                      <div
-                        className="tw-heading tw-text-link tw-text-base"
-                        data-testid="header-title">
-                        {currentRole?.displayName}
-                        {currentRole?.defaultRole
-                          ? getDefaultBadge('tw-ml-2')
-                          : null}
-                      </div>
-                      <div className="tw-flex">
-                        {!currentRole?.defaultRole ? (
-                          <NonAdminAction
-                            position="bottom"
-                            title={TITLE_FOR_NON_ADMIN_ACTION}>
-                            <Button
-                              className={classNames(
-                                'tw-h-8 tw-rounded tw-mb-3 tw-mr-2',
-                                {
-                                  'tw-opacity-40':
-                                    !isAdminUser && !isAuthDisabled,
-                                }
-                              )}
-                              data-testid="set-as-default-button"
-                              size="small"
-                              theme="primary"
-                              variant="contained"
-                              onClick={startSetDefaultRole}>
-                              Set as default
-                            </Button>
-                          </NonAdminAction>
-                        ) : null}
-                        <NonAdminAction
-                          position="bottom"
-                          title={TITLE_FOR_NON_ADMIN_ACTION}>
-                          <Button
-                            className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                            })}
-                            data-testid="add-new-rule-button"
-                            size="small"
-                            theme="primary"
-                            variant="contained"
-                            onClick={() => {
-                              setErrorData(undefined);
-                              setIsAddingRule(true);
-                            }}>
-                            Add new rule
-                          </Button>
-                        </NonAdminAction>
-                      </div>
-                    </div>
-                    <div
-                      className="tw-mb-3 tw--ml-5"
-                      data-testid="description-container">
-                      <Description
-                        blurWithBodyBG
-                        description={currentRole?.description || ''}
-                        entityName={currentRole?.displayName}
-                        isEdit={isEditable}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </div>
-                    {getTabs()}
-                    {currentTab === 1 ? (
-                      <Fragment>
-                        {isLoadingPolicy ? (
-                          <Loader />
-                        ) : (
-                          <>{getPolicyRules(currentPolicy?.rules ?? [])}</>
-                        )}
-                      </Fragment>
-                    ) : null}
-                    {currentTab === 2
-                      ? getRoleTeams(currentRole?.teams ?? [])
-                      : null}
-                    {currentTab === 3
-                      ? getRoleUsers(currentRole?.users ?? [])
-                      : null}
-                  </>
-                ) : (
-                  <ErrorPlaceHolder>
-                    <p className="w-text-lg tw-text-center">No Roles Added.</p>
-                    <p className="w-text-lg tw-text-center">
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          size="small"
-                          theme="primary"
-                          variant="outlined"
-                          onClick={() => {
-                            setErrorData(undefined);
-                            setIsAddingRole(true);
-                          }}>
-                          Click here
-                        </Button>
-                        {' to add new Role'}
-                      </NonAdminAction>
-                    </p>
-                  </ErrorPlaceHolder>
-                )}
-                {isAddingRole && (
-                  <FormModal
-                    errorData={errorData}
-                    form={Form}
-                    header="Adding new role"
-                    initialData={{
-                      name: '',
-                      description: '',
-                      displayName: '',
-                    }}
-                    onCancel={() => setIsAddingRole(false)}
-                    onChange={(data) => onNewDataChange(data as Role)}
-                    onSave={(data) => createNewRole(data as Role)}
-                  />
-                )}
-                {isAddingRule && (
-                  <AddRuleModal
-                    errorData={errorData}
-                    header={`Adding new rule for ${toLower(
-                      currentRole?.displayName
-                    )}`}
-                    initialData={
-                      { name: '', operation: '' as Operation } as Rule
-                    }
-                    onCancel={() => setIsAddingRule(false)}
-                    onChange={(data) => validateRuleData(data as Rule)}
-                    onSave={createRule}
-                  />
-                )}
+                {roles.length > 0 ? getRolesComponent() : getErrorPlaceHolder()}
+                {getAddRoleForm()}
 
-                {editingRule.state && (
-                  <AddRuleModal
-                    isEditing
-                    header={`Edit rule ${editingRule.rule?.name}`}
-                    initialData={editingRule.rule as Rule}
-                    onCancel={() =>
-                      setEditingRule({ rule: undefined, state: false })
-                    }
-                    onSave={onRuleUpdate}
-                  />
-                )}
+                {getAddRuleForm()}
 
-                {deletingRule.state && (
-                  <ConfirmationModal
-                    bodyText={`Are you sure want to delete ${deletingRule.rule?.name}?`}
-                    cancelText="Cancel"
-                    confirmText="Confirm"
-                    header="Deleting rule"
-                    onCancel={() =>
-                      setDeletingRule({ rule: undefined, state: false })
-                    }
-                    onConfirm={() => {
-                      deleteRule(deletingRule.rule as Rule);
-                    }}
-                  />
-                )}
+                {getEditRuleModal()}
 
-                {isSettingDefaultRole && (
-                  <ConfirmationModal
-                    bodyText={
-                      <Fragment>
-                        {userCounts} users will be assigned{' '}
-                        <span className="tw-font-medium">
-                          {currentRole?.displayName ?? currentRole?.name}
-                        </span>{' '}
-                        role and unassigned{' '}
-                        <span className="tw-font-medium">
-                          {defaultRole?.displayName ?? defaultRole?.name}
-                        </span>{' '}
-                        role.
-                      </Fragment>
-                    }
-                    cancelText="Cancel"
-                    confirmText="Confirm"
-                    header={`Set ${currentRole?.name} as default role`}
-                    onCancel={cancelSetDefaultRole}
-                    onConfirm={onSetDefaultRole}
-                  />
-                )}
-                {isAddingTeams && (
-                  <AddUsersModal
-                    header={`Adding teams to ${
-                      currentRole?.displayName ?? currentRole?.name
-                    } role`}
-                    list={getUniqueTeamList() as EntityReference[]}
-                    searchPlaceHolder="Search for teams..."
-                    onCancel={() => setIsAddingTeams(false)}
-                    onSave={(data) => addTeams(data as Team[])}
-                  />
-                )}
+                {getDeleteRuleModal()}
+
+                {getSetDefaultRoleModal()}
+
+                {getAddTeamModal()}
               </div>
             )}
           </PageLayout>
         </PageContainerV1>
       )}
-    </>
+    </Fragment>
   );
 };
 
