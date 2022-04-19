@@ -149,12 +149,34 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
-  apiEndpoint: http://${AIRFLOW_HOST:-localhost}:${AIRFLOW_PORT:-8080}
+  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
-  metadataApiEndpoint: http://${SERVER_HOST:-localhost}:${SERVER_PORT:-8585}/api
-  authProvider: "no-auth"
-
+  metadataApiEndpoint: ${SERVER_HOST:-http://localhost:8585/api}
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc"
+  authConfig:
+    azure:
+      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
+      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
+      clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+    google:
+      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
+      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-""}
+    okta:
+      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
+      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
+      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
+      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
+    auth0:
+      clientId: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_AUTH0_CLIENT_SECRET:-""}
+      domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
+    customOidc:
+      clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
+      tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
 
 slackEventPublishers:
   - name: "slack events"
