@@ -18,9 +18,6 @@ from typing import Any, Dict, Iterable
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -31,7 +28,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.engines import get_engine, test_connection
-from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
 
