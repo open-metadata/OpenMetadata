@@ -4,7 +4,21 @@
   "serviceConnection": {
     "config": {
       "type": "BigQuery",
-      "hostPort": "localhost:1234"
+      "hostPort": "localhost:1234",
+      "credentials": {
+        "gcsConfig": {
+          "type": "service_account",
+          "projectId": "projectID",
+          "privateKeyId": "privateKeyId",
+          "privateKey": "privateKey",
+          "clientEmail": "clientEmail",
+          "clientId": "clientId",
+          "authUri": "https://accounts.google.com/o/oauth2/auth",
+          "tokenUri": "https://oauth2.googleapis.com/token",
+          "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+          "clientX509CertUrl": "https://cert.url"
+        }
+      }
     }
   },
   "sourceConfig": {

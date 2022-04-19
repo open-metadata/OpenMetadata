@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.airflow;
 
-import java.util.Map;
 import javax.validation.constraints.NotEmpty;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,9 +31,5 @@ public class AirflowConfiguration {
 
   @NotEmpty @Getter @Setter private String authProvider;
 
-  @Getter private Map<String, String> authConfig;
-
-  public void setAuthConfig(Map<String, String> authConfig) {
-    this.authConfig = authConfig;
-  }
+  @Getter @Setter private AuthConfiguration authConfig;
 }

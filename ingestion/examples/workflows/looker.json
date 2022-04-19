@@ -7,7 +7,7 @@
         "type": "Looker",
         "username": "username",
         "password": "password",
-        "hostPort": "hostPort",
+        "hostPort": "http://hostPort",
         "env": "env"
       }
     },
