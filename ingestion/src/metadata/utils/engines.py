@@ -73,10 +73,10 @@ def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
             "private_key": connection.privateKey,
             "client_email": connection.clientEmail,
             "client_id": connection.clientId,
-            "auth_uri": connection.authURI,
-            "token_uri": connection.tokenURI,
-            "auth_provider_x509_cert_url": connection.authProviderX509CertUrl,
-            "client_x509_cert_url": connection.clientX509CertUrl,
+            "auth_uri": str(connection.authURI),
+            "token_uri": str(connection.tokenURI),
+            "auth_provider_x509_cert_url": str(connection.authProviderX509CertUrl),
+            "client_x509_cert_url": str(connection.clientX509CertUrl),
         }
     }
 
