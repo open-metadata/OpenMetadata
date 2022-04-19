@@ -195,6 +195,7 @@ const AddService = ({
 
           {activeStepperStep === 3 && (
             <ConnectionConfigForm
+              cancelText="Back"
               data={
                 (serviceCategory !== ServiceCategory.PIPELINE_SERVICES
                   ? {
