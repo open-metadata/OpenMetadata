@@ -205,9 +205,9 @@ const RolesPage = () => {
     const { description, name, displayName } = data;
     if (!Object.values(errData).length) {
       createRole({
-        description: description as string,
+        description: description || '',
         name,
-        displayName: displayName as string,
+        displayName: displayName || '',
       })
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -269,7 +269,7 @@ const RolesPage = () => {
     if (currentRole?.description !== updatedHTML) {
       const updatedRole = { ...currentRole, description: updatedHTML };
       const jsonPatch = compare(currentRole as Role, updatedRole);
-      updateRole(currentRole?.id as string, jsonPatch)
+      updateRole(currentRole?.id || '', jsonPatch)
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchCurrentRole(res.data.name, true);
@@ -301,7 +301,7 @@ const RolesPage = () => {
 
   const addTeamsToRole = (data: Team[]) => {
     const currentRoleReference: EntityReference = {
-      id: currentRole?.id as string,
+      id: currentRole?.id || '',
       type: 'role',
     };
     const teamsPatchCall = data.map((team) => {
@@ -319,7 +319,7 @@ const RolesPage = () => {
     Promise.all(teamsPatchCall)
       .then(() => {
         setIsAddingTeams(false);
-        fetchCurrentRole(currentRole?.name as string, true);
+        fetchCurrentRole(currentRole?.name || '', true);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -336,7 +336,7 @@ const RolesPage = () => {
     if (isSettingDefaultRole) {
       const updatedRole = { ...currentRole, defaultRole: true };
       const jsonPatch = compare(currentRole as Role, updatedRole);
-      updateRole(currentRole?.id as string, jsonPatch)
+      updateRole(currentRole?.id || '', jsonPatch)
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchCurrentRole(res.data.name, true);
@@ -371,8 +371,8 @@ const RolesPage = () => {
         name: `${updatingPolicy?.name}-${data.operation}`,
       };
       const updatedPolicy = {
-        name: updatingPolicy?.name as string,
-        policyType: updatingPolicy?.policyType as string,
+        name: updatingPolicy?.name || '',
+        policyType: updatingPolicy?.policyType || '',
         rules: [...(updatingPolicy?.rules as Rule[]), newRule],
       };
 
@@ -415,8 +415,8 @@ const RolesPage = () => {
       });
 
       const updatedPolicy = {
-        name: editingPolicy?.name as string,
-        policyType: editingPolicy?.policyType as string,
+        name: editingPolicy?.name || '',
+        policyType: editingPolicy?.policyType || '',
         rules: rules as Rule[],
       };
 
@@ -447,8 +447,8 @@ const RolesPage = () => {
     const updatingPolicy = deletingRule.policy;
     if (!isUndefined(updatingPolicy)) {
       const updatedPolicy = {
-        name: updatingPolicy?.name as string,
-        policyType: updatingPolicy?.policyType as string,
+        name: updatingPolicy?.name || '',
+        policyType: updatingPolicy?.policyType || '',
         rules: updatingPolicy?.rules?.filter(
           (rule) => rule.operation !== data.operation
         ) as Rule[],
