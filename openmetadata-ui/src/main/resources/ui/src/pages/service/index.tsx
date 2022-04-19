@@ -420,7 +420,9 @@ const ServicePage: FunctionComponent = () => {
           );
           if (message.includes('Connection refused')) {
             setConnectionAvailable(false);
-          } else if (message.includes('Failed to deploy Ingestion Pipeline')) {
+          } else if (
+            message.includes(jsonData['message']['fail-to-deploy-pipeline'])
+          ) {
             showErrorToast(
               message,
               jsonData['api-error-messages']['deploy-ingestion-error']

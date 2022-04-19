@@ -71,7 +71,9 @@ const AddServicePage = () => {
             err,
             jsonData['api-error-messages']['create-ingestion-error']
           );
-          if (errMessage.includes('Failed to deploy Ingestion Pipeline')) {
+          if (
+            errMessage.includes(jsonData['message']['fail-to-deploy-pipeline'])
+          ) {
             showErrorToast(
               errMessage,
               jsonData['api-error-messages']['deploy-ingestion-error']

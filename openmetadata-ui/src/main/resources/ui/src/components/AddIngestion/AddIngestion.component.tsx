@@ -223,7 +223,7 @@ const AddIngestion = ({
           }
         : undefined;
 
-    return isEmpty(filterPattern) ? undefined : filterPattern;
+    return filterPattern;
   };
 
   const createNewIngestion = () => {
