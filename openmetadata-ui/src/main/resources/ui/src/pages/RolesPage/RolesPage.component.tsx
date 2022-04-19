@@ -572,10 +572,58 @@ const RolesPage = () => {
   const getRolePolicy = (policyObj: Policy) => {
     const rules = policyObj.rules ?? [];
 
+    const addNewRuleButton = (
+      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        <Button
+          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+          })}
+          data-testid="add-new-rule-button"
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={() => {
+            setErrorData(undefined);
+            setIsAddingRule({ state: true, policy: policyObj });
+          }}>
+          Add new rule
+        </Button>
+      </NonAdminAction>
+    );
+
     if (!rules.length) {
       return (
         <div className="tw-text-center tw-py-5">
-          <p className="tw-text-base">No rules.</p>
+          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2">
+            <div className="">
+              <h6>{getEntityName(policyObj as unknown as EntityReference)}</h6>
+            </div>
+            {addNewRuleButton}
+          </div>
+          <div className="tw-bg-white">
+            <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
+              <thead>
+                <tr className="tableHead-row">
+                  <th className="tableHead-cell" data-testid="table-heading">
+                    Operation
+                  </th>
+                  <th className="tableHead-cell" data-testid="table-heading">
+                    Access
+                  </th>
+                  <th className="tableHead-cell" data-testid="table-heading">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="tw-text-sm" data-testid="table-body">
+                <tr className="tableBody-row">
+                  <td className="tableBody-cell tw-text-center" colSpan={3}>
+                    <p>No rules.</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
@@ -586,22 +634,7 @@ const RolesPage = () => {
           <div className="">
             <h6>{getEntityName(policyObj as unknown as EntityReference)}</h6>
           </div>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-new-rule-button"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => {
-                setErrorData(undefined);
-                setIsAddingRule({ state: true, policy: policyObj });
-              }}>
-              Add new rule
-            </Button>
-          </NonAdminAction>
+          {addNewRuleButton}
         </div>
         <div className="tw-bg-white">
           <table className="tw-w-full tw-overflow-x-auto" data-testid="table">
