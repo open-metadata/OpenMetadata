@@ -24,6 +24,9 @@ on:
       - 'catalog-rest-service/src/main/resources/json/schema/**'
       - 'ingestion-core/src/metadata/_version.py'
 
+concurrency: 
+  group: py-ingestion-core-publish-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   py-core-build-and-push:
     runs-on: ubuntu-latest
