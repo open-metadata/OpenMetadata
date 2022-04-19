@@ -12,11 +12,16 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, { FormProps } from '@rjsf/core';
+import Form, {
+  ArrayFieldTemplateProps,
+  FormProps,
+  ObjectFieldTemplateProps,
+} from '@rjsf/core';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -24,6 +29,73 @@ interface Props extends FormProps<ConfigData> {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+}
+
+function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
+  return (
+    <>
+      <label className="control-label">{props.title}</label>
+      <p className="field-description">{props.schema.description}</p>
+      {props.items.map((element, index) => (
+        <div className="tw-flex tw-items-center tw-w-full" key={index}>
+          <div className="tw-flex-1">{element.children}</div>
+          {element.hasRemove && (
+            <button
+              className="focus:tw-outline-none tw-w-1/12"
+              type="button"
+              onClick={(event) => {
+                element.onDropIndexClick(element.index)(event);
+              }}>
+              <SVGIcons
+                alt="delete"
+                icon={Icons.DELETE}
+                title="Delete"
+                width="16px"
+              />
+            </button>
+          )}
+        </div>
+      ))}
+      {props.canAdd && (
+        <Button
+          className="tw-h-7 tw-px-2 tw-mb-3"
+          data-testid={`add-item-${props.title}`}
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={props.onAddClick}>
+          <FontAwesomeIcon icon="plus" />
+        </Button>
+      )}
+    </>
+  );
+}
+
+function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
+  return (
+    <Fragment>
+      <label className="control-label">{props.title}</label>
+      <p className="field-description">{props.description}</p>
+      {props.properties.map((element) => (
+        <div className="property-wrapper" key={element.content.key}>
+          {element.content}
+        </div>
+      ))}
+      {props.schema.additionalProperties && (
+        <Button
+          className="tw-h-7 tw-px-2 tw-mb-3"
+          data-testid={`add-item-${props.title}`}
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={() => {
+            props.onAddClick(props.schema)();
+          }}>
+          <FontAwesomeIcon icon="plus" />
+        </Button>
+      )}
+    </Fragment>
+  );
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -49,6 +121,8 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   return (
     <Form
+      ArrayFieldTemplate={ArrayFieldTemplate}
+      ObjectFieldTemplate={ObjectFieldTemplate}
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
