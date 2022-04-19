@@ -511,7 +511,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     try {
       ingestionPipeline = airflowRESTClient.getStatus(ingestionPipeline);
     } catch (Exception e) {
-      LOG.error("Failed to fetch status for {}", ingestionPipeline.getName());
+      LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
     }
     return ingestionPipeline;
   }
