@@ -51,7 +51,7 @@ class OpenmetadataSource(MetadataSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__(config=config, metadata_config=metadata_config)
+        super().__init__(config, metadata_config)
         self.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(self.service_connection)
         )

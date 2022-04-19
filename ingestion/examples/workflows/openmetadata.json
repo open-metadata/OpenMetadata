@@ -1,6 +1,6 @@
 {
   "source": {
-    "type": "metadata",
+    "type": "openmetadata",
     "serviceName": "local_metadata",
     "serviceConnection": {
       "config": {
