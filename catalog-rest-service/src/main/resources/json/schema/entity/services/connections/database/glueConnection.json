@@ -19,10 +19,6 @@
       "$ref": "#/definitions/glueType",
       "default": "Glue"
     },
-    "hostPort": {
-      "description": "Host and port of the Glue",
-      "type": "string"
-    },
     "endPointURL": {
       "description": "EndPoint URL for the Glue",
       "type": "string"
@@ -67,5 +63,11 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "endPointURL",
+    "awsRegion",
+    "awsAccessKeyId",
+    "awsSecretAccessKey"
+  ]
 }

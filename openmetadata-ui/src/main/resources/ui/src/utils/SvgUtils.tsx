@@ -49,6 +49,7 @@ import IconError from '../assets/svg/error.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
 import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
+import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
@@ -103,6 +104,7 @@ import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
+import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
 import IconPlus from '../assets/svg/plus.svg';
@@ -118,6 +120,7 @@ import IconSearchV1 from '../assets/svg/search.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
+import IconSuccessBadge from '../assets/svg/success-badge.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
@@ -269,6 +272,9 @@ export const Icons = {
   WEBHOOK_PRIMARY: 'icon-webhook-primary',
   GITHUB_STAR: 'icon-github-star',
   SYNC: 'icon-sync',
+  SUCCESS_BADGE: 'success-badge',
+  FAIL_BADGE: 'fail-badge',
+  PENDING_BADGE: 'pending-badge',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -779,6 +785,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SYNC:
       IconComponent = IconSync;
+
+      break;
+    case Icons.SUCCESS_BADGE:
+      IconComponent = IconSuccessBadge;
+
+      break;
+    case Icons.FAIL_BADGE:
+      IconComponent = IconFailBadge;
+
+      break;
+    case Icons.PENDING_BADGE:
+      IconComponent = IconPendingBadge;
 
       break;
 
