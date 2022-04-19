@@ -34,7 +34,7 @@ default_args = {
 config = """
 {
   "source": {
-    "type": "metadata",
+    "type": "metadata_elasticsearch",
     "serviceName": "openMetadata",
     "serviceConnection": {
       "config":{
