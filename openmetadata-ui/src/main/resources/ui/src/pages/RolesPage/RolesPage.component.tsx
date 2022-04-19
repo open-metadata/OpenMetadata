@@ -942,7 +942,7 @@ const RolesPage = () => {
                 className={classNames('tw-h-8 tw-px-2 tw-mb-4', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
-                data-testid="add-role"
+                data-testid="add-new-role-button"
                 size="small"
                 theme="primary"
                 variant="contained"
