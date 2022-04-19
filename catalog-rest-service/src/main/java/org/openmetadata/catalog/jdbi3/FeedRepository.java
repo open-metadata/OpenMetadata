@@ -432,7 +432,7 @@ public class FeedRepository {
 
   private boolean fieldsChanged(Thread original, Thread updated) {
     // Patch supports only isResolved and message for now
-    return original.getResolved() != updated.getResolved() || !original.getMessage().equals(updated.getMessage());
+    return !original.getResolved().equals(updated.getResolved()) || !original.getMessage().equals(updated.getMessage());
   }
 
   /**

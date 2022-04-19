@@ -72,5 +72,10 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "account"
+  ]
 }

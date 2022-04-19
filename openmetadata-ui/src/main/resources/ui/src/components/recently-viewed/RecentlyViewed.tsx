@@ -12,7 +12,7 @@
  */
 
 import { FormatedTableData } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import EntityList from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -43,7 +43,7 @@ const RecentlyViewed: FunctionComponent = () => {
   }, []);
 
   return (
-    <>
+    <Fragment>
       {isLoading ? (
         <Loader />
       ) : (
@@ -54,7 +54,7 @@ const RecentlyViewed: FunctionComponent = () => {
           testIDText="Recently Viewed"
         />
       )}
-    </>
+    </Fragment>
   );
 };
 

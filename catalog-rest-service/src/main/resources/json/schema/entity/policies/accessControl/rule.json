@@ -62,11 +62,6 @@
       "type": "integer",
       "default": 250000
     },
-    "enabled": {
-      "description": "Is the rule enabled.",
-      "type": "boolean",
-      "default": true
-    },
     "deleted": {
       "description": "Is the rule soft-deleted.",
       "type": "boolean",

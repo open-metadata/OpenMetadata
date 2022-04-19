@@ -492,10 +492,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         upstream=upstream_nodes,
                     )
                     model_fqdn = f"{schema}.{model_name}".lower()
+                    self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
-                self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []

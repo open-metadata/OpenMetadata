@@ -77,6 +77,7 @@ const jsonData = {
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
+    'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
     'fetch-roles-error': 'Error while fetching roles!',
     'fetch-sample-data-error': 'Error while fetching sample data!',
