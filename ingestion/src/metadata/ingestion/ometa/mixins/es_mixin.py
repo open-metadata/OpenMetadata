@@ -59,6 +59,6 @@ class ESMixin(Generic[T]):
         if resp_es:
             for table_hit in resp_es["hits"]["hits"]:
                 multiple_entities.append(
-                    self.get_by_name(entity=Table, fqdn=table_hit["fqdn"])
+                    self.get_by_name(entity=Table, fqdn=table_hit["_source"]["fqdn"])
                 )
         return multiple_entities
