@@ -144,6 +144,8 @@ class OMetaLineageMixin(Generic[T]):
 
     def _separate_fqn(self, database, fqn):
         database_schema, table = fqn.split(".")[-2:]
+        if not database_schema:
+            database_schema = None
         return {"database": database, "database_schema": database_schema, "name": table}
 
     def _create_lineage_by_table_name(
@@ -153,6 +155,8 @@ class OMetaLineageMixin(Generic[T]):
         This method is to create a lineage between two tables
         """
         try:
+            from_table = str(from_table).replace("<default>", "")
+            to_table = str(to_table).replace("<default>", "")
             from_fqdn = get_fqdn(
                 AddLineageRequest,
                 service_name,
@@ -185,7 +189,7 @@ class OMetaLineageMixin(Generic[T]):
                 )
             else:
                 multiple_to_fqns = [to_entity]
-            if not from_entity or not to_entity:
+            if not multiple_to_fqns or not multiple_from_fqns:
                 return None
             for from_entity in multiple_from_fqns:
                 for to_entity in multiple_to_fqns:
@@ -201,6 +205,7 @@ class OMetaLineageMixin(Generic[T]):
                             ),
                         )
                     )
+
                     created_lineage = self.add_lineage(lineage)
                     logger.info(f"Successfully added Lineage {created_lineage}")
 
