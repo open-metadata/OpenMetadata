@@ -38,7 +38,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger(__name__)
@@ -110,10 +109,6 @@ class BigquerySource(SQLSource):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-
-        set_google_credentials(
-            gcs_credentials=config.serviceConnection.__root__.config.credentials
-        )
 
         return cls(config, metadata_config)
 
