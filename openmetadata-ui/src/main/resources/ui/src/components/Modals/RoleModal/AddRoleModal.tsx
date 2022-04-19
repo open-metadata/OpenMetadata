@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 
-import { FormErrorData, Team } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useRef, useState } from 'react';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
+import { Role } from '../../../generated/entity/teams/role';
 import { Button } from '../../buttons/Button/Button';
-type FormData = TagsCategory | Team;
-type AddRoleModalProp = {
+type FormData = Pick<Role, 'name' | 'displayName' | 'description' | 'policies'>;
+interface AddRoleModalProp {
   onCancel: () => void;
-  onChange?: (data: TagsCategory | Team) => void;
-  onSave: (data: TagsCategory | Team) => void;
+  onChange?: (data: FormData) => void;
+  onSave: (data: FormData) => void;
   form: React.ElementType;
   header: string;
   initialData: FormData;
   errorData?: FormErrorData;
-};
+}
 
 type FormRef = {
   fetchMarkDownData: () => string;
 };
+
 const AddRoleModal = ({
   onCancel,
   onChange,
@@ -66,8 +67,8 @@ const AddRoleModal = ({
               errorData={errorData}
               initialData={initialData}
               ref={formRef}
-              saveData={(data: TagsCategory | Team) => {
-                setData(data);
+              saveData={(formData: FormData) => {
+                setData(formData);
                 onChange && onChange(data);
               }}
             />
