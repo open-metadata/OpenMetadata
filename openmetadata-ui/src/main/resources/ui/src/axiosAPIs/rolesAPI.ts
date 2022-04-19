@@ -65,3 +65,7 @@ export const updatePolicy = (
 ): Promise<AxiosResponse> => {
   return APIClient.put(`/policies`, data);
 };
+
+export const getPolicies = (): Promise<AxiosResponse> => {
+  return APIClient.get('/policies');
+};

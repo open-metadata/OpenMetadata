@@ -22,6 +22,7 @@ import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createRole,
+  getPolicies,
   getPolicy,
   getRoleByName,
   getRoles,
@@ -102,6 +103,8 @@ const RolesPage = () => {
   const [teamList, setTeamList] = useState<Array<Team>>([]);
   const [isAddingTeams, setIsAddingTeams] = useState<boolean>(false);
 
+  const [defaultPolicies, setDefaultPolicies] = useState<Array<Policy>>([]);
+
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
       const errData: { [key: string]: string } = {};
@@ -122,6 +125,11 @@ const RolesPage = () => {
         errData['displayName'] = 'Display name is required';
       } else if (data.displayName.length < 1 || data.displayName.length > 128) {
         errData['displayName'] = 'Display name size must be between 1 and 128';
+      }
+
+      if (!data.policies?.length) {
+        errData['policies'] =
+          'At least one policy is required to create a role';
       }
       setErrorData(errData);
 
@@ -202,13 +210,13 @@ const RolesPage = () => {
 
   const createNewRole = (data: Role) => {
     const errData = onNewDataChange(data, true);
-    const { description, name, displayName } = data;
+    const { description, name, displayName, policies } = data;
     if (!Object.values(errData).length) {
       createRole({
         description: description || '',
         name,
         displayName: displayName || '',
-        policies: [],
+        policies: policies || [],
       })
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -830,6 +838,7 @@ const RolesPage = () => {
           name: '',
           description: '',
           displayName: '',
+          policies: defaultPolicies as unknown as EntityReference[],
         }}
         onCancel={() => setIsAddingRole(false)}
         onChange={(data) => onNewDataChange(data as Role)}
@@ -1037,9 +1046,24 @@ const RolesPage = () => {
     }
   };
 
+  const fetchDefualtPolicies = () => {
+    getPolicies()
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setDefaultPolicies(res.data.data);
+        } else {
+          setDefaultPolicies([]);
+        }
+      })
+      .catch((error: AxiosError) => {
+        showErrorToast(error);
+      });
+  };
+
   useEffect(() => {
     fetchRoles();
     fetchUserCounts();
+    fetchDefualtPolicies();
   }, []);
 
   useEffect(() => {

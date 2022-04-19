@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useRef, useState } from 'react';
+import Select, { MultiValue } from 'react-select';
 import { Role } from '../../../generated/entity/teams/role';
+import { errorMsg, getEntityName } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
+import { reactSingleSelectCustomStyle } from '../../common/react-select-component/reactSelectCustomStyle';
 type FormData = Pick<Role, 'name' | 'displayName' | 'description' | 'policies'>;
 interface AddRoleModalProp {
   onCancel: () => void;
@@ -24,6 +28,10 @@ interface AddRoleModalProp {
   header: string;
   initialData: FormData;
   errorData?: FormErrorData;
+}
+interface Option {
+  label: string;
+  value: string;
 }
 
 type FormRef = {
@@ -41,13 +49,29 @@ const AddRoleModal = ({
 }: AddRoleModalProp) => {
   const formRef = useRef<FormRef>();
   const [data, setData] = useState<FormData>(initialData);
+  const [selectedPolicies, setSelectedPolicies] = useState<Array<Option>>([]);
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSave({
       ...data,
       description: formRef?.current?.fetchMarkDownData() || '',
+      policies: selectedPolicies.map((policy) => ({
+        id: policy.value,
+        type: 'policy',
+      })),
     });
+  };
+
+  const handleOnChange = (
+    value: MultiValue<unknown>,
+    { action }: { action: string }
+  ) => {
+    if (isNil(value) || action === 'clear') {
+      setSelectedPolicies([]);
+    } else {
+      setSelectedPolicies(value as Option[]);
+    }
   };
 
   return (
@@ -63,6 +87,23 @@ const AddRoleModal = ({
             </p>
           </div>
           <div className="tw-modal-body">
+            <div className="tw-mb-4">
+              <label className="tw-form-label required-field">Policies</label>
+              <Select
+                isClearable
+                isMulti
+                aria-label="Select policies"
+                isSearchable={false}
+                options={initialData.policies?.map((policy) => ({
+                  label: getEntityName(policy),
+                  value: policy.id,
+                }))}
+                placeholder="Policies..."
+                styles={reactSingleSelectCustomStyle}
+                onChange={handleOnChange}
+              />
+              {errorData?.policies && errorMsg(errorData.policies)}
+            </div>
             <Form
               errorData={errorData}
               initialData={initialData}
