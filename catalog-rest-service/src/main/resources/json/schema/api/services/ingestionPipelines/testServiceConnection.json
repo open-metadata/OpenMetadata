@@ -6,23 +6,18 @@
   "type": "object",
   "properties": {
     "connection": {
-      "type": "object",
       "description": "Database Connection.",
-      "properties": {
-        "config": {
-          "oneOf": [
-            {
-              "$ref": "../../../entity/services/databaseService.json#/definitions/databaseConnection"
-            },
-            {
-              "$ref": "../../../entity/services/dashboardService.json#/definitions/dashboardConnection"
-            },
-            {
-              "$ref": "../../../entity/services/messagingService.json#/definitions/messagingConnection"
-            }
-          ]
+      "oneOf": [
+        {
+          "$ref": "../../../entity/services/databaseService.json#/definitions/databaseConnection"
+        },
+        {
+          "$ref": "../../../entity/services/dashboardService.json#/definitions/dashboardConnection"
+        },
+        {
+          "$ref": "../../../entity/services/messagingService.json#/definitions/messagingConnection"
         }
-      }
+      ]
     },
     "connectionType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
