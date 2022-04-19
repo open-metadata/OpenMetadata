@@ -113,10 +113,6 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
-});
-
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -145,9 +141,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   servicePageTabs: jest.fn().mockReturnValue([
     {
-      name: 'Activity Feed',
-      path: 'activity_feed',
-      field: 'activity_feed',
+      name: 'Databases',
+      path: 'databases',
+      field: 'databases',
     },
   ]),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
