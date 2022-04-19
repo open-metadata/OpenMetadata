@@ -807,7 +807,9 @@ const RolesPage = () => {
     return isAddingRule.state ? (
       <AddRuleModal
         errorData={errorData}
-        header={`Adding new rule for ${toLower(currentRole?.displayName)}`}
+        header={`Adding new rule for ${getEntityName(
+          isAddingRule.policy as unknown as EntityReference
+        )}`}
         initialData={{ name: '', operation: '' as Operation } as Rule}
         onCancel={() => setIsAddingRule(DEFAULT_UPDATE_POLICY_STATE)}
         onChange={(data) => validateRuleData(data as Rule)}
@@ -974,7 +976,9 @@ const RolesPage = () => {
             ) : (
               <Fragment>
                 {currentRolePolicies.map((policy, index) => (
-                  <Fragment key={index}>{getRolePolicy(policy)}</Fragment>
+                  <div className="tw-mb-6" key={index}>
+                    {getRolePolicy(policy)}
+                  </div>
                 ))}
               </Fragment>
             )}
