@@ -147,11 +147,11 @@ class MetadataSource(Source[Entity]):
     ):
         super().__init__()
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = None
         self.tables = None
         self.topics = None
 
@@ -160,13 +160,7 @@ class MetadataSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MetadataESConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, MetadataESConnection):
-            raise InvalidSourceException(
-                f"Expected HiveSQLConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
+        raise NotImplementedError("Create Method not implemented")
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()
