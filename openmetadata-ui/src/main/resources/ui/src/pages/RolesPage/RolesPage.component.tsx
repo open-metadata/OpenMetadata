@@ -379,8 +379,8 @@ const RolesPage = () => {
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setCurrentRolePolicies((preVPolicies) => {
-              return preVPolicies.map((preVPolicy) => {
+            setCurrentRolePolicies((prevPolicies) => {
+              return prevPolicies.map((preVPolicy) => {
                 if (updatingPolicy?.id === preVPolicy.id) {
                   return res.data;
                 } else {
@@ -423,8 +423,8 @@ const RolesPage = () => {
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setCurrentRolePolicies((preVPolicies) => {
-              return preVPolicies.map((preVPolicy) => {
+            setCurrentRolePolicies((previousPolicies) => {
+              return previousPolicies.map((preVPolicy) => {
                 if (editingPolicy?.id === preVPolicy.id) {
                   return res.data;
                 } else {
@@ -456,8 +456,8 @@ const RolesPage = () => {
       updatePolicy(updatedPolicy)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setCurrentRolePolicies((preVPolicies) => {
-              return preVPolicies.map((preVPolicy) => {
+            setCurrentRolePolicies((policies) => {
+              return policies.map((preVPolicy) => {
                 if (updatingPolicy?.id === preVPolicy.id) {
                   return res.data;
                 } else {
@@ -1023,6 +1023,10 @@ const RolesPage = () => {
     );
   };
 
+  const getRolesContainer = () => {
+    return roles.length > 0 ? getRolesComponent() : getErrorPlaceHolder();
+  };
+
   const fetchCurrentRolePolicies = () => {
     if (currentRole) {
       currentRole?.policies?.forEach((policy) => {
@@ -1056,7 +1060,8 @@ const RolesPage = () => {
               <Loader />
             ) : (
               <div className="tw-pb-3" data-testid="role-container">
-                {roles.length > 0 ? getRolesComponent() : getErrorPlaceHolder()}
+                {getRolesContainer()}
+
                 {getAddRoleForm()}
 
                 {getAddRuleForm()}
