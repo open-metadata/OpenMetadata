@@ -99,5 +99,6 @@
       "default": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["projectID"]
 }

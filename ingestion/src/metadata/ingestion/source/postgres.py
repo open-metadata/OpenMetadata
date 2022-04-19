@@ -66,7 +66,9 @@ class PostgresSource(SQLSource):
                 try:
                     logger.info(f"Ingesting from database: {row[0]}")
                     self.service_connection.database = row[0]
-                    self.engine = get_engine(self.config.serviceConnection)
+                    self.engine = get_engine(
+                        self.config.serviceConnection.__root__.config
+                    )
                     self.engine.connect()
                     yield inspect(self.engine)
                 except Exception as err:
