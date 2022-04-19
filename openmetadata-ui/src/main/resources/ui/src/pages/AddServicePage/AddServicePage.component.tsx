@@ -22,6 +22,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
+import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
@@ -66,11 +67,23 @@ const AddServicePage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
+          const errMessage = getErrorText(
             err,
             jsonData['api-error-messages']['create-ingestion-error']
           );
-          reject();
+          if (errMessage.includes('Failed to deploy Ingestion Pipeline')) {
+            showErrorToast(
+              errMessage,
+              jsonData['api-error-messages']['deploy-ingestion-error']
+            );
+            resolve();
+          } else {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['create-ingestion-error']
+            );
+            reject();
+          }
         });
     });
   };

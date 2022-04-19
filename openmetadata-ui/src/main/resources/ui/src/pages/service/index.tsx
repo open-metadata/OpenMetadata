@@ -420,10 +420,16 @@ const ServicePage: FunctionComponent = () => {
           );
           if (message.includes('Connection refused')) {
             setConnectionAvailable(false);
+          } else if (message.includes('Failed to deploy Ingestion Pipeline')) {
+            showErrorToast(
+              message,
+              jsonData['api-error-messages']['deploy-ingestion-error']
+            );
+            resolve();
           } else {
             showErrorToast(message);
+            reject();
           }
-          reject();
         });
     });
   };
