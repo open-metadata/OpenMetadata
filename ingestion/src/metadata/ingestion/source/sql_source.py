@@ -71,9 +71,6 @@ from metadata.utils.helpers import store_gcs_credentials
 
 logger = ometa_logger()
 
-MANIFEST_FILE_NAME = "manifest_1.0"
-CATALOG_FILE_NAME = "catalog_1.0"
-
 
 @dataclass
 class SQLSourceStatus(SourceStatus):
@@ -139,7 +136,9 @@ def get_dbt_http(config) -> Optional[Tuple[str, str]]:
     return None
 
 
-def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
+def get_dbt_gcs(
+    config, catalog_file_name, manifest_file_name
+) -> Optional[Tuple[str, str]]:
     try:
         dbt_options = config.dbtConfig.gcsConfig
         if config.dbtProvider.value == "gcs":
@@ -165,9 +164,9 @@ def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
             client = storage.Client()
             for bucket in client.list_buckets():
                 for blob in client.list_blobs(bucket.name):
-                    if MANIFEST_FILE_NAME in blob.name:
+                    if manifest_file_name in blob.name:
                         dbt_manifest = blob.download_as_string().decode()
-                    if CATALOG_FILE_NAME in blob.name:
+                    if catalog_file_name in blob.name:
                         dbt_catalog = blob.download_as_string().decode()
             return json.loads(dbt_catalog), json.loads(dbt_manifest)
         else:
@@ -178,7 +177,9 @@ def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
     return None
 
 
-def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
+def get_dbt_s3(
+    config, catalog_file_name, manifest_file_name
+) -> Optional[Tuple[str, str]]:
     try:
         from metadata.utils.aws_client import AWSClient
 
@@ -186,9 +187,9 @@ def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
         buckets = aws_client.buckets.all()
         for bucket in buckets:
             for bucket_object in bucket.objects.all():
-                if MANIFEST_FILE_NAME in bucket_object.key:
+                if manifest_file_name in bucket_object.key:
                     dbt_manifest = bucket_object.get()["Body"].read().decode()
-                if CATALOG_FILE_NAME in bucket_object.key:
+                if catalog_file_name in bucket_object.key:
                     dbt_catalog = bucket_object.get()["Body"].read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
@@ -199,11 +200,18 @@ def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
 
 def get_dbt_details(config) -> Optional[Tuple[str, str]]:
     try:
+        catalog_file_name = "catalog.json"
+        manifest_file_name = "manifest.json"
+        if config.dbtFileNames:
+            if config.dbtFileNames.dbtCatalogFileName:
+                catalog_file_name = config.dbtFileNames.dbtCatalogFileName
+            if config.dbtFileNames.dbtManifestFileName:
+                manifest_file_name = config.dbtFileNames.dbtManifestFileName
         if config.dbtProvider:
             if config.dbtProvider.value == "s3":
-                return get_dbt_s3(config)
+                return get_dbt_s3(config, catalog_file_name, manifest_file_name)
             if "gcs" in config.dbtProvider.value:
-                return get_dbt_gcs(config)
+                return get_dbt_gcs(config, catalog_file_name, manifest_file_name)
             if config.dbtProvider.value == "http":
                 return get_dbt_http(config)
             if config.dbtProvider.value == "local":
