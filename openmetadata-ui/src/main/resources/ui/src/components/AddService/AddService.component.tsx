@@ -16,6 +16,10 @@ import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
+import {
+  addIngestionGuide,
+  addServiceGuide,
+} from '../../constants/service-guide.constant';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -28,7 +32,10 @@ import {
 } from '../../interface/service.interface';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
-import { isIngestionSupported } from '../../utils/ServiceUtils';
+import {
+  getFormattedGuideText,
+  isIngestionSupported,
+} from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import PageLayout from '../containers/PageLayout';
@@ -51,7 +58,8 @@ const AddService = ({
     name: false,
     duplicateName: false,
   });
-  const [activeStepperStep, setActiveStepperStep] = useState(1);
+  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
   const [serviceName, setServiceName] = useState('');
   const [description, setDescription] = useState('');
@@ -75,20 +83,20 @@ const AddService = ({
 
   const handleSelectServiceNextClick = () => {
     if (selectServiceType) {
-      setActiveStepperStep(2);
+      setActiveServiceStep(2);
     } else {
       setShowErrorMessage({ ...showErrorMessage, serviceType: true });
     }
   };
 
   const handleConfigureServiceBackClick = () => {
-    setActiveStepperStep(1);
+    setActiveServiceStep(1);
   };
 
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
     setDescription(descriptionValue);
     if (serviceName.trim()) {
-      setActiveStepperStep(3);
+      setActiveServiceStep(3);
     } else {
       setShowErrorMessage({ ...showErrorMessage, name: true });
     }
@@ -125,7 +133,7 @@ const AddService = ({
       setSaveServiceState('waiting');
       onAddServiceSave(configData)
         .then(() => {
-          setActiveStepperStep(4);
+          setActiveServiceStep(4);
           resolve();
         })
         .catch((err) => {
@@ -136,7 +144,7 @@ const AddService = ({
   };
 
   const handleConnectionDetailsBackClick = () => {
-    setActiveStepperStep(2);
+    setActiveServiceStep(2);
   };
 
   const handleViewServiceClick = () => {
@@ -162,12 +170,12 @@ const AddService = ({
           Add New Service
         </h6>
         <IngestionStepper
-          activeStep={activeStepperStep}
+          activeStep={activeServiceStep}
           stepperLineClassName="add-service-line"
           steps={STEPS_FOR_ADD_SERVICE}
         />
         <div className="tw-pt-5">
-          {activeStepperStep === 1 && (
+          {activeServiceStep === 1 && (
             <SelectServiceType
               handleServiceTypeClick={handleServiceTypeClick}
               selectServiceType={selectServiceType}
@@ -179,7 +187,7 @@ const AddService = ({
             />
           )}
 
-          {activeStepperStep === 2 && (
+          {activeServiceStep === 2 && (
             <ConfigureService
               description={description}
               handleValidation={handleValidation}
@@ -193,7 +201,7 @@ const AddService = ({
             />
           )}
 
-          {activeStepperStep === 3 && (
+          {activeServiceStep === 3 && (
             <ConnectionConfigForm
               cancelText="Back"
               data={
@@ -212,7 +220,7 @@ const AddService = ({
             />
           )}
 
-          {activeStepperStep > 3 && (
+          {activeServiceStep > 3 && (
             <SuccessScreen
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
@@ -226,19 +234,35 @@ const AddService = ({
   };
 
   const fetchRightPanel = () => {
+    let guide;
+    if (addIngestion) {
+      guide = addIngestionGuide.find(
+        (item) => item.step === activeIngestionStep
+      );
+    } else {
+      guide = addServiceGuide.find((item) => item.step === activeServiceStep);
+    }
+
     return (
       <>
-        <h6 className="tw-heading tw-text-base">
-          {addIngestion ? 'Configure Ingestion' : 'Configure Service'}
-        </h6>
-        <div className="tw-mb-5">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Facilis eum
-          eveniet est? Aperiam perspiciatis est quis saepe optio fugiat
-          necessitatibus libero, consectetur, vitae rerum ex! Lorem ipsum dolor
-          sit amet consectetur adipisicing elit. Facilis eum eveniet est?
-          Aperiam perspiciatis est quis saepe optio fugiat necessitatibus
-          libero, consectetur, vitae rerum ex!
-        </div>
+        {guide && (
+          <>
+            <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+            <div className="tw-mb-5">
+              {addIngestion
+                ? getFormattedGuideText(
+                    guide.description,
+                    '<Ingestion Pipeline Name>',
+                    `${serviceName}_${PipelineType.Metadata}`
+                  )
+                : getFormattedGuideText(
+                    guide.description,
+                    '<Service Name>',
+                    serviceName
+                  )}
+            </div>
+          </>
+        )}
       </>
     );
   };
@@ -251,12 +275,14 @@ const AddService = ({
       <div className="tw-form-container">
         {addIngestion ? (
           <AddIngestion
+            activeIngestionStep={activeIngestionStep}
             handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
             heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
             pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
             serviceData={newServiceData as DataObj}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
             status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
           />

@@ -468,3 +468,14 @@ export const getCurrentServiceTab = (tab: string) => {
 
   return currentTab;
 };
+
+export const getFormattedGuideText = (
+  text: string,
+  toReplace: string,
+  replacement: string,
+  isGlobal = false
+) => {
+  const regExp = isGlobal ? new RegExp(toReplace, 'g') : new RegExp(toReplace);
+
+  return text.replace(regExp, replacement);
+};
