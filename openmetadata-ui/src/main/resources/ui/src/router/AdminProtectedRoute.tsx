@@ -26,7 +26,7 @@ const AdminProtectedRoute = (routeProps: RouteProps) => {
   } else if (isAuthenticated) {
     return <Redirect to={ROUTES.NOT_FOUND} />;
   } else {
-    return <Redirect to={ROUTES.HOME} />;
+    return <Redirect to={ROUTES.SIGNIN} />;
   }
 };
 
