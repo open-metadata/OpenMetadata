@@ -34,7 +34,7 @@ class Dialects(Enum):
     and profiling data.
     """
 
-    Hive = b"hive"
+    Hive = b"hive"  # Hive requires bytes
     Postgres = "postgresql"
     BigQuery = "bigquery"
     MySQL = "mysql"

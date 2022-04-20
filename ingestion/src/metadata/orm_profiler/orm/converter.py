@@ -95,7 +95,6 @@ def ometa_to_orm(
     We are building the class dynamically using
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
-    TODO: Remove the dialect once we solve the hierarchy service.db.schema.table. Check #3529
     """
 
     cols = {
@@ -103,14 +102,17 @@ def ometa_to_orm(
         for idx, col in enumerate(table.columns)
     }
 
+    schema_name = get_schema_name(schema)
+    orm_name = f"{schema_name}_{table.name}".replace(".", "_")
+
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
-        table.fullyQualifiedName.__root__.replace(".", "_"),  # Output class name
+        orm_name,  # Output class name
         (Base,),  # SQLAlchemy declarative base
         {
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
-                "schema": get_schema_name(schema),
+                "schema": schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
             },
             **cols,
