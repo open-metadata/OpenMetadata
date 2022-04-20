@@ -12,39 +12,31 @@
 Module containing the logic to check a DAG status
 """
 import json
-from typing import Optional
 
 from airflow import settings
-from airflow.models import DagRun
+from airflow.models import DagModel, DagRun
 from flask import Response
 from openmetadata.api.response import ApiResponse, ResponseFormat
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineStatus,
-)
 
-
-def status(dag_id: str, run_id: Optional[str]) -> Response:
+def status(dag_id: str) -> Response:
+    """
+    Validate that the DAG is registered by Airflow.
+    If exists, check the DagRun
+    :param dag_id: DAG to find
+    :return: API Response
+    """
 
     with settings.Session() as session:
 
-        query = session.query(DagRun)
+        dag_model = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
 
-        if run_id:
-
-            dag_run = query.filter(
-                DagRun.dag_id == dag_id, DagRun.run_id == run_id
-            ).first()
-
-            if dag_run is None:
-                return ApiResponse.not_found(f"DAG run {run_id} not found")
-
-            res_dag_run: PipelineStatus = ResponseFormat.format_dag_run_state(dag_run)
-
-            return ApiResponse.success(json.loads(res_dag_run.json()))
+        if not dag_model:
+            return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
         runs = (
-            query.filter(
+            session.query(DagRun)
+            .filter(
                 DagRun.dag_id == dag_id,
             )
             .order_by(DagRun.start_date.desc())
