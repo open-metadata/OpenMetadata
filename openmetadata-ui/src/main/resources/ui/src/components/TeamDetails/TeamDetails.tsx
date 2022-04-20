@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import classNames from 'classnames';
 import { orderBy } from 'lodash';
 import { ExtraInfo, FormErrorData } from 'Models';
 import React, { Fragment, useState } from 'react';
@@ -24,9 +26,14 @@ import {
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
-import { User } from '../../generated/entity/teams/user';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { TeamDeleteType } from '../../interface/teamsAndUsers.interface';
+import AddUsersModal from '../../pages/teams/AddUsersModal';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
@@ -34,17 +41,20 @@ import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ToggleSwitchV1 from '../common/toggle-switch/ToggleSwitchV1';
 import DropDownList from '../dropdown/DropDownList';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
 import Form from './Form';
 
 interface TeamDetailsProp {
-  currentTeam: Team;
+  currentTeam: Team | undefined;
+  teams: Team[];
   currentTeamUsers: User[];
   teamUserPagin: Paging;
   currentTeamUserPage: number;
@@ -52,6 +62,9 @@ interface TeamDetailsProp {
   isDescriptionEditable: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
+  handleDeleteTeam: (data: TeamDeleteType) => void;
+  deleteTeamById: (id: string) => void;
+  deletingTeam: TeamDeleteType;
   handleAddTeam: (value: boolean) => void;
   onNewTeamDataChange: (
     data: Team,
@@ -68,9 +81,15 @@ interface TeamDetailsProp {
     cursorValue: string | number,
     activePage?: number
   ) => void;
+  isAddingUsers: boolean;
+  getUniqueUserList: () => Array<UserTeams>;
+  addUsersToTeam: (data: Array<UserTeams>) => void;
+  handleAddUser: (data: boolean) => void;
+  removeUserFromTeam: (id: string) => Promise<void>;
 }
 
 const TeamDetails = ({
+  teams,
   currentTeam,
   currentTeamUsers,
   teamUserPagin,
@@ -79,6 +98,9 @@ const TeamDetails = ({
   isDescriptionEditable,
   errorNewTeamData,
   isAddingTeam,
+  deletingTeam,
+  deleteTeamById,
+  handleDeleteTeam,
   handleAddTeam,
   createNewTeam,
   onNewTeamDataChange,
@@ -87,11 +109,22 @@ const TeamDetails = ({
   descriptionHandler,
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
+  isAddingUsers,
+  getUniqueUserList,
+  addUsersToTeam,
+  handleAddUser,
+  removeUserFromTeam,
 }: TeamDetailsProp) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [currentTab, setCurrentTab] = useState(1);
+  const [isHeadingEditing, setIsHeadingEditing] = useState(false);
+  const [heading, setHeading] = useState(currentTeam?.displayName);
+  const [deletingUser, setDeletingUser] = useState<{
+    user: UserTeams | undefined;
+    state: boolean;
+  }>({ user: undefined, state: false });
 
   const tabs = [
     {
@@ -147,7 +180,7 @@ const TeamDetails = ({
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
-    if (value) {
+    if (value && currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
         owner: {
@@ -162,11 +195,42 @@ const TeamDetails = ({
   };
 
   const handleOpenToJoinToggle = () => {
-    const updatedData: Team = {
-      ...currentTeam,
-      isJoinable: !currentTeam.isJoinable,
-    };
-    updateTeamHandler(updatedData);
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        isJoinable: !currentTeam.isJoinable,
+      };
+      updateTeamHandler(updatedData);
+    }
+  };
+
+  const handleRemoveUser = () => {
+    removeUserFromTeam(deletingUser.user?.id as string).then(() => {
+      setDeletingUser({ user: undefined, state: false });
+    });
+  };
+
+  const handleHeadingSave = () => {
+    if (heading && currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        displayName: heading,
+      };
+
+      updateTeamHandler(updatedData);
+      setIsHeadingEditing(false);
+    }
+  };
+
+  /**
+   * Take user id as input to find out the user data and set it for delete
+   * @param id - user id
+   */
+  const deleteUserHandler = (id: string) => {
+    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+      (u) => u.id === id
+    );
+    setDeletingUser({ user, state: true });
   };
 
   const getJoinableWidget = () => {
@@ -174,7 +238,7 @@ const TeamDetails = ({
       <div className="tw-flex">
         <label htmlFor="join-team">Open to join</label>
         <ToggleSwitchV1
-          checked={currentTeam.isJoinable as boolean}
+          checked={(currentTeam?.isJoinable as boolean) || false}
           handleCheck={handleOpenToJoinToggle}
         />
       </div>
@@ -186,30 +250,6 @@ const TeamDetails = ({
    * @returns - user cards
    */
   const getUserCards = () => {
-    if (currentTeamUsers.length <= 0) {
-      return (
-        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>There are no users added yet.</p>
-          {isAdminUser ||
-          isAuthDisabled ||
-          userPermissions[Operation.UpdateTeam] ? (
-            <>
-              <p>Would like to start adding some?</p>
-              <Button
-                className="tw-h-8 tw-rounded tw-my-2"
-                size="small"
-                theme="primary"
-                variant="contained"
-                // onClick={() => setIsAddingUsers(true)}
-              >
-                Add new user
-              </Button>
-            </>
-          ) : null}
-        </div>
-      );
-    }
-
     const sortedUser = orderBy(currentTeamUsers || [], ['name'], 'asc');
 
     return (
@@ -234,47 +274,76 @@ const TeamDetails = ({
                 size="small"
                 theme="primary"
                 variant="contained"
-                // onClick={() => {
-                //   setErrorData(undefined);
-                //   setIsAddingTeam(true);
-                // }}
-              >
+                onClick={() => {
+                  // setErrorData(undefined);
+                  handleAddUser(true);
+                }}>
                 Add User
               </Button>
             </NonAdminAction>
           </div>
         </div>
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-          data-testid="user-card-container">
-          {sortedUser.map((user, index) => {
-            const User = {
-              displayName: user.displayName || user.name,
-              fqn: user.name || '',
-              type: 'user',
-              id: user.id,
-              name: user.name,
-            };
+        {currentTeamUsers.length <= 0 ? (
+          <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+            <p>
+              There are no users{' '}
+              {teamUsersSearchText
+                ? `as ${teamUsersSearchText}.`
+                : `added yet.`}
+            </p>
+            {isAdminUser ||
+            isAuthDisabled ||
+            userPermissions[Operation.UpdateTeam] ? (
+              <>
+                <p>Would like to start adding some?</p>
+                <Button
+                  className="tw-h-8 tw-rounded tw-my-2"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={() => handleAddUser(true)}>
+                  Add new user
+                </Button>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <Fragment>
+            <div
+              className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+              data-testid="user-card-container">
+              {sortedUser.map((user, index) => {
+                const User = {
+                  displayName: user.displayName || user.name,
+                  fqn: user.name || '',
+                  type: 'user',
+                  id: user.id,
+                  name: user.name,
+                };
 
-            return (
-              <UserCard
-                isActionVisible
-                isIconVisible
-                item={User}
-                key={index}
-                // onRemove={deleteUserHandler}
+                return (
+                  <UserCard
+                    isActionVisible
+                    isIconVisible
+                    item={User}
+                    key={index}
+                    onRemove={deleteUserHandler}
+                  />
+                );
+              })}
+            </div>
+            {teamUserPagin.total > PAGE_SIZE && (
+              <NextPrevious
+                currentPage={currentTeamUserPage}
+                isNumberBased={Boolean(teamUsersSearchText)}
+                pageSize={PAGE_SIZE}
+                paging={teamUserPagin}
+                pagingHandler={teamUserPaginHandler}
+                totalCount={teamUserPagin.total}
               />
-            );
-          })}
-        </div>
-        <NextPrevious
-          currentPage={currentTeamUserPage}
-          isNumberBased={Boolean(teamUsersSearchText)}
-          pageSize={PAGE_SIZE}
-          paging={teamUserPagin}
-          pagingHandler={teamUserPaginHandler}
-          totalCount={teamUserPagin.total}
-        />
+            )}
+          </Fragment>
+        )}
       </div>
     );
   };
@@ -358,134 +427,219 @@ const TeamDetails = ({
     );
   };
 
-  return (
-    <div>
-      <Fragment>
-        <div
-          className="tw-flex tw-justify-between tw-items-center"
-          data-testid="header">
-          <div
-            className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-52"
-            title={currentTeam?.displayName ?? currentTeam?.name}>
-            {currentTeam?.displayName ?? currentTeam?.name}
-          </div>
-          <div className="tw-flex">
-            {isActionAllowed() ? (
-              <Fragment>
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <Button
-                    className="tw-h-8 tw-px-2"
-                    data-testid="add-teams"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={() => {
-                      //   setErrorData(undefined);
-                      handleAddTeam(true);
-                    }}>
-                    Create New Team
-                  </Button>
-                </NonAdminAction>
-                <NonAdminAction
-                  html={
-                    <Fragment>
-                      You do not have permission to delete the team.
-                    </Fragment>
-                  }
-                  isOwner={isOwner()}
-                  position="bottom">
-                  <Button
-                    className="tw-h-8 tw-rounded tw-ml-2"
-                    data-testid="delete-team-button"
-                    size="small"
-                    theme="primary"
-                    variant="outlined"
-                    // onClick={() => deleteTeamHandler()}
-                  >
-                    Delete Team
-                  </Button>
-                </NonAdminAction>
-              </Fragment>
-            ) : (
+  const getTeamHeading = () => {
+    return (
+      <div
+        className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-120"
+        title={heading}>
+        {isHeadingEditing ? (
+          <div className="tw-flex tw-items-center tw-gap-1">
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+              data-testid="synonyms"
+              id="synonyms"
+              name="synonyms"
+              placeholder="Enter comma seprated term"
+              type="text"
+              value={heading}
+              onChange={(e) => setHeading(e.target.value)}
+            />
+            <div className="tw-flex tw-justify-end" data-testid="buttons">
               <Button
-                className="tw-h-8 tw-px-2 tw-mb-4"
-                data-testid="join-teams"
-                size="small"
-                theme="primary"
-                variant="contained"
-                // onClick={() => {
-                //   setErrorData(undefined);
-                //   setIsAddingTeam(true);
-                // }}
-              >
-                Join Team
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
-          <span>{getInfoElements(extraInfo)}</span>
-          {isActionAllowed() && (
-            <span className="tw-relative">
-              <Button
-                className="tw-relative tw-pb-1"
-                data-testid="owner-dropdown"
+                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                data-testid="cancelAssociatedTag"
                 size="custom"
                 theme="primary"
-                variant="link"
-                onClick={() => setShowOwnerDropdown((visible) => !visible)}>
-                <SVGIcons
-                  alt="edit"
-                  className="tw-ml-1"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
+                variant="contained"
+                onMouseDown={() => setIsHeadingEditing(false)}>
+                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
               </Button>
-
-              {showOwnerDropdown && (
-                <DropDownList
-                  dropDownList={getOwnerList()}
-                  groupType="tab"
-                  listGroups={['Users']}
-                  value={currentTeam.owner?.id}
-                  onSelect={handleOwnerSelection}
-                />
-              )}
-            </span>
-          )}
-        </div>
-        <div>{getJoinableWidget()}</div>
-        <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
-          <Description
-            blurWithBodyBG
-            description={currentTeam?.description || ''}
-            entityName={currentTeam?.displayName ?? currentTeam?.name}
-            isEdit={isDescriptionEditable}
-            onCancel={() => descriptionHandler(false)}
-            onDescriptionEdit={() => descriptionHandler(true)}
-            onDescriptionUpdate={onDescriptionUpdate}
-          />
-        </div>
-      </Fragment>
-
-      <div className="tw-flex tw-flex-col tw-flex-grow">
-        <TabsPane
-          activeTab={currentTab}
-          setActiveTab={(tab) => setCurrentTab(tab)}
-          tabs={tabs}
-        />
-
-        <div className="tw-flex-grow tw-pt-4">
-          {currentTab === 1 && getUserCards()}
-
-          {currentTab === 2 && getDatasetCards()}
-
-          {currentTab === 3 && getDefaultRoles()}
-        </div>
+              <Button
+                className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                data-testid="saveAssociatedTag"
+                size="custom"
+                theme="primary"
+                variant="contained"
+                onMouseDown={handleHeadingSave}>
+                <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="tw-flex tw-group">
+            <span>{heading}</span>
+            <div className={classNames('tw-w-5 tw-min-w-max')}>
+              <NonAdminAction
+                position="right"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <button
+                  className="tw-ml-2 focus:tw-outline-none"
+                  data-testid="edit-synonyms"
+                  onClick={() => setIsHeadingEditing(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="12px"
+                  />
+                </button>
+              </NonAdminAction>
+            </div>
+          </div>
+        )}
       </div>
+    );
+  };
+
+  return (
+    <div>
+      {teams.length && currentTeam ? (
+        <Fragment>
+          <div
+            className="tw-flex tw-justify-between tw-items-center"
+            data-testid="header">
+            {getTeamHeading()}
+            <div className="tw-flex">
+              {isActionAllowed() ? (
+                <Fragment>
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className="tw-h-8 tw-px-2"
+                      data-testid="add-teams"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => {
+                        //   setErrorData(undefined);
+                        handleAddTeam(true);
+                      }}>
+                      Create New Team
+                    </Button>
+                  </NonAdminAction>
+                  <NonAdminAction
+                    html={
+                      <Fragment>
+                        You do not have permission to delete the team.
+                      </Fragment>
+                    }
+                    isOwner={isOwner()}
+                    position="bottom">
+                    <Button
+                      className="tw-h-8 tw-rounded tw-ml-2"
+                      data-testid="delete-team-button"
+                      size="small"
+                      theme="primary"
+                      variant="outlined"
+                      onClick={() =>
+                        handleDeleteTeam({ team: currentTeam, state: true })
+                      }>
+                      Delete Team
+                    </Button>
+                  </NonAdminAction>
+                </Fragment>
+              ) : (
+                <Button
+                  className="tw-h-8 tw-px-2 tw-mb-4"
+                  data-testid="join-teams"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  // onClick={() => {
+                  //   setErrorData(undefined);
+                  //   setIsAddingTeam(true);
+                  // }}
+                >
+                  Join Team
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
+            <span>{getInfoElements(extraInfo)}</span>
+            {isActionAllowed() && (
+              <span className="tw-relative">
+                <Button
+                  className="tw-relative tw-pb-1"
+                  data-testid="owner-dropdown"
+                  size="custom"
+                  theme="primary"
+                  variant="link"
+                  onClick={() => setShowOwnerDropdown((visible) => !visible)}>
+                  <SVGIcons
+                    alt="edit"
+                    className="tw-ml-1"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="12px"
+                  />
+                </Button>
+
+                {showOwnerDropdown && (
+                  <DropDownList
+                    dropDownList={getOwnerList()}
+                    groupType="tab"
+                    listGroups={['Users']}
+                    value={currentTeam?.owner?.id}
+                    onSelect={handleOwnerSelection}
+                  />
+                )}
+              </span>
+            )}
+          </div>
+          <div>{getJoinableWidget()}</div>
+          <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
+            <Description
+              blurWithBodyBG
+              description={currentTeam?.description || ''}
+              entityName={currentTeam?.displayName ?? currentTeam?.name}
+              isEdit={isDescriptionEditable}
+              onCancel={() => descriptionHandler(false)}
+              onDescriptionEdit={() => descriptionHandler(true)}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </div>
+
+          <div className="tw-flex tw-flex-col tw-flex-grow">
+            <TabsPane
+              activeTab={currentTab}
+              setActiveTab={(tab) => setCurrentTab(tab)}
+              tabs={tabs}
+            />
+
+            <div className="tw-flex-grow tw-pt-4">
+              {currentTab === 1 && getUserCards()}
+
+              {currentTab === 2 && getDatasetCards()}
+
+              {currentTab === 3 && getDefaultRoles()}
+            </div>
+          </div>
+        </Fragment>
+      ) : (
+        <ErrorPlaceHolder>
+          <p className="tw-text-lg tw-text-center">No Teams Added.</p>
+          <div className="tw-text-lg tw-text-center">
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames({
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                })}
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={() => handleAddTeam(true)}>
+                Click here
+              </Button>
+            </NonAdminAction>
+            {' to add new Team'}
+          </div>
+        </ErrorPlaceHolder>
+      )}
+
       {isAddingTeam && (
         <FormModal
           errorData={errorNewTeamData}
@@ -499,6 +653,45 @@ const TeamDetails = ({
           onCancel={() => handleAddTeam(false)}
           onChange={(data) => onNewTeamDataChange(data as Team)}
           onSave={(data) => createNewTeam(data as Team)}
+        />
+      )}
+
+      {deletingTeam.state && (
+        <ConfirmationModal
+          bodyText={`Are you sure you want to delete the team "${
+            deletingTeam.team?.displayName || deletingTeam.team?.name
+          }"?`}
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Delete Team"
+          onCancel={() => handleDeleteTeam({ team: undefined, state: false })}
+          onConfirm={() => {
+            deleteTeamById(deletingTeam.team?.id as string);
+          }}
+        />
+      )}
+
+      {deletingUser.state && (
+        <ConfirmationModal
+          bodyText={`Are you sure you want to remove ${
+            deletingUser.user?.displayName ?? deletingUser.user?.name
+          }?`}
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Removing user"
+          onCancel={() => setDeletingUser({ user: undefined, state: false })}
+          onConfirm={handleRemoveUser}
+        />
+      )}
+
+      {isAddingUsers && (
+        <AddUsersModal
+          header={`Adding new users to ${
+            currentTeam?.displayName ?? currentTeam?.name
+          }`}
+          list={getUniqueUserList()}
+          onCancel={() => handleAddUser(false)}
+          onSave={(data) => addUsersToTeam(data)}
         />
       )}
     </div>

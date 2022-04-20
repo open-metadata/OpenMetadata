@@ -12,11 +12,27 @@
  */
 
 import { FormErrorData } from 'Models';
-import { Team } from '../../generated/entity/teams/team';
-import { User } from '../../generated/entity/teams/user';
-import { Paging } from '../../generated/type/paging';
+import { UserType } from '../enums/user.enum';
+import { Team } from '../generated/entity/teams/team';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../generated/entity/teams/user';
+import { Paging } from '../generated/type/paging';
+
+export type TeamDeleteType = {
+  team: Team | undefined;
+  state: boolean;
+};
 
 export interface TeamsAndUsersProps {
+  hasAccess: boolean;
+  isTeamVisible: boolean;
+  activeUserTab: UserType | undefined;
+  activeUserTabHandler: (value: UserType | undefined) => void;
+  users: User[];
+  admins: User[];
+  bots: User[];
   teams: Team[];
   currentTeam: Team | undefined;
   currentTeamUsers: User[];
@@ -28,6 +44,9 @@ export interface TeamsAndUsersProps {
   isAddingTeam: boolean;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
+  handleDeleteTeam: (data: TeamDeleteType) => void;
+  deleteTeamById: (id: string) => void;
+  deletingTeam: TeamDeleteType;
   onNewTeamDataChange: (
     data: Team,
     forceSet?: boolean
@@ -40,7 +59,14 @@ export interface TeamsAndUsersProps {
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  changeCurrentTeam: (name: string) => void;
+  changeCurrentTeam: (name: string, isUsersCategory: boolean) => void;
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
+  isAddingUsers: boolean;
+  getUniqueUserList: () => Array<UserTeams>;
+  addUsersToTeam: (data: Array<UserTeams>) => void;
+  handleAddUser: (data: boolean) => void;
+  removeUserFromTeam: (id: string) => Promise<void>;
+  handleUserSearchTerm: (value: string) => void;
+  userSearchTerm: string;
 }

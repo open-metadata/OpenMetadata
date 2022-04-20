@@ -14,13 +14,16 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
+import { observer } from 'mobx-react';
 import { FormErrorData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import {
   createTeam,
+  deleteTeam,
   getTeamByName,
   getTeams,
   patchTeamDetail,
@@ -34,9 +37,15 @@ import {
   PAGE_SIZE,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { UserType } from '../../enums/user.enum';
 import { Team } from '../../generated/entity/teams/team';
-import { User } from '../../generated/entity/teams/user';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
+import { TeamDeleteType } from '../../interface/teamsAndUsers.interface';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
@@ -45,8 +54,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TeamsAndUsersPage = () => {
   const { teamAndUser } = useParams() as Record<string, string>;
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTeamVisible, setIsTeamVisible] = useState(true);
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
@@ -55,7 +67,18 @@ const TeamsAndUsersPage = () => {
   const [teamUsersSearchText, setTeamUsersSearchText] = useState('');
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
+  const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
+  const [deletingTeam, setDeletingTeam] = useState<TeamDeleteType>({
+    team: undefined,
+    state: false,
+  });
+  const [activeUserTab, setactiveUserTab] = useState<UserType>();
+  const [userList, setUserList] = useState<Array<User>>([]);
+  const [users, setUsers] = useState<Array<User>>([]);
+  const [admins, setAdmins] = useState<Array<User>>([]);
+  const [bots, setBots] = useState<Array<User>>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
@@ -63,6 +86,22 @@ const TeamsAndUsersPage = () => {
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
+  };
+
+  const handleDeleteTeam = (data: TeamDeleteType) => {
+    setDeletingTeam(data);
+  };
+
+  const handleAddUser = (data: boolean) => {
+    setIsAddingUsers(data);
+  };
+
+  const activeUserTabHandler = (data: UserType | undefined) => {
+    setactiveUserTab(data);
+  };
+
+  const handleUserSearchTerm = (value: string) => {
+    setUserSearchTerm(value);
   };
 
   /**
@@ -111,6 +150,72 @@ const TeamsAndUsersPage = () => {
       });
   };
 
+  /**
+   * Make API call to fetch current team data
+   */
+  const fetchCurrentTeam = (name: string, update = false) => {
+    if (currentTeam?.name !== name || update) {
+      setIsLoading(true);
+      getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            setCurrentTeam(res.data);
+            getCurrentTeamUsers(res.data.name);
+            if (teams.length <= 0) {
+              fetchTeams();
+            }
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-teams-error']
+          );
+
+          //   setError(errMsg);
+
+          showErrorToast(errMsg);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  };
+
+  const goToTeams = () => {
+    if (teamAndUser) {
+      history.push(getTeamAndUserDetailsPath());
+    } else {
+      fetchTeams();
+    }
+  };
+
+  /**
+   * Take team id and delete the team
+   * @param id - Team id
+   */
+  const deleteTeamById = (id: string) => {
+    deleteTeam(id)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          goToTeams();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-team-error']
+        );
+      })
+      .finally(() => {
+        setDeletingTeam({ team: undefined, state: false });
+      });
+  };
+
   const searchUsers = (text: string) => {
     searchData(
       text,
@@ -151,45 +256,73 @@ const TeamsAndUsersPage = () => {
   };
 
   /**
-   * Make API call to fetch current team data
+   * Filter out the already added user and return unique user list
+   * @returns - unique user list
    */
-  const fetchCurrentTeam = (name: string, update = false) => {
-    if (currentTeam?.name !== name || update) {
-      setIsLoading(true);
-      getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setCurrentTeam(res.data);
-            getCurrentTeamUsers(res.data.name);
-            if (teams.length <= 0) {
-              fetchTeams();
-            }
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
-            err,
-            jsonData['api-error-messages']['fetch-teams-error']
-          );
+  const getUniqueUserList = () => {
+    const uniqueList = userList
+      .filter((user) => {
+        const teamUser = currentTeam?.users?.some(
+          (teamUser) => user.id === teamUser.id
+        );
 
-          //   setError(errMsg);
+        return !teamUser && user;
+      })
+      .map((user) => {
+        return {
+          description: user.displayName || '',
+          id: user.id,
+          href: user.href,
+          name: user.name || '',
+          type: 'user',
+        };
+      });
 
-          showErrorToast(errMsg);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
+    return uniqueList;
+  };
+
+  /**
+   * Take users data as input and add users to team
+   * @param data
+   */
+  const addUsersToTeam = (data: Array<UserTeams>) => {
+    const updatedTeam = {
+      ...currentTeam,
+      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchCurrentTeam(res.data.name, true);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['update-team-error']
+        );
+      })
+      .finally(() => {
+        setIsAddingUsers(false);
+      });
   };
 
   /**
    * Handle current team route
    * @param name - team name
    */
-  const changeCurrentTeam = (name: string) => {
+  const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
     history.push(getTeamAndUserDetailsPath(name));
+    if (isUsersCategory) {
+      setIsTeamVisible(false);
+      setCurrentTeam(undefined);
+    } else {
+      setIsTeamVisible(true);
+      setactiveUserTab(undefined);
+    }
   };
 
   const updateTeamHandler = (updatedData: Team) => {
@@ -278,6 +411,42 @@ const TeamsAndUsersPage = () => {
   };
 
   /**
+   * Take user id and remove that user from the team
+   * @param id - user id
+   */
+  const removeUserFromTeam = (id: string) => {
+    const users = [...(currentTeam?.users as Array<UserTeams>)];
+    const newUsers = users.filter((user) => {
+      return user.id !== id;
+    });
+    const updatedTeam = {
+      ...currentTeam,
+      users: newUsers,
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+
+    return new Promise<void>((resolve) => {
+      patchTeamDetail(currentTeam?.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-team-error']
+          );
+        })
+        .finally(() => {
+          resolve();
+        });
+    });
+  };
+
+  /**
    * Update team description
    * @param updatedHTML - updated description
    */
@@ -309,12 +478,24 @@ const TeamsAndUsersPage = () => {
 
   useEffect(() => {
     if (teamAndUser) {
-      fetchCurrentTeam(teamAndUser);
-    } else {
-      fetchTeams();
+      if (Object.values(UserType).includes(teamAndUser as UserType)) {
+        setIsTeamVisible(false);
+        setIsLoading(false);
+        setactiveUserTab(teamAndUser as UserType);
+      } else {
+        fetchCurrentTeam(teamAndUser);
+      }
     }
-    // setCurrentTab(1);
+
+    fetchTeams();
   }, [teamAndUser]);
+
+  useEffect(() => {
+    setUserList(AppState.users);
+    setUsers(AppState.users.filter((user) => !user.isBot));
+    setAdmins(AppState.users.filter((user) => user.isAdmin));
+    setBots(AppState.users.filter((user) => user.isBot));
+  }, [AppState.users]);
 
   return (
     <PageContainerV1>
@@ -322,22 +503,39 @@ const TeamsAndUsersPage = () => {
         <Loader />
       ) : (
         <TeamsAndUsers
+          activeUserTab={activeUserTab}
+          activeUserTabHandler={activeUserTabHandler}
+          addUsersToTeam={addUsersToTeam}
+          admins={admins}
+          bots={bots}
           changeCurrentTeam={changeCurrentTeam}
           createNewTeam={createNewTeam}
           currentTeam={currentTeam}
           currentTeamUserPage={currentTeamUserPage}
           currentTeamUsers={currentTeamUsers}
+          deleteTeamById={deleteTeamById}
+          deletingTeam={deletingTeam}
           descriptionHandler={descriptionHandler}
           errorNewTeamData={errorNewTeamData}
+          getUniqueUserList={getUniqueUserList}
           handleAddTeam={handleAddTeam}
+          handleAddUser={handleAddUser}
+          handleDeleteTeam={handleDeleteTeam}
           handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+          handleUserSearchTerm={handleUserSearchTerm}
+          hasAccess={isAuthDisabled || isAdminUser}
           isAddingTeam={isAddingTeam}
+          isAddingUsers={isAddingUsers}
           isDescriptionEditable={isDescriptionEditable}
+          isTeamVisible={isTeamVisible}
+          removeUserFromTeam={removeUserFromTeam}
           teamUserPagin={teamUserPagin}
           teamUserPaginHandler={teamUserPaginHandler}
           teamUsersSearchText={teamUsersSearchText}
           teams={teams}
           updateTeamHandler={updateTeamHandler}
+          userSearchTerm={userSearchTerm}
+          users={users}
           onDescriptionUpdate={onDescriptionUpdate}
           onNewTeamDataChange={onNewTeamDataChange}
         />
@@ -346,4 +544,4 @@ const TeamsAndUsersPage = () => {
   );
 };
 
-export default TeamsAndUsersPage;
+export default observer(TeamsAndUsersPage);
