@@ -11,28 +11,77 @@
  *  limitations under the License.
  */
 
-import React, { useState } from 'react';
+import { EntityThread } from 'Models';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { AssetsType } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { EntityReference, User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import UserCard from '../../pages/teams/UserCard';
 import { getNonDeletedTeams } from '../../utils/CommonUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import { Button } from '../buttons/Button/Button';
 import Avatar from '../common/avatar/Avatar';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
+import DropDownList from '../dropdown/DropDownList';
+import Loader from '../Loader/Loader';
+import Onboarding from '../onboarding/Onboarding';
 
-type Props = {
+interface Props {
   userData: User;
-};
+  feedData: EntityThread[];
+  feedFilter: FeedFilter;
+  paging: Paging;
+  isFeedLoading: boolean;
+  feedFilterHandler: (v: FeedFilter) => void;
+  fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
+  postFeedHandler: (value: string, id: string) => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
+}
 
-const Users = ({ userData }: Props) => {
+const Users = ({
+  userData,
+  feedData,
+  feedFilter,
+  feedFilterHandler,
+  isFeedLoading,
+  postFeedHandler,
+  deletePostHandler,
+  fetchFeedHandler,
+  paging,
+}: Props) => {
   const [activeTab, setActiveTab] = useState(1);
-
+  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
+  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const activeTabHandler = (tab: number) => {
     setActiveTab(tab);
   };
 
+  const handleDropDown = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
+    setFieldListVisible(false);
+  };
+
   const tabs = [
+    {
+      name: 'Activity Feed',
+      icon: {
+        alt: 'activity_feed',
+        name: 'activity_feed',
+        title: 'Activity Feed',
+        selectedName: 'activity-feed-color',
+      },
+      isProtected: false,
+      position: 1,
+    },
     {
       name: 'Owned Data',
       icon: {
@@ -42,7 +91,7 @@ const Users = ({ userData }: Props) => {
         selectedName: 'owned-data',
       },
       isProtected: false,
-      position: 1,
+      position: 2,
     },
     {
       name: 'Following',
@@ -53,7 +102,7 @@ const Users = ({ userData }: Props) => {
         selectedName: 'following',
       },
       isProtected: false,
-      position: 2,
+      position: 3,
     },
   ];
 
@@ -88,6 +137,7 @@ const Users = ({ userData }: Props) => {
             </span>
           </p>
           <p className="tw-mt-2">{userData.email}</p>
+          <p className="tw-mt-2">{userData.description}</p>
         </div>
         <div className="tw-pb-4 tw-mb-4 tw-border-b">
           <h6 className="tw-heading tw-mb-3">Teams</h6>
@@ -150,6 +200,80 @@ const Users = ({ userData }: Props) => {
     );
   };
 
+  const getFilterDropDown = () => {
+    return (
+      <Fragment>
+        <div className="tw-relative tw-mt-5">
+          <Button
+            className="hover:tw-no-underline focus:tw-no-underline"
+            data-testid="feeds"
+            size="custom"
+            tag="button"
+            theme="primary"
+            variant="link"
+            onClick={() => setFieldListVisible((visible) => !visible)}>
+            <span className="tw-font-medium">
+              {filterList.find((f) => f.value === feedFilter)?.name}
+            </span>
+            <DropDownIcon />
+          </Button>
+          {fieldListVisible && (
+            <DropDownList
+              dropDownList={filterList}
+              value={feedFilter}
+              onSelect={handleDropDown}
+            />
+          )}
+        </div>
+      </Fragment>
+    );
+  };
+
+  const getLoader = () => {
+    return isFeedLoading ? <Loader /> : null;
+  };
+
+  const getFeedTabData = () => {
+    return (
+      <Fragment>
+        {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
+          <Fragment>
+            {getFilterDropDown()}
+            <ActivityFeedList
+              withSidePanel
+              className=""
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              postFeedHandler={postFeedHandler}
+            />
+          </Fragment>
+        ) : (
+          <Onboarding />
+        )}
+        <div
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}>
+          {getLoader()}
+        </div>
+      </Fragment>
+    );
+  };
+
+  const fetchMoreFeed = (
+    isElementInView: boolean,
+    pagingObj: Paging,
+    isLoading: boolean
+  ) => {
+    if (isElementInView && pagingObj?.after && !isLoading) {
+      fetchFeedHandler(feedFilter, pagingObj.after);
+    }
+  };
+
+  useEffect(() => {
+    fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
+  }, [isInView, paging, isFeedLoading]);
+
   return (
     <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
       <div className="tw-mb-3">
@@ -161,14 +285,15 @@ const Users = ({ userData }: Props) => {
         />
       </div>
       <div>
-        {activeTab === 1 &&
+        {activeTab === 1 && getFeedTabData()}
+        {activeTab === 2 &&
           getEntityData(
             getAssets(userData?.owns || []),
             `${
               userData?.displayName || userData?.name || 'User'
             } does not own anything yet`
           )}
-        {activeTab === 2 &&
+        {activeTab === 3 &&
           getEntityData(
             getAssets(userData?.follows || []),
             `${
