@@ -135,6 +135,7 @@ const jsonData = {
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
     'delete-entity-success': 'Entity deleted successfully!',
+    'test-connection-success': 'Connection tested successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

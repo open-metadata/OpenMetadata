@@ -36,7 +36,7 @@ import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -73,6 +73,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           // This api only responds with status 200 on success
           // No data sent on api success
           if (res.status === 200) {
+            showSuccessToast(
+              jsonData['api-success-messages']['test-connection-success']
+            );
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
