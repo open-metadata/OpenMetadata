@@ -49,7 +49,7 @@ class SnowflakeSource(SQLSource):
             config.serviceConnection.__root__.config.connectionArguments
         )
         if connection_arguments:
-            if connection_arguments.private_key:
+            if hasattr(connection_arguments, "private_key"):
                 private_key = connection_arguments.private_key
                 p_key = serialization.load_pem_private_key(
                     bytes(private_key, "utf-8"),
