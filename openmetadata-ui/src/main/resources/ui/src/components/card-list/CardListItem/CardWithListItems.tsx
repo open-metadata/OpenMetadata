@@ -55,7 +55,11 @@ const CardListItem: FunctionComponent<Props> = ({
     ) : tierStatus === 'success' ? (
       <FontAwesomeIcon icon="check" />
     ) : (
-      <Button size="small" theme="primary" onClick={() => onSave(tier)}>
+      <Button
+        data-testid="select-tier-buuton"
+        size="small"
+        theme="primary"
+        onClick={() => onSave(tier)}>
         Select
       </Button>
     );
