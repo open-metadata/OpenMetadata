@@ -40,6 +40,7 @@ def build_metadata_workflow_config(
         source=ingestion_pipeline.source,
         sink=Sink(
             type="metadata-rest",
+            config={},
         ),
         workflowConfig=WorkflowConfig(
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
