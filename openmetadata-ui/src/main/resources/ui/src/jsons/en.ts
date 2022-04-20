@@ -102,6 +102,8 @@ const jsonData = {
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
 
+    'test-connection-error': 'Error while testing connection!',
+
     'unexpected-server-response': 'Unexpected response from server!',
 
     'update-chart-error': 'Error while updating charts!',
@@ -138,6 +140,7 @@ const jsonData = {
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
     'delete-entity-success': 'Entity deleted successfully!',
+    'test-connection-success': 'Connection tested successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
