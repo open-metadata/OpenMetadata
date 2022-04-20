@@ -67,6 +67,9 @@ public class RolesPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
@@ -75,13 +78,9 @@ public class RolesPageTest {
     Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
-    Events.click(webDriver, common.focusedDescriptionBox());
-    Events.sendEnter(webDriver, common.focusedDescriptionBox());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(1000);
     try {
       wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
     } catch (NoSuchElementException | TimeoutException e) {
@@ -98,12 +97,13 @@ public class RolesPageTest {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(roleName));
-    String updatedDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    Thread.sleep(waitTime);
+    String updatedDescription = webDriver.findElement(rolesPage.descriptionContainer()).getText();
     Assert.assertEquals(updatedDescription, description);
   }
 
@@ -117,7 +117,6 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.selectOperation("UpdateDescription"));
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
-    Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
     try {
@@ -156,6 +155,9 @@ public class RolesPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, common.containsText("Data Steward Policy"));
     Events.sendKeys(webDriver, common.displayName(), "");
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
@@ -175,6 +177,9 @@ public class RolesPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, common.containsText("Data Steward Policy"));
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), "");
     Events.click(webDriver, common.descriptionBoldButton());
@@ -195,15 +200,23 @@ public class RolesPageTest {
     String firstName = faker.name().firstName();
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, common.containsText("Data Steward Policy"));
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
+    Events.click(webDriver, common.descriptionBox());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, common.containsText("Data Steward Policy"));
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
+    Events.click(webDriver, common.descriptionBox());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
@@ -222,7 +235,6 @@ public class RolesPageTest {
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
-    Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());

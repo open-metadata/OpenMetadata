@@ -251,21 +251,20 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(1000);
+    Thread.sleep(waitTime);
     List<WebElement> br = tableDetails.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
     for (WebElement link : br) {
       try {
         link.click();
-        Thread.sleep(1000);
+        Thread.sleep(waitTime);
         Assert.assertTrue(link.isDisplayed());
-        Thread.sleep(1000);
       } catch (StaleElementReferenceException ex) {
         webDriver.navigate().back();
-        Thread.sleep(1000);
+        Thread.sleep(waitTime);
         Events.click(webDriver, By.xpath(xpath));
-        Thread.sleep(2000);
+        Thread.sleep(waitTime);
         Assert.assertTrue(webDriver.findElement(By.xpath(xpath)).isDisplayed());
         break;
       }

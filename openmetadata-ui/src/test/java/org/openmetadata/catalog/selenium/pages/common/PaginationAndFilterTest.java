@@ -64,6 +64,7 @@ public class PaginationAndFilterTest {
     webDriver.get(url);
   }
 
+  /* DO NOT DELETE
   @Test
   @Order(1)
   public void checkFlikerInFilter() throws Exception {
@@ -83,7 +84,7 @@ public class PaginationAndFilterTest {
     } catch (TimeoutException exception) {
       LOG.info("Success");
     }
-  }
+  }*/
 
   @Test
   @Order(2)
@@ -170,7 +171,7 @@ public class PaginationAndFilterTest {
     actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 6; i++) {
+    for (int i = 0; i < 5; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
     }

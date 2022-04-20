@@ -231,9 +231,9 @@ public class PipelineDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {

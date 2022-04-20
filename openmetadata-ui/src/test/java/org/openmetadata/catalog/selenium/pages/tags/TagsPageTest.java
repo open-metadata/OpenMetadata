@@ -138,7 +138,7 @@ public class TagsPageTest {
   @Order(6)
   public void addAssociatedTag() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.addAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 1; i++) {
@@ -146,6 +146,7 @@ public class TagsPageTest {
       Events.click(webDriver, common.tagListItem());
     }
     Events.click(webDriver, common.saveAssociatedTag());
+    Thread.sleep(waitTime);
   }
 
   @Test

@@ -185,7 +185,9 @@ public class GlossaryPageTest {
     Events.click(webDriver, common.focusedDescriptionBox());
     Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.sendKeys(webDriver, common.urlLink(), faker.address().toString());
+    Events.sendKeys(webDriver, common.linkText(), faker.address().firstName());
+    Events.click(webDriver, common.okButton());
     Events.click(webDriver, glossary.addReviewerButton());
     for (int i = 1; i <= 2; i++) {
       Events.click(webDriver, glossary.checkboxAddUser(i));

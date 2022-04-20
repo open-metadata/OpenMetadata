@@ -90,7 +90,7 @@ public class CommonTests {
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
     Events.click(webDriver, common.tagListItem());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "User.FacePhoto");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PII.None");
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
@@ -356,21 +356,25 @@ public class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "U");
+    for (int i = 0; i < 2; i++) {
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editAssociatedTagButton());
     Object tagsCount = webDriver.findElements(common.tagCount()).size();
-    Thread.sleep(2000);
     Events.click(webDriver, common.explore());
-    Thread.sleep(2000);
-    Events.click(webDriver, common.viewMore());
-    Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
-    Assert.assertEquals(tagsFilterCount.toString(), count);
+    Thread.sleep(waitTime);
+    try {
+      Events.click(webDriver, common.viewMore());
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    } catch (NoSuchElementException | TimeoutException e) {
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    }
   }
 
   @Test

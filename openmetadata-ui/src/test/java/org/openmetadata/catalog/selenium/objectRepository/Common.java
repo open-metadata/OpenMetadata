@@ -29,8 +29,8 @@ public class Common {
   By addServiceButton = By.cssSelector("[data-testid='add-new-service-button']");
   By noServicesAddServiceButton = By.cssSelector("[data-testid='add-new-user-button']");
   By serviceName = By.cssSelector("[data-testid='service-name']");
-  By serviceUsername = By.cssSelector("[name='username']");
-  By servicePassword = By.cssSelector("[name='password']");
+  By serviceUsername = By.cssSelector("[id='root_username']");
+  By servicePassword = By.cssSelector("[id='root_password']");
   By nextButton = By.cssSelector("[data-testid='next-button']");
   By saveServiceButton = By.cssSelector("[data-testid='deploy-button']");
   By saveEditedService = By.cssSelector("[data-testid='save-button']");
@@ -45,10 +45,10 @@ public class Common {
   By searchResultsList = By.xpath("//div[@data-testid='search-results']/div");
   By ownerDropdown = By.cssSelector("[data-testid='owner-dropdown']");
   By ownerSearchBox = By.cssSelector("[data-testid='searchInputText']");
-  By closeErrorMessage = By.cssSelector("[data-testid='dismiss']");
+  By closeErrorMessage = By.cssSelector("[class='Toastify__close-button Toastify__close-button--light']");
   By serviceUrl = By.cssSelector("[data-testid='url']");
-  By servicePort = By.cssSelector("[data-testid='port']");
-  By databaseName = By.cssSelector("[data-testid='database']");
+  By servicePort = By.cssSelector("[id='root_hostPort']");
+  By databaseName = By.cssSelector("[id='root_database']");
   By addTagCategory = By.cssSelector("[data-testid='add-category']");
   By addTagButton = By.cssSelector("[data-testid='add-new-tag-button']");
   By tagCount = By.xpath("//div[@data-testid='tag-container']/div/div");
@@ -92,10 +92,16 @@ public class Common {
   By reviewCount = By.cssSelector("[data-testid='user-card-container']");
   By tagsCount = By.xpath("(//div[@data-testid='tags']/div)");
   By addGlossaryReviewer = By.cssSelector("[data-testid='add-new-reviewer']");
-  By connectionConfig = By.cssSelector("[data-testid='Connection Config']");
+  By connectionConfig = By.cssSelector("[data-testid='Connection']");
   By ingestion = By.cssSelector("[data-testid='Ingestions']");
   By descriptionBox = By.xpath("//div[@class='ProseMirror']");
   By focusedDescriptionBox = By.xpath("//div[@class='ProseMirror ProseMirror-focused']");
+  By urlLink = By.cssSelector("[id='toastuiLinkUrlInput']");
+  By linkText = By.cssSelector("[id='toastuiLinkTextInput']");
+  By okButton = By.cssSelector("[class='toastui-editor-ok-button']");
+  By hostPort = By.cssSelector("[id='root_hostPort']");
+  By addIngestion = By.cssSelector("[data-testid='add-ingestion-button']");
+  By deployButton = By.cssSelector("[data-testid='deploy-button']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
