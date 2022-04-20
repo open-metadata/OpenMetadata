@@ -37,7 +37,9 @@ export const getUsers = (
   }
   const url =
     `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
-    (limit ? `${arrQueryFields?.length ? '&' : '?'}limit=${limit}` : '');
+    (limit
+      ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
+      : '');
 
   return APIClient.get(url);
 };

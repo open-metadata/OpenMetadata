@@ -27,7 +27,10 @@ const TeamsAndUsers = ({
   bots,
   activeUserTab,
   userSearchTerm,
+  selectedUserList,
+  updateUser,
   handleUserSearchTerm,
+  handleDeleteUser,
   hasAccess,
   isTeamVisible,
   teams,
@@ -40,6 +43,7 @@ const TeamsAndUsers = ({
   errorNewTeamData,
   isAddingTeam,
   createNewTeam,
+  handleAddNewUser,
   deletingTeam,
   deleteTeamById,
   handleDeleteTeam,
@@ -151,7 +155,11 @@ const TeamsAndUsers = ({
             activeUserTab={activeUserTab}
             admins={admins}
             bots={bots}
+            handleAddNewUser={handleAddNewUser}
+            handleDeleteUser={handleDeleteUser}
             handleUserSearchTerm={handleUserSearchTerm}
+            selectedUserList={selectedUserList}
+            updateUser={updateUser}
             userSearchTerm={userSearchTerm}
             users={users}
           />

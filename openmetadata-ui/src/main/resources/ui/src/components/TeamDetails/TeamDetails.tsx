@@ -15,12 +15,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { orderBy } from 'lodash';
 import { ExtraInfo, FormErrorData } from 'Models';
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   getTeamAndUserDetailsPath,
-  PAGE_SIZE,
+  PAGE_SIZE_12,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -120,7 +120,9 @@ const TeamDetails = ({
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [currentTab, setCurrentTab] = useState(1);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
-  const [heading, setHeading] = useState(currentTeam?.displayName);
+  const [heading, setHeading] = useState(
+    currentTeam ? currentTeam.displayName : ''
+  );
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -222,6 +224,12 @@ const TeamDetails = ({
     }
   };
 
+  useEffect(() => {
+    if (currentTeam) {
+      setHeading(currentTeam.displayName);
+    }
+  }, [currentTeam?.displayName]);
+
   /**
    * Take user id as input to find out the user data and set it for delete
    * @param id - user id
@@ -264,24 +272,25 @@ const TeamDetails = ({
               onSearch={handleTeamUsersSearchAction}
             />
           </div>
-          <div>
-            <NonAdminAction
-              position="bottom"
-              title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <Button
-                className="tw-h-8 tw-px-2"
-                data-testid="add-teams"
-                size="small"
-                theme="primary"
-                variant="contained"
-                onClick={() => {
-                  // setErrorData(undefined);
-                  handleAddUser(true);
-                }}>
-                Add User
-              </Button>
-            </NonAdminAction>
-          </div>
+          {currentTeamUsers.length > 0 && (
+            <div>
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className="tw-h-8 tw-px-2"
+                  data-testid="add-teams"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={() => {
+                    handleAddUser(true);
+                  }}>
+                  Add User
+                </Button>
+              </NonAdminAction>
+            </div>
+          )}
         </div>
         {currentTeamUsers.length <= 0 ? (
           <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
@@ -332,11 +341,11 @@ const TeamDetails = ({
                 );
               })}
             </div>
-            {teamUserPagin.total > PAGE_SIZE && (
+            {teamUserPagin.total > PAGE_SIZE_12 && (
               <NextPrevious
                 currentPage={currentTeamUserPage}
                 isNumberBased={Boolean(teamUsersSearchText)}
-                pageSize={PAGE_SIZE}
+                pageSize={PAGE_SIZE_12}
                 paging={teamUserPagin}
                 pagingHandler={teamUserPaginHandler}
                 totalCount={teamUserPagin.total}
@@ -512,7 +521,6 @@ const TeamDetails = ({
                       theme="primary"
                       variant="contained"
                       onClick={() => {
-                        //   setErrorData(undefined);
                         handleAddTeam(true);
                       }}>
                       Create New Team

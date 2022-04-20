@@ -17,6 +17,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
+export const PAGE_SIZE_12 = 12;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
@@ -404,8 +405,9 @@ export const navLinkSettings = [
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Tags', to: '/tags', disabled: false },
-  { name: 'Teams', to: '/teams', disabled: false },
-  { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
+  { name: 'Teams & Users', to: ROUTES.TEAMS_AND_USERS, disabled: false },
+  // { name: 'Teams', to: '/teams', disabled: false },
+  // { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
   // { name: 'Store', to: '/store', disabled: false },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
   // { name: 'Ingestions', to: '/ingestion', disabled: false },

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Operation } from 'fast-json-patch';
 import { FormErrorData } from 'Models';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
@@ -32,6 +33,7 @@ export interface TeamsAndUsersProps {
   activeUserTabHandler: (value: UserType | undefined) => void;
   users: User[];
   admins: User[];
+  selectedUserList: User[];
   bots: User[];
   teams: Team[];
   currentTeam: Team | undefined;
@@ -42,6 +44,7 @@ export interface TeamsAndUsersProps {
   isDescriptionEditable: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
+  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
   handleDeleteTeam: (data: TeamDeleteType) => void;
@@ -54,6 +57,7 @@ export interface TeamsAndUsersProps {
     [key: string]: string;
   };
   updateTeamHandler: (data: Team) => void;
+  handleDeleteUser: (id: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
@@ -69,4 +73,5 @@ export interface TeamsAndUsersProps {
   removeUserFromTeam: (id: string) => Promise<void>;
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
+  handleAddNewUser: () => void;
 }
