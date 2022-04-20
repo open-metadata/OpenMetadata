@@ -30,3 +30,5 @@ export interface ManageProps {
   entityType?: string;
   allowDelete?: boolean;
 }
+
+export type Status = 'initial' | 'waiting' | 'success';

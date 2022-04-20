@@ -23,7 +23,7 @@ import AddRoleModal from './AddRoleModal';
 const mockCancel = jest.fn();
 const mockSave = jest.fn();
 const mockForm = jest.fn().mockReturnValue(<p data-testid="form">data</p>);
-const mockInitionalData = {
+const mockInitialData = {
   name: '',
   description: '',
 };
@@ -34,7 +34,7 @@ describe('Test AddRoleModal component', () => {
       <AddRoleModal
         form={mockForm}
         header="Adding new users"
-        initialData={mockInitionalData}
+        initialData={mockInitialData}
         onCancel={mockCancel}
         onSave={mockSave}
       />
@@ -55,7 +55,7 @@ describe('Test AddRoleModal component', () => {
       <AddRoleModal
         form={mockForm}
         header="Adding new users"
-        initialData={mockInitionalData}
+        initialData={mockInitialData}
         onCancel={mockCancel}
         onSave={mockSave}
       />
@@ -71,7 +71,7 @@ describe('Test AddRoleModal component', () => {
       <AddRoleModal
         form={mockForm}
         header="Adding new users"
-        initialData={mockInitionalData}
+        initialData={mockInitialData}
         onCancel={mockCancel}
         onSave={mockSave}
       />

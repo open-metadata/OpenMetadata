@@ -132,7 +132,11 @@ const Description = ({
                   position="top"
                   title="Request description"
                   trigger="mouseenter">
-                  <SVGIcons alt="request-description" icon={Icons.REQUEST} />
+                  <SVGIcons
+                    alt="request-description"
+                    className="tw-mt-2"
+                    icon={Icons.REQUEST}
+                  />
                 </PopOver>
               </button>
             ) : null}
