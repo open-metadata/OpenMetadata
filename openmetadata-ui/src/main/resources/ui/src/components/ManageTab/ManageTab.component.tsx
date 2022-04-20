@@ -215,7 +215,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const getDeleteEntityWidget = () => {
     return allowDelete && entityId && entityName && entityType ? (
-      <div className="tw-mt-9" data-testid="danger-zone">
+      <div className="tw-mt-1" data-testid="danger-zone">
         <hr className="tw-border-main tw-mb-4" />
         <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
           <div data-testid="danger-zone-text">
