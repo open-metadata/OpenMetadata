@@ -168,53 +168,49 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
   }, [searchText, ingestionList]);
 
-  /* eslint-disable max-len */
-  // TODO:- once api support status we need below function
-  // const getStatuses = (ingestion: AirflowPipeline) => {
-  //   const lastFiveIngestions = ingestion.pipelineStatuses
-  //     ?.sort((a, b) => {
-  //       // Turn your strings into millis, and then subtract them
-  //       // to get a value that is either negative, positive, or zero.
-  //       const date1 = new Date(a.startDate || '');
-  //       const date2 = new Date(b.startDate || '');
+  const getStatuses = (ingestion: IngestionPipeline) => {
+    const lastFiveIngestions = ingestion.pipelineStatuses
+      ?.sort((a, b) => {
+        // Turn your strings into millis, and then subtract them
+        // to get a value that is either negative, positive, or zero.
+        const date1 = new Date(a.startDate || '');
+        const date2 = new Date(b.startDate || '');
 
-  //       return date1.getTime() - date2.getTime();
-  //     })
-  //     .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
+        return date1.getTime() - date2.getTime();
+      })
+      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
 
-  //   return lastFiveIngestions?.map((r, i) => {
-  //     return (
-  //       <PopOver
-  //         html={
-  //           <div className="tw-text-left">
-  //             {r.startDate ? (
-  //               <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
-  //             ) : null}
-  //             {r.endDate ? (
-  //               <p>End Date: {new Date(r.endDate).toUTCString()}</p>
-  //             ) : null}
-  //           </div>
-  //         }
-  //         key={i}
-  //         position="bottom"
-  //         theme="light"
-  //         trigger="mouseenter">
-  //         {i === lastFiveIngestions.length - 1 ? (
-  //           <p
-  //             className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
-  //             {capitalize(r.state)}
-  //           </p>
-  //         ) : (
-  //           <p
-  //             className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-  //           />
-  //         )}
-  //       </PopOver>
-  //     );
-  //   });
-  // };
-
-  /* eslint-enable max-len */
+    return lastFiveIngestions?.map((r, i) => {
+      return (
+        <PopOver
+          html={
+            <div className="tw-text-left">
+              {r.startDate ? (
+                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+              ) : null}
+              {r.endDate ? (
+                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+              ) : null}
+            </div>
+          }
+          key={i}
+          position="bottom"
+          theme="light"
+          trigger="mouseenter">
+          {i === lastFiveIngestions.length - 1 ? (
+            <p
+              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+              {capitalize(r.state)}
+            </p>
+          ) : (
+            <p
+              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            />
+          )}
+        </PopOver>
+      );
+    });
+  };
 
   const getIngestionTab = () => {
     return (
@@ -312,8 +308,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                       )}
                     </td>
                     <td className="tableBody-cell">
-                      {/* TODO:- update this once api support pipeline status */}
-                      {/* <div className="tw-flex">{getStatuses(ingestion)}</div> */}
+                      <div className="tw-flex">{getStatuses(ingestion)}</div>
                     </td>
 
                     <td className="tableBody-cell">
