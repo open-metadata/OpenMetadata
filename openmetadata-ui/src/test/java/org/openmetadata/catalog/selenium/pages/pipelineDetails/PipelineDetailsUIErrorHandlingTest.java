@@ -1,3 +1,4 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.pipelineDetails;
 
 import com.github.javafaker.Faker;
@@ -288,3 +289,4 @@ public class PipelineDetailsUIErrorHandlingTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/

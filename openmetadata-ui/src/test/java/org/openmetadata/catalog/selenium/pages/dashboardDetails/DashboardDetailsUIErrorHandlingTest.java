@@ -1,3 +1,4 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
@@ -288,3 +289,4 @@ public class DashboardDetailsUIErrorHandlingTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/

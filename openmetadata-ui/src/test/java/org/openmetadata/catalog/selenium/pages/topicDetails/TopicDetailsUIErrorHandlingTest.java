@@ -1,3 +1,4 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.topicDetails;
 
 import com.github.javafaker.Faker;
@@ -272,3 +273,4 @@ public class TopicDetailsUIErrorHandlingTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/

@@ -161,27 +161,25 @@ public class TeamsPageTest {
   @Order(5)
   public void addAsset() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    createTeam();
-    Thread.sleep(waitTime);
-    // Select the created listed team
-    Events.click(webDriver, By.xpath(xpath));
+    addUser();
     Events.click(webDriver, teamsPage.asset()); // Assets
     Events.click(webDriver, explorePage.explore()); // Explore
-    String table = webDriver.findElement(common.selectTable()).getText();
-    Events.click(webDriver, common.selectTable());
+    Events.click(webDriver, common.selectTableLink(4));
+    String tableName = webDriver.findElement(teamsPage.tableName()).getText();
+    webDriver.navigate().refresh();
     Events.click(webDriver, common.manage()); // Manage
     Events.click(webDriver, common.ownerDropdown()); // Owner
+    Thread.sleep(waitTime);
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
     Events.click(webDriver, common.selectUser()); // Select User/Team
     Events.click(webDriver, common.saveManage()); // Save
-    Thread.sleep(waitTime);
     Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
     Events.click(webDriver, By.xpath(xpath));
-    Thread.sleep(waitTime);
     Events.click(webDriver, teamsPage.asset());
-    String asset = webDriver.findElement(teamsPage.dataContainer()).getText();
-    if (!asset.contains(table)) {
+    String asset =
+        wait.until(ExpectedConditions.visibilityOf(webDriver.findElement(teamsPage.dataContainer()))).getText();
+    if (!asset.contains(tableName)) {
       Assert.fail("Asset not added");
     }
   }

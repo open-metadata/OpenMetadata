@@ -1,3 +1,4 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.tableDetails;
 
 import com.github.javafaker.Faker;
@@ -377,3 +378,4 @@ public class TableDetailsUIErrorHandling {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/
