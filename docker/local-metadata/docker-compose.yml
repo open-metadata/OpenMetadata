@@ -67,7 +67,7 @@ services:
       AUTHENTICATION_CALLBACK_URL: ${AUTHENTICATION_CALLBACK_URL:-""}
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
-      SERVER_HOST: ${SERVER_HOST:-http://localhost:8585/api}
+      SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
       # OpenMetadata Airflow Azure SSO Configuration
       AIRFLOW_AUTH_PROVIDER: ${AIRFLOW_AUTH_PROVIDER:-no-auth}
       OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
