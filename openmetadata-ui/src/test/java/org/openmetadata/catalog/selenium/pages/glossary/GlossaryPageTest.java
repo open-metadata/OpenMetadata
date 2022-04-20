@@ -24,7 +24,7 @@ import org.testng.Assert;
 
 @Order(21)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class GlossaryPageTest {
+class GlossaryPageTest {
 
   static WebDriver webDriver;
   static Common common;
@@ -40,7 +40,7 @@ public class GlossaryPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -273,7 +273,7 @@ public class GlossaryPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

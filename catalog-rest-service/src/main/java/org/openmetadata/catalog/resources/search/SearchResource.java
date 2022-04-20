@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.search;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,6 +64,7 @@ public class SearchResource {
   private static final String NAME = "name";
   private static final String DISPLAY_NAME = "display_name";
   private static final String DESCRIPTION = "description";
+  private static final String UNIFIED = "unified";
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
     this.client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
@@ -167,7 +169,7 @@ public class SearchResource {
         break;
     }
 
-    if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
+    if (nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
     LOG.info(searchSourceBuilder.toString());
@@ -232,13 +234,13 @@ public class SearchResource {
             .field("column_descriptions")
             .lenient(true);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
-    highlightTableName.highlighterType("unified");
+    highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
-    highlightDescription.highlighterType("unified");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("column_names");
-    highlightColumns.highlighterType("unified");
+    highlightColumns.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("column_descriptions");
-    highlightColumnDescriptions.highlighterType("unified");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTableName);
@@ -254,9 +256,9 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION).lenient(true);
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field("name");
-    highlightTopicName.highlighterType("unified");
+    highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType("unified");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTopicName);
@@ -273,13 +275,13 @@ public class SearchResource {
             .field("chart_descriptions")
             .lenient(true);
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
-    highlightDashboardName.highlighterType("unified");
+    highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType("unified");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("chart_names");
-    highlightCharts.highlighterType("unified");
+    highlightCharts.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("chart_descriptions");
-    highlightChartDescriptions.highlighterType("unified");
+    highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -300,13 +302,13 @@ public class SearchResource {
             .field("task_descriptions")
             .lenient(true);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
-    highlightPipelineName.highlighterType("unified");
+    highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
-    highlightDescription.highlighterType("unified");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("task_names");
-    highlightTasks.highlighterType("unified");
+    highlightTasks.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("task_descriptions");
-    highlightTaskDescriptions.highlighterType("unified");
+    highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightPipelineName);
@@ -355,9 +357,9 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
-    highlightGlossaryName.highlighterType("unified");
+    highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType("unified");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);

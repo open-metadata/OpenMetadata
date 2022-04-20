@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.resources.databases;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -65,7 +67,7 @@ public final class DatabaseUtil {
 
   /** Validate Table partition */
   public static void validateTablePartition(List<Column> columns, TablePartition tablePartition) {
-    if (tablePartition == null || tablePartition.getColumns() == null || tablePartition.getColumns().isEmpty()) {
+    if (tablePartition == null || nullOrEmpty(tablePartition.getColumns())) {
       return;
     }
     List<String> columnNames = new ArrayList<>();

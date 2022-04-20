@@ -153,11 +153,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyDashboard_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Dashboard> validateGetWithDifferentFields(Dashboard dashboard, boolean byName)
       throws HttpResponseException {

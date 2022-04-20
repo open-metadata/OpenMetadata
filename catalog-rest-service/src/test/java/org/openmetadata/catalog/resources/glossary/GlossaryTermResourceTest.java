@@ -200,7 +200,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  public void patch_addDeleteTags(TestInfo test) throws IOException {
+  void patch_addDeleteTags(TestInfo test) throws IOException {
     // Create glossary term1 in glossary g1
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);

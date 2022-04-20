@@ -108,11 +108,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     }
   }
 
-  @Test
-  void delete_nonEmptyDatabase_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Database> validateGetWithDifferentFields(Database database, boolean byName)
       throws HttpResponseException {

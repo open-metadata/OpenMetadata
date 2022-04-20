@@ -9,9 +9,10 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.catalog.selenium.events.*;
-import org.openmetadata.catalog.selenium.objectRepository.*;
-import org.openmetadata.catalog.selenium.properties.*;
+import org.openmetadata.catalog.selenium.events.Events;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.Webhooks;
+import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -23,7 +24,7 @@ import org.testng.Assert;
 
 @Order(20)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WebhooksPageTest {
+class WebhooksPageTest {
 
   static WebDriver webDriver;
   static Common common;
@@ -37,7 +38,7 @@ public class WebhooksPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -168,7 +169,7 @@ public class WebhooksPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {
