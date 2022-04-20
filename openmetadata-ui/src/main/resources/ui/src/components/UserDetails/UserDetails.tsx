@@ -16,7 +16,6 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { UserType } from '../../enums/user.enum';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -29,11 +28,7 @@ import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
 type UserDetailsProps = {
-  users: User[];
-  admins: User[];
-  bots: User[];
   selectedUserList: User[];
-  activeUserTab: UserType | undefined;
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;

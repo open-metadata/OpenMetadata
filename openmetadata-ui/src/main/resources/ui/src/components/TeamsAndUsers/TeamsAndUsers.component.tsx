@@ -31,6 +31,7 @@ const TeamsAndUsers = ({
   updateUser,
   handleUserSearchTerm,
   handleDeleteUser,
+  handleJoinTeamClick,
   hasAccess,
   isTeamVisible,
   teams,
@@ -152,16 +153,12 @@ const TeamsAndUsers = ({
         data-testid="team-and-user-container">
         {!isTeamVisible ? (
           <UserDetails
-            activeUserTab={activeUserTab}
-            admins={admins}
-            bots={bots}
             handleAddNewUser={handleAddNewUser}
             handleDeleteUser={handleDeleteUser}
             handleUserSearchTerm={handleUserSearchTerm}
             selectedUserList={selectedUserList}
             updateUser={updateUser}
             userSearchTerm={userSearchTerm}
-            users={users}
           />
         ) : (
           <TeamDetails
@@ -178,7 +175,9 @@ const TeamsAndUsers = ({
             handleAddTeam={handleAddTeam}
             handleAddUser={handleAddUser}
             handleDeleteTeam={handleDeleteTeam}
+            handleJoinTeamClick={handleJoinTeamClick}
             handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+            hasAccess={hasAccess}
             isAddingTeam={isAddingTeam}
             isAddingUsers={isAddingUsers}
             isDescriptionEditable={isDescriptionEditable}

@@ -66,6 +66,7 @@ export interface TeamsAndUsersProps {
   changeCurrentTeam: (name: string, isUsersCategory: boolean) => void;
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
+  handleJoinTeamClick: (id: string, data: Operation[]) => void;
   isAddingUsers: boolean;
   getUniqueUserList: () => Array<UserTeams>;
   addUsersToTeam: (data: Array<UserTeams>) => void;
@@ -74,4 +75,42 @@ export interface TeamsAndUsersProps {
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
   handleAddNewUser: () => void;
+}
+
+export interface TeamDetailsProp {
+  currentTeam: Team | undefined;
+  teams: Team[];
+  currentTeamUsers: User[];
+  teamUserPagin: Paging;
+  currentTeamUserPage: number;
+  teamUsersSearchText: string;
+  isDescriptionEditable: boolean;
+  hasAccess: boolean;
+  errorNewTeamData: FormErrorData | undefined;
+  isAddingTeam: boolean;
+  handleDeleteTeam: (data: TeamDeleteType) => void;
+  deleteTeamById: (id: string) => void;
+  deletingTeam: TeamDeleteType;
+  handleAddTeam: (value: boolean) => void;
+  onNewTeamDataChange: (
+    data: Team,
+    forceSet?: boolean
+  ) => {
+    [key: string]: string;
+  };
+  descriptionHandler: (value: boolean) => void;
+  onDescriptionUpdate: (value: string) => void;
+  handleTeamUsersSearchAction: (text: string) => void;
+  updateTeamHandler: (data: Team) => void;
+  createNewTeam: (data: Team) => void;
+  teamUserPaginHandler: (
+    cursorValue: string | number,
+    activePage?: number
+  ) => void;
+  isAddingUsers: boolean;
+  getUniqueUserList: () => Array<UserTeams>;
+  addUsersToTeam: (data: Array<UserTeams>) => void;
+  handleAddUser: (data: boolean) => void;
+  removeUserFromTeam: (id: string) => Promise<void>;
+  handleJoinTeamClick: (id: string, data: Operation[]) => void;
 }

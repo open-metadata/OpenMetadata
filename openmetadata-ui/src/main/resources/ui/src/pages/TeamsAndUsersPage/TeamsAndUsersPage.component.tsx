@@ -55,7 +55,7 @@ import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const TeamsAndUsersPage = () => {
   const { teamAndUser } = useParams() as Record<string, string>;
@@ -437,6 +437,24 @@ const TeamsAndUsersPage = () => {
       });
   };
 
+  const handleJoinTeamClick = (id: string, data: Operation[]) => {
+    updateUserDetail(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          AppState.updateUserDetails(res.data);
+          fetchCurrentTeam(teamAndUser);
+          showSuccessToast(
+            jsonData['api-success-messages']['join-team-success']
+          );
+        } else {
+          throw jsonData['api-error-messages']['join-team-error'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['join-team-error']);
+      });
+  };
+
   /**
    * Handle current team route
    * @param name - team name
@@ -649,6 +667,7 @@ const TeamsAndUsersPage = () => {
           handleAddUser={handleAddUser}
           handleDeleteTeam={handleDeleteTeam}
           handleDeleteUser={handleDeleteUser}
+          handleJoinTeamClick={handleJoinTeamClick}
           handleTeamUsersSearchAction={handleTeamUsersSearchAction}
           handleUserSearchTerm={handleUserSearchTerm}
           hasAccess={isAuthDisabled || isAdminUser}

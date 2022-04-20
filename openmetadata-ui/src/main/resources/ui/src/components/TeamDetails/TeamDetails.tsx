@@ -13,11 +13,12 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { orderBy } from 'lodash';
-import { ExtraInfo, FormErrorData } from 'Models';
+import { compare } from 'fast-json-patch';
+import { cloneDeep, orderBy } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
   PAGE_SIZE_12,
@@ -30,9 +31,8 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../../generated/entity/teams/user';
-import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { TeamDeleteType } from '../../interface/teamsAndUsers.interface';
+import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import AddUsersModal from '../../pages/teams/AddUsersModal';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
@@ -52,43 +52,8 @@ import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
 import Form from './Form';
 
-interface TeamDetailsProp {
-  currentTeam: Team | undefined;
-  teams: Team[];
-  currentTeamUsers: User[];
-  teamUserPagin: Paging;
-  currentTeamUserPage: number;
-  teamUsersSearchText: string;
-  isDescriptionEditable: boolean;
-  errorNewTeamData: FormErrorData | undefined;
-  isAddingTeam: boolean;
-  handleDeleteTeam: (data: TeamDeleteType) => void;
-  deleteTeamById: (id: string) => void;
-  deletingTeam: TeamDeleteType;
-  handleAddTeam: (value: boolean) => void;
-  onNewTeamDataChange: (
-    data: Team,
-    forceSet?: boolean
-  ) => {
-    [key: string]: string;
-  };
-  descriptionHandler: (value: boolean) => void;
-  onDescriptionUpdate: (value: string) => void;
-  handleTeamUsersSearchAction: (text: string) => void;
-  updateTeamHandler: (data: Team) => void;
-  createNewTeam: (data: Team) => void;
-  teamUserPaginHandler: (
-    cursorValue: string | number,
-    activePage?: number
-  ) => void;
-  isAddingUsers: boolean;
-  getUniqueUserList: () => Array<UserTeams>;
-  addUsersToTeam: (data: Array<UserTeams>) => void;
-  handleAddUser: (data: boolean) => void;
-  removeUserFromTeam: (id: string) => Promise<void>;
-}
-
 const TeamDetails = ({
+  hasAccess,
   teams,
   currentTeam,
   currentTeamUsers,
@@ -110,16 +75,17 @@ const TeamDetails = ({
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
   isAddingUsers,
+  handleJoinTeamClick,
   getUniqueUserList,
   addUsersToTeam,
   handleAddUser,
   removeUserFromTeam,
 }: TeamDetailsProp) => {
-  const { isAdminUser, userPermissions } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { userPermissions } = useAuth();
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [currentTab, setCurrentTab] = useState(1);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User>();
   const [heading, setHeading] = useState(
     currentTeam ? currentTeam.displayName : ''
   );
@@ -174,8 +140,8 @@ const TeamDetails = ({
     );
   };
 
-  const isActionAllowed = (operation = true) => {
-    return isAdminUser || isAuthDisabled || operation || isOwner();
+  const isActionAllowed = (operation = false) => {
+    return hasAccess || isOwner() || operation;
   };
 
   const handleOwnerSelection = (
@@ -212,6 +178,14 @@ const TeamDetails = ({
     });
   };
 
+  const isAlreadyJoinedTeam = (teamId: string) => {
+    if (currentUser) {
+      return currentUser.teams?.find((team) => team.id === teamId);
+    }
+
+    return false;
+  };
+
   const handleHeadingSave = () => {
     if (heading && currentTeam) {
       const updatedData: Team = {
@@ -224,11 +198,31 @@ const TeamDetails = ({
     }
   };
 
+  const joinTeam = () => {
+    if (currentUser && currentTeam) {
+      const newTeams = cloneDeep(currentUser.teams ?? []);
+      newTeams.push({
+        id: currentTeam.id,
+        type: OwnerType.TEAM,
+      });
+
+      const updatedData: User = {
+        ...currentUser,
+        teams: newTeams,
+      };
+
+      const options = compare(currentUser, updatedData);
+
+      handleJoinTeamClick(currentUser.id, options);
+    }
+  };
+
   useEffect(() => {
     if (currentTeam) {
       setHeading(currentTeam.displayName);
     }
-  }, [currentTeam?.displayName]);
+    setCurrentUser(AppState.getCurrentUserDetails());
+  }, [currentTeam, currentTeam]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -272,7 +266,8 @@ const TeamDetails = ({
               onSearch={handleTeamUsersSearchAction}
             />
           </div>
-          {currentTeamUsers.length > 0 && (
+
+          {currentTeamUsers.length > 0 && isActionAllowed() && (
             <div>
               <NonAdminAction
                 position="bottom"
@@ -300,9 +295,7 @@ const TeamDetails = ({
                 ? `as ${teamUsersSearchText}.`
                 : `added yet.`}
             </p>
-            {isAdminUser ||
-            isAuthDisabled ||
-            userPermissions[Operation.UpdateTeam] ? (
+            {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
               <>
                 <p>Would like to start adding some?</p>
                 <Button
@@ -477,23 +470,25 @@ const TeamDetails = ({
         ) : (
           <div className="tw-flex tw-group">
             <span>{heading}</span>
-            <div className={classNames('tw-w-5 tw-min-w-max')}>
-              <NonAdminAction
-                position="right"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <button
-                  className="tw-ml-2 focus:tw-outline-none"
-                  data-testid="edit-synonyms"
-                  onClick={() => setIsHeadingEditing(true)}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="12px"
-                  />
-                </button>
-              </NonAdminAction>
-            </div>
+            {isActionAllowed() && (
+              <div className={classNames('tw-w-5 tw-min-w-max')}>
+                <NonAdminAction
+                  position="right"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <button
+                    className="tw-ml-2 focus:tw-outline-none"
+                    data-testid="edit-synonyms"
+                    onClick={() => setIsHeadingEditing(true)}>
+                    <SVGIcons
+                      alt="edit"
+                      icon="icon-edit"
+                      title="Edit"
+                      width="12px"
+                    />
+                  </button>
+                </NonAdminAction>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -547,26 +542,23 @@ const TeamDetails = ({
                     </Button>
                   </NonAdminAction>
                 </Fragment>
-              ) : (
+              ) : !isAlreadyJoinedTeam(currentTeam.id) &&
+                currentTeam.isJoinable ? (
                 <Button
                   className="tw-h-8 tw-px-2 tw-mb-4"
                   data-testid="join-teams"
                   size="small"
                   theme="primary"
                   variant="contained"
-                  // onClick={() => {
-                  //   setErrorData(undefined);
-                  //   setIsAddingTeam(true);
-                  // }}
-                >
+                  onClick={joinTeam}>
                   Join Team
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
           <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
             <span>{getInfoElements(extraInfo)}</span>
-            {isActionAllowed() && (
+            {isActionAllowed(userPermissions[Operation.UpdateOwner]) && (
               <span className="tw-relative">
                 <Button
                   className="tw-relative tw-pb-1"
@@ -602,6 +594,9 @@ const TeamDetails = ({
               blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
+              hasEditAccess={isActionAllowed(
+                userPermissions[Operation.UpdateDescription]
+              )}
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}
@@ -633,9 +628,7 @@ const TeamDetails = ({
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames({
-                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                })}
+                disabled={!isActionAllowed()}
                 size="small"
                 theme="primary"
                 variant="outlined"
