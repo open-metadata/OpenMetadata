@@ -68,7 +68,7 @@ public final class EntityUtil {
 
   // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
-      Comparator.comparing(entityReference -> entityReference.getId().toString());
+      Comparator.comparing(entityReference -> entityReference.getName());
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
@@ -76,6 +76,8 @@ public final class EntityUtil {
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
+  public static final Comparator<GlossaryTerm> compareGlossaryTerm =
+      Comparator.comparing(glossaryTerm -> glossaryTerm.getName());
 
   //
   // Matchers used for matching two items in a list
@@ -171,6 +173,7 @@ public final class EntityUtil {
         EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
         EntityUtil.copy(ref2, ref);
       }
+      list.sort(compareEntityReference);
     }
     return list;
   }
@@ -181,6 +184,7 @@ public final class EntityUtil {
     for (String id : ids) {
       refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
     }
+    refs.sort(compareEntityReference);
     return refs;
   }
 
