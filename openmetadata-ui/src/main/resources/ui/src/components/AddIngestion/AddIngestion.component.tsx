@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
@@ -214,19 +214,23 @@ const AddIngestion = ({
   const getFilterPatternData = (data: FilterPattern) => {
     const { includes, excludes } = data;
 
-    return isUndefined(includes) && isUndefined(excludes)
-      ? undefined
-      : {
-          includes: includes && includes.length > 0 ? includes : undefined,
-          excludes: excludes && excludes.length > 0 ? excludes : undefined,
-        };
+    const filterPattern =
+      (!isUndefined(includes) && includes.length) ||
+      (!isUndefined(excludes) && excludes.length)
+        ? {
+            includes: includes && includes.length > 0 ? includes : undefined,
+            excludes: excludes && excludes.length > 0 ? excludes : undefined,
+          }
+        : undefined;
+
+    return filterPattern;
   };
 
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         startDate: startDate as unknown as Date,
-        endDate: endDate as unknown as Date,
+        endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
         forceDeploy: true,
       },

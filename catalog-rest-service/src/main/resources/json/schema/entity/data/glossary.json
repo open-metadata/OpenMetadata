@@ -77,6 +77,6 @@
       "default": false
     }
   },
-  "required": ["id", "name"],
+  "required": ["id", "name", "description"],
   "additionalProperties": false
 }

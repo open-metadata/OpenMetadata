@@ -38,6 +38,8 @@ import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
+  okText?: string;
+  cancelText?: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onCancel?: () => void;
@@ -46,6 +48,8 @@ interface Props {
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
+  okText = 'Save',
+  cancelText = 'Discard',
   serviceCategory,
   status,
   onCancel,
@@ -103,7 +107,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     return (
       <FormBuilder
+        cancelText={cancelText}
         formData={validConfig}
+        okText={okText}
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}

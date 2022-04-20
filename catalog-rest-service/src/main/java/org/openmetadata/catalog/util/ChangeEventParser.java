@@ -129,14 +129,7 @@ public final class ChangeEventParser {
     return fieldValue.toString();
   }
 
-  /**
-   * Tries to merge additions and deletions into updates and returns a map of formatted messages.
-   *
-   * @param entity Entity object.
-   * @param addedFields Fields that were added as part of the change event.
-   * @param deletedFields Fields that were deleted as part of the change event.
-   * @return A map of entity link -> formatted message.
-   */
+  /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
   private static Map<EntityLink, String> getFormattedMessages(
       Object entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB

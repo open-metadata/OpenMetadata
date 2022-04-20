@@ -26,6 +26,8 @@ import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
 interface Props extends FormProps<ConfigData> {
+  okText: string;
+  cancelText: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
@@ -33,15 +35,34 @@ interface Props extends FormProps<ConfigData> {
 
 function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
   return (
-    <>
-      <label className="control-label">{props.title}</label>
-      <p className="field-description">{props.schema.description}</p>
+    <Fragment>
+      <div className="tw-flex tw-justify-between tw-items-center">
+        <div>
+          <label className="control-label">{props.title}</label>
+          <p className="field-description">{props.schema.description}</p>
+        </div>
+        {props.canAdd && (
+          <Button
+            className="tw-h-7 tw-w-7 tw-px-2"
+            data-testid={`add-item-${props.title}`}
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={props.onAddClick}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        )}
+      </div>
       {props.items.map((element, index) => (
-        <div className="tw-flex tw-items-center tw-w-full" key={index}>
-          <div className="tw-flex-1">{element.children}</div>
+        <div
+          className={classNames('tw-flex tw-items-center tw-w-full', {
+            'tw-mt-2': index > 0,
+          })}
+          key={`${element.key}-${index}`}>
+          <div className="tw-flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
             <button
-              className="focus:tw-outline-none tw-w-1/12"
+              className="focus:tw-outline-none tw-w-7 tw-ml-3"
               type="button"
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
@@ -50,55 +71,61 @@ function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
                 alt="delete"
                 icon={Icons.DELETE}
                 title="Delete"
-                width="16px"
+                width="14px"
               />
             </button>
           )}
         </div>
       ))}
-      {props.canAdd && (
-        <Button
-          className="tw-h-7 tw-px-2 tw-mb-3"
-          data-testid={`add-item-${props.title}`}
-          size="small"
-          theme="primary"
-          variant="contained"
-          onClick={props.onAddClick}>
-          <FontAwesomeIcon icon="plus" />
-        </Button>
-      )}
-    </>
+    </Fragment>
   );
 }
 
 function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   return (
     <Fragment>
-      <label className="control-label">{props.title}</label>
-      <p className="field-description">{props.description}</p>
-      {props.properties.map((element) => (
-        <div className="property-wrapper" key={element.content.key}>
+      <div className="tw-flex tw-justify-between tw-items-center">
+        <div>
+          <label className="control-label" id={`${props.idSchema.$id}__title`}>
+            {props.title}
+          </label>
+          <p
+            className="field-description"
+            id={`${props.idSchema.$id}__description`}>
+            {props.description}
+          </p>
+        </div>
+        {props.schema.additionalProperties && (
+          <Button
+            className="tw-h-7 tw-w-7 tw-px-2"
+            data-testid={`add-item-${props.title}`}
+            id={`${props.idSchema.$id}__add`}
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={() => {
+              props.onAddClick(props.schema)();
+            }}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        )}
+      </div>
+      {props.properties.map((element, index) => (
+        <div
+          className={classNames('property-wrapper', {
+            'additional-fields': props.schema.additionalProperties,
+          })}
+          key={`${element.content.key}-${index}`}>
           {element.content}
         </div>
       ))}
-      {props.schema.additionalProperties && (
-        <Button
-          className="tw-h-7 tw-px-2 tw-mb-3"
-          data-testid={`add-item-${props.title}`}
-          size="small"
-          theme="primary"
-          variant="contained"
-          onClick={() => {
-            props.onAddClick(props.schema)();
-          }}>
-          <FontAwesomeIcon icon="plus" />
-        </Button>
-      )}
     </Fragment>
   );
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
+  okText,
+  cancelText,
   showFormHeader = false,
   status = 'initial',
   onCancel,
@@ -137,7 +164,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           theme="primary"
           variant="text"
           onClick={handleCancel}>
-          Discard
+          {cancelText}
         </Button>
         {status === 'waiting' ? (
           <Button
@@ -165,7 +192,7 @@ const FormBuilder: FunctionComponent<Props> = ({
             theme="primary"
             variant="contained"
             onClick={handleSubmit}>
-            Save
+            {okText}
           </Button>
         )}
       </div>

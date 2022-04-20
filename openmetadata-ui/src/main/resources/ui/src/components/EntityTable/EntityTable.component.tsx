@@ -628,7 +628,7 @@ const EntityTable = ({
                                         alt="edit"
                                         icon="icon-edit"
                                         title="Edit"
-                                        width="10px"
+                                        width="12px"
                                       />
                                     </button>
                                   </NonAdminAction>
@@ -652,7 +652,6 @@ const EntityTable = ({
                                         <SVGIcons
                                           alt="request-description"
                                           icon={Icons.REQUEST}
-                                          width="22px"
                                         />
                                       </PopOver>
                                     </button>

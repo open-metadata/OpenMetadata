@@ -91,7 +91,11 @@ def get_connection_url_common(connection):
     url += connection.hostPort
     url += f"/{connection.database}" if connection.database else ""
 
-    options = connection.connectionOptions
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
     if options:
         if not connection.database:
             url += "/"

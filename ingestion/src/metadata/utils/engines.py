@@ -13,6 +13,7 @@
 Build and document all supported Engines
 """
 import logging
+from functools import singledispatch
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
@@ -23,6 +24,10 @@ from sqlalchemy.orm.session import Session
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
 
@@ -35,11 +40,13 @@ class SourceConnectionException(Exception):
     """
 
 
-def get_engine(connection, verbose: bool = False) -> Engine:
+def create_generic_engine(connection, verbose: bool = False):
     """
-    Given an SQL configuration, build the SQLAlchemy Engine
+    Generic Engine creation from connection object
+    :param connection: JSON Schema connection model
+    :param verbose: debugger or not
+    :return: SQAlchemy Engine
     """
-
     options = connection.connectionOptions
     if not options:
         options = ConnectionOptions()
@@ -52,6 +59,26 @@ def get_engine(connection, verbose: bool = False) -> Engine:
     )
 
     return engine
+
+
+@singledispatch
+def get_engine(connection, verbose: bool = False) -> Engine:
+    """
+    Given an SQL configuration, build the SQLAlchemy Engine
+    """
+    return create_generic_engine(connection, verbose)
+
+
+@get_engine.register
+def _(connection: BigQueryConnection, verbose: bool = False):
+    """
+    Prepare the engine and the GCS credentials
+    :param connection: BigQuery connection
+    :param verbose: debugger or not
+    :return: Engine
+    """
+    set_google_credentials(gcs_credentials=connection.credentials)
+    return create_generic_engine(connection, verbose)
 
 
 def create_and_bind_session(engine: Engine) -> Session:

@@ -40,7 +40,7 @@ class MssqlUsageSource(Source[TableQuery]):
         self.analysis_date = start
         self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
         self.report = SQLSourceStatus()
-        self.engine = get_engine(self.config.serviceConnection)
+        self.engine = get_engine(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):

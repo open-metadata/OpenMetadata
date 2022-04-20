@@ -17,6 +17,7 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,6 +29,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -57,6 +59,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -164,7 +167,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<IngestionPipeline> ingestionPipelines =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+      addStatus(ingestionPipelines.getData());
+    }
+    return ingestionPipelines;
   }
 
   @GET
@@ -217,7 +225,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+      ingestionPipeline = addStatus(ingestionPipeline);
+    }
+    return ingestionPipeline;
   }
 
   @GET
@@ -279,7 +291,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+      ingestionPipeline = addStatus(ingestionPipeline);
+    }
+    return ingestionPipeline;
   }
 
   @POST
@@ -376,6 +392,29 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
+  @POST
+  @Path("/testConnection")
+  @Operation(
+      summary = "Test Connection of a Service",
+      tags = "IngestionPipelines",
+      description = "Test Connection of a Service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+      })
+  public Response testIngestion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid TestServiceConnection testServiceConnection)
+      throws IOException {
+    HttpResponse<String> response = airflowRESTClient.testConnection(testServiceConnection);
+    return Response.status(200, response.body()).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -462,5 +501,18 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     }
     source.setSourceConfig(create.getSourceConfig());
     return source;
+  }
+
+  public void addStatus(List<IngestionPipeline> ingestionPipelines) {
+    listOrEmpty(ingestionPipelines).forEach(this::addStatus);
+  }
+
+  private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) {
+    try {
+      ingestionPipeline = airflowRESTClient.getStatus(ingestionPipeline);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
+    }
+    return ingestionPipeline;
   }
 }

@@ -1,15 +1,17 @@
 {
   "source": {
-    "type": "mysql",
-    "serviceName": "local_mysql",
+    "type": "openmetadata",
+    "serviceName": "local_metadata",
     "serviceConnection": {
       "config": {
-        "type": "Mysql",
-        "username": "openmetadata_user",
-        "password": "openmetadata_password",
-        "hostPort": "localhost:3306",
-        "connectionOptions": {},
-        "connectionArguments": {}
+        "type": "OpenMetadata",
+        "hostPort": "{scheme}://{host}:{port}/api",
+        "authProvider": "no-auth",
+        "includeTables": true,
+        "includeUsers": true,
+        "includeTopics": true,
+        "includeDashboards": true,
+        "limitRecords": 10
       }
     },
     "sourceConfig": {
@@ -20,7 +22,8 @@
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {}
+    "config": {
+    }
   },
   "workflowConfig": {
     "openMetadataServerConfig": {

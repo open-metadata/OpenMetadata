@@ -11,12 +11,17 @@
 """
 Module containing the logic to check a DAG status
 """
+import json
 from typing import Optional
 
 from airflow import settings
 from airflow.models import DagRun
 from flask import Response
 from openmetadata.api.response import ApiResponse, ResponseFormat
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineStatus,
+)
 
 
 def status(dag_id: str, run_id: Optional[str]) -> Response:
@@ -34,9 +39,9 @@ def status(dag_id: str, run_id: Optional[str]) -> Response:
             if dag_run is None:
                 return ApiResponse.not_found(f"DAG run {run_id} not found")
 
-            res_dag_run = ResponseFormat.format_dag_run_state(dag_run)
+            res_dag_run: PipelineStatus = ResponseFormat.format_dag_run_state(dag_run)
 
-            return ApiResponse.success({"message": f"{res_dag_run}"})
+            return ApiResponse.success(json.loads(res_dag_run.json()))
 
         runs = (
             query.filter(
@@ -47,6 +52,9 @@ def status(dag_id: str, run_id: Optional[str]) -> Response:
             .all()
         )
 
-        formatted = [ResponseFormat.format_dag_run_state(dag_run) for dag_run in runs]
+        formatted = [
+            json.loads(ResponseFormat.format_dag_run_state(dag_run).json())
+            for dag_run in runs
+        ]
 
-        return ApiResponse.success({"message": f"{formatted}"})
+        return ApiResponse.success(formatted)

@@ -461,15 +461,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     //
     // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only
-    // tags and
-    // description can be changed
+    // tags and description can be changed
     //
     String tableJson = JsonUtils.pojoToJson(table1);
     c1 = table1.getColumns().get(0);
     c1.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c1 tag changed
 
     c2 = table1.getColumns().get(1);
-    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // c2 new tag added
+    c2.getTags().add(USER_ADDRESS_TAG_LABEL); // c2 new tag added
 
     c2_a = c2.getChildren().get(0);
     c2_a.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.a tag changed
@@ -1519,13 +1518,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
-    // Ensure only three tag labels are found - Manual tags PersonalData.Personal, User.Address
-    // and a derived tag PII.Sensitive
+    // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
+    // and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEquals(3, updateTags.size());
+    assertEquals(4, updateTags.size());
+
+    TagLabel glossaryTerm1 =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL)).findAny().orElse(null);
+    assertNotNull(glossaryTerm1);
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
 
     TagLabel userAddress =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL)).findAny().orElse(null);

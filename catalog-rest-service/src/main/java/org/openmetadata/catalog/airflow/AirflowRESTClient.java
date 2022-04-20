@@ -21,12 +21,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.catalog.exception.AirflowException;
 import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -148,6 +151,59 @@ public class AirflowRESTClient {
           pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
+    }
+  }
+
+  public IngestionPipeline getStatus(IngestionPipeline ingestionPipeline) {
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String statusEndPoint = "%s/rest_api/api?api=dag_status&dag_id=%s";
+      String statusUrl = String.format(statusEndPoint, airflowURL, ingestionPipeline.getName());
+      JSONObject requestPayload = new JSONObject();
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(statusUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
+              .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
+              .build();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() == 200) {
+        List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
+        ingestionPipeline.setPipelineStatuses(statuses);
+        return ingestionPipeline;
+      }
+
+      throw AirflowException.byMessage(
+          ingestionPipeline.getName(),
+          "Failed to fetch ingestion pipeline runs",
+          Response.Status.fromStatusCode(response.statusCode()));
+    } catch (Exception e) {
+      throw AirflowException.byMessage(ingestionPipeline.getName(), e.getMessage());
+    }
+  }
+
+  public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String statusEndPoint = "%s/rest_api/api?api=test_connection";
+      String statusUrl = String.format(statusEndPoint, airflowURL);
+      String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(statusUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
+              .POST(HttpRequest.BodyPublishers.ofString(connectionPayload))
+              .build();
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() == 200) {
+        return response;
+      }
+      throw AirflowException.byMessage(
+          "Failed to test connection.", String.valueOf(Response.Status.fromStatusCode(response.statusCode())));
+    } catch (Exception e) {
+      throw AirflowException.byMessage("Failed to test connection.", e.getMessage());
     }
   }
 }
