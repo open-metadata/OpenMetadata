@@ -68,7 +68,7 @@ public final class EntityUtil {
 
   // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
-      Comparator.comparing(entityReference -> entityReference.getName());
+      Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
@@ -76,8 +76,7 @@ public final class EntityUtil {
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
-  public static final Comparator<GlossaryTerm> compareGlossaryTerm =
-      Comparator.comparing(glossaryTerm -> glossaryTerm.getName());
+  public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
 
   //
   // Matchers used for matching two items in a list
