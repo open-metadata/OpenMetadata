@@ -538,9 +538,12 @@ class MetadataRestSink(Sink[Entity]):
         try:
             parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
             to_table_name = db_schema_and_table.table.name.__root__
+
             for from_table_name in parser.tables:
+                if "." not in from_table_name:
+                    from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
                 self.metadata._create_lineage_by_table_name(
-                    f"{db_schema.name.__root__}.{from_table_name}",
+                    from_table_name,
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,
                     db_schema_and_table.database.name.__root__,
