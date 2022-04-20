@@ -127,9 +127,14 @@ const jsonData = {
     'update-reviewer-error': 'Error while updating reviewer!',
 
     'feed-post-error': 'Error while posting the message!',
+
+    'join-team-error': 'Error while joining the team!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
+
+    'join-team-success': 'Team joined successfully!',
+
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
     'delete-entity-success': 'Entity deleted successfully!',
