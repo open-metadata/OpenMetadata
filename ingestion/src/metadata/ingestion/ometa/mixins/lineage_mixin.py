@@ -144,6 +144,8 @@ class OMetaLineageMixin(Generic[T]):
 
     def _separate_fqn(self, database, fqn):
         database_schema, table = fqn.split(".")[-2:]
+        if not database_schema:
+            database_schema = None
         return {"database": database, "database_schema": database_schema, "name": table}
 
     def _create_lineage_by_table_name(
@@ -153,6 +155,8 @@ class OMetaLineageMixin(Generic[T]):
         This method is to create a lineage between two tables
         """
         try:
+            from_table = str(from_table).replace("<default>", "")
+            to_table = str(to_table).replace("<default>", "")
             from_fqdn = get_fqdn(
                 AddLineageRequest,
                 service_name,
@@ -185,7 +189,7 @@ class OMetaLineageMixin(Generic[T]):
                 )
             else:
                 multiple_to_fqns = [to_entity]
-            if not from_entity or not to_entity:
+            if not multiple_to_fqns or not multiple_from_fqns:
                 return None
             for from_entity in multiple_from_fqns:
                 for to_entity in multiple_to_fqns:
@@ -201,6 +205,7 @@ class OMetaLineageMixin(Generic[T]):
                             ),
                         )
                     )
+
                     created_lineage = self.add_lineage(lineage)
                     logger.info(f"Successfully added Lineage {created_lineage}")
 
@@ -208,14 +213,19 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.print_exc())
             logger.error(err)
 
-    def ingest_lineage_by_query(self, query: str, database: str, service_name: str):
+    def ingest_lineage_by_query(
+        self, query: str, database: str, service_name: str
+    ) -> bool:
         """
-        This method parses the query to get source, target and intermediate table names to create lineage
+        This method parses the query to get source, target and intermediate table names to create lineage,
+        and returns True if target table is found to create lineage otherwise returns False.
         """
         from sqllineage.runner import LineageRunner
 
         try:
             result = LineageRunner(query)
+            if not result.target_tables:
+                return False
             for intermediate_table in result.intermediate_tables:
                 for source_table in result.source_tables:
                     self._create_lineage_by_table_name(
@@ -231,5 +241,6 @@ class OMetaLineageMixin(Generic[T]):
                         self._create_lineage_by_table_name(
                             source_table, target_table, service_name, database
                         )
+            return True
         except Exception as err:
             logger.error(str(err))

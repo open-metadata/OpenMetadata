@@ -125,18 +125,14 @@ const Description = ({
             onEntityFieldSelect &&
             !description?.trim() ? (
               <button
-                className="focus:tw-outline-none tw-ml-2 tw-opacity-0 hover:tw-opacity-100 tw--mt-6"
+                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
                 data-testid="request-description"
                 onClick={() => onEntityFieldSelect?.('description')}>
                 <PopOver
                   position="top"
                   title="Request description"
                   trigger="mouseenter">
-                  <SVGIcons
-                    alt="request-description"
-                    icon={Icons.REQUEST}
-                    width="22px"
-                  />
+                  <SVGIcons alt="request-description" icon={Icons.REQUEST} />
                 </PopOver>
               </button>
             ) : null}

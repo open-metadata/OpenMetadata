@@ -12,6 +12,8 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
+import { Pipeline, StatusType } from '../generated/entity/data/pipeline';
+import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
 ${TabSpecificField.TASKS}`;
@@ -25,6 +27,11 @@ export const pipelineDetailsTabs = [
     name: 'Activity Feed',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
+  },
+  {
+    name: 'Executions',
+    path: 'execution',
+    field: TabSpecificField.PIPELINE_STATUS,
   },
   {
     name: 'Lineage',
@@ -45,13 +52,18 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'lineage':
+    case 'execution':
       currentTab = 3;
 
       break;
 
-    case 'manage':
+    case 'lineage':
       currentTab = 4;
+
+      break;
+
+    case 'manage':
+      currentTab = 5;
 
       break;
 
@@ -63,4 +75,47 @@ export const getCurrentPipelineTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getModifiedPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  const data = pipelineStatus
+    .map((statusValue) => {
+      return statusValue.taskStatus?.map((task) => ({
+        executionDate: statusValue.executionDate,
+        executionStatus: task.executionStatus,
+        name: task.name,
+      }));
+    })
+    .flat(1);
+
+  if (!status) {
+    return data;
+  } else {
+    return data.filter((d) => d?.executionStatus === status);
+  }
+};
+
+export const STATUS_OPTIONS = [
+  { value: StatusType.Successful, label: StatusType.Successful },
+  { value: StatusType.Failed, label: StatusType.Failed },
+  { value: StatusType.Pending, label: StatusType.Pending },
+];
+
+export const getStatusBadgeIcon = (status: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return Icons.SUCCESS_BADGE;
+
+    case StatusType.Failed:
+      return Icons.FAIL_BADGE;
+
+    case StatusType.Pending:
+      return Icons.PENDING_BADGE;
+
+    default:
+      return '';
+  }
 };

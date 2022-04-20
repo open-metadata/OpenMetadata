@@ -19,9 +19,6 @@ from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
-    MetadataESConnection,
-)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -31,8 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.api.source import Source, SourceStatus
 
 logger = logging.getLogger(__name__)
 
@@ -147,11 +143,11 @@ class MetadataSource(Source[Entity]):
     ):
         super().__init__()
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = None
         self.tables = None
         self.topics = None
 
@@ -160,13 +156,7 @@ class MetadataSource(Source[Entity]):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MetadataESConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, MetadataESConnection):
-            raise InvalidSourceException(
-                f"Expected HiveSQLConnection, but got {connection}"
-            )
-        return cls(config, metadata_config)
+        raise NotImplementedError("Create Method not implemented")
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()

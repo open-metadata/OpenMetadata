@@ -354,12 +354,23 @@
   }
 
   .rjsf.no-header #root__title,
-  .rjsf.no-header #root__description {
+  .rjsf.no-header #root__description,
+  .rjsf .form-additional .control-label,
+  .rjsf .panel.panel-danger.errors .panel-heading {
     @apply tw-hidden;
   }
 
   .rjsf .form-group.field {
     @apply tw-my-3;
+  }
+
+  .rjsf .additional-fields .form-group.field,
+  .rjsf .array-fields .form-group.field {
+    @apply tw-my-0;
+  }
+
+  .rjsf .property-wrapper.additional-fields ~ .button-comp {
+    @apply tw-mt-1.5;
   }
 
   .rjsf .control-label {
@@ -376,6 +387,50 @@
   .rjsf .form-control {
     @apply tw-w-full tw-px-3 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
+  }
+
+  .rjsf .btn {
+    @apply tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer tw-leading-5 
+    tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none tw-rounded-lg 
+    tw-text-sm tw-text-white tw-border tw-border-transparent;
+  }
+
+  .rjsf .btn.btn-block {
+    @apply tw-w-full;
+  }
+
+  .rjsf .btn.array-item-remove {
+    @apply tw-p-3.5;
+    background: url(../assets/svg/ic-delete.svg) center center no-repeat;
+    background-size: 50%;
+  }
+
+  .rjsf .row {
+    @apply tw-flex tw-items-center tw-w-full tw--m-1.5;
+  }
+
+  .rjsf .col-xs-5 {
+    @apply tw-flex-1 tw-p-1.5;
+  }
+
+  .rjsf .col-xs-2 {
+    @apply tw-w-7 tw-p-1.5;
+  }
+
+  .rjsf .errors .list-group > .list-group-item {
+    list-style-type: disc;
+  }
+
+  .rjsf .panel-danger.errors {
+    @apply tw-mb-0 tw-mt-2;
+  }
+
+  .rjsf .list-group {
+    @apply tw-px-5;
+  }
+
+  .rjsf .list-group-item {
+    @apply tw-list-disc;
   }
 
   @keyframes highlight {

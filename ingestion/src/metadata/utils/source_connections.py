@@ -73,6 +73,7 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
 
 
 def get_connection_url_common(connection):
@@ -90,7 +91,11 @@ def get_connection_url_common(connection):
     url += connection.hostPort
     url += f"/{connection.database}" if connection.database else ""
 
-    options = connection.connectionOptions
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
     if options:
         if not connection.database:
             url += "/"
@@ -254,8 +259,13 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    if connection.projectID:
-        return f"{connection.scheme.value}://{connection.projectID}"
+    project_id = connection.projectId
+    if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
+        project_id = connection.credentials.gcsConfig.projectId
+    if project_id:
+        return (
+            f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId}"
+        )
     return f"{connection.scheme.value}://"
 
 

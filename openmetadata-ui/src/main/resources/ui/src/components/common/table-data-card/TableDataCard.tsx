@@ -25,8 +25,8 @@ import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import PopOver from '../popover/PopOver';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -52,21 +52,20 @@ type Props = {
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  name,
   owner = '',
   description,
   id,
   tier = '',
   usage,
-  service,
   serviceType,
   fullyQualifiedName,
   tags,
   indexType,
   matches,
+  tableType,
+  service,
   database,
   databaseSchema,
-  tableType,
   deleted = false,
 }: Props) => {
   const location = useLocation();
@@ -99,33 +98,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
-  OtherDetails.push({
-    key: 'Service Type',
-    value: serviceType,
-    showLabel: true,
-  });
-  if (service) {
-    OtherDetails.push({
-      key: 'Service',
-      value: service,
-      showLabel: true,
-    });
-  }
 
-  if (database) {
-    OtherDetails.push({
-      key: 'Database',
-      value: database,
-      showLabel: true,
-    });
-  }
-  if (databaseSchema) {
-    OtherDetails.push({
-      key: 'Schema',
-      value: databaseSchema,
-      showLabel: true,
-    });
-  }
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
@@ -143,6 +116,45 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
+  const getPopOverContent = () => {
+    const entityDetails = [
+      {
+        key: 'Service Type',
+        value: serviceType,
+      },
+    ];
+    if (service) {
+      entityDetails.push({
+        key: 'Service',
+        value: service,
+      });
+    }
+
+    if (database) {
+      entityDetails.push({
+        key: 'Database',
+        value: database,
+      });
+    }
+    if (databaseSchema) {
+      entityDetails.push({
+        key: 'Schema',
+        value: databaseSchema,
+      });
+    }
+
+    return (
+      <div className="tw-text-left">
+        {entityDetails.map((detail) => (
+          <p key={detail.key}>
+            <span className="tw-text-grey-muted">{detail.key} : </span>
+            <span className="tw-ml-2">{detail.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
@@ -155,15 +167,21 @@ const TableDataCard: FunctionComponent<Props> = ({
             className="tw-inline tw-h-5 tw-w-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-            <button
-              className="tw-text-grey-body tw-font-medium"
-              data-testid="table-link"
-              id={`${id}Title`}
-              onClick={handleLinkClick}>
-              {stringToHTML(name)}
-            </button>
-          </h6>
+          <PopOver
+            html={getPopOverContent()}
+            position="top"
+            theme="light"
+            trigger="mouseenter">
+            <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+              <button
+                className="tw-text-grey-body tw-font-medium"
+                data-testid="table-link"
+                id={`${id}Title`}
+                onClick={handleLinkClick}>
+                {fullyQualifiedName}
+              </button>
+            </h6>
+          </PopOver>
           {deleted && (
             <>
               <div

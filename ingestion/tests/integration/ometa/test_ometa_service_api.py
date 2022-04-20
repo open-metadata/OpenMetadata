@@ -74,6 +74,10 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
+        assert (
+            service.connection.config.password.get_secret_value()
+            == "openmetadata_password"
+        )
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -109,6 +113,10 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mssql
+        assert (
+            service.connection.config.password.get_secret_value()
+            == "openmetadata_password"
+        )
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -117,6 +125,50 @@ class OMetaServiceTest(TestCase):
 
         # Clean
         self.metadata.delete(entity=DatabaseService, entity_id=service.id)
+
+    def test_create_database_service_bigquery(self):
+        """
+        Create a db service from WorkflowSource
+        """
+        data = {
+            "type": "bigquery",
+            "serviceName": "local_bigquery",
+            "serviceConnection": {
+                "config": {
+                    "type": "BigQuery",
+                    "enablePolicyTagImport": True,
+                    "credentials": {
+                        "gcsConfig": {
+                            "type": "service_account",
+                            "projectId": "projectID",
+                            "privateKeyId": "privateKeyId",
+                            "privateKey": "privateKey",
+                            "clientEmail": "clientEmail",
+                            "clientId": "clientId",
+                            "authUri": "https://accounts.google.com/o/oauth2/auth",
+                            "tokenUri": "https://oauth2.googleapis.com/token",
+                            "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                            "clientX509CertUrl": "https://cert.url",
+                        }
+                    },
+                }
+            },
+            "sourceConfig": {"config": {"enableDataProfiler": False}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: DatabaseService = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == DatabaseServiceType.BigQuery
+
+        # Check get
+        assert service == self.metadata.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
 
     def test_create_dashboard_service_looker(self):
         """
@@ -144,6 +196,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
+        assert service.connection.config.password.get_secret_value() == "looker_pwd"
 
         # Check get
         assert service == self.metadata.get_service_or_create(
@@ -179,6 +232,7 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Tableau
+        assert service.connection.config.password.get_secret_value() == "tb_pwd"
 
         # Check get
         assert service == self.metadata.get_service_or_create(

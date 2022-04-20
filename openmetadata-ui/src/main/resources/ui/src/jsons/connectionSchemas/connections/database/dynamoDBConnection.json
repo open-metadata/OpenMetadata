@@ -19,10 +19,6 @@
       "$ref": "#/definitions/dynamoDBType",
       "default": "DynamoDB"
     },
-    "hostPort": {
-      "description": "Host and port of the DynamoDB",
-      "type": "string"
-    },
     "endPointURL": {
       "description": "EndPoint URL for the Dynamo DB",
       "type": "string"
@@ -71,5 +67,11 @@
       "default": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "endPointURL",
+    "awsRegion",
+    "awsAccessKeyId",
+    "awsSecretAccessKey"
+  ]
 }

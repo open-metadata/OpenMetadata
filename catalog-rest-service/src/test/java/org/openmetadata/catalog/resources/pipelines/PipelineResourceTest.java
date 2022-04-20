@@ -377,7 +377,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
     tasks.add(taskEmptyDesc);
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue("").withNewValue("newDescription"));
 
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());

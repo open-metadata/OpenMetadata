@@ -85,7 +85,7 @@ def create_delete_database(client):
     data = {
         "databaseConnection": {"hostPort": "localhost"},
         "name": "temp_local_mssql",
-        "serviceType": "MSSQL",
+        "serviceType": "Mssql",
         "description": "local mssql env",
     }
     create_mssql_service = CreateDatabaseServiceRequest(**data)

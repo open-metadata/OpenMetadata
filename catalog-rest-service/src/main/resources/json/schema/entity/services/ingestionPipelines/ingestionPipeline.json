@@ -11,6 +11,30 @@
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType",
       "enum": ["metadata", "usage"]
     },
+    "pipelineStatus": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus",
+      "description": "This defines runtime status of Pipeline.",
+      "properties": {
+        "runId": {
+          "description": "Pipeline unique run ID.",
+          "type": "string"
+        },
+        "state": {
+          "description": "Pipeline status denotes if its failed or succeeded.",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "startDate of the pipeline run for this particular execution.",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "endDate of the pipeline run for this particular execution.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "airflowConfig": {
       "description": "Properties to configure the Airflow pipeline that will run the workflow.",
       "type": "object",
@@ -150,6 +174,18 @@
     "service": {
       "description": "Link to the database service where this database is hosted in.",
       "$ref": "../../../type/entityReference.json"
+    },
+    "pipelineStatuses": {
+      "description": "List of executions and status for the Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pipelineStatus"
+      },
+      "default": null
+    },
+    "nextExecutionDate": {
+      "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
+      "$ref": "../../../type/basic.json#/definitions/date"
     },
     "href": {
       "description": "Link to this ingestion pipeline resource.",

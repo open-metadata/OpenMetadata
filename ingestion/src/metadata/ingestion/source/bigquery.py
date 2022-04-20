@@ -8,10 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import logging
 import os
-import tempfile
 from typing import Optional, Tuple
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -84,7 +82,9 @@ _types.get_columns = get_columns
 class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-        self.connection_config = self.config.serviceConnection.__root__.config
+        self.connection_config: BigQueryConnection = (
+            self.config.serviceConnection.__root__.config
+        )
         self.temp_credentials = None
 
     #  and "policy_tags" in column and column["policy_tags"]
@@ -109,35 +109,8 @@ class BigquerySource(SQLSource):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        if (
-            not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-            and connection.connectionOptions
-        ):
-            options = connection.connectionOptions.dict()
-            if options.get("credentials_path"):
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options[
-                    "credentials_path"
-                ]
-                del connection.connectionOptions.credentials_path
-            elif options.get("credentials"):
-                cls.temp_credentials = cls.create_credential_temp_file(
-                    credentials=options["credentials"]
-                )
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
-                del connection.connectionOptions.credentials
-            else:
-                logger.warning(
-                    "Please refer to the BigQuery connector documentation, especially the credentials part "
-                    "https://docs.open-metadata.org/connectors/bigquery"
-                )
-        return cls(config, metadata_config)
 
-    @staticmethod
-    def create_credential_temp_file(credentials: dict) -> str:
-        with tempfile.NamedTemporaryFile(delete=False) as fp:
-            cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-            fp.write(cred_json.encode())
-            return fp.name
+        return cls(config, metadata_config)
 
     def standardize_schema_table_names(
         self, schema: str, table: str
@@ -184,7 +157,10 @@ class BigquerySource(SQLSource):
 
     def _get_database(self, database: Optional[str]) -> Database:
         if not database:
-            database = self.service_connection.projectID
+            database = (
+                self.connection_config.projectId
+                or self.connection_config.credentials.gcsConfig.projectId
+            )
         return Database(
             name=database,
             service=EntityReference(

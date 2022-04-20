@@ -12,21 +12,120 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, { FormProps } from '@rjsf/core';
+import Form, {
+  ArrayFieldTemplateProps,
+  FormProps,
+  ObjectFieldTemplateProps,
+} from '@rjsf/core';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
 interface Props extends FormProps<ConfigData> {
+  okText: string;
+  cancelText: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
 }
 
+function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
+  return (
+    <Fragment>
+      <div className="tw-flex tw-justify-between tw-items-center">
+        <div>
+          <label className="control-label">{props.title}</label>
+          <p className="field-description">{props.schema.description}</p>
+        </div>
+        {props.canAdd && (
+          <Button
+            className="tw-h-7 tw-w-7 tw-px-2"
+            data-testid={`add-item-${props.title}`}
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={props.onAddClick}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        )}
+      </div>
+      {props.items.map((element, index) => (
+        <div
+          className={classNames('tw-flex tw-items-center tw-w-full', {
+            'tw-mt-2': index > 0,
+          })}
+          key={`${element.key}-${index}`}>
+          <div className="tw-flex-1 array-fields">{element.children}</div>
+          {element.hasRemove && (
+            <button
+              className="focus:tw-outline-none tw-w-7 tw-ml-3"
+              type="button"
+              onClick={(event) => {
+                element.onDropIndexClick(element.index)(event);
+              }}>
+              <SVGIcons
+                alt="delete"
+                icon={Icons.DELETE}
+                title="Delete"
+                width="14px"
+              />
+            </button>
+          )}
+        </div>
+      ))}
+    </Fragment>
+  );
+}
+
+function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
+  return (
+    <Fragment>
+      <div className="tw-flex tw-justify-between tw-items-center">
+        <div>
+          <label className="control-label" id={`${props.idSchema.$id}__title`}>
+            {props.title}
+          </label>
+          <p
+            className="field-description"
+            id={`${props.idSchema.$id}__description`}>
+            {props.description}
+          </p>
+        </div>
+        {props.schema.additionalProperties && (
+          <Button
+            className="tw-h-7 tw-w-7 tw-px-2"
+            data-testid={`add-item-${props.title}`}
+            id={`${props.idSchema.$id}__add`}
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={() => {
+              props.onAddClick(props.schema)();
+            }}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        )}
+      </div>
+      {props.properties.map((element, index) => (
+        <div
+          className={classNames('property-wrapper', {
+            'additional-fields': props.schema.additionalProperties,
+          })}
+          key={`${element.content.key}-${index}`}>
+          {element.content}
+        </div>
+      ))}
+    </Fragment>
+  );
+}
+
 const FormBuilder: FunctionComponent<Props> = ({
+  okText,
+  cancelText,
   showFormHeader = false,
   status = 'initial',
   onCancel,
@@ -49,6 +148,8 @@ const FormBuilder: FunctionComponent<Props> = ({
 
   return (
     <Form
+      ArrayFieldTemplate={ArrayFieldTemplate}
+      ObjectFieldTemplate={ObjectFieldTemplate}
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
@@ -63,7 +164,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           theme="primary"
           variant="text"
           onClick={handleCancel}>
-          Discard
+          {cancelText}
         </Button>
         {status === 'waiting' ? (
           <Button
@@ -91,7 +192,7 @@ const FormBuilder: FunctionComponent<Props> = ({
             theme="primary"
             variant="contained"
             onClick={handleSubmit}>
-            Save
+            {okText}
           </Button>
         )}
       </div>

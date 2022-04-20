@@ -11,20 +11,10 @@
  *  limitations under the License.
  */
 
-import { Rule } from '../../generated/entity/policies/accessControl/rule';
+import { UpdatePolicyState } from '../pages/RolesPage/role.interface';
 
-export interface Policy {
-  id: string;
-  name: string;
-  fullyQualifiedName: string;
-  displayName: string;
-  description: string;
-  href: string;
-  policyType: string;
-  enabled: boolean;
-  version: number;
-  updatedAt: number;
-  updatedBy: string;
-  rules: Rule[];
-  deleted: boolean;
-}
+export const DEFAULT_UPDATE_POLICY_STATE: UpdatePolicyState = {
+  rule: undefined,
+  state: false,
+  policy: undefined,
+};
