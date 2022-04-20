@@ -26,7 +26,7 @@
   background: white;
   border-radius: 50%;
   margin-top: 0.15rem;
-  z-index: 100;
+  z-index: 1;
 }
 .ingestion-rounder.active {
   border-color: #7147e8;

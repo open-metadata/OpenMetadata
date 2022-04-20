@@ -243,4 +243,6 @@ class OMetaLineageMixin(Generic[T]):
                         )
             return True
         except Exception as err:
-            logger.error(str(err))
+            logger.debug(str(err))
+            logger.error(f"Ingesting lineage failed")
+        return False

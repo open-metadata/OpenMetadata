@@ -110,7 +110,7 @@ public class AirflowRESTClient {
     try {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
-      String triggerEndPoint = "%s/rest_api/api?api=delete_delete&dag_id=%s";
+      String triggerEndPoint = "%s/rest_api/api?api=delete_dag&dag_id=%s";
       String triggerUrl = String.format(triggerEndPoint, airflowURL, pipelineName);
       JSONObject requestPayload = new JSONObject();
       requestPayload.put("workflow_name", pipelineName);
@@ -171,7 +171,10 @@ public class AirflowRESTClient {
       if (response.statusCode() == 200) {
         List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
+        ingestionPipeline.setDeployed(true);
         return ingestionPipeline;
+      } else if (response.statusCode() == 404) {
+        ingestionPipeline.setDeployed(false);
       }
 
       throw AirflowException.byMessage(

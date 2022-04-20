@@ -6,19 +6,26 @@
       "config": {
         "type": "BigQuery",
         "enablePolicyTagImport": true,
-        "credentialsType": "service_account",
-        "projectID": "projectID",
-        "privateKeyId": "privateKeyId",
-        "privateKey": "privateKey",
-        "clientEmail": "clientEmail",
-        "clientId": "clientId",
-        "authURI": "https://accounts.google.com/o/oauth2/auth",
-        "tokenURI": "https://oauth2.googleapis.com/token",
-        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
-        "clientX509CertUrl": "clientX509CertUrl"
+        "projectId":"project_id",
+        "credentials":{
+          "gcsConfig":{
+            "type":"service_account",
+            "projectId": "project_id",
+            "privateKeyId": "private_key_id",
+            "privateKey": "private_key",
+            "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+            "clientId": "client_id",
+            "authUri": "https://accounts.google.com/o/oauth2/auth",
+            "tokenUri": "https://oauth2.googleapis.com/token",
+            "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+            "clientX509CertUrl": "clientX509CertUrl"
+          }
+        }
       }
     },
-    "sourceConfig": {"config": {"enableDataProfiler": false}}
+    "sourceConfig": {"config": {
+      "enableDataProfiler": false
+      }}
   },
   "sink": {
     "type": "metadata-rest",
