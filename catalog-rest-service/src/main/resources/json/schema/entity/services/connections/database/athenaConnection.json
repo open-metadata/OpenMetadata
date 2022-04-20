@@ -30,12 +30,12 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
-    "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+    "awsAccessKeyId": {
+      "description": "AWS Access key ID for Athena.",
       "type": "string"
     },
-    "password": {
-      "description": "password to connect  to the Athena.",
+    "awsSecretAccessKey": {
+      "description": "AWS Secret Access Key for Athena.",
       "type": "string",
       "format": "password"
     },
