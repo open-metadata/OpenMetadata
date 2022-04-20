@@ -348,6 +348,23 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       });
   };
 
+  const getOwnerUpdateLoader = () => {
+    return (
+      <span className="tw-ml-4">
+        {statusOwner === 'waiting' ? (
+          <Loader
+            className="tw-inline-block"
+            size="small"
+            style={{ marginBottom: '-4px' }}
+            type="default"
+          />
+        ) : statusOwner === 'success' ? (
+          <FontAwesomeIcon icon="check" />
+        ) : null}
+      </span>
+    );
+  };
+
   useEffect(() => {
     if (!hideTier) {
       getTierData();
@@ -453,18 +470,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
                 onSelect={handleOwnerSelection}
               />
             )}
-            <span className="tw-ml-4">
-              {statusOwner === 'waiting' ? (
-                <Loader
-                  className="tw-inline-block"
-                  size="small"
-                  style={{ marginBottom: '-4px' }}
-                  type="default"
-                />
-              ) : statusOwner === 'success' ? (
-                <FontAwesomeIcon icon="check" />
-              ) : null}
-            </span>
+            {getOwnerUpdateLoader()}
           </span>
         </div>
         {getJoinableWidget()}
