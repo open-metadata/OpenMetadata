@@ -410,7 +410,10 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator ">
+      <div
+        className={classNames('tw-mt-2 tw-pb-4', {
+          'tw-border-b tw-border-separator tw-mb-4': !hideTier,
+        })}>
         <div>
           <span className="tw-mr-2">Owner:</span>
           <span className="tw-relative">
