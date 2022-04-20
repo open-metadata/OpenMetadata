@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
 import { ServiceOption } from 'Models';
+import { ConfigData } from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -78,4 +79,16 @@ export const deleteService: Function = (
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.delete(`/services/${serviceName}/${id}`);
+};
+
+export const TestConnection = (
+  data: ConfigData,
+  type: string
+): Promise<AxiosResponse> => {
+  const payload = {
+    connection: { config: data },
+    connectionType: type,
+  };
+
+  return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);
 };

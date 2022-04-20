@@ -102,6 +102,8 @@ const jsonData = {
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
 
+    'test-connection-error': 'Error while testing connection!',
+
     'unexpected-server-response': 'Unexpected response from server!',
 
     'update-chart-error': 'Error while updating charts!',
