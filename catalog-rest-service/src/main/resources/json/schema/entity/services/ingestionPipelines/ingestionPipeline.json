@@ -166,6 +166,10 @@
       },
       "default": null
     },
+    "deployed": {
+      "description": "Indicates if the workflow has been successfully deployed to Airflow.",
+      "type": "boolean"
+    },
     "nextExecutionDate": {
       "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
       "$ref": "../../../type/basic.json#/definitions/date"
