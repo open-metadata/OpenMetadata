@@ -18,6 +18,7 @@ from typing import Any, Dict, Optional
 from airflow import DAG
 
 from metadata.generated.schema.type import basic
+from metadata.ingestion.models.encoders import show_secrets_encoder
 
 try:
     from airflow.operators.python import PythonOperator
@@ -46,7 +47,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
-    config = json.loads(workflow_config.json())
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = Workflow.create(config)
     workflow.execute()
@@ -109,7 +110,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
 def build_ingestion_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Dict[str, Any],
+    workflow_config: OpenMetadataWorkflowConfig,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
