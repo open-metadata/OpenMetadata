@@ -6,9 +6,11 @@
             "config": {
                 "type": "Athena",
                 "database": "database_name",
-                "awsAccessKeyId": "access key id",
-                "awsSecretAccessKey": "access secret key",
-                "awsRegion": "aws region name",
+                "awsConfig": {
+                    "awsAccessKeyId": "access key id",
+                    "awsSecretAccessKey": "access secret key",
+                    "awsRegion": "aws region name"
+                },
                 "s3StagingDir": "s3 directory for datasource",
                 "workgroup": "workgroup name"
             }

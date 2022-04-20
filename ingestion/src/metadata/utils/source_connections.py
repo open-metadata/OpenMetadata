@@ -304,13 +304,13 @@ def _(connection: AzureSQLConnection):
 @get_connection_url.register
 def _(connection: AthenaConnection):
     url = f"{connection.scheme.value}://"
-    if connection.awsAccessKeyId:
-        url += connection.awsAccessKeyId
-        if connection.awsSecretAccessKey:
-            url += f":{connection.awsSecretAccessKey.get_secret_value()}"
+    if connection.awsConfig.awsAccessKeyId:
+        url += connection.awsConfig.awsAccessKeyId
+        if connection.awsConfig.awsSecretAccessKey:
+            url += f":{connection.awsConfig.awsSecretAccessKey.get_secret_value()}"
     else:
         url += ":"
-    url += f"@athena.{connection.awsRegion}.amazonaws.com:443"
+    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
     if connection.database:
         url += f"/{connection.database}"
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
