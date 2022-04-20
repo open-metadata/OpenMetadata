@@ -19,10 +19,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class DruidConfig(DruidConnection, SQLConnectionConfig):
+class DruidConfig(DruidConnection):
     def get_connection_url(self):
         url = super().get_connection_url()
         return f"{url}/druid/v2/sql"

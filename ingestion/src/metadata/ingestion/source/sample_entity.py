@@ -40,12 +40,11 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source import SQLConnectionConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class SampleEntitySourceConfig(SQLConnectionConfig):
+class SampleEntitySourceConfig:
     no_of_services: int
     no_of_databases: int
     no_of_tables: int
