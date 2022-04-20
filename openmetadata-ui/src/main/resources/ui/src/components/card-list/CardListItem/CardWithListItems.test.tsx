@@ -16,6 +16,7 @@ import React from 'react';
 import CardListItem from './CardWithListItems';
 
 const mockFunction = jest.fn();
+const mockSaveFuntion = jest.fn();
 const mockCard = {
   id: 'test1',
   title: 'card',
@@ -30,7 +31,14 @@ jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
 describe('Test CardWithListing Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
-      <CardListItem card={mockCard} isActive={false} onSelect={mockFunction} />
+      <CardListItem
+        card={mockCard}
+        isActive={false}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockFunction}
+      />
     );
 
     const card = getByTestId('card-list');
@@ -42,7 +50,14 @@ describe('Test CardWithListing Component', () => {
 
   it('OnClick callback function should call', () => {
     const { getByTestId } = render(
-      <CardListItem card={mockCard} isActive={false} onSelect={mockFunction} />
+      <CardListItem
+        card={mockCard}
+        isActive={false}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockFunction}
+      />
     );
 
     const card = getByTestId('card-list');
