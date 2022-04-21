@@ -20,7 +20,7 @@ from sqlalchemy.orm import declarative_base
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
-from metadata.utils.engines import create_and_bind_session
+from metadata.utils.connections import create_and_bind_session
 
 Base = declarative_base()
 

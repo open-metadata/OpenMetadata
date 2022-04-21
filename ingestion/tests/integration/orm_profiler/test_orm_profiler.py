@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.engines import create_and_bind_session
+from metadata.utils.connections import create_and_bind_session
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared"
 

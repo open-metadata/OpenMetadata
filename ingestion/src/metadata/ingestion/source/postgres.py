@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.utils.engines import get_connection
+from metadata.utils.connections import get_connection
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 

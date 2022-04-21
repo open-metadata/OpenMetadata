@@ -64,7 +64,7 @@ from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import (
+from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
     test_connection,
