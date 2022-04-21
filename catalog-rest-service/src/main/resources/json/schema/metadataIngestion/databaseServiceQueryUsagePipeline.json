@@ -3,7 +3,22 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceQueryUsagePipeline",
   "description": "DatabaseService Query Usage Pipeline Configuration.",
+  "definitions": {
+    "databaseUsageConfigType": {
+      "description": "Database Source Config Usage Pipeline type",
+      "type": "string",
+      "enum": [
+        "DatabaseUsage"
+      ],
+      "default": "DatabaseUsage"
+    }
+  },
   "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/databaseUsageConfigType",
+      "default": "DatabaseUsage"
+    },
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process usage data.",
       "type": "integer",
