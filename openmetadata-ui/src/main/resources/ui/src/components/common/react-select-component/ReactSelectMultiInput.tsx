@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import React, { KeyboardEventHandler, useState } from 'react';
+import { MultiValue } from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { reactSelectCustomStyle } from './reactSelectCustomStyle';
 
@@ -52,6 +53,12 @@ const ReactSelectMultiInput = ({
     setinputValue(input);
   };
 
+  const handleChange = (newValue: MultiValue<unknown>) => {
+    const data = newValue as Option[];
+    setValues(data);
+    getTagValue(data.map((v) => v.value));
+  };
+
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     if (!inputValue) return;
     switch (event.key) {
@@ -76,6 +83,7 @@ const ReactSelectMultiInput = ({
       placeholder={placeholder}
       styles={reactSelectCustomStyle}
       value={values}
+      onChange={handleChange}
       onInputChange={handleInputChange}
       onKeyDown={handleKeyDown}
     />
