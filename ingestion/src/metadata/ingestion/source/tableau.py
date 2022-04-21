@@ -248,36 +248,42 @@ class TableauSource(Source[Entity]):
 
     def _get_tableau_charts(self):
         for index in range(len(self.all_dashboard_details["id"])):
-
-            chart_name = self.all_dashboard_details["name"][index]
-            if filter_by_chart(self.source_config.chartFilterPattern, chart_name):
-                self.status.failure(chart_name, "Chart Pattern not allowed")
-                continue
-            chart_id = self.all_dashboard_details["id"][index]
-            chart_tags = self.all_dashboard_details["tags"][index]
-            chart_type = self.all_dashboard_details["sheetType"][index]
-            chart_url = (
-                f"{self.connection_config.hostPort}/#/site/{self.connection_config.siteName}"
-                f"{self.all_dashboard_details['contentUrl'][index]}"
-            )
-            chart_owner = self.all_dashboard_details["owner"][index]
-            chart_datasource_fqn = chart_url.replace("/", FQDN_SEPARATOR)
-            chart_last_modified = self.all_dashboard_details["updatedAt"][index]
-            tag_labels = []
-            if hasattr(chart_tags, "tag"):
-                for tag in chart_tags["tag"]:
-                    tag_labels.append(tag["label"])
-            yield Chart(
-                name=chart_id,
-                displayName=chart_name,
-                description="",
-                chart_type=chart_type,
-                url=chart_url,
-                owners=self.get_owner(chart_owner),
-                datasource_fqn=chart_datasource_fqn,
-                last_modified=dateparser.parse(chart_last_modified).timestamp() * 1000,
-                service=EntityReference(id=self.service.id, type="dashboardService"),
-            )
+            try:
+                chart_name = self.all_dashboard_details["name"][index]
+                if filter_by_chart(self.source_config.chartFilterPattern, chart_name):
+                    self.status.failure(chart_name, "Chart Pattern not allowed")
+                    continue
+                chart_id = self.all_dashboard_details["id"][index]
+                chart_tags = self.all_dashboard_details["tags"][index]
+                chart_type = self.all_dashboard_details["sheetType"][index]
+                chart_url = (
+                    f"{self.connection_config.hostPort}/#/site/{self.connection_config.siteName}"
+                    f"{self.all_dashboard_details['contentUrl'][index]}"
+                )
+                chart_owner = self.all_dashboard_details["owner"][index]
+                chart_datasource_fqn = chart_url.replace("/", FQDN_SEPARATOR)
+                chart_last_modified = self.all_dashboard_details["updatedAt"][index]
+                tag_labels = []
+                if hasattr(chart_tags, "tag"):
+                    for tag in chart_tags["tag"]:
+                        tag_labels.append(tag["label"])
+                yield Chart(
+                    name=chart_id,
+                    displayName=chart_name,
+                    description="",
+                    chart_type=chart_type,
+                    url=chart_url,
+                    owners=self.get_owner(chart_owner),
+                    datasource_fqn=chart_datasource_fqn,
+                    last_modified=dateparser.parse(chart_last_modified).timestamp()
+                    * 1000,
+                    service=EntityReference(
+                        id=self.service.id, type="dashboardService"
+                    ),
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(err)
 
     def get_status(self) -> SourceStatus:
         return self.status
