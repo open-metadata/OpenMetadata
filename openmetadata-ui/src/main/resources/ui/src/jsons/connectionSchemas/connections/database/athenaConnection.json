@@ -9,17 +9,13 @@
     "athenaType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "Athena"
-      ],
+      "enum": ["Athena"],
       "default": "Athena"
     },
     "athenaScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": [
-        "awsathena+rest"
-      ],
+      "enum": ["awsathena+rest"],
       "default": "awsathena+rest"
     }
   },
