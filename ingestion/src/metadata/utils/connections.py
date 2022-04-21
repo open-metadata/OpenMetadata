@@ -14,6 +14,7 @@ Build and document all supported Engines
 """
 import logging
 from functools import singledispatch
+from typing import Union
 
 from botocore.client import ClientError
 from sqlalchemy import create_engine
@@ -73,7 +74,9 @@ def create_generic_connection(connection, verbose: bool = False):
 
 
 @singledispatch
-def get_connection(connection, verbose: bool = False) -> Engine:
+def get_connection(
+    connection, verbose: bool = False
+) -> Union[Engine, DynamoClient, GlueClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """

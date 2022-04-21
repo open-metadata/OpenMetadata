@@ -12,15 +12,13 @@
 Module containing the logic to test a connection
 from a WorkflowSource
 """
-from multiprocessing import connection
-
 from flask import Response
 from openmetadata.api.response import ApiResponse
 
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
-from metadata.utils.engines import (
+from metadata.utils.connections import (
     SourceConnectionException,
     get_connection,
     test_connection,
