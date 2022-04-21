@@ -29,15 +29,13 @@ public class TeamsPage {
   By asset = By.cssSelector("[data-testid='Assets']");
   By searchInput = By.xpath("//input[@data-testid='searchInputText']");
   By dataContainer = By.xpath("//div[@data-testid='data-container']");
-  By ownerName = By.xpath("//a[@data-testid='owner-link']/span");
-  By ownerLink = By.xpath("//a[@data-testid='owner-link']");
-  By teamsFilterCount = By.xpath("//div[@data-testid='terms-summary']//span[@data-testid='filter-count']");
-  By teamsCount = By.xpath("//div[@id='left-panel']//p");
-  By teamsDropdownCount = By.xpath("//button[@data-testid='tab']/span/span[@data-testid='filter-count']");
+  By myDataTeamsCount = By.xpath("//div[@data-testid='terms-summary']/span/span[@data-testid='filter-count']");
   By errorMessage = By.xpath("//strong[@data-testid='error-message']");
   By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
   By tableName = By.cssSelector("[data-testid='inactive-link']");
   By addUser = By.cssSelector("[data-testid='add-teams']");
+  By ownerDropdown = By.cssSelector("[data-testid='owner-dropdown']");
+  By selectOwner = By.cssSelector("[data-testid='list-item'][id='menu-item-0']");
 
   public List<WebElement> checkboxAddUser() {
     return webDriver.findElements(checkboxAddUser);
@@ -45,5 +43,9 @@ public class TeamsPage {
 
   public WebElement heading() {
     return webDriver.findElement(heading);
+  }
+
+  public By ownerName(String owner) {
+    return By.cssSelector("[title='" + owner + "']");
   }
 }
