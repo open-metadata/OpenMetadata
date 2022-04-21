@@ -84,6 +84,7 @@ public class TableDetails {
   By addDescriptionConversationThread = By.cssSelector("[data-testid='start-description-thread']");
   By openTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
   By startTagConversation = By.cssSelector("[data-testid='start-tag-thread']");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);

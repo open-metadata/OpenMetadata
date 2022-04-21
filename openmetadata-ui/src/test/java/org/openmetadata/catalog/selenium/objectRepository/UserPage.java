@@ -14,12 +14,14 @@ public class UserPage {
 
   By rolesList = By.cssSelector("[data-testid='menu-button'][id='menu-button-User']");
   By selectUser = By.xpath("//div[@data-testid='data-container']//p");
-  By userFilterCount = By.xpath("//button[@data-testid='users']//span[@data-testid='filter-count']");
-  By adminFilterCount = By.xpath("//button[@data-testid='assets'][1]//span[@data-testid='filter-count']");
+  By userFilterCount = By.xpath("(//span[@data-testid=\"filter-count\"])[9]");
+  By adminFilterCount = By.xpath("(//span[@data-testid='filter-count'])[10]");
   By userListSearchBar = By.cssSelector("[data-testid='searchbar']");
   By userListSearchResult =
       By.xpath("//div[@data-testid='user-card-container']/div/div[@data-testid='user-card-container']");
   By closeCheckBoxDropDown = By.cssSelector("[data-testid='close-dropdown']");
+  By admin = By.cssSelector("[title='Admins']");
+  By users = By.cssSelector("[title='Users']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");

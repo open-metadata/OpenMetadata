@@ -19,4 +19,5 @@ public class DashboardDetails {
   By selectedTag = By.xpath("//span[@class='tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1']");
   By chartTags = By.xpath("//div[@data-testid='tag-container']/div/div");
   By breadCrumbTags = By.xpath("//div[@data-testid='breadcrumb-tags']/div");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
 }

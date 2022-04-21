@@ -26,7 +26,7 @@ public class TeamsPage {
   By selectedUser = By.xpath("//div[@data-testid='data-container']/p[1]");
   By editDescription = By.xpath("//button[@data-testid='edit-description']");
   By saveDescription = By.xpath("//button[@data-testid='save']");
-  By asset = By.xpath("//button[@data-testid='assets']");
+  By asset = By.cssSelector("[data-testid='Assets']");
   By searchInput = By.xpath("//input[@data-testid='searchInputText']");
   By dataContainer = By.xpath("//div[@data-testid='data-container']");
   By ownerName = By.xpath("//a[@data-testid='owner-link']/span");
@@ -37,6 +37,7 @@ public class TeamsPage {
   By errorMessage = By.xpath("//strong[@data-testid='error-message']");
   By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
   By tableName = By.cssSelector("[data-testid='inactive-link']");
+  By addUser = By.cssSelector("[data-testid='add-teams']");
 
   public List<WebElement> checkboxAddUser() {
     return webDriver.findElements(checkboxAddUser);

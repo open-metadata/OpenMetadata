@@ -135,34 +135,6 @@ public class TagsPageTest {
   }
 
   @Test
-  @Order(6)
-  public void addAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
-      Events.click(webDriver, common.tagListItem());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
-  }
-
-  @Test
-  @Order(7)
-  public void removeAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    for (int i = 0; i <= 1; i++) {
-      Events.click(webDriver, tagsPage.removeAssociatedTag());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-  }
-
-  @Test
   @Order(8)
   public void addTagToTableColumn() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
@@ -281,24 +253,6 @@ public class TagsPageTest {
     String usageCount = webDriver.findElement(tagsPage.spanTagUsageCountElementIndex(2)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
   }*/
-
-  @Test
-  @Order(13)
-  public void addSelfAssociatedTag() throws Exception {
-    openTagsPage();
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagIndex(2));
-    Events.click(webDriver, common.enterAssociatedTagName());
-    try {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");
-      WebElement sameTag = webDriver.findElement(common.tagListItem());
-      if (sameTag.isDisplayed()) {
-        Assert.fail("Same name tag displayed");
-      }
-    } catch (NoSuchElementException exception) {
-      LOG.info("Success");
-    }
-  }
 
   @AfterEach
   public void closeTabs() {

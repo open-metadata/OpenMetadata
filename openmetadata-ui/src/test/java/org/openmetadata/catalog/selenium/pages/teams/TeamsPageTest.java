@@ -99,7 +99,6 @@ public class TeamsPageTest {
       webDriver.findElement(By.xpath(xpath));
     } catch (NoSuchElementException e) {
       Assert.fail("Team not added");
-      System.out.println("xpath" + xpath);
     }
   }
 
@@ -110,7 +109,7 @@ public class TeamsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     createTeam();
     Events.click(webDriver, By.xpath(xpath));
-    Events.click(webDriver, teamsPage.addNewUser());
+    Events.click(webDriver, common.containsText("Add new user"));
     List<WebElement> checkbox = teamsPage.checkboxAddUser();
     List<String> selectedUser = new ArrayList<>();
     // Select the created listed team
@@ -172,7 +171,6 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
     Events.click(webDriver, common.selectUser()); // Select User/Team
-    Events.click(webDriver, common.saveManage()); // Save
     Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
     Events.click(webDriver, By.xpath(xpath));

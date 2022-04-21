@@ -66,7 +66,7 @@ public class Common {
   By breadCrumb = By.xpath("//li[@data-testid='breadcrumb-link']");
   By descriptionContainer = By.xpath("(//div[@data-testid='description']/div/span)[1]");
   By manage = By.cssSelector("[id='manage']");
-  By selectTier1 = By.xpath("(//div[@data-testid=\"card-list\"]/div/div/p)[1]");
+  By selectTier1 = By.xpath("(//div[@data-testid='card-list'])[1]");
   By difference = By.xpath("//span[@class='diff-added']");
   By differenceRemoved = By.xpath("//span[@class='diff-removed']");
   By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
@@ -85,7 +85,7 @@ public class Common {
   By addTag = By.xpath("(//div[@data-testid='tag-container'])[1]");
   By breadCrumbTags = By.xpath("(//span[@data-testid='tags'])");
   By tagsAdded = By.cssSelector("span[class='tw-no-underline hover:tw-no-underline tw-px-1']");
-  By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams']");
+  By headerSettingsTeams = By.cssSelector("[data-testid='menu-item-Teams & Users']");
   By viewMore = By.xpath("//div[@data-testid='filter-containers-2']/p");
   By home = By.cssSelector("[data-testid='image']");
   By saveWebhook = By.cssSelector("[data-testid='save-webhook']");
