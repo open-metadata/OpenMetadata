@@ -185,11 +185,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   };
 
   const prepareDeleteMessage = () => {
-    if (isUndefined(deletEntityMessage)) {
-      return `Once you delete this ${entityType}, it will be removed permanently`;
-    } else {
-      return deletEntityMessage;
-    }
+    return `Once you delete this ${entityType}, it will be removed permanently`;
   };
 
   const handleOnEntityDeleteConfirm = () => {
@@ -227,6 +223,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (allowDelete && entityDeleteState.state) {
       return (
         <EntityDeleteModal
+          bodyText={deletEntityMessage || prepareDeleteMessage()}
           entityName={entityName as string}
           entityType={entityType as string}
           loadingState={entityDeleteState.loading}

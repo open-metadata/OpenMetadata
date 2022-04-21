@@ -96,3 +96,11 @@ export const getDatabaseSchemaDetailsByFQN: Function = (
 
   return APIClient.get(url);
 };
+
+export const getDatabaseCount: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get(`/databases?limit=0`);
+};
+
+export const getDatabaseSchemaCount: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get(`/databaseSchemas?limit=0`);
+};
