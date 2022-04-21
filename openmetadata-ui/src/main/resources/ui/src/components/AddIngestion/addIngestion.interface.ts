@@ -56,17 +56,24 @@ export interface ConfigureIngestionProps {
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
+  pipelineType: PipelineType;
   showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;
   showTopicFilter: boolean;
   showChartFilter: boolean;
+  queryLogDuration: number;
+  stageFileLocation: string;
+  resultLimit: number;
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
+  handleQueryLogDuration: (value: number) => void;
+  handleStageFileLocation: (value: string) => void;
+  handleResultLimit: (value: number) => void;
   onCancel: () => void;
   onNext: () => void;
 }

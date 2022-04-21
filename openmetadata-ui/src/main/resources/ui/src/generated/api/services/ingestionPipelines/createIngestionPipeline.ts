@@ -160,6 +160,7 @@ export interface EntityReference {
  */
 export enum PipelineType {
   Metadata = 'metadata',
+  Profiler = 'profiler',
   Usage = 'usage',
 }
 
@@ -224,6 +225,10 @@ export interface ConfigClass {
    */
   tableFilterPattern?: FilterPattern;
   /**
+   * Pipeline type
+   */
+  type?: ConfigType;
+  /**
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */
   queryLogDuration?: number;
@@ -248,6 +253,10 @@ export interface ConfigClass {
    * Regex to only fetch topics that matches the pattern.
    */
   topicFilterPattern?: FilterPattern;
+  /**
+   * Regex to only fetch tables with FQN matching the pattern.
+   */
+  fqnFilterPattern?: FilterPattern;
 }
 
 /**
@@ -258,6 +267,8 @@ export interface ConfigClass {
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch tables with FQN matching the pattern.
  */
 export interface FilterPattern {
   /**
@@ -372,4 +383,25 @@ export enum DbtProvider {
   HTTP = 'http',
   Local = 'local',
   S3 = 's3',
+}
+
+/**
+ * Pipeline type
+ *
+ * Database Source Config Metadata Pipeline type
+ *
+ * Database Source Config Usage Pipeline type
+ *
+ * Dashboard Source Config Metadata Pipeline type
+ *
+ * Messaging Source Config Metadata Pipeline type
+ *
+ * Profiler Source Config Pipeline type
+ */
+export enum ConfigType {
+  DashboardMetadata = 'DashboardMetadata',
+  DatabaseMetadata = 'DatabaseMetadata',
+  DatabaseUsage = 'DatabaseUsage',
+  MessagingMetadata = 'MessagingMetadata',
+  Profiler = 'Profiler',
 }

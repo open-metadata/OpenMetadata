@@ -27,6 +27,10 @@ export interface IngestionPipeline {
    */
   deleted?: boolean;
   /**
+   * Indicates if the workflow has been successfully deployed to Airflow.
+   */
+  deployed?: boolean;
+  /**
    * Description of the Pipeline.
    */
   description?: string;
@@ -50,10 +54,6 @@ export interface IngestionPipeline {
    * Name that identifies this pipeline instance uniquely.
    */
   name: string;
-  /**
-   * Next execution date from the underlying pipeline platform once the pipeline scheduled.
-   */
-  nextExecutionDate?: Date;
   openMetadataServerConnection: OpenMetadataConnection;
   /**
    * Owner of this Pipeline.
@@ -420,6 +420,7 @@ export interface PipelineStatus {
  */
 export enum PipelineType {
   Metadata = 'metadata',
+  Profiler = 'profiler',
   Usage = 'usage',
 }
 
@@ -606,7 +607,7 @@ export interface Connection {
    *
    * password to connect  to the MsSQL.
    *
-   * password to connect  to the SingleStore.
+   * password to connect  to the Mysql.
    *
    * password to connect to SQLite. Blank for in-memory database.
    *
@@ -645,8 +646,8 @@ export interface Connection {
    *
    * username for the Tableau
    *
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Athena.
+   * username to connect to the Bigquery. This user should have privileges to read all the
+   * metadata in Bigquery.
    *
    * username to connect  to the Athena. This user should have privileges to read all the
    * metadata in Azure SQL.
@@ -672,8 +673,8 @@ export interface Connection {
    * username to connect  to the MsSQL. This user should have privileges to read all the
    * metadata in MsSQL.
    *
-   * username to connect  to the SingleStore. This user should have privileges to read all the
-   * metadata in SingleStore.
+   * username to connect  to the Mysql. This user should have privileges to read all the
+   * metadata in Mysql.
    *
    * username to connect  to the SQLite. Blank for in-memory database.
    *
@@ -805,7 +806,7 @@ export interface Connection {
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in SingleStore.
+   * attempts to scan all the databases in Mysql.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -864,17 +865,13 @@ export interface Connection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
    */
   tagCategoryName?: string;
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
+  awsConfig?: S3Credentials;
   /**
    * S3 Staging Directory.
    */
@@ -911,6 +908,10 @@ export interface Connection {
    * AWS Access key ID.
    */
   awsAccessKeyId?: string;
+  /**
+   * AWS Region Name.
+   */
+  awsRegion?: string;
   /**
    * AWS Secret Access Key.
    */
@@ -1053,6 +1054,32 @@ export interface Connection {
    * OpenMetadata Client security configuration.
    */
   securityConfig?: SsoClientConfig;
+}
+
+/**
+ * AWS S3 credentials configs.
+ */
+export interface S3Credentials {
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId: string;
+  /**
+   * AWS Region
+   */
+  awsRegion: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
 }
 
 /**
@@ -1266,6 +1293,10 @@ export interface ConfigClass {
    */
   tableFilterPattern?: FilterPattern;
   /**
+   * Pipeline type
+   */
+  type?: ConfigType;
+  /**
    * Configuration to tune how far we want to look back in query logs to process usage data.
    */
   queryLogDuration?: number;
@@ -1290,6 +1321,10 @@ export interface ConfigClass {
    * Regex to only fetch topics that matches the pattern.
    */
   topicFilterPattern?: FilterPattern;
+  /**
+   * Regex to only fetch tables with FQN matching the pattern.
+   */
+  fqnFilterPattern?: FilterPattern;
 }
 
 /**
@@ -1300,6 +1335,8 @@ export interface ConfigClass {
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch tables with FQN matching the pattern.
  */
 export interface FilterPattern {
   /**
@@ -1370,4 +1407,25 @@ export enum DbtProvider {
   HTTP = 'http',
   Local = 'local',
   S3 = 's3',
+}
+
+/**
+ * Pipeline type
+ *
+ * Database Source Config Metadata Pipeline type
+ *
+ * Database Source Config Usage Pipeline type
+ *
+ * Dashboard Source Config Metadata Pipeline type
+ *
+ * Messaging Source Config Metadata Pipeline type
+ *
+ * Profiler Source Config Pipeline type
+ */
+export enum ConfigType {
+  DashboardMetadata = 'DashboardMetadata',
+  DatabaseMetadata = 'DatabaseMetadata',
+  DatabaseUsage = 'DatabaseUsage',
+  MessagingMetadata = 'MessagingMetadata',
+  Profiler = 'Profiler',
 }

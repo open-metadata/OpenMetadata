@@ -26,4 +26,17 @@ export interface DatabaseServiceQueryUsagePipelineClass {
    * required.
    */
   stageFileLocation?: string;
+  /**
+   * Pipeline type
+   */
+  type?: DatabaseUsageConfigType;
+}
+
+/**
+ * Pipeline type
+ *
+ * Database Source Config Usage Pipeline type
+ */
+export enum DatabaseUsageConfigType {
+  DatabaseUsage = 'DatabaseUsage',
 }
