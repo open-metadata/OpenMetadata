@@ -121,6 +121,19 @@ def filter_by_chart(
     return _filter(chart_filter_pattern, chart_name)
 
 
+def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -> bool:
+    """
+    Return True if the topic needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param topic_filter_pattern: Model defining chart filtering logic
+    :param topic_name: topic name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(topic_filter_pattern, topic)
+
+
 def filter_by_dashboard(
     dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
