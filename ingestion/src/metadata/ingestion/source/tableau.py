@@ -13,6 +13,7 @@ Tableau source module
 """
 
 import logging
+import traceback
 import uuid
 from typing import Iterable, List
 
@@ -46,6 +47,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,7 @@ class TableauSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.connection_config = self.config.serviceConnection.__root__.config
+        self.source_config = self.config.sourceConfig.config
         self.client = self.tableau_client()
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
@@ -125,9 +128,9 @@ class TableauSource(Source[Entity]):
                 env=self.connection_config.env,
             )
             conn.sign_in().json()
+            return conn
         except Exception as err:  # pylint: disable=broad-except
             logger.error("%s: %s", repr(err), err)
-        return conn
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -195,45 +198,61 @@ class TableauSource(Source[Entity]):
 
     def _get_tableau_dashboard(self) -> Dashboard:
         for index in range(len(self.dashboards["id"])):
-            dashboard_id = self.dashboards["id"][index]
-            dashboard_name = self.dashboards["name"][index]
-            dashboard_tag = self.dashboards["tags"][index]
-            dashboard_url = self.dashboards["webpageUrl"][index]
-            datasource_list = (
-                get_workbook_connections_dataframe(self.client, dashboard_id)
-                .get("datasource_name")
-                .tolist()
-            )
-            tag_labels = []
-            if hasattr(dashboard_tag, "tag"):
-                for tag in dashboard_tag["tag"]:
-                    tag_labels.append(tag["label"])
-            dashboard_chart = []
-            for chart_index in self.all_dashboard_details["workbook"]:
-                dashboard_owner = self.all_dashboard_details["owner"][chart_index]
-                chart = self.all_dashboard_details["workbook"][chart_index]
-                if chart["id"] == dashboard_id:
-                    dashboard_chart.append(
-                        self.all_dashboard_details["name"][chart_index]
-                    )
-            yield Dashboard(
-                id=uuid.uuid4(),
-                name=dashboard_id,
-                displayName=dashboard_name,
-                description="",
-                owner=self.get_owner(dashboard_owner),
-                charts=dashboard_chart,
-                tags=list(tag_labels),
-                url=dashboard_url,
-                service=EntityReference(id=self.service.id, type="dashboardService"),
-                last_modified=dateparser.parse(chart["updatedAt"]).timestamp() * 1000,
-            )
-            if self.config.serviceName:
-                yield from self.get_lineage(datasource_list, dashboard_id)
+            try:
+                dashboard_id = self.dashboards["id"][index]
+                dashboard_name = self.dashboards["name"][index]
+                if filter_by_dashboard(
+                    self.source_config.dashboardFilterPattern, dashboard_name
+                ):
+                    self.status.failure(dashboard_name, "Dashboard Pattern not allowed")
+                    continue
+                dashboard_tag = self.dashboards["tags"][index]
+                dashboard_url = self.dashboards["webpageUrl"][index]
+                datasource_list = (
+                    get_workbook_connections_dataframe(self.client, dashboard_id)
+                    .get("datasource_name")
+                    .tolist()
+                )
+                tag_labels = []
+                if hasattr(dashboard_tag, "tag"):
+                    for tag in dashboard_tag["tag"]:
+                        tag_labels.append(tag["label"])
+                dashboard_chart = []
+                for chart_index in self.all_dashboard_details["workbook"]:
+                    dashboard_owner = self.all_dashboard_details["owner"][chart_index]
+                    chart = self.all_dashboard_details["workbook"][chart_index]
+                    if chart["id"] == dashboard_id:
+                        dashboard_chart.append(
+                            self.all_dashboard_details["name"][chart_index]
+                        )
+                yield Dashboard(
+                    id=uuid.uuid4(),
+                    name=dashboard_id,
+                    displayName=dashboard_name,
+                    description="",
+                    owner=self.get_owner(dashboard_owner),
+                    charts=dashboard_chart,
+                    tags=list(tag_labels),
+                    url=dashboard_url,
+                    service=EntityReference(
+                        id=self.service.id, type="dashboardService"
+                    ),
+                    last_modified=dateparser.parse(chart["updatedAt"]).timestamp()
+                    * 1000,
+                )
+                if self.config.serviceName:
+                    yield from self.get_lineage(datasource_list, dashboard_id)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(err)
 
     def _get_tableau_charts(self):
         for index in range(len(self.all_dashboard_details["id"])):
+
             chart_name = self.all_dashboard_details["name"][index]
+            if filter_by_chart(self.source_config.chartFilterPattern, chart_name):
+                self.status.failure(chart_name, "Chart Pattern not allowed")
+                continue
             chart_id = self.all_dashboard_details["id"][index]
             chart_tags = self.all_dashboard_details["tags"][index]
             chart_type = self.all_dashboard_details["sheetType"][index]
