@@ -1,0 +1,110 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/athenaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AthenaConnection",
+  "description": "AWS Athena Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
+  "definitions": {
+    "athenaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Athena"],
+      "default": "Athena"
+    },
+    "athenaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["awsathena+rest"],
+      "default": "awsathena+rest"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/athenaType",
+      "default": "Athena"
+    },
+    "scheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/athenaScheme",
+      "default": "awsathena+rest"
+    },
+    "awsConfig": {
+      "$id": "https://open-metadata.org/security/credentials/s3Credentials.json",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "S3Credentials",
+      "description": "AWS S3 credentials configs.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.security.credentials.S3Credentials",
+      "properties": {
+        "awsAccessKeyId": {
+          "description": "AWS Access key ID.",
+          "type": "string"
+        },
+        "awsSecretAccessKey": {
+          "description": "AWS Secret Access Key.",
+          "type": "string",
+          "format": "password"
+        },
+        "awsRegion": {
+          "description": "AWS Region",
+          "type": "string"
+        },
+        "awsSessionToken": {
+          "description": "AWS Session Token.",
+          "type": "string"
+        },
+        "endPointURL": {
+          "description": "EndPoint URL for the AWS",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["awsAccessKeyId", "awsSecretAccessKey", "awsRegion"]
+    },
+    "hostPort": {
+      "description": "Host and port of the Athena",
+      "type": "string"
+    },
+    "database": {
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "type": "string"
+    },
+    "s3StagingDir": {
+      "description": "S3 Staging Directory.",
+      "type": "string"
+    },
+    "workgroup": {
+      "description": "Athena workgroup.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}
