@@ -220,6 +220,7 @@ class OMetaServiceTest(TestCase):
                     "password": "tb_pwd",
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
+                    "apiVersion": "3.15",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},
