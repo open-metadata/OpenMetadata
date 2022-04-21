@@ -760,21 +760,21 @@ public abstract class EntityRepository<T> {
 
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
-      entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
         EntityUtil.copy(ref, entityReference);
       }
+      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 
   public void validateRoles(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
-      entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
         EntityUtil.copy(ref, entityReference);
       }
+      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 

@@ -57,6 +57,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [searchText, setSearchText] = useState('');
+  const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [showIngestionForm, setShowIngestionForm] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -409,12 +410,14 @@ const Ingestion: React.FC<IngestionProps> = ({
       <div className="tw-bg-white tw-pt-4 tw-w-full">
         <div className="tw-max-w-2xl tw-mx-auto tw-pb-6">
           <AddIngestion
+            activeIngestionStep={activeIngestionStep}
             data={updateSelection}
             handleCancelClick={handleCancelUpdate}
             heading={heading}
             pipelineType={type[0]}
             serviceCategory={serviceCategory}
             serviceData={serviceDetails}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
             showSuccessScreen={false}
             status={
               isUndefined(updateSelection)

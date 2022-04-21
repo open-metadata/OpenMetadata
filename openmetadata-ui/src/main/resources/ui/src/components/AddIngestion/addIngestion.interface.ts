@@ -23,6 +23,7 @@ import {
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
+  activeIngestionStep: number;
   pipelineType: PipelineType;
   heading: string;
   status: FormSubmitType;
@@ -30,6 +31,7 @@ export interface AddIngestionProps {
   serviceCategory: ServiceCategory;
   serviceData: DataObj;
   showSuccessScreen?: boolean;
+  setActiveIngestionStep: (step: number) => void;
   handleCancelClick: () => void;
   onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
   onUpdateIngestion?: (

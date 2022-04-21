@@ -25,6 +25,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -292,6 +294,7 @@ public final class TestUtils {
       assertListNotEmpty(list);
     }
     listOrEmpty(list).forEach(TestUtils::validateEntityReference);
+    validateAlphabeticalOrdering(list, EntityUtil.compareEntityReference);
   }
 
   public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
@@ -374,13 +377,13 @@ public final class TestUtils {
     if (expected == actual) { // Take care of both being null
       return;
     }
-    validateEntityReferences(actual);
     if (expected != null) {
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
+    validateEntityReferences(actual);
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -423,5 +426,21 @@ public final class TestUtils {
       Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
       index++;
     }
+  }
+
+  public static <T> boolean validateAlphabeticalOrdering(List<T> list, Comparator<T> comparator) {
+    Iterator<T> iterator = listOrEmpty(list).iterator();
+    if (!iterator.hasNext()) {
+      return true;
+    }
+    T prev = iterator.next();
+    while (iterator.hasNext()) {
+      T next = iterator.next();
+      if (comparator.compare(prev, next) > 0) {
+        return false;
+      }
+      prev = next;
+    }
+    return true;
   }
 }

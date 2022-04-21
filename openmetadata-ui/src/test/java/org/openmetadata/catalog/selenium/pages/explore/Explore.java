@@ -86,7 +86,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_data")) {
         break;
       }
     }
@@ -105,6 +105,7 @@ class Explore {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
+    Thread.sleep(waitTime);
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -112,7 +113,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_kafka")) {
         break;
       }
     }
@@ -126,11 +127,12 @@ class Explore {
 
   @Test
   @Order(4)
-  void checkDashboardCount() {
+  void checkDashboardCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
+    Thread.sleep(waitTime);
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -138,7 +140,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_superset")) {
         break;
       }
     }
@@ -152,11 +154,12 @@ class Explore {
 
   @Test
   @Order(5)
-  void checkPipelineCount() {
+  void checkPipelineCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
+    Thread.sleep(waitTime);
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -164,7 +167,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_airflow")) {
         break;
       }
     }
@@ -216,8 +219,8 @@ class Explore {
     // Adding description to check last updated sort
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());

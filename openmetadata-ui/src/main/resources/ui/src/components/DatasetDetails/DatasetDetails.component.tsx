@@ -626,30 +626,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onUpdate={onColumnsUpdate}
                   />
                 </div>
-
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(owner)}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.TABLE,
-                      datasetFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
               </div>
             )}
             {activeTab === 2 && (
@@ -776,6 +752,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {getLoader()}
             </div>
           </div>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+          {selectedField ? (
+            <RequestDescriptionModal
+              createThread={createThread}
+              defaultValue={getDefaultValue(owner)}
+              header="Request description"
+              threadLink={getEntityFeedLink(
+                EntityType.TABLE,
+                datasetFQN,
+                selectedField
+              )}
+              onCancel={closeRequestModal}
+            />
+          ) : null}
         </div>
       </div>
     </PageContainer>

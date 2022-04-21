@@ -94,21 +94,22 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.urlLink(), "www.google.com");
+    Events.sendKeys(webDriver, common.linkText(), "Looker");
+    Events.click(webDriver, common.okButton());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, dashboardServicePage.addDashboardServiceUrl(), "localhost:8080");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.saveServiceButton());
+    Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "localhost:8080");
+    Events.click(webDriver, common.saveManage());
   }
 
   @Test
@@ -118,8 +119,7 @@ public class DashboardServiceTestPage {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
@@ -130,10 +130,10 @@ public class DashboardServiceTestPage {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, dashboardServicePage.editDashboardServiceUrl(), "1");
-    Events.sendKeys(webDriver, common.serviceUsername(), "1");
-    Events.sendKeys(webDriver, common.servicePassword(), "1");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "test");
+    Events.sendKeys(webDriver, common.serviceUsername(), "test");
+    Events.sendKeys(webDriver, common.servicePassword(), "test");
+    Events.click(webDriver, common.saveManage());
     Thread.sleep(2000);
     try {
       WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));

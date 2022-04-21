@@ -24,6 +24,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { deleteEntity } from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { ENTITY_DELETE_STATE } from '../../constants/entity.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -38,7 +39,7 @@ import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import { ManageProps } from './ManageTab.interface';
+import { ManageProps, Status } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
@@ -57,10 +58,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
-  const [loading, setLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
+  const [statusOwner, setStatusOwner] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<Status>('initial');
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
   const [teamJoinable, setTeamJoinable] = useState(isJoinable);
@@ -80,6 +79,67 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
   };
 
+  const setInitialOwnerLoadingState = () => {
+    setStatusOwner('initial');
+  };
+
+  const setInitialTierLoadingState = () => {
+    setStatusTier('initial');
+  };
+
+  const prepareOwner = (updatedOwner: string) => {
+    return updatedOwner !== currentUser
+      ? {
+          id: updatedOwner,
+          type: listOwners.find((item) => item.value === updatedOwner)?.type as
+            | 'user'
+            | 'team',
+        }
+      : undefined;
+  };
+
+  const prepareTier = (updatedTier: string) => {
+    return updatedTier !== currentTier ? updatedTier : undefined;
+  };
+
+  const handleOwnerSave = (updatedOwner: string, updatedTier: string) => {
+    setStatusOwner('waiting');
+    const newOwner: TableDetail['owner'] = prepareOwner(updatedOwner);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialOwnerLoadingState();
+        });
+      } else {
+        setInitialOwnerLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialOwnerLoadingState();
+      });
+    }
+  };
+
+  const handleTierSave = (updatedTier: string) => {
+    setStatusTier('waiting');
+    const newOwner: TableDetail['owner'] = prepareOwner(currentUser);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialTierLoadingState();
+        });
+      } else {
+        setInitialTierLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialTierLoadingState();
+      });
+    }
+  };
+
   const handleOwnerSelection = (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
@@ -88,6 +148,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       const newOwner = listOwners.find((item) => item.value === value);
       if (newOwner) {
         setOwner(newOwner.value);
+        handleOwnerSave(newOwner.value, activeTier);
       }
     }
     setListVisible(false);
@@ -95,45 +156,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleCardSelection = (cardId: string) => {
     setActiveTier(cardId);
-  };
-
-  const setInitialLoadingState = () => {
-    setStatus('initial');
-    setLoading(false);
-  };
-
-  const handleSave = () => {
-    setLoading(true);
-    setStatus('waiting');
-    // Save API call goes here...
-    const newOwner: TableDetail['owner'] =
-      owner !== currentUser
-        ? {
-            id: owner,
-            type: listOwners.find((item) => item.value === owner)?.type as
-              | 'user'
-              | 'team',
-          }
-        : undefined;
-    if (hideTier) {
-      if (newOwner || !isUndefined(teamJoinable)) {
-        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
-          setInitialLoadingState();
-        });
-      } else {
-        setInitialLoadingState();
-      }
-    } else {
-      const newTier = activeTier !== currentTier ? activeTier : undefined;
-      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
-        setInitialLoadingState();
-      });
-    }
-  };
-
-  const handleCancel = () => {
-    setActiveTier(currentTier);
-    setOwner(currentUser);
   };
 
   const handleOnEntityDelete = () => {
@@ -193,7 +215,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const getDeleteEntityWidget = () => {
     return allowDelete && entityId && entityName && entityType ? (
-      <div className="tw-mt-9" data-testid="danger-zone">
+      <div className="tw-mt-1" data-testid="danger-zone">
         <hr className="tw-border-main tw-mb-4" />
         <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
           <div data-testid="danger-zone-text">
@@ -204,16 +226,27 @@ const ManageTab: FunctionComponent<ManageProps> = ({
               {`Once you delete this ${entityType}, it would be removed permanently`}
             </p>
           </div>
-          <Button
-            className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
-            data-testid="delete-button"
-            size="custom"
-            theme="primary"
-            type="button"
-            variant="outlined"
-            onClick={handleOnEntityDelete}>
-            Delete this {entityType}
-          </Button>
+          <NonAdminAction
+            className="tw-self-center"
+            html={
+              <Fragment>
+                <p>{TITLE_FOR_NON_ADMIN_ACTION}</p>
+              </Fragment>
+            }
+            isOwner={isAdminUser}
+            position="left">
+            <Button
+              className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
+              data-testid="delete-button"
+              disabled={!isAdminUser && !isAuthDisabled}
+              size="custom"
+              theme="primary"
+              type="button"
+              variant="outlined"
+              onClick={handleOnEntityDelete}>
+              Delete this {entityType}
+            </Button>
+          </NonAdminAction>
         </div>
       </div>
     ) : null;
@@ -240,6 +273,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
               <CardListItem
                 card={card}
                 isActive={activeTier === card.id}
+                isSelected={card.id === currentTier}
+                tierStatus={statusTier}
+                onSave={handleTierSave}
                 onSelect={handleCardSelection}
               />
             </NonAdminAction>
@@ -297,10 +333,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           );
 
           setTierData(tierData);
-          setIsLoadingTierData(false);
         } else {
           setTierData([]);
-          setIsLoadingTierData(false);
         }
       })
       .catch((err: AxiosError) => {
@@ -308,7 +342,27 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           err,
           jsonData['api-error-messages']['fetch-tiers-error']
         );
+      })
+      .finally(() => {
+        setIsLoadingTierData(false);
       });
+  };
+
+  const getOwnerUpdateLoader = () => {
+    return (
+      <span className="tw-ml-4">
+        {statusOwner === 'waiting' ? (
+          <Loader
+            className="tw-inline-block"
+            size="small"
+            style={{ marginBottom: '-4px' }}
+            type="default"
+          />
+        ) : statusOwner === 'success' ? (
+          <FontAwesomeIcon icon="check" />
+        ) : null}
+      </span>
+    );
   };
 
   useEffect(() => {
@@ -326,16 +380,22 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   }, [currentUser]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-    if (status === 'waiting') {
-      setStatus('success');
+    if (statusOwner === 'waiting') {
+      setStatusOwner('success');
       setTimeout(() => {
-        setStatus('initial');
+        setInitialOwnerLoadingState();
       }, 3000);
     }
-  }, [currentTier, currentUser]);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (statusTier === 'waiting') {
+      setStatusTier('success');
+      setTimeout(() => {
+        setInitialTierLoadingState();
+      }, 3000);
+    }
+  }, [currentTier]);
 
   useEffect(() => {
     setListOwners(getOwnerList());
@@ -350,7 +410,10 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator ">
+      <div
+        className={classNames('tw-mt-2 tw-pb-4', {
+          'tw-border-b tw-border-separator tw-mb-4': !hideTier,
+        })}>
         <div>
           <span className="tw-mr-2">Owner:</span>
           <span className="tw-relative">
@@ -410,49 +473,12 @@ const ManageTab: FunctionComponent<ManageProps> = ({
                 onSelect={handleOwnerSelection}
               />
             )}
+            {getOwnerUpdateLoader()}
           </span>
         </div>
         {getJoinableWidget()}
       </div>
       {getTierCards()}
-      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
-        <Button
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={handleCancel}>
-          Discard
-        </Button>
-        {loading ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : status === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className="tw-w-16 tw-h-10"
-            data-testid="saveManageTab"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
-        )}
-      </div>
       {getDeleteEntityWidget()}
       {getDeleteModal()}
     </div>

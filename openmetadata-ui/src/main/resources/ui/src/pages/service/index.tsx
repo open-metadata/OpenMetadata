@@ -24,6 +24,7 @@ import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
   addIngestionPipeline,
   deleteIngestionPipelineById,
+  getIngestionPipelineByFqn,
   getIngestionPipelines,
   triggerIngestionPipelineById,
   updateIngestionPipeline,
@@ -33,7 +34,6 @@ import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import IngestionError from '../../components/common/error/IngestionError';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
@@ -78,7 +78,6 @@ import {
   servicePageTabs,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -107,8 +106,6 @@ const ServicePage: FunctionComponent = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
-  const [isConnectionAvailable, setConnectionAvailable] =
-    useState<boolean>(true);
   const [isError, setIsError] = useState(false);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
@@ -333,24 +330,28 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const message = getErrorText(
-            error,
-            jsonData['api-error-messages']['create-ingestion-error']
-          );
-          if (message.includes('Connection refused')) {
-            setConnectionAvailable(false);
-          } else if (
-            message.includes(jsonData['message']['fail-to-deploy-pipeline'])
-          ) {
-            showErrorToast(
-              message,
-              jsonData['api-error-messages']['deploy-ingestion-error']
-            );
-            resolve();
-          } else {
-            showErrorToast(message);
-            reject();
-          }
+          getIngestionPipelineByFqn(`${serviceDetails?.name}.${data.name}`)
+            .then((res: AxiosResponse) => {
+              if (res.data) {
+                resolve();
+                getAllIngestionWorkflows();
+                showErrorToast(
+                  error,
+                  jsonData['api-error-messages']['deploy-ingestion-error']
+                );
+              } else {
+                throw jsonData['api-error-messages'][
+                  'unexpected-server-response'
+                ];
+              }
+            })
+            .catch(() => {
+              showErrorToast(
+                error,
+                jsonData['api-error-messages']['create-ingestion-error']
+              );
+              reject();
+            });
         });
     });
   };
@@ -943,25 +944,21 @@ const ServicePage: FunctionComponent = () => {
 
                 {activeTab === 2 && (
                   <div data-testid="ingestion-container">
-                    {isConnectionAvailable ? (
-                      <Ingestion
-                        isRequiredDetailsAvailable
-                        addIngestion={onAddIngestionSave}
-                        currrentPage={ingestionCurrentPage}
-                        deleteIngestion={deleteIngestionById}
-                        ingestionList={ingestions}
-                        paging={ingestionPaging}
-                        pagingHandler={ingestionPagingHandler}
-                        serviceCategory={serviceName as ServiceCategory}
-                        serviceDetails={serviceDetails as DataObj}
-                        serviceList={serviceList}
-                        serviceName={serviceFQN}
-                        triggerIngestion={triggerIngestionById}
-                        updateIngestion={updateIngestion}
-                      />
-                    ) : (
-                      <IngestionError />
-                    )}
+                    <Ingestion
+                      isRequiredDetailsAvailable
+                      addIngestion={onAddIngestionSave}
+                      currrentPage={ingestionCurrentPage}
+                      deleteIngestion={deleteIngestionById}
+                      ingestionList={ingestions}
+                      paging={ingestionPaging}
+                      pagingHandler={ingestionPagingHandler}
+                      serviceCategory={serviceName as ServiceCategory}
+                      serviceDetails={serviceDetails as DataObj}
+                      serviceList={serviceList}
+                      serviceName={serviceFQN}
+                      triggerIngestion={triggerIngestionById}
+                      updateIngestion={updateIngestion}
+                    />
                   </div>
                 )}
 
