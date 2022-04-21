@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from boto3 import Session
@@ -17,11 +18,13 @@ from pydantic import SecretStr
 from metadata.config.common import ConfigModel
 
 
+@dataclass
 class GlueClient:
     def __init__(self, client) -> None:
         self.client = client
 
 
+@dataclass
 class DynamoClient:
     def __init__(self, client) -> None:
         self.client = client

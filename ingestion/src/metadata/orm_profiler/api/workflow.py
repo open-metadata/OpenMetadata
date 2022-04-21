@@ -41,7 +41,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.connections import create_and_bind_session, get_connection, test_connection
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
 from metadata.utils.filters import filter_by_fqn
 
 logger = logger()
