@@ -377,7 +377,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS))
+          getEntityInterface(
+                  createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
