@@ -29,6 +29,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import { Button } from '../buttons/Button/Button';
@@ -41,6 +42,7 @@ import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { IngestionProps, ModifiedConfig } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
+  airflowEndpoint,
   serviceDetails,
   serviceName,
   serviceCategory,
@@ -270,6 +272,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                   <th className="tableHead-cell">Type</th>
                   <th className="tableHead-cell">Schedule</th>
                   <th className="tableHead-cell">Recent Runs</th>
+                  <th className="tableHead-cell">Airflow DAG</th>
                   <th className="tableHead-cell">Actions</th>
                 </tr>
               </thead>
@@ -311,7 +314,30 @@ const Ingestion: React.FC<IngestionProps> = ({
                     <td className="tableBody-cell">
                       <div className="tw-flex">{getStatuses(ingestion)}</div>
                     </td>
-
+                    <td className="tableBody-cell">
+                      {airflowEndpoint ? (
+                        <NonAdminAction
+                          position="bottom"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <a
+                            className="link-text tw-mr-2"
+                            data-testid="airflow-tree-view"
+                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
+                            rel="noopener noreferrer"
+                            target="_blank">
+                            View
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle tw-ml-1"
+                              icon={Icons.EXTERNAL_LINK}
+                              width="12px"
+                            />
+                          </a>
+                        </NonAdminAction>
+                      ) : (
+                        <span className="tw-text-grey-muted">No endpoint</span>
+                      )}
+                    </td>
                     <td className="tableBody-cell">
                       <NonAdminAction
                         position="bottom"
