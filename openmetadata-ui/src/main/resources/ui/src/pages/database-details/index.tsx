@@ -57,7 +57,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -175,7 +175,7 @@ const DatabaseDetails: FunctionComponent = () => {
       key: 'Owner',
       value:
         database?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               database?.owner?.displayName || database?.owner?.name || ''
             )
           : database?.owner?.displayName || database?.owner?.name || '',
