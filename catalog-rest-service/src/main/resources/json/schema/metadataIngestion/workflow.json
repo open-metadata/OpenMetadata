@@ -23,6 +23,9 @@
             },
             {
               "$ref": "messagingServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "databaseServiceProfilerPipeline.json"
             }
           ]
         }
