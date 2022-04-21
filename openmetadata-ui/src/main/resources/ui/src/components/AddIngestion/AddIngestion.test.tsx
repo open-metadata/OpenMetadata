@@ -21,6 +21,8 @@ import AddIngestion from './AddIngestion.component';
 import { AddIngestionProps } from './addIngestion.interface';
 
 const mockAddIngestionProps: AddIngestionProps = {
+  activeIngestionStep: 1,
+  setActiveIngestionStep: jest.fn(),
   serviceData: {
     name: 'serviceName',
   } as DataObj,

@@ -38,6 +38,7 @@ import SignupPage from '../pages/signup';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
+import TeamsAndUsersPage from '../pages/TeamsAndUsersPage/TeamsAndUsersPage.component';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
 import UserListPage from '../pages/UserListPage/UserListPage';
@@ -54,6 +55,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
       <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
+      <Route
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS}
+      />
+      <Route
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS_DETAILS}
+      />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />

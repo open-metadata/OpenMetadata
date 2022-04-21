@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
@@ -22,11 +23,23 @@ import APIClient from './index';
 
 export const getUsers = (
   arrQueryFields?: string,
-  limit?: number
+  limit?: number,
+  team?: { [key: string]: string }
 ): Promise<AxiosResponse> => {
+  let qParam = '';
+  if (!isUndefined(team)) {
+    const paramArr = Object.entries(team);
+    qParam = paramArr.reduce((pre, curr, index) => {
+      return (
+        pre + `${curr[0]}=${curr[1]}${index !== paramArr.length - 1 ? '&' : ''}`
+      );
+    }, '');
+  }
   const url =
-    `${getURLWithQueryFields('/users', arrQueryFields)}` +
-    (limit ? `${arrQueryFields?.length ? '&' : '?'}limit=${limit}` : '');
+    `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
+    (limit
+      ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
+      : '');
 
   return APIClient.get(url);
 };

@@ -23,6 +23,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
@@ -101,5 +102,27 @@ public class ConfigResource {
       sandboxConfiguration.setSandboxModeEnabled(true);
     }
     return sandboxConfiguration;
+  }
+
+  @GET
+  @Path(("/airflow"))
+  @Operation(
+      summary = "Get airflow configuration",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Airflow configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AirflowConfigurationForAPI.class)))
+      })
+  public AirflowConfigurationForAPI getAirflowConfig() {
+    AirflowConfigurationForAPI airflowConfigurationForAPI = new AirflowConfigurationForAPI();
+    if (catalogApplicationConfig.getAirflowConfiguration() != null) {
+      airflowConfigurationForAPI.setApiEndpoint(catalogApplicationConfig.getAirflowConfiguration().getApiEndpoint());
+    }
+    return airflowConfigurationForAPI;
   }
 }

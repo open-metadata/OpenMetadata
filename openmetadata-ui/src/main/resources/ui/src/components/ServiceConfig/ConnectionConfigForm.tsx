@@ -15,6 +15,7 @@ import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent } from 'react';
+import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   DashboardConnection,
@@ -30,10 +31,12 @@ import {
 } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
+import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -62,6 +65,32 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           .connection.config as ConfigData)
       : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
     : ({} as ConfigData);
+
+  const handleTestConnection = (formData: ConfigData) => {
+    return new Promise<void>((resolve, reject) => {
+      TestConnection(formData, 'Database')
+        .then((res) => {
+          // This api only responds with status 200 on success
+          // No data sent on api success
+          if (res.status === 200) {
+            showSuccessToast(
+              jsonData['api-success-messages']['test-connection-success']
+            );
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['test-connection-error']
+          );
+          reject(err);
+        });
+    });
+  };
+
   const getDatabaseFields = () => {
     let connSch = {
       schema: {},
@@ -115,6 +144,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
         onSubmit={onSave}
+        onTestConnection={handleTestConnection}
       />
     );
   };

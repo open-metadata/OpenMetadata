@@ -651,6 +651,7 @@ const EntityTable = ({
                                         trigger="mouseenter">
                                         <SVGIcons
                                           alt="request-description"
+                                          className="tw-mt-2.5"
                                           icon={Icons.REQUEST}
                                         />
                                       </PopOver>

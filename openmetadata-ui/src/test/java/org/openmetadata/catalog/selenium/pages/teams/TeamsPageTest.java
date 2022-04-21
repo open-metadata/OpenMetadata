@@ -89,7 +89,8 @@ public class TeamsPageTest {
     Events.click(webDriver, teamsPage.addTeam()); // add team
     Events.sendKeys(webDriver, teamsPage.name(), faker.name().firstName()); // name
     Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -147,12 +148,11 @@ public class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, By.xpath(xpath));
     Events.click(webDriver, teamsPage.editDescription());
-    wait.until(ExpectedConditions.presenceOfElementLocated(teamsPage.enterDescription()));
-    Events.click(webDriver, teamsPage.enterDescription());
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, teamsPage.enterDescription(), sendKeys);
+    wait.until(ExpectedConditions.presenceOfElementLocated(common.focusedDescriptionBox()));
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, teamsPage.saveDescription());
-    String description = webDriver.findElement(common.descriptionContainer()).getText();
+    String description = webDriver.findElement(teamsPage.descriptionContainer()).getText();
     Thread.sleep(2000);
     Assert.assertEquals(description, sendKeys);
   }
@@ -161,27 +161,25 @@ public class TeamsPageTest {
   @Order(5)
   public void addAsset() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    createTeam();
-    Thread.sleep(waitTime);
-    // Select the created listed team
-    Events.click(webDriver, By.xpath(xpath));
+    addUser();
     Events.click(webDriver, teamsPage.asset()); // Assets
     Events.click(webDriver, explorePage.explore()); // Explore
-    String table = webDriver.findElement(common.selectTable()).getText();
-    Events.click(webDriver, common.selectTable());
+    Events.click(webDriver, common.selectTableLink(4));
+    String tableName = webDriver.findElement(teamsPage.tableName()).getText();
+    webDriver.navigate().refresh();
     Events.click(webDriver, common.manage()); // Manage
     Events.click(webDriver, common.ownerDropdown()); // Owner
+    Thread.sleep(waitTime);
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
     Events.click(webDriver, common.selectUser()); // Select User/Team
     Events.click(webDriver, common.saveManage()); // Save
-    Thread.sleep(waitTime);
     Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
     Events.click(webDriver, By.xpath(xpath));
-    Thread.sleep(waitTime);
     Events.click(webDriver, teamsPage.asset());
-    String asset = webDriver.findElement(teamsPage.dataContainer()).getText();
-    if (!asset.contains(table)) {
+    String asset =
+        wait.until(ExpectedConditions.visibilityOf(webDriver.findElement(teamsPage.dataContainer()))).getText();
+    if (!asset.contains(tableName)) {
       Assert.fail("Asset not added");
     }
   }

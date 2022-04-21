@@ -449,6 +449,10 @@
     width: 450px;
   }
 
+  .Toastify__toast {
+    @apply tw-overflow-y-auto tw-max-h-80vh;
+  }
+
   .Toastify__toast-body {
     @apply tw-items-start;
   }

@@ -14,7 +14,6 @@
 import {
   findAllByTestId,
   findByTestId,
-  findByText,
   fireEvent,
   render,
 } from '@testing-library/react';
@@ -90,42 +89,6 @@ describe('Test Manage tab Component', () => {
     const card = await findAllByTestId(container, 'card');
 
     expect(card.length).toBe(3);
-  });
-
-  it('there should be 2 buttons', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const buttons = await findByTestId(container, 'buttons');
-
-    expect(buttons.childElementCount).toBe(2);
-  });
-
-  it('Onclick of save, onSave function also called', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const card = await findAllByTestId(container, 'card');
-
-    fireEvent.click(
-      card[1],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    const save = await findByText(container, /Save/i);
-
-    fireEvent.click(
-      save,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockFunction).toBeCalledTimes(1);
   });
 
   it('Should render switch if isJoinable is present', async () => {

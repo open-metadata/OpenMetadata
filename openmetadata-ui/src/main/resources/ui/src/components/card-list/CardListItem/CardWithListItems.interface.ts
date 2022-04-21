@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Status } from '../../ManageTab/ManageTab.interface';
+
 export type CardWithListItems = {
   id: string;
   description: string;
@@ -21,5 +23,8 @@ export type CardWithListItems = {
 export type Props = {
   card: CardWithListItems;
   isActive: boolean;
+  isSelected: boolean;
+  tierStatus: Status;
+  onSave: (updatedTier: string) => void;
   onSelect: (cardId: string) => void;
 };

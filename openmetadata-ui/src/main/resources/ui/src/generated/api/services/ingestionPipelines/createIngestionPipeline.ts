@@ -66,10 +66,6 @@ export interface AirflowConfig {
    */
   maxActiveRuns?: number;
   /**
-   * Next execution date from the underlying pipeline platform once the pipeline scheduled.
-   */
-  nextExecutionDate?: Date;
-  /**
    * pause the pipeline from running once the deploy is finished successfully.
    */
   pausePipeline?: boolean;
@@ -78,17 +74,9 @@ export interface AirflowConfig {
    */
   pipelineCatchup?: boolean;
   /**
-   * Timeout for the pipeline in seconds.
-   */
-  pipelineTimeout?: number;
-  /**
    * Timezone in which pipeline going to be scheduled.
    */
   pipelineTimezone?: string;
-  /**
-   * File system directory path where managed python operator files are stored.
-   */
-  pythonOperatorLocation?: string;
   /**
    * Retry pipeline in case of failure.
    */
@@ -101,10 +89,6 @@ export interface AirflowConfig {
    * Scheduler Interval for the pipeline in cron format.
    */
   scheduleInterval?: string;
-  /**
-   * python method call back on SLA miss.
-   */
-  slaMissCallback?: string;
   /**
    * Start date of the pipeline.
    */
@@ -188,13 +172,24 @@ export interface SourceConfig {
 
 export interface ConfigClass {
   /**
-   * DBT catalog file to extract dbt models with their column schemas.
+   * DBT Catalog file name
    */
-  dbtCatalogFilePath?: string;
+  dbtCatalogFileName?: string;
   /**
-   * DBT manifest file path to extract dbt models and associate with tables.
+   * DBT configuration.
    */
-  dbtManifestFilePath?: string;
+  dbtConfig?: LocalHTTPDbtConfig;
+  /**
+   * DBT Manifest file name
+   */
+  dbtManifestFileName?: string;
+  /**
+   * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+   * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+   * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+   * local system), 'http'(url path of dbt files).
+   */
+  dbtProvider?: DbtProvider;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -273,4 +268,108 @@ export interface FilterPattern {
    * List of strings/regex patterns to match and include only database entities that match.
    */
   includes?: string[];
+}
+
+/**
+ * DBT configuration.
+ *
+ * Local and HTTP DBT configs.
+ *
+ * GCS credentials configs.
+ *
+ * AWS S3 credentials configs.
+ */
+export interface LocalHTTPDbtConfig {
+  /**
+   * DBT catalog file to extract dbt models with their column schemas.
+   */
+  dbtCatalogFilePath?: string;
+  /**
+   * DBT manifest file path to extract dbt models and associate with tables.
+   */
+  dbtManifestFilePath?: string;
+  /**
+   * GCS configs.
+   */
+  gcsConfig?: GCSValues | string;
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId?: string;
+  /**
+   * AWS Region
+   */
+  awsRegion?: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey?: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
+}
+
+/**
+ * GCS Credentials.
+ */
+export interface GCSValues {
+  /**
+   * Google Cloud auth provider certificate.
+   */
+  authProviderX509CertUrl?: string;
+  /**
+   * Google Cloud auth uri.
+   */
+  authUri?: string;
+  /**
+   * Google Cloud email.
+   */
+  clientEmail?: string;
+  /**
+   * Google Cloud Client ID.
+   */
+  clientId?: string;
+  /**
+   * Google Cloud client certificate uri.
+   */
+  clientX509CertUrl?: string;
+  /**
+   * Google Cloud private key.
+   */
+  privateKey?: string;
+  /**
+   * Google Cloud private key id.
+   */
+  privateKeyId?: string;
+  /**
+   * Google Cloud project id.
+   */
+  projectId?: string;
+  /**
+   * Google Cloud token uri.
+   */
+  tokenUri?: string;
+  /**
+   * Google Cloud service account type.
+   */
+  type?: string;
+}
+
+/**
+ * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+ * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+ * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+ * local system), 'http'(url path of dbt files).
+ */
+export enum DbtProvider {
+  Gcs = 'gcs',
+  GcsPath = 'gcs-path',
+  HTTP = 'http',
+  Local = 'local',
+  S3 = 's3',
 }

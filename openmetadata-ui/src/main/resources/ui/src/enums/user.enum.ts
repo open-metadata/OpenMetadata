@@ -12,7 +12,12 @@
  */
 
 export enum UserType {
-  ISBOT = 'isBot',
-  ISADMIN = 'isAdmin',
-  ISUSER = 'user',
+  USERS = 'users',
+  ADMINS = 'admins',
+  BOTS = 'bots',
+}
+
+export enum OwnerType {
+  USER = 'user',
+  TEAM = 'team',
 }
