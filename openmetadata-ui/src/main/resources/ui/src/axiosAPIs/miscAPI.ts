@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
@@ -119,7 +120,10 @@ export const deleteEntity: Function = (
   entityId: string,
   isRecursive: boolean
 ): Promise<AxiosResponse> => {
-  return APIClient.delete(
-    `/${entityType}/${entityId}?hardDelete=true&recursive=${isRecursive}`
-  );
+  let path = `/${entityType}/${entityId}?hardDelete=true`;
+  if (!isUndefined(isRecursive)) {
+    path = `${path}&recursive=${isRecursive}`;
+  }
+
+  return APIClient.delete(path);
 };
