@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/databaseServiceProfilerPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceProfilerPipeline",
+  "description": "DatabaseService Profiler Pipeline Configuration.",
+  "definitions": {
+    "profilerConfigType": {
+      "description": "Profiler Source Config Pipeline type",
+      "type": "string",
+      "enum": ["Profiler"],
+      "default": "Profiler"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/profilerConfigType",
+      "default": "Profiler"
+    },
+    "fqnFilterPattern": {
+      "description": "Regex to only fetch tables with FQN matching the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    }
+  },
+  "additionalProperties": false
+}

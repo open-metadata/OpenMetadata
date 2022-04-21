@@ -10,7 +10,10 @@
 #  limitations under the License.
 
 """
-Helper that implements table and filter pattern logic
+Helper that implements table and filter pattern logic.
+Most of these methods are applying the same logic,
+but assigning specific names helps better follow the
+code.
 """
 import re
 from typing import List, Optional
@@ -118,6 +121,19 @@ def filter_by_chart(
     return _filter(chart_filter_pattern, chart_name)
 
 
+def filter_by_topic(topic_filter_pattern: Optional[FilterPattern], topic: str) -> bool:
+    """
+    Return True if the topic needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param topic_filter_pattern: Model defining chart filtering logic
+    :param topic_name: topic name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(topic_filter_pattern, topic)
+
+
 def filter_by_dashboard(
     dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
@@ -131,3 +147,16 @@ def filter_by_dashboard(
     :return: True for filtering, False otherwise
     """
     return _filter(dashboard_filter_pattern, dashboard_name)
+
+
+def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param fqn_filter_pattern: Model defining FQN filtering logic
+    :param fqn: table FQN name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(fqn_filter_pattern, fqn)

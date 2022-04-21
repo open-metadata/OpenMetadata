@@ -30,14 +30,8 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
-    "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
-      "type": "string"
-    },
-    "password": {
-      "description": "password to connect  to the Athena.",
-      "type": "string",
-      "format": "password"
+    "awsConfig": {
+      "$ref": "../../../../security/credentials/s3Credentials.json"
     },
     "hostPort": {
       "description": "Host and port of the Athena",
@@ -45,10 +39,6 @@
     },
     "database": {
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
-      "type": "string"
-    },
-    "awsRegion": {
-      "description": "AWS Athena AWS Region. ",
       "type": "string"
     },
     "s3StagingDir": {
@@ -67,6 +57,9 @@
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false

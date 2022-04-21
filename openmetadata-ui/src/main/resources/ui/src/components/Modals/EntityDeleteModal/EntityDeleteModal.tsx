@@ -28,6 +28,7 @@ interface Prop extends HTMLAttributes<HTMLDivElement> {
   entityName: string;
   entityType: string;
   loadingState: string;
+  bodyText?: string;
 }
 
 const EntityDeleteModal: FC<Prop> = ({
@@ -37,6 +38,7 @@ const EntityDeleteModal: FC<Prop> = ({
   entityType,
   onCancel,
   onConfirm,
+  bodyText,
 }: Prop) => {
   const [name, setName] = useState('');
 
@@ -45,7 +47,7 @@ const EntityDeleteModal: FC<Prop> = ({
   };
 
   const isNameMatching = useCallback(() => {
-    return name === `${entityType}/${entityName}`;
+    return name === 'DELETE';
   }, [name]);
 
   return (
@@ -60,13 +62,12 @@ const EntityDeleteModal: FC<Prop> = ({
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2">{`Once you delete this ${entityType}, it would be removed permanently`}</p>
           <p className="tw-mb-2">
-            Type{' '}
-            <strong>
-              {entityType}/{entityName}
-            </strong>{' '}
-            to confirm
+            {bodyText ||
+              `Once you delete this ${entityType}, it will be removed permanently`}
+          </p>
+          <p className="tw-mb-2">
+            Type <strong>DELETE</strong> to confirm
           </p>
           <input
             autoComplete="off"

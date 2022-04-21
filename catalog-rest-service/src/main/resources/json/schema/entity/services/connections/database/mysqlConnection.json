@@ -31,11 +31,11 @@
       "default": "mysql+pymysql"
     },
     "username": {
-      "description": "username to connect  to the SingleStore. This user should have privileges to read all the metadata in SingleStore.",
+      "description": "username to connect  to the Mysql. This user should have privileges to read all the metadata in Mysql.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the SingleStore.",
+      "description": "password to connect  to the Mysql.",
       "type": "string",
       "format": "password"
     },
@@ -44,7 +44,7 @@
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in SingleStore.",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Mysql.",
       "type": "string"
     },
     "connectionOptions": {
@@ -55,11 +55,11 @@
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }

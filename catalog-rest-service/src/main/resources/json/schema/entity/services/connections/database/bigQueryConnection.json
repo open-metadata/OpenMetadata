@@ -36,7 +36,7 @@
       "default": "bigquery.googleapis.com"
     },
     "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+      "description": "username to connect to the Bigquery. This user should have privileges to read all the metadata in Bigquery.",
       "type": "string"
     },
     "projectId": {
@@ -87,10 +87,11 @@
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsProfiler": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "credentials"
-  ]
+  "required": ["credentials"]
 }
