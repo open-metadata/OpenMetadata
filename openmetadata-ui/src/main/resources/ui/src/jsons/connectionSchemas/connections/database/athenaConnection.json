@@ -9,13 +9,17 @@
     "athenaType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Athena"],
+      "enum": [
+        "Athena"
+      ],
       "default": "Athena"
     },
     "athenaScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["awsathena+rest"],
+      "enum": [
+        "awsathena+rest"
+      ],
       "default": "awsathena+rest"
     }
   },
@@ -30,15 +34,6 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
-    "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
-      "type": "string"
-    },
-    "password": {
-      "description": "password to connect  to the Athena.",
-      "type": "string",
-      "format": "password"
-    },
     "hostPort": {
       "description": "Host and port of the Athena",
       "type": "string"
@@ -47,9 +42,8 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
       "type": "string"
     },
-    "awsRegion": {
-      "description": "AWS Athena AWS Region. ",
-      "type": "string"
+    "awsConfig": {
+      "$ref": "../../../../../../../../../../../OpenMetadata/catalog-rest-service/src/main/resources/json/schema/security/credentials/s3Credentials.json"
     },
     "s3StagingDir": {
       "description": "S3 Staging Directory.",
