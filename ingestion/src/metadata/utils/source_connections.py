@@ -123,7 +123,6 @@ def get_connection_url(connection):
 @get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
-@get_connection_url.register(VerticaConnection)
 @get_connection_url.register(Db2Connection)
 def _(connection):
     return get_connection_url_common(connection)
