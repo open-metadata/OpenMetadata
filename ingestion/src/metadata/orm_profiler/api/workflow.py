@@ -29,8 +29,8 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -43,7 +43,7 @@ from metadata.ingestion.source.sql_source import SQLSource, SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
 from metadata.utils.engines import create_and_bind_session
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_fqn
 
 logger = logger()
 
@@ -78,7 +78,7 @@ class ProfilerWorkflow:
             )
 
         # Init and type the source config
-        self.source_config: DatabaseServiceMetadataPipeline = (
+        self.source_config: DatabaseServiceProfilerPipeline = (
             self.config.source.sourceConfig.config
         )
         self.source_status = SQLSourceStatus()
@@ -124,23 +124,12 @@ class ProfilerWorkflow:
         """
         for table in tables:
 
-            # Validate schema
-            if filter_by_schema(
-                schema_filter_pattern=self.source_config.schemaFilterPattern,
-                schema_name=table.databaseSchema.name,
+            if filter_by_fqn(
+                fqn_filter_pattern=self.source_config.fqnFilterPattern,
+                fqn=table.fullyQualifiedName.__root__,
             ):
                 self.source_status.filter(
-                    table.databaseSchema.name, "Schema pattern not allowed"
-                )
-                continue
-
-            # Validate database
-            if filter_by_table(
-                table_filter_pattern=self.source_config.tableFilterPattern,
-                table_name=str(table.name.__root__),
-            ):
-                self.source_status.filter(
-                    table.name.__root__, "Table name pattern not allowed"
+                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
                 )
                 continue
 
