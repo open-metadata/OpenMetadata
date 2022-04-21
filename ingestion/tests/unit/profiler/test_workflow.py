@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.tests.column.columnValuesToBeBetween import (
     ColumnValuesToBeBetween,
@@ -47,7 +47,7 @@ config = {
         "type": "sqlite",
         "serviceName": "my_service",
         "serviceConnection": {"config": {"type": "SQLite"}},
-        "sourceConfig": {"config": {}},
+        "sourceConfig": {"config": {"type": "Profiler"}},
     },
     "processor": {"type": "orm-profiler", "config": {}},
     "sink": {"type": "metadata-rest", "config": {}},
@@ -66,7 +66,7 @@ def test_init_workflow():
     """
     We can initialise the workflow from a config
     """
-    assert isinstance(workflow.source_config, DatabaseServiceMetadataPipeline)
+    assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
     assert isinstance(workflow.metadata_config, OpenMetadataConnection)
 
     assert isinstance(workflow.processor, OrmProfilerProcessor)
@@ -118,42 +118,26 @@ def test_filter_entities():
     # We can exclude based on the schema name
     exclude_filter_schema_config = deepcopy(config)
     exclude_filter_schema_config["source"]["sourceConfig"]["config"][
-        "schemaFilterPattern"
-    ] = {"excludes": ["one_schema"]}
+        "fqnFilterPattern"
+    ] = {"excludes": ["service*"]}
 
     exclude_filter_schema_workflow = ProfilerWorkflow.create(
         exclude_filter_schema_config
     )
-    assert len(list(exclude_filter_schema_workflow.filter_entities(all_tables))) == 1
+    assert len(list(exclude_filter_schema_workflow.filter_entities(all_tables))) == 0
 
     # We can include based on the schema name
-    include_filter_schema_config = deepcopy(config)
-    include_filter_schema_config["source"]["sourceConfig"]["config"][
-        "schemaFilterPattern"
-    ] = {"includes": ["another_schema"]}
+    # include_filter_schema_config = deepcopy(config)
+    # include_filter_schema_config["source"]["sourceConfig"]["config"][
+    #     "fqnFilterPattern"
+    # ] = {"includes": ["another_schema"]}
 
-    include_filter_schema_workflow = ProfilerWorkflow.create(
-        include_filter_schema_config
-    )
-    assert len(list(include_filter_schema_workflow.filter_entities(all_tables))) == 1
 
-    # We can exclude based on the table name
-    exclude_filter_table_config = deepcopy(config)
-    exclude_filter_table_config["source"]["sourceConfig"]["config"][
-        "tableFilterPattern"
-    ] = {"excludes": ["tab*"]}
-
-    exclude_filter_table_workflow = ProfilerWorkflow.create(exclude_filter_table_config)
-    assert len(list(exclude_filter_table_workflow.filter_entities(all_tables))) == 0
-
-    # We can include based on the table name
-    include_filter_table_config = deepcopy(config)
-    include_filter_table_config["source"]["sourceConfig"]["config"][
-        "tableFilterPattern"
-    ] = {"includes": ["table1"]}
-
-    include_filter_table_workflow = ProfilerWorkflow.create(include_filter_table_config)
-    assert len(list(include_filter_table_workflow.filter_entities(all_tables))) == 1
+#
+# include_filter_schema_workflow = ProfilerWorkflow.create(
+#     include_filter_schema_config
+# )
+# assert len(list(include_filter_schema_workflow.filter_entities(all_tables))) == 1
 
 
 def test_profile_def():

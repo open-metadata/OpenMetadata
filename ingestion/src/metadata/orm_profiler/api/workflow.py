@@ -23,7 +23,7 @@ import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
+from metadata.config.workflow import get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -37,12 +37,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source import SQLSource, SQLSourceStatus
+from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session
+from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
 from metadata.utils.filters import filter_by_fqn
 
 logger = logger()
@@ -54,7 +53,6 @@ class ProfilerWorkflow:
     """
 
     config: OpenMetadataWorkflowConfig
-    source: Source
     processor: Processor
     sink: Sink
     metadata: OpenMetadata
@@ -65,17 +63,10 @@ class ProfilerWorkflow:
             self.config.workflowConfig.openMetadataServerConfig
         )
 
-        # We will use the existing sources to build the Engine
-        self.source: Source = get_ingestion_source(
-            source_type=self.config.source.type,
-            source_config=self.config.source,
-            metadata_config=self.metadata_config,
-        )
-
-        if not isinstance(self.source, SQLSource):
-            raise ValueError(
-                f"Invalid source type for {self.source}. We only support SQLSource in the Profiler"
-            )
+        # Prepare the connection to the source service
+        # We don't need the whole Source class, as it is the OM Server
+        engine = get_engine(self.config.source.serviceConnection.__root__.config)
+        test_connection(engine)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = (
@@ -89,7 +80,7 @@ class ProfilerWorkflow:
             metadata_config=self.metadata_config,
             _from="orm_profiler",
             # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(self.source.engine),
+            session=create_and_bind_session(engine),
         )
 
         if self.config.sink:
