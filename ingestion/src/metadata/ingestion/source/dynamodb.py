@@ -24,7 +24,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import get_engine
+from metadata.utils.engines import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -42,7 +42,8 @@ class DynamodbSource(Source[Entity]):
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config
         )
-        self.dynamodb = get_engine(self.service_connection)
+        self.connection = get_connection(self.service_connection)
+        self.dynamodb = self.connection.client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

@@ -12,6 +12,8 @@
 Module containing the logic to test a connection
 from a WorkflowSource
 """
+from multiprocessing import connection
+
 from flask import Response
 from openmetadata.api.response import ApiResponse
 
@@ -20,7 +22,7 @@ from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnec
 )
 from metadata.utils.engines import (
     SourceConnectionException,
-    get_engine,
+    get_connection,
     test_connection,
 )
 
@@ -33,15 +35,15 @@ def test_source_connection(
     :param workflow_source: Source to test
     :return: None or exception
     """
-    engine = get_engine(test_service_connection.connection.config)
+    connection = get_connection(test_service_connection.connection.config)
 
     try:
-        test_connection(engine)
+        test_connection(connection)
 
     except SourceConnectionException as err:
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Connection error from {engine} - {err}",
+            error=f"Connection error from {connection} - {err}",
         )
 
-    return ApiResponse.success({"message": f"Connection with {engine} successful!"})
+    return ApiResponse.success({"message": f"Connection with {connection} successful!"})

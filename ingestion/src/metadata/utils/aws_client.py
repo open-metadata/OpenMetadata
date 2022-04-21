@@ -17,6 +17,16 @@ from pydantic import SecretStr
 from metadata.config.common import ConfigModel
 
 
+class GlueClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+class DynamoClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
 class AWSClientConfigModel(ConfigModel):
     """
     AWSClientConfigModel holds all config parameters required to instantiate an AWSClient.
@@ -77,3 +87,9 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.resource(service_name=service_name)
+
+    def get_dynomo_client(self) -> DynamoClient:
+        return DynamoClient(self.get_resource("dynamodb"))
+
+    def get_glue_client(self) -> GlueClient:
+        return GlueClient(self.get_client("glue"))
