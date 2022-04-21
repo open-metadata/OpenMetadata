@@ -15,6 +15,8 @@ Build and document all supported Engines
 import logging
 from functools import singledispatch
 
+from boto3.resources.factory import ServiceResource
+from botocore.client import ClientError
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
@@ -27,6 +29,10 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
+from metadata.utils.aws_client import AWSClient
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -81,6 +87,12 @@ def _(connection: BigQueryConnection, verbose: bool = False):
     return create_generic_engine(connection, verbose)
 
 
+@get_engine.register
+def _(connection: DynamoDBConnection, verbose: bool = False):
+    aws_client = AWSClient(connection).get_resource("dynamodb")
+    return aws_client
+
+
 def create_and_bind_session(engine: Engine) -> Session:
     """
     Given an engine, create a session bound
@@ -92,6 +104,7 @@ def create_and_bind_session(engine: Engine) -> Session:
 
 
 @timeout(seconds=120)
+@singledispatch
 def test_connection(engine: Engine) -> None:
     """
     Test that we can connect to the source using the given engine
@@ -102,6 +115,25 @@ def test_connection(engine: Engine) -> None:
         with engine.connect() as _:
             pass
     except OperationalError as err:
+        raise SourceConnectionException(
+            f"Connection error for {engine} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {engine} - {err}."
+        )
+
+
+@test_connection.register
+def _(engine: ServiceResource) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    try:
+        engine.tables.all()
+    except ClientError as err:
         raise SourceConnectionException(
             f"Connection error for {engine} - {err}. Check the connection details."
         )
