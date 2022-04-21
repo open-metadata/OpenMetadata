@@ -106,7 +106,7 @@
       "type": "integer"
     },
     "tags": {
-      "description": "Tags for this glossary term.",
+      "description": "Tags associated with this glossary term. These tags captures relationship of a glossary term with a tag automatically. As an example a glossary term 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -127,6 +127,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "glossary"],
+  "required": ["id", "name", "description", "glossary"],
   "additionalProperties": false
 }

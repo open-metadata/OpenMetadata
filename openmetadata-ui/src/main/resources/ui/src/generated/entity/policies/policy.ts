@@ -30,7 +30,7 @@ export interface Policy {
    */
   description?: string;
   /**
-   * Title for this Policy.
+   * Display name for this Policy.
    */
   displayName?: string;
   /**
@@ -49,6 +49,10 @@ export interface Policy {
    * Unique identifier that identifies this Policy.
    */
   id: string;
+  /**
+   * Location to which a policy is applied. This field is relevant only for `lifeCycle`
+   * policies.
+   */
   location?: LocationClass;
   /**
    * Name that uniquely identifies this Policy.
@@ -63,6 +67,9 @@ export interface Policy {
    * Link to a well documented definition of this Policy.
    */
   policyUrl?: string;
+  /**
+   * Rules that the policy has.
+   */
   rules?: Rule[];
   /**
    * Last update time corresponding to the new version of the Policy in Unix epoch time
@@ -121,6 +128,9 @@ export interface PurpleFieldChange {
 }
 
 /**
+ * Location to which a policy is applied. This field is relevant only for `lifeCycle`
+ * policies.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
@@ -175,6 +185,8 @@ export enum PolicyType {
 }
 
 /**
+ * Rules that the policy has.
+ *
  * A set of rules associated with the Policy.
  *
  * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
@@ -188,9 +200,9 @@ export interface Rule {
    */
   allow?: boolean;
   /**
-   * Is the rule enabled.
+   * Is the rule soft-deleted.
    */
-  enabled?: boolean;
+  deleted?: boolean;
   /**
    * Entity tag that the rule should match on.
    */
@@ -213,10 +225,6 @@ export interface Rule {
    * Priority of this rule among all rules across all policies.
    */
   priority?: number;
-  /**
-   * Role of the user that the rule should match on.
-   */
-  userRoleAttr?: string;
   /**
    * A set of actions to take on the entities.
    */

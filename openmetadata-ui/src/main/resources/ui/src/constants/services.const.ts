@@ -47,6 +47,7 @@ import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
+import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -85,6 +86,7 @@ export const IBMDB2 = ibmdb2;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
+export const DEFAULT_SERVICE = iconDefaultService;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;

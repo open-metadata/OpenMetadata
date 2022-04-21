@@ -35,7 +35,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.engines import get_engine
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -50,7 +49,7 @@ class SnowflakeSource(SQLSource):
             config.serviceConnection.__root__.config.connectionArguments
         )
         if connection_arguments:
-            if connection_arguments.private_key:
+            if hasattr(connection_arguments, "private_key"):
                 private_key = connection_arguments.private_key
                 p_key = serialization.load_pem_private_key(
                     bytes(private_key, "utf-8"),
@@ -82,7 +81,6 @@ class SnowflakeSource(SQLSource):
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_engine(self.config.serviceConnection)
                 yield inspect(self.engine)
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:

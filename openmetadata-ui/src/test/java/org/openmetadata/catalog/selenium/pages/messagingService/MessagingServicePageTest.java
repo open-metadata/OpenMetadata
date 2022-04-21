@@ -90,32 +90,22 @@ public class MessagingServicePageTest {
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.urlLink(), faker.address().toString());
+    Events.sendKeys(webDriver, common.linkText(), faker.name().firstName());
+    Events.click(webDriver, common.okButton());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, messagingServicePage.messagingServiceBrokerUrl(), "localhost:8080, localhost:9092");
+    Events.sendKeys(
+        webDriver, messagingServicePage.messagingServiceBootstrapServers(), "localhost:8080, localhost:9092");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "https://localhost:8081");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.saveServiceButton());
-  }
-
-  @Test
-  @Order(3)
-  public void checkMessagingServiceDetails() throws InterruptedException {
-    openMessagingServicePage();
-    Thread.sleep(2000);
-    Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, messagingServicePage.messagingServiceBrokerUrl(), "1");
-    Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "1");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.click(webDriver, common.saveManage());
   }
 
   @Test
@@ -125,8 +115,8 @@ public class MessagingServicePageTest {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, messagingServicePage.messagingServiceBrokerUrl(), "1");
-    Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "1");
+    Events.sendKeys(webDriver, messagingServicePage.messagingServiceBootstrapServers(), "test");
+    Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "test");
     Events.click(webDriver, common.saveConnectionConfig());
   }
 
@@ -134,7 +124,6 @@ public class MessagingServicePageTest {
   @Order(5)
   public void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }

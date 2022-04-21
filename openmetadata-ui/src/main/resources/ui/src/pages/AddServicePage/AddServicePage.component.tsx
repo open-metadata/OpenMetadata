@@ -14,7 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { addIngestionPipeline } from '../../axiosAPIs/ingestionPipelineAPI';
+import {
+  addIngestionPipeline,
+  getIngestionPipelineByFqn,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { postService } from '../../axiosAPIs/serviceAPI';
 import AddService from '../../components/AddService/AddService.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -66,11 +69,27 @@ const AddServicePage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['create-ingestion-error']
-          );
-          reject();
+          getIngestionPipelineByFqn(`${newServiceData?.name}.${data.name}`)
+            .then((res: AxiosResponse) => {
+              if (res.data) {
+                resolve();
+                showErrorToast(
+                  err,
+                  jsonData['api-error-messages']['deploy-ingestion-error']
+                );
+              } else {
+                throw jsonData['api-error-messages'][
+                  'unexpected-server-response'
+                ];
+              }
+            })
+            .catch(() => {
+              showErrorToast(
+                err,
+                jsonData['api-error-messages']['create-ingestion-error']
+              );
+              reject();
+            });
         });
     });
   };

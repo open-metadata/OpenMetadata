@@ -48,8 +48,9 @@
       "type": "string"
     },
     "token": {
-      "description": "",
-      "type": "string"
+      "description": "Generated Token to connect to Databricks",
+      "type": "string",
+      "format": "password"
     },
     "connectionOptions": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
@@ -73,5 +74,6 @@
       "default": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort", "token"]
 }

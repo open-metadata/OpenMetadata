@@ -24,10 +24,7 @@ export interface RedashConnection {
    * URL for the redash instance
    */
   redashURL?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -36,13 +33,6 @@ export interface RedashConnection {
    * username for the Redash
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

@@ -159,6 +159,8 @@ class AmundsenSource(Source[Entity]):
         try:
             service_name = table["cluster"]
             service_type = table["database"]
+
+            # TODO: use metadata.get_service_or_create
             service_entity = self.get_database_service_or_create(
                 service_name, service_type
             )
@@ -290,7 +292,7 @@ class AmundsenSource(Source[Entity]):
                 "name": service_name,
                 "description": "",
                 "serviceType": self.database_service_map.get(
-                    service_type.lower(), DatabaseServiceType.MySQL.value
+                    service_type.lower(), DatabaseServiceType.Mysql.value
                 ),
                 "connection": {"config": {}},
             }

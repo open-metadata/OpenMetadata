@@ -1,13 +1,18 @@
 {
   "source": {
-    "type": "metadata",
+    "type": "metadata_elasticsearch",
     "serviceName": "openMetadata",
-    "config": {
-      "include_tables": "true",
-      "include_topics": "true",
-      "include_dashboards": "true",
-      "limit_records": 10
-    }
+    "serviceConnection": {
+      "config":{
+        "type":"MetadataES",
+        "includeTables": "true",
+        "includeUsers": "true",
+        "includeTopics": "true",
+        "includeDashboards": "true",
+        "limitRecords": 10
+      } 
+    },
+    "sourceConfig":{"config":{}}
   },
   "sink": {
     "type": "elasticsearch",

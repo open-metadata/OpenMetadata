@@ -22,9 +22,9 @@ export interface Rule {
    */
   allow?: boolean;
   /**
-   * Is the rule enabled.
+   * Is the rule soft-deleted.
    */
-  enabled?: boolean;
+  deleted?: boolean;
   /**
    * Entity tag that the rule should match on.
    */
@@ -45,10 +45,6 @@ export interface Rule {
    * Priority of this rule among all rules across all policies.
    */
   priority?: number;
-  /**
-   * Role of the user that the rule should match on.
-   */
-  userRoleAttr?: string;
 }
 
 /**

@@ -47,11 +47,6 @@
       "$ref": "../../../type/tagLabel.json#/definitions/tagFQN",
       "default": null
     },
-    "userRoleAttr": {
-      "description": "Role of the user that the rule should match on.",
-      "$ref": "../../teams/role.json#/definitions/roleName",
-      "default": null
-    },
     "operation": {
       "description": "Operation on the entity.",
       "$ref": "#/definitions/operation",
@@ -67,10 +62,10 @@
       "type": "integer",
       "default": 250000
     },
-    "enabled": {
-      "description": "Is the rule enabled.",
+    "deleted": {
+      "description": "Is the rule soft-deleted.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
   "required": ["name"],

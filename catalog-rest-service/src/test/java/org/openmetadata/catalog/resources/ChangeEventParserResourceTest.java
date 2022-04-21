@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -91,7 +92,7 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
     EntityReference entityReference = new EntityReference();
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
     FieldChange addOwner = new FieldChange();
-    addOwner.withName("owner").withNewValue(JsonUtils.pojoToJson(entityReference));
+    addOwner.withName(FIELD_OWNER).withNewValue(JsonUtils.pojoToJson(entityReference));
 
     changeDescription.withFieldsAdded(List.of(addOwner)).withPreviousVersion(1.0);
 

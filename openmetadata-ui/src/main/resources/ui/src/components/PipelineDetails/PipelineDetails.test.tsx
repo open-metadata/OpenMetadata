@@ -91,6 +91,8 @@ const PipelineDetailsProps = {
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
+  pipelineStatus: [],
+  isPipelineStatusLoading: false,
 };
 
 const mockObserve = jest.fn();
@@ -138,6 +140,12 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
 
 jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+});
+
+jest.mock('../PipelineStatusList/PipelineStatusList.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="pipeline-status-list">Pipeline Status</p>);
 });
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -200,9 +208,24 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is lineage', async () => {
+  it('Check if active tab is executions', async () => {
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const pipelineStatus = await findByTestId(
+      container,
+      'pipeline-status-list'
+    );
+
+    expect(pipelineStatus).toBeInTheDocument();
+  });
+
+  it('Check if active tab is lineage', async () => {
+    const { container } = render(
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -214,7 +237,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }

@@ -20,7 +20,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   JoinedWith,
   Table,
@@ -305,7 +305,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           return {
             name: getPartialNameFromTableFQN(
               tableFQN,
-              ['database', 'table'],
+              [FqnPart.Database, FqnPart.Table],
               FQN_SEPARATOR_CHAR
             ),
             fullyQualifiedName: tableFQN,
@@ -607,7 +607,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <SchemaTab
                     columnName={getPartialNameFromTableFQN(
                       datasetFQN,
-                      ['column'],
+                      [FqnPart['Column']],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
@@ -626,30 +626,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onUpdate={onColumnsUpdate}
                   />
                 </div>
-
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(owner)}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.TABLE,
-                      datasetFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
               </div>
             )}
             {activeTab === 2 && (
@@ -758,8 +734,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 9 && !deleted && (
               <div>
                 <ManageTab
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={tableDetails.id}
+                  entityName={tableDetails.name}
+                  entityType={EntityType.TABLE}
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
@@ -772,6 +752,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {getLoader()}
             </div>
           </div>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+          {selectedField ? (
+            <RequestDescriptionModal
+              createThread={createThread}
+              defaultValue={getDefaultValue(owner)}
+              header="Request description"
+              threadLink={getEntityFeedLink(
+                EntityType.TABLE,
+                datasetFQN,
+                selectedField
+              )}
+              onCancel={closeRequestModal}
+            />
+          ) : null}
         </div>
       </div>
     </PageContainer>

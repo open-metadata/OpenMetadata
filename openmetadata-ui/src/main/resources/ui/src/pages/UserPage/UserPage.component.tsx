@@ -12,21 +12,37 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { observer } from 'mobx-react';
+import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getUserByName } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
+import {
+  onConfirmText,
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const fetchUserData = () => {
     getUserByName(username, 'profile,roles,teams,follows,owns')
@@ -63,16 +79,114 @@ const UserPage = () => {
     );
   };
 
+  const feedFilterHandler = (filter: FeedFilter) => {
+    setFeedFilter(filter);
+  };
+
+  const getFeedData = (filterType: FeedFilter, after?: string) => {
+    setIsFeedLoading(true);
+    const currentUserId = AppState.getCurrentUserDetails()?.id;
+    getFeedsWithFilter(currentUserId, filterType, after)
+      .then((res: AxiosResponse) => {
+        const { data, paging: pagingObj } = res.data;
+        setPaging(pagingObj);
+
+        setEntityThread((prevData) => [...prevData, ...data]);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-activity-feed-error']
+        );
+      })
+      .finally(() => {
+        setIsFeedLoading(false);
+      });
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
+      });
+  };
+
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showErrorToast(message ?? onUpdatedConversastionError);
+          });
+        showSuccessToast(onConfirmText);
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showErrorToast(message ?? onErrorText);
+      });
+  };
+
   useEffect(() => {
     fetchUserData();
   }, [username]);
+
+  useEffect(() => {
+    getFeedData(feedFilter);
+    setEntityThread([]);
+  }, [feedFilter]);
 
   return (
     <PageContainerV1 className="tw-pt-4">
       {isLoading ? (
         <Loader />
       ) : !isError ? (
-        <Users userData={userData} />
+        <Users
+          deletePostHandler={deletePostHandler}
+          feedData={entityThread || []}
+          feedFilter={feedFilter}
+          feedFilterHandler={feedFilterHandler}
+          fetchFeedHandler={getFeedData}
+          isFeedLoading={isFeedLoading}
+          paging={paging}
+          postFeedHandler={postFeedHandler}
+          userData={userData}
+        />
       ) : (
         <ErrorPlaceholder />
       )}
@@ -80,4 +194,4 @@ const UserPage = () => {
   );
 };
 
-export default UserPage;
+export default observer(UserPage);

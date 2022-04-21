@@ -12,6 +12,7 @@
 Helper functions to handle OpenMetadata Entities' properties
 """
 
+import logging
 import re
 import string
 from functools import singledispatch
@@ -22,6 +23,10 @@ from pydantic import BaseModel
 from metadata.generated.schema.type import basic
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+
+
+def ometa_logger():
+    return logging.getLogger("OMetaAPI")
 
 
 def format_name(name: str) -> str:

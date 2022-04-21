@@ -15,7 +15,8 @@ import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import CardListItem from './CardWithListItems';
 
-const mockFunction = jest.fn();
+const mockSelectFunction = jest.fn();
+const mockSaveFuntion = jest.fn();
 const mockCard = {
   id: 'test1',
   title: 'card',
@@ -30,7 +31,14 @@ jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
 describe('Test CardWithListing Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
-      <CardListItem card={mockCard} isActive={false} onSelect={mockFunction} />
+      <CardListItem
+        card={mockCard}
+        isActive={false}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockSelectFunction}
+      />
     );
 
     const card = getByTestId('card-list');
@@ -40,9 +48,16 @@ describe('Test CardWithListing Component', () => {
     expect(getByTestId('icon')).toBeEmptyDOMElement();
   });
 
-  it('OnClick callback function should call', () => {
+  it('OnClick onSelect function should call', () => {
     const { getByTestId } = render(
-      <CardListItem card={mockCard} isActive={false} onSelect={mockFunction} />
+      <CardListItem
+        card={mockCard}
+        isActive={false}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockSelectFunction}
+      />
     );
 
     const card = getByTestId('card-list');
@@ -54,6 +69,66 @@ describe('Test CardWithListing Component', () => {
       })
     );
 
-    expect(mockFunction).toHaveBeenCalledTimes(1);
+    expect(mockSelectFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('OnClick onSelect function should call and Select tier button should be visible', () => {
+    const { getByTestId } = render(
+      <CardListItem
+        isActive
+        card={mockCard}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockSelectFunction}
+      />
+    );
+
+    const card = getByTestId('card-list');
+    fireEvent(
+      card,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(mockSelectFunction).toHaveBeenCalledTimes(1);
+
+    const tierSelectButton = getByTestId('select-tier-buuton');
+
+    expect(tierSelectButton).toBeInTheDocument();
+  });
+
+  it('onClick of select tier button onSave function should call.', () => {
+    const { getByTestId } = render(
+      <CardListItem
+        isActive
+        card={mockCard}
+        isSelected={false}
+        tierStatus="initial"
+        onSave={mockSaveFuntion}
+        onSelect={mockSelectFunction}
+      />
+    );
+
+    const card = getByTestId('card-list');
+    fireEvent(
+      card,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(mockSelectFunction).toHaveBeenCalledTimes(1);
+
+    const tierSelectButton = getByTestId('select-tier-buuton');
+
+    expect(tierSelectButton).toBeInTheDocument();
+
+    fireEvent.click(tierSelectButton);
+
+    expect(mockSaveFuntion).toHaveBeenCalledTimes(1);
   });
 });

@@ -10,9 +10,14 @@
 #  limitations under the License.
 
 import json
-from typing import Optional
+from typing import Optional, Union
 
+from airflow.models import DagRun
 from flask import Response
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineStatus,
+)
 
 
 class ApiResponse:
@@ -36,12 +41,8 @@ class ApiResponse:
         return resp
 
     @staticmethod
-    def success(response_obj: Optional[dict] = None):
-        if not response_obj:
-            response_obj = {}
-
-        response_obj["status"] = "success"
-        return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_obj)
+    def success(response_obj: Union[Optional[dict], Optional[list]] = None):
+        return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_obj or {})
 
     @staticmethod
     def error(status, error):
@@ -69,46 +70,14 @@ class ResponseFormat:
         pass
 
     @staticmethod
-    def format_dag_run_state(dag_run):
-        return {
-            "state": dag_run.get_state(),
-            "startDate": (
-                None
-                if not dag_run.start_date
-                else dag_run.start_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
-            ),
-            "endDate": (
-                None
-                if not dag_run.end_date
-                else dag_run.end_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
-            ),
-        }
-
-    @staticmethod
-    def format_dag_task(task_instance):
-        return {
-            "taskId": task_instance.task_id,
-            "dagId": task_instance.dag_id,
-            "state": task_instance.state,
-            "tryNumber": (
-                None
-                if not task_instance._try_number
-                else str(task_instance._try_number)
-            ),
-            "maxTries": (
-                None if not task_instance.max_tries else str(task_instance.max_tries)
-            ),
-            "startDate": (
-                None
-                if not task_instance.start_date
-                else task_instance.start_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
-            ),
-            "endDate": (
-                None
-                if not task_instance.end_date
-                else task_instance.end_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
-            ),
-            "duration": (
-                None if not task_instance.duration else str(task_instance.duration)
-            ),
-        }
+    def format_dag_run_state(dag_run: DagRun) -> PipelineStatus:
+        return PipelineStatus(
+            state=dag_run.get_state(),
+            runId=dag_run.run_id,
+            startDate=None
+            if not dag_run.start_date
+            else dag_run.start_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+            endDate=None
+            if not dag_run.end_date
+            else dag_run.end_date.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        )

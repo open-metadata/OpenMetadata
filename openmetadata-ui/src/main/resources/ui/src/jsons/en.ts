@@ -33,6 +33,7 @@ const jsonData = {
     'create-ingestion-error': 'Error while creating ingestion workflow!',
     'create-service-error': 'Error while creating service!',
 
+    'delete-entity-error': 'Error while deleting entity!',
     'delete-glossary-error': 'Error while deleting glossary!',
     'delete-glossary-term-error': 'Error while deleting glossary term!',
     'delete-ingestion-error': 'Error while deleting ingestion workflow',
@@ -53,6 +54,8 @@ const jsonData = {
     'elastic-search-error': 'Error while fetching data from Elasticsearch!',
 
     'triggering-ingestion-error': 'Error while triggering ingestion workflow',
+
+    'deploy-ingestion-error': 'Error while deploying ingestion workflow!',
 
     'fetch-auth-config-error': 'Error occurred while fetching auth configs!',
     'fetch-chart-error': 'Error while fetching charts!',
@@ -76,6 +79,7 @@ const jsonData = {
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
+    'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
     'fetch-roles-error': 'Error while fetching roles!',
     'fetch-sample-data-error': 'Error while fetching sample data!',
@@ -97,6 +101,8 @@ const jsonData = {
     'fetch-version-error': 'Error while fetching version!',
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
+
+    'test-connection-error': 'Error while testing connection!',
 
     'unexpected-server-response': 'Unexpected response from server!',
 
@@ -123,21 +129,30 @@ const jsonData = {
     'update-reviewer-error': 'Error while updating reviewer!',
 
     'feed-post-error': 'Error while posting the message!',
+
+    'join-team-error': 'Error while joining the team!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
+
+    'join-team-success': 'Team joined successfully!',
+
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
+    'delete-entity-success': 'Entity deleted successfully!',
+    'test-connection-success': 'Connection tested successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
   },
   label: {
-    // Add UI label texts here
+    'delete-entity-text':
+      'Once you delete this entity, it would be removed permanently.',
   },
   message: {
     'no-services': 'No services',
+    'fail-to-deploy-pipeline': 'Failed to deploy Ingestion Pipeline',
   },
 };
 

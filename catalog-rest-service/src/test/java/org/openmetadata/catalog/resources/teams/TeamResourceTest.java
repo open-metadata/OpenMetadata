@@ -44,6 +44,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.policies.CreatePolicy;
+import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
@@ -56,7 +58,6 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
-import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -65,6 +66,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
+import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -225,26 +227,28 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException, JsonProcessingException {
-    // Create TeamManager role.
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    Role teamManager =
-        roleResourceTest.createEntity(
-            roleResourceTest.createRequest(testInfo).withName("TeamManager"), ADMIN_AUTH_HEADERS);
-
-    // Ensure TeamManager has permission to UpdateTeam.
-    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
-    Policy policy =
-        policyResourceTest.getEntityByName(
-            "TeamManagerRoleAccessControlPolicy", PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
-    String originalJson = JsonUtils.pojoToJson(policy);
+    // Create a rule that can update team
     Rule rule =
-        new Rule()
-            .withName("TeamManagerRoleAccessControlPolicy-UpdateTeam")
-            .withAllow(true)
-            .withUserRoleAttr("TeamManager")
-            .withOperation(MetadataOperation.UpdateTeam);
-    policy.setRules(List.of(rule));
-    policyResourceTest.patchEntity(policy.getId(), originalJson, policy, ADMIN_AUTH_HEADERS);
+        new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.UpdateTeam);
+
+    // Create a policy with the rule
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    CreatePolicy createPolicy =
+        policyResourceTest
+            .createRequest("TeamManagerPolicy", "", "", null)
+            .withPolicyType(PolicyType.AccessControl)
+            .withRules(List.of(rule));
+    Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
+    EntityInterface<Policy> policyEntityInterface = policyResourceTest.getEntityInterface(policy);
+
+    // Create TeamManager role with the policy to update team
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    CreateRole createRole =
+        roleResourceTest
+            .createRequest(testInfo)
+            .withName("TeamManager")
+            .withPolicies(List.of(policyEntityInterface.getEntityReference()));
+    Role teamManager = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Create a user with TeamManager role.
     UserResourceTest userResourceTest = new UserResourceTest();

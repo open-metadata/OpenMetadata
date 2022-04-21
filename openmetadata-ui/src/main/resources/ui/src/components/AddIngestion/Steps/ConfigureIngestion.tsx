@@ -52,24 +52,24 @@ const ConfigureIngestion = ({
           <Fragment>
             <FilterPattern
               checked={showSchemaFilter}
-              excludePattern={schemaFilterPattern.exclude}
+              excludePattern={schemaFilterPattern?.excludes ?? []}
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
                 handleShowFilter(value, FilterPatternEnum.SCHEMA)
               }
-              includePattern={schemaFilterPattern.include}
+              includePattern={schemaFilterPattern?.includes ?? []}
               type={FilterPatternEnum.SCHEMA}
             />
             <FilterPattern
               checked={showTableFilter}
-              excludePattern={tableFilterPattern.exclude}
+              excludePattern={tableFilterPattern?.excludes ?? []}
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
                 handleShowFilter(value, FilterPatternEnum.TABLE)
               }
-              includePattern={tableFilterPattern.include}
+              includePattern={tableFilterPattern?.includes ?? []}
               showSeparator={false}
               type={FilterPatternEnum.TABLE}
             />
@@ -80,24 +80,24 @@ const ConfigureIngestion = ({
           <Fragment>
             <FilterPattern
               checked={showDashboardFilter}
-              excludePattern={dashboardFilterPattern.exclude}
+              excludePattern={dashboardFilterPattern.excludes ?? []}
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
                 handleShowFilter(value, FilterPatternEnum.DASHBOARD)
               }
-              includePattern={dashboardFilterPattern.include}
+              includePattern={dashboardFilterPattern.includes ?? []}
               type={FilterPatternEnum.DASHBOARD}
             />
             <FilterPattern
               checked={showChartFilter}
-              excludePattern={chartFilterPattern.exclude}
+              excludePattern={chartFilterPattern.excludes ?? []}
               getExcludeValue={getExcludeValue}
               getIncludeValue={getIncludeValue}
               handleChecked={(value) =>
                 handleShowFilter(value, FilterPatternEnum.CHART)
               }
-              includePattern={chartFilterPattern.include}
+              includePattern={chartFilterPattern.includes ?? []}
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
@@ -108,13 +108,13 @@ const ConfigureIngestion = ({
         return (
           <FilterPattern
             checked={showTopicFilter}
-            excludePattern={topicFilterPattern.exclude}
+            excludePattern={topicFilterPattern.excludes ?? []}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleChecked={(value) =>
               handleShowFilter(value, FilterPatternEnum.TOPIC)
             }
-            includePattern={topicFilterPattern.include}
+            includePattern={topicFilterPattern.includes ?? []}
             showSeparator={false}
             type={FilterPatternEnum.TOPIC}
           />

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
@@ -54,6 +54,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -65,10 +66,12 @@ import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   getServiceLogo,
 } from '../../utils/CommonUtils';
 import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
+import { getAddServicePath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -98,6 +101,8 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
+  const history = useHistory();
+
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -211,9 +216,12 @@ const ServicesPage = () => {
     }
   };
 
+  const goToAddService = () => {
+    history.push(getAddServicePath(serviceName));
+  };
+
   const handleAddService = () => {
-    setEditData(undefined);
-    setIsModalOpen(true);
+    goToAddService();
   };
   const handleClose = () => {
     setIsModalOpen(false);
@@ -632,9 +640,11 @@ const ServicesPage = () => {
                     <button>
                       <h6
                         className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                        data-testid={`service-name-${service.name}`}
-                        title={service.name}>
-                        {service.name}
+                        data-testid={`service-name-${getEntityName(
+                          service as EntityReference
+                        )}`}
+                        title={getEntityName(service as EntityReference)}>
+                        {getEntityName(service as EntityReference)}
                       </h6>
                     </button>
                   </Link>

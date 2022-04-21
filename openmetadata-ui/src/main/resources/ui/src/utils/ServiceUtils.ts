@@ -32,6 +32,7 @@ import {
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
+  DEFAULT_SERVICE,
   DRUID,
   DYNAMODB,
   GLUE,
@@ -61,7 +62,6 @@ import {
   TRINO,
   VERTICA,
 } from '../constants/services.const';
-import { TabSpecificField } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -72,7 +72,7 @@ import { ServiceResponse } from '../interface/service.interface';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
       return MYSQL;
 
     case DatabaseServiceType.Redshift:
@@ -117,7 +117,7 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.AzureSQL:
       return AZURESQL;
 
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
       return CLICKHOUSE;
 
     case DatabaseServiceType.Databricks:
@@ -174,6 +174,8 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else {
+        logo = DEFAULT_SERVICE;
       }
 
       return logo;
@@ -323,7 +325,7 @@ export const getAirflowPipelineTypes = (
     case DatabaseServiceType.Redshift:
     case DatabaseServiceType.BigQuery:
     case DatabaseServiceType.Snowflake:
-    case DatabaseServiceType.ClickHouse:
+    case DatabaseServiceType.Clickhouse:
     case DatabaseServiceType.Mssql:
       return onlyMetaData
         ? [PipelineType.Metadata]
@@ -332,7 +334,7 @@ export const getAirflowPipelineTypes = (
     // need to add additional config feild to support trino
     // case DatabaseServiceType.Trino:
     case DatabaseServiceType.Hive:
-    case DatabaseServiceType.MySQL:
+    case DatabaseServiceType.Mysql:
     case DatabaseServiceType.Postgres:
     case DatabaseServiceType.Vertica:
     case DatabaseServiceType.MariaDB:
@@ -429,17 +431,12 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: 'Activity Feed',
-    path: 'activity_feed',
-    field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
     name: 'Ingestions',
     path: 'ingestions',
   },
   {
-    name: 'Connection Config',
-    path: 'connection_config',
+    name: 'Connection',
+    path: 'connection',
   },
   {
     name: 'Manage',
@@ -450,22 +447,18 @@ export const servicePageTabs = (entity: string) => [
 export const getCurrentServiceTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'activity_feed':
+    case 'ingestions':
       currentTab = 2;
 
       break;
-    case 'ingestions':
+
+    case 'connection':
       currentTab = 3;
 
       break;
 
-    case 'connection_config':
-      currentTab = 4;
-
-      break;
-
     case 'manage':
-      currentTab = 5;
+      currentTab = 4;
 
       break;
 
@@ -477,4 +470,15 @@ export const getCurrentServiceTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getFormattedGuideText = (
+  text: string,
+  toReplace: string,
+  replacement: string,
+  isGlobal = false
+) => {
+  const regExp = isGlobal ? new RegExp(toReplace, 'g') : new RegExp(toReplace);
+
+  return text.replace(regExp, replacement);
 };

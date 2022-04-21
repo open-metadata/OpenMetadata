@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.glossary;
 
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
+import static org.openmetadata.catalog.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -31,12 +32,17 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossary;
+import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
+import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -51,6 +57,47 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
+    supportsEmptyDescription = false;
+  }
+
+  public void setupGlossaries() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
+    GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_REF = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
+
+    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
+    GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_REF = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
+
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g1t1", "", "", null)
+            .withRelatedTerms(null)
+            .withGlossary(GLOSSARY1_REF)
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+    GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY1_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY1_TERM1).getEntityReference();
+    GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
+    validateTagLabel(GLOSSARY1_TERM1_LABEL);
+
+    createGlossaryTerm =
+        glossaryTermResourceTest
+            .createRequest("g2t1", "", "", null)
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
+            .withGlossary(GLOSSARY2_REF);
+    GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    GLOSSARY2_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY2_TERM1).getEntityReference();
+    GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
+    validateTagLabel(GLOSSARY2_TERM1_LABEL);
+  }
+
+  private TagLabel getTagLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withDescription(term.getDescription())
+        .withSource(Source.GLOSSARY);
   }
 
   @Test

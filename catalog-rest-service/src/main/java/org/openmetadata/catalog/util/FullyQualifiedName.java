@@ -15,13 +15,15 @@ import org.openmetadata.catalog.FqnParser;
 import org.openmetadata.catalog.FqnParser.FqnContext;
 import org.openmetadata.catalog.FqnParser.QuotedNameContext;
 import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 
 public class FullyQualifiedName {
-  // Match the sub parts of fqn string "sss". or sss. or sss$
-  private static final Pattern partsPattern = Pattern.compile("((\")([^\"]+)(\"))|([^.]+)([.$])?");
-
-  // Quoted name of format "sss" or sss
+  // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
+
+  private FullyQualifiedName() {
+    /* Utility class with private constructor */
+  }
 
   /** Add to an existing valid FQN the given string */
   public static String add(String fqn, String part) {
@@ -57,7 +59,7 @@ public class FullyQualifiedName {
     List<String> list = new ArrayList<>();
 
     public String[] split() {
-      return list.toArray(new String[list.size()]);
+      return list.toArray(new String[0]);
     }
 
     @Override
@@ -75,7 +77,7 @@ public class FullyQualifiedName {
   public static String quoteName(String name) {
     Matcher matcher = namePattern.matcher(name);
     if (!matcher.find() || matcher.end() != name.length()) {
-      throw new IllegalArgumentException("Invalid name " + name);
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
     }
 
     // Name matches quoted string "sss".
@@ -91,7 +93,22 @@ public class FullyQualifiedName {
     if (!unquotedName.contains("\"")) {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
-    throw new IllegalArgumentException("Invalid name " + name);
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+  }
+
+  /** Adds quotes to name as required */
+  public static String unquoteName(String name) {
+    Matcher matcher = namePattern.matcher(name);
+    if (!matcher.find() || matcher.end() != name.length()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
+
+    // Name matches quoted string "sss".
+    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if (matcher.group(1) != null) {
+      return matcher.group(2);
+    }
+    return name;
   }
 
   public static String getTableFQN(String columnFQN) {

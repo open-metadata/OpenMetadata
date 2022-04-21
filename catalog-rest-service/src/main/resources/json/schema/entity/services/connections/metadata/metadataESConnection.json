@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/metadataESConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataESConnection",
+  "description": "Metadata to ElasticSeach Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.metadata.MetadataESConnection",
+  "definitions": {
+    "metadataESType": {
+      "description": "Metadata to Elastic Seach type",
+      "type": "string",
+      "enum": ["MetadataES"],
+      "default": "MetadataES"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/metadataESType",
+      "default": "MetadataES"
+    },
+    "includeTopics": {
+      "description": "Include Topics for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeTables": {
+      "description": "Include Tables for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeDashboards": {
+      "description": "Include Dashboards for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includePipelines": {
+      "description": "Include Pipelines for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeUsers": {
+      "description": "Include Users for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeTeams": {
+      "description": "Include Teams for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeGlossaryTerms": {
+      "description": "Include Glossary Terms for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "limitRecords": {
+      "description": "Limit the number of records for Indexing.",
+      "type": "integer",
+      "default": "1000"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

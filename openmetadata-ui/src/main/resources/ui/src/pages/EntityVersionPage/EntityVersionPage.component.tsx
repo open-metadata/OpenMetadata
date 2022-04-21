@@ -51,7 +51,7 @@ import {
   getTopicDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -60,6 +60,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -145,7 +146,7 @@ const EntityVersionPage: FunctionComponent = () => {
         getTableDetailsByFQN(
           getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'schema', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           ),
           ['owner', 'tags']
@@ -155,7 +156,6 @@ const EntityVersionPage: FunctionComponent = () => {
               id,
               owner,
               tags,
-              name,
               database,
               service,
               serviceType,
@@ -174,21 +174,21 @@ const EntityVersionPage: FunctionComponent = () => {
               },
               {
                 name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                  'database',
+                  FqnPart.Database,
                 ]),
                 url: getDatabaseDetailsPath(database.fullyQualifiedName),
               },
               {
                 name: getPartialNameFromTableFQN(
                   databaseSchema.fullyQualifiedName,
-                  ['schema']
+                  [FqnPart.Schema]
                 ),
                 url: getDatabaseSchemaDetailsPath(
                   databaseSchema.fullyQualifiedName
                 ),
               },
               {
-                name: name,
+                name: getEntityName(res.data),
                 url: '',
                 activeTitle: true,
               },
@@ -222,7 +222,7 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, name, service, serviceType } = res.data;
+            const { id, owner, tags, service, serviceType } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -235,7 +235,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: name,
+                name: getEntityName(res.data),
                 url: '',
                 activeTitle: true,
               },
@@ -269,8 +269,7 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'charts']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, displayName, service, serviceType } =
-              res.data;
+            const { id, owner, tags, service, serviceType } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -283,7 +282,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: displayName,
+                name: getEntityName(res.data),
                 url: '',
                 activeTitle: true,
               },
@@ -317,8 +316,7 @@ const EntityVersionPage: FunctionComponent = () => {
           ['owner', 'tags', 'tasks']
         )
           .then((res: AxiosResponse) => {
-            const { id, owner, tags, displayName, service, serviceType } =
-              res.data;
+            const { id, owner, tags, service, serviceType } = res.data;
             setEntityState(tags, owner, res.data, [
               {
                 name: service.name,
@@ -331,7 +329,7 @@ const EntityVersionPage: FunctionComponent = () => {
                 imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
               },
               {
-                name: displayName,
+                name: getEntityName(res.data),
                 url: '',
                 activeTitle: true,
               },
@@ -368,12 +366,12 @@ const EntityVersionPage: FunctionComponent = () => {
         getTableDetailsByFQN(
           getPartialNameFromTableFQN(
             entityFQN,
-            ['service', 'database', 'schema', 'table'],
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
             FQN_SEPARATOR_CHAR
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, database, name, service, serviceType, databaseSchema } =
+            const { id, database, service, serviceType, databaseSchema } =
               res.data;
             getTableVersion(id, version)
               .then((vRes: AxiosResponse) => {
@@ -394,21 +392,21 @@ const EntityVersionPage: FunctionComponent = () => {
                   {
                     name: getPartialNameFromTableFQN(
                       database.fullyQualifiedName,
-                      ['database']
+                      [FqnPart.Database]
                     ),
                     url: getDatabaseDetailsPath(database.fullyQualifiedName),
                   },
                   {
                     name: getPartialNameFromTableFQN(
                       databaseSchema.fullyQualifiedName,
-                      ['schema']
+                      [FqnPart.Schema]
                     ),
                     url: getDatabaseSchemaDetailsPath(
                       databaseSchema.fullyQualifiedName
                     ),
                   },
                   {
-                    name: name,
+                    name: getEntityName(res.data),
                     url: '',
                     activeTitle: true,
                   },
@@ -441,7 +439,7 @@ const EntityVersionPage: FunctionComponent = () => {
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, name, service, serviceType } = res.data;
+            const { id, service, serviceType } = res.data;
             getTopicVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -459,7 +457,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: name,
+                    name: getEntityName(res.data),
                     url: '',
                     activeTitle: true,
                   },
@@ -491,7 +489,7 @@ const EntityVersionPage: FunctionComponent = () => {
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, displayName, service, serviceType } = res.data;
+            const { id, service, serviceType } = res.data;
             getDashboardVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -509,7 +507,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: displayName,
+                    name: getEntityName(res.data),
                     url: '',
                     activeTitle: true,
                   },
@@ -541,7 +539,7 @@ const EntityVersionPage: FunctionComponent = () => {
           )
         )
           .then((res: AxiosResponse) => {
-            const { id, displayName, service, serviceType } = res.data;
+            const { id, service, serviceType } = res.data;
             getPipelineVersion(id, version)
               .then((vRes: AxiosResponse) => {
                 const { owner, tags } = vRes.data;
@@ -559,7 +557,7 @@ const EntityVersionPage: FunctionComponent = () => {
                       : undefined,
                   },
                   {
-                    name: displayName,
+                    name: getEntityName(res.data),
                     url: '',
                     activeTitle: true,
                   },

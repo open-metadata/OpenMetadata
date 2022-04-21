@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import { AssetsType } from '../../enums/entity.enum';
+import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -42,6 +42,7 @@ interface Props {
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
+  isOwner?: boolean;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
 }
@@ -52,6 +53,7 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
+  isOwner = false,
   onSelect,
   onRemove,
 }: Props) => {
@@ -67,7 +69,10 @@ const UserCard = ({
   const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return getPartialNameFromTableFQN(fqn, ['database', 'table']);
+        return getPartialNameFromTableFQN(fqn, [
+          FqnPart.Database,
+          FqnPart.Table,
+        ]);
 
       case AssetsType.DASHBOARD:
       case AssetsType.PIPELINE:
@@ -199,6 +204,7 @@ const UserCard = ({
           ) : (
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
+              isOwner={isOwner}
               permission={Operation.UpdateTeam}
               position="bottom">
               <span
@@ -206,6 +212,7 @@ const UserCard = ({
                   'tw-opacity-40':
                     !isAdminUser &&
                     !isAuthDisabled &&
+                    !isOwner &&
                     !userPermissions[Operation.UpdateTeam],
                 })}
                 data-testid="remove"

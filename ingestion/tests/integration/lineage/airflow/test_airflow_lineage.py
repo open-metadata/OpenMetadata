@@ -64,7 +64,7 @@ class AirflowLineageTest(TestCase):
 
     service = CreateDatabaseServiceRequest(
         name="test-service-table-lineage",
-        serviceType=DatabaseServiceType.MySQL,
+        serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
@@ -204,7 +204,6 @@ class AirflowLineageTest(TestCase):
                     execution_date=datetime.strptime(
                         "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                     ),
-                    run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                     state="running",
                 ),
             },
@@ -217,8 +216,6 @@ class AirflowLineageTest(TestCase):
         lineage = self.metadata.get_lineage_by_name(
             entity=Pipeline, fqdn="local_airflow_3.lineage"
         )
-
-        print(lineage)
 
         nodes = {node["id"] for node in lineage["nodes"]}
         self.assertIn(str(self.table.id.__root__), nodes)
@@ -262,7 +259,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },
@@ -278,7 +274,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },
@@ -294,7 +289,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },

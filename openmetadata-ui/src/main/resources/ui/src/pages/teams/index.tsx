@@ -439,6 +439,7 @@ const TeamsPage = () => {
           <p>There are no users added yet.</p>
           {isAdminUser ||
           isAuthDisabled ||
+          isOwner() ||
           userPermissions[Operation.UpdateTeam] ? (
             <>
               <p>Would like to start adding some?</p>
@@ -476,6 +477,7 @@ const TeamsPage = () => {
               <UserCard
                 isActionVisible
                 isIconVisible
+                isOwner={isOwner()}
                 item={User}
                 key={index}
                 onRemove={deleteUserHandler}

@@ -20,6 +20,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -73,6 +74,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
     supportsAuthorizedMetadataOperations = false; // TODO why?
+    supportsEmptyDescription = false;
   }
 
   @Order(0)
@@ -211,7 +213,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Apply tags to term11
     String json = JsonUtils.pojoToJson(term11);
     ChangeDescription change = new ChangeDescription();
-    change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(PERSONAL_DATA_TAG_LABEL)));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(PERSONAL_DATA_TAG_LABEL)));
     term11.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
     patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
@@ -251,6 +253,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertEntityReferenceList(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
     }
+    TestUtils.validateAlphabeticalOrdering(actualTerms, EntityUtil.compareGlossaryTerm);
   }
 
   @Override
@@ -362,7 +365,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
           break;
         }
       case "status":
-        @SuppressWarnings("unchecked")
         Status expectedStatus = (Status) expected;
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);

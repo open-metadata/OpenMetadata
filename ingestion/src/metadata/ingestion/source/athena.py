@@ -18,10 +18,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 
 
-class AthenaConfig(AthenaConnection, SQLConnectionConfig):
+class AthenaConfig(AthenaConnection):
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:

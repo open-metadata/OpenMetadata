@@ -19,7 +19,7 @@
       "$ref": "#/definitions/supersetType",
       "default": "Superset"
     },
-    "supersetURL": {
+    "hostPort": {
       "description": "URL for the superset instance",
       "type": "string",
       "format": "uri",
@@ -52,5 +52,9 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

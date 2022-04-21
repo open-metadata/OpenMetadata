@@ -25,7 +25,6 @@ import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
@@ -52,20 +51,16 @@ type Props = {
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  name,
   owner = '',
   description,
   id,
   tier = '',
   usage,
-  service,
   serviceType,
   fullyQualifiedName,
   tags,
   indexType,
   matches,
-  database,
-  databaseSchema,
   tableType,
   deleted = false,
 }: Props) => {
@@ -99,33 +94,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
-  OtherDetails.push({
-    key: 'Service Type',
-    value: serviceType,
-    showLabel: true,
-  });
-  if (service) {
-    OtherDetails.push({
-      key: 'Service',
-      value: service,
-      showLabel: true,
-    });
-  }
 
-  if (database) {
-    OtherDetails.push({
-      key: 'Database',
-      value: database,
-      showLabel: true,
-    });
-  }
-  if (databaseSchema) {
-    OtherDetails.push({
-      key: 'Schema',
-      value: databaseSchema,
-      showLabel: true,
-    });
-  }
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
@@ -161,7 +130,7 @@ const TableDataCard: FunctionComponent<Props> = ({
               data-testid="table-link"
               id={`${id}Title`}
               onClick={handleLinkClick}>
-              {stringToHTML(name)}
+              {fullyQualifiedName}
             </button>
           </h6>
           {deleted && (

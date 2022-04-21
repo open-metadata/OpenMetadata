@@ -101,7 +101,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
@@ -168,7 +168,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -176,7 +176,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(2000);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -231,9 +231,9 @@ public class PipelineDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {

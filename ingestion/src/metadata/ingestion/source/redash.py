@@ -23,9 +23,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.redashConne
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -34,7 +32,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 @dataclass
@@ -64,16 +62,15 @@ class RedashSource(Source[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.connection_config = self.config.serviceConnection.__root__.config
         self.status = RedashSourceStatus()
         self.client = Redash(
             self.connection_config.redashURL, self.connection_config.apiKey
         )
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Redash.name,
-            config=self.config.serviceConnection.__root__.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
         self.dashboards_to_charts = {}
 
