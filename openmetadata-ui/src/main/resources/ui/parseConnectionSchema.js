@@ -64,7 +64,9 @@ function copySourceFiles() {
 
 function main() {
   try {
-    fs.rmdirSync(destDir, { recursive: true });
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true });
+    }
     fs.mkdirSync(destDir, { recursive: true });
     copySourceFiles();
   } catch (err) {
