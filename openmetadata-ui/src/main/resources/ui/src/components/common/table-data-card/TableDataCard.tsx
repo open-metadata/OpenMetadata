@@ -26,7 +26,6 @@ import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
-import PopOver from '../popover/PopOver';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -63,9 +62,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
   tableType,
-  service,
-  database,
-  databaseSchema,
   deleted = false,
 }: Props) => {
   const location = useLocation();
@@ -116,45 +112,6 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
-  const getPopOverContent = () => {
-    const entityDetails = [
-      {
-        key: 'Service Type',
-        value: serviceType,
-      },
-    ];
-    if (service) {
-      entityDetails.push({
-        key: 'Service',
-        value: service,
-      });
-    }
-
-    if (database) {
-      entityDetails.push({
-        key: 'Database',
-        value: database,
-      });
-    }
-    if (databaseSchema) {
-      entityDetails.push({
-        key: 'Schema',
-        value: databaseSchema,
-      });
-    }
-
-    return (
-      <div className="tw-text-left">
-        {entityDetails.map((detail) => (
-          <p key={detail.key}>
-            <span className="tw-text-grey-muted">{detail.key} : </span>
-            <span className="tw-ml-2">{detail.value}</span>
-          </p>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
@@ -167,21 +124,15 @@ const TableDataCard: FunctionComponent<Props> = ({
             className="tw-inline tw-h-5 tw-w-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <PopOver
-            html={getPopOverContent()}
-            position="top"
-            theme="light"
-            trigger="mouseenter">
-            <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-              <button
-                className="tw-text-grey-body tw-font-medium"
-                data-testid="table-link"
-                id={`${id}Title`}
-                onClick={handleLinkClick}>
-                {fullyQualifiedName}
-              </button>
-            </h6>
-          </PopOver>
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+            <button
+              className="tw-text-grey-body tw-font-medium"
+              data-testid="table-link"
+              id={`${id}Title`}
+              onClick={handleLinkClick}>
+              {fullyQualifiedName}
+            </button>
+          </h6>
           {deleted && (
             <>
               <div
