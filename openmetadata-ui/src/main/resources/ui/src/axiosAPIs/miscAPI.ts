@@ -61,6 +61,10 @@ export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/sandbox');
 };
 
+export const fetchAirflowConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/airflow');
+};
+
 export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string

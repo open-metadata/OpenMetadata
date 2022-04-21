@@ -54,6 +54,7 @@ export interface IngestionData {
 }
 
 export interface IngestionProps {
+  airflowEndpoint: string;
   serviceDetails: DataObj;
   serviceName?: string;
   serviceCategory: ServiceCategory;
