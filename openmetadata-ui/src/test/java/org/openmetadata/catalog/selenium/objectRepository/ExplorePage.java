@@ -39,7 +39,7 @@ public class ExplorePage {
   By updatedDescription = By.xpath("(//div[@data-testid=\"description-text\"])[1]");
   By shopifyCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"shopify\"]");
   By tagSpecialCategoryCheckbox = By.xpath("//input[@data-testid=\"checkbox\"][@id=\"PersonalData.SpecialCategory\"]");
-  By tierTier3Checkbox = By.xpath("//input[@data-testid='checkbox'][@id='Tier:Tier3']");
+  By tierTier3Checkbox = By.xpath("//input[@data-testid='checkbox'][@id='Tier.Tier3']");
   By selectedCheckbox = By.xpath("//label[@data-testid='filter-container-Superset']/span");
   By kafka = By.cssSelector("[data-testid='checkbox'][id='Kafka']");
   By superset = By.cssSelector("[data-testid='checkbox'][id='Superset']");

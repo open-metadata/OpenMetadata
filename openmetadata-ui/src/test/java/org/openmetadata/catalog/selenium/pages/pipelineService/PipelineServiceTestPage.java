@@ -78,7 +78,7 @@ public class PipelineServiceTestPage {
   @Order(2)
   public void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
       Events.click(webDriver, common.noServicesAddServiceButton());
@@ -89,30 +89,26 @@ public class PipelineServiceTestPage {
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "localhost:8080");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.saveServiceButton());
+    Events.click(webDriver, common.saveManage());
   }
 
   @Test
   @Order(3)
   public void checkPipelineServiceDetails() throws InterruptedException {
     openPipelineServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
@@ -120,10 +116,9 @@ public class PipelineServiceTestPage {
   @Order(4)
   public void checkConnectionConfig() throws InterruptedException {
     openPipelineServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "1");
+    Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "test");
     Events.click(webDriver, common.saveConnectionConfig());
   }
 
@@ -131,7 +126,6 @@ public class PipelineServiceTestPage {
   @Order(5)
   public void deletePipelineService() throws InterruptedException {
     openPipelineServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }

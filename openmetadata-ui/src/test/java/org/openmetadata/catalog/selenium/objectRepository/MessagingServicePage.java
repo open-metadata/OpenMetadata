@@ -11,6 +11,6 @@ import org.openqa.selenium.WebDriver;
 public class MessagingServicePage {
   @Nonnull WebDriver webDriver;
 
-  By messagingServiceBrokerUrl = By.cssSelector("[data-testid='broker-url']");
-  By messagingServiceSchemaRegistry = By.cssSelector("[data-testid='schema-registry']");
+  By messagingServiceBootstrapServers = By.cssSelector("[id='root_bootstrapServers']");
+  By messagingServiceSchemaRegistry = By.cssSelector("[id='root_schemaRegistryURL']");
 }
