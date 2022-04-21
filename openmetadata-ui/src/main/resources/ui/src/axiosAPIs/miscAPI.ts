@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
 import { SearchIndex } from '../enums/search.enum';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
@@ -120,10 +121,15 @@ export const deleteEntity: Function = (
   entityId: string,
   isRecursive: boolean
 ): Promise<AxiosResponse> => {
-  let path = `/${entityType}/${entityId}?hardDelete=true`;
+  const searchParams = new URLSearchParams({ hardDelete: `true` });
   if (!isUndefined(isRecursive)) {
-    path = `${path}&recursive=${isRecursive}`;
+    searchParams.set('recursive', `${isRecursive}`);
   }
+  const path = getURLWithQueryFields(
+    `/${entityType}/${entityId}`,
+    '',
+    `${searchParams.toString()}`
+  );
 
   return APIClient.delete(path);
 };
