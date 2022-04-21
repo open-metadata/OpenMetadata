@@ -975,10 +975,11 @@ const ServicePage: FunctionComponent = () => {
                     <ManageTabComponent
                       allowDelete
                       hideTier
+                      isRecursiveDelete
                       currentUser={serviceDetails?.owner?.id}
                       entityId={serviceDetails?.id}
                       entityName={serviceDetails?.name}
-                      entityType={`services/${serviceCategory.slice(0, -1)}`}
+                      entityType={serviceCategory.slice(0, -1)}
                       hasEditAccess={hasEditAccess(
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''

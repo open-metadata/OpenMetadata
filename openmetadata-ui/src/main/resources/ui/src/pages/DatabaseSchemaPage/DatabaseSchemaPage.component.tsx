@@ -75,6 +75,7 @@ import {
   getPartialNameFromTableFQN,
   hasEditAccess,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -566,6 +567,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
+  const getDeleteEntityMessage = () => {
+    if (!tableInstanceCount) {
+      return;
+    }
+
+    return `Deleting this databaseSchema will also delete ${pluralize(
+      tableInstanceCount,
+      'table',
+      's'
+    )}.`;
+  };
+
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
@@ -675,7 +688,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <ManageTabComponent
                     allowDelete
                     hideTier
+                    isRecursiveDelete
                     currentUser={databaseSchema?.owner?.id}
+                    deletEntityMessage={getDeleteEntityMessage()}
                     entityId={databaseSchema?.id}
                     entityName={databaseSchema?.name}
                     entityType={EntityType.DATABASE_SCHEMA}
