@@ -29,6 +29,7 @@ export interface ManageProps {
   entityName?: string;
   entityType?: string;
   allowDelete?: boolean;
+  isRecursiveDelete?: boolean;
 }
 
 export type Status = 'initial' | 'waiting' | 'success';

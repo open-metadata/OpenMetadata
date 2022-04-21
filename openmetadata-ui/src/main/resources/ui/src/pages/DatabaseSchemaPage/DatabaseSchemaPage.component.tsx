@@ -675,6 +675,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <ManageTabComponent
                     allowDelete
                     hideTier
+                    isRecursiveDelete
                     currentUser={databaseSchema?.owner?.id}
                     entityId={databaseSchema?.id}
                     entityName={databaseSchema?.name}

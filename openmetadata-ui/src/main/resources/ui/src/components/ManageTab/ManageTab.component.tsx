@@ -26,6 +26,7 @@ import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { ENTITY_DELETE_STATE } from '../../constants/entity.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -53,6 +54,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   entityName,
   entityType,
   entityId,
+  isRecursiveDelete,
 }: ManageProps) => {
   const history = useHistory();
   const { userPermissions, isAdminUser } = useAuth();
@@ -166,9 +168,24 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setEntityDeleteState(ENTITY_DELETE_STATE);
   };
 
+  const prepareEntityType = () => {
+    const services = [
+      EntityType.DASHBOARD_SERVICE,
+      EntityType.DATABASE_SERVICE,
+      EntityType.MESSAGING_SERVICE,
+      EntityType.PIPELINE_SERVICE,
+    ];
+
+    if (services.includes((entityType || '') as EntityType)) {
+      return `services/${entityType}s`;
+    } else {
+      return `${entityType}s`;
+    }
+  };
+
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-    deleteEntity(`${entityType}s`, entityId)
+    deleteEntity(prepareEntityType(), entityId, isRecursiveDelete)
       .then((res: AxiosResponse) => {
         if (res.status === 200) {
           setTimeout(() => {
@@ -223,7 +240,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
               Delete {entityType} {entityName}
             </h4>
             <p data-testid="danger-zone-text-para">
-              {`Once you delete this ${entityType}, it would be removed permanently`}
+              {`Once you delete this ${entityType}, it will be removed permanently`}
             </p>
           </div>
           <NonAdminAction

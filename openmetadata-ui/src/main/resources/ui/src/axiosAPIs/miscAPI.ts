@@ -116,7 +116,10 @@ export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
 
 export const deleteEntity: Function = (
   entityType: string,
-  entityId: string
+  entityId: string,
+  isRecursive: boolean
 ): Promise<AxiosResponse> => {
-  return APIClient.delete(`/${entityType}/${entityId}?hardDelete=true`);
+  return APIClient.delete(
+    `/${entityType}/${entityId}?hardDelete=true&recursive=${isRecursive}`
+  );
 };
