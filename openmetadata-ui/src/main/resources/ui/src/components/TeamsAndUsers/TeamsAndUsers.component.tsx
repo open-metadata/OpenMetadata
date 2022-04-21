@@ -45,9 +45,6 @@ const TeamsAndUsers = ({
   isAddingTeam,
   createNewTeam,
   handleAddNewUser,
-  deletingTeam,
-  deleteTeamById,
-  handleDeleteTeam,
   handleAddTeam,
   onNewTeamDataChange,
   updateTeamHandler,
@@ -167,14 +164,11 @@ const TeamsAndUsers = ({
             currentTeam={currentTeam}
             currentTeamUserPage={currentTeamUserPage}
             currentTeamUsers={currentTeamUsers}
-            deleteTeamById={deleteTeamById}
-            deletingTeam={deletingTeam}
             descriptionHandler={descriptionHandler}
             errorNewTeamData={errorNewTeamData}
             getUniqueUserList={getUniqueUserList}
             handleAddTeam={handleAddTeam}
             handleAddUser={handleAddUser}
-            handleDeleteTeam={handleDeleteTeam}
             handleJoinTeamClick={handleJoinTeamClick}
             handleTeamUsersSearchAction={handleTeamUsersSearchAction}
             hasAccess={hasAccess}

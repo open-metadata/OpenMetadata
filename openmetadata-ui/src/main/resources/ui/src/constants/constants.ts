@@ -17,7 +17,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
-export const PAGE_SIZE_12 = 12;
+export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;

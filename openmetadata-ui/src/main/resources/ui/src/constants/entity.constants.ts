@@ -14,4 +14,5 @@
 export const ENTITY_DELETE_STATE = {
   loading: 'initial',
   state: false,
+  softDelete: false,
 };

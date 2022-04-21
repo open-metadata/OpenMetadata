@@ -24,7 +24,6 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { deleteEntity } from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { ENTITY_DELETE_STATE } from '../../constants/entity.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -37,9 +36,11 @@ import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import ToggleSwitchV1 from '../common/toggle-switch/ToggleSwitchV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import DeleteWidgetBody from './DeleteWidgetBody';
 import { ManageProps, Status } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
@@ -54,8 +55,10 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   entityName,
   entityType,
   entityId,
+  allowSoftDelete,
   isRecursiveDelete,
   deletEntityMessage,
+  handleIsJoinable,
 }: ManageProps) => {
   const history = useHistory();
   const { userPermissions, isAdminUser } = useAuth();
@@ -161,8 +164,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setActiveTier(cardId);
   };
 
-  const handleOnEntityDelete = () => {
-    setEntityDeleteState((prev) => ({ ...prev, state: true }));
+  const handleOnEntityDelete = (softDelete = false) => {
+    setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
   };
 
   const handleOnEntityDeleteCancel = () => {
@@ -190,7 +193,12 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-    deleteEntity(prepareEntityType(), entityId, isRecursiveDelete)
+    deleteEntity(
+      prepareEntityType(),
+      entityId,
+      isRecursiveDelete,
+      allowSoftDelete
+    )
       .then((res: AxiosResponse) => {
         if (res.status === 200) {
           setTimeout(() => {
@@ -227,6 +235,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           entityName={entityName as string}
           entityType={entityType as string}
           loadingState={entityDeleteState.loading}
+          softDelete={entityDeleteState.softDelete}
           onCancel={handleOnEntityDeleteCancel}
           onConfirm={handleOnEntityDeleteConfirm}
         />
@@ -240,34 +249,28 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return allowDelete && entityId && entityName && entityType ? (
       <div className="tw-mt-1" data-testid="danger-zone">
         <hr className="tw-border-main tw-mb-4" />
-        <div className="tw-border tw-border-error tw-px-4 tw-py-2 tw-flex tw-justify-between tw-rounded tw-mt-3 tw-shadow">
-          <div data-testid="danger-zone-text">
-            <h4 className="tw-text-base" data-testid="danger-zone-text-title">
-              Delete {entityType} {entityName}
-            </h4>
-            <p data-testid="danger-zone-text-para">{prepareDeleteMessage()}</p>
-          </div>
-          <NonAdminAction
-            className="tw-self-center"
-            html={
-              <Fragment>
-                <p>{TITLE_FOR_NON_ADMIN_ACTION}</p>
-              </Fragment>
-            }
+        <div className="tw-border tw-border-error tw-rounded tw-mt-3 tw-shadow">
+          {allowSoftDelete && (
+            <div className="tw-border-b tw-border-error">
+              <DeleteWidgetBody
+                buttonText={`Soft delete this ${entityType}`}
+                description={prepareDeleteMessage()}
+                hasPermission={isAdminUser || isAuthDisabled}
+                header={`Soft delete ${entityType} ${entityName}`}
+                isOwner={isAdminUser}
+                onClick={() => handleOnEntityDelete(true)}
+              />
+            </div>
+          )}
+
+          <DeleteWidgetBody
+            buttonText={`Delete this ${entityType}`}
+            description={prepareDeleteMessage()}
+            hasPermission={isAdminUser || isAuthDisabled}
+            header={`Delete ${entityType} ${entityName}`}
             isOwner={isAdminUser}
-            position="left">
-            <Button
-              className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
-              data-testid="delete-button"
-              disabled={!isAdminUser && !isAuthDisabled}
-              size="custom"
-              theme="primary"
-              type="button"
-              variant="outlined"
-              onClick={handleOnEntityDelete}>
-              Delete this {entityType}
-            </Button>
-          </NonAdminAction>
+            onClick={handleOnEntityDelete}
+          />
         </div>
       </div>
     ) : null;
@@ -315,18 +318,18 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       userPermissions[Operation.UpdateTeam] ||
       !hasEditAccess;
 
-    const joinableSwitch = isActionAllowed ? (
-      <div className="tw-flex">
-        <label htmlFor="join-team">Allow users to join this team</label>
-        <div
-          className={classNames('toggle-switch ', { open: teamJoinable })}
-          data-testid="team-isJoinable-switch"
-          id="join-team"
-          onClick={() => setTeamJoinable((prev) => !prev)}>
-          <div className="switch" />
+    const joinableSwitch =
+      isActionAllowed && !isUndefined(teamJoinable) ? (
+        <div className="tw-flex">
+          <label htmlFor="join-team">Open to join</label>
+          <ToggleSwitchV1
+            checked={teamJoinable}
+            handleCheck={() => {
+              handleIsJoinable?.(!teamJoinable);
+            }}
+          />
         </div>
-      </div>
-    ) : null;
+      ) : null;
 
     return !isUndefined(isJoinable) ? (
       <div className="tw-mt-3 tw-mb-1">{joinableSwitch}</div>
