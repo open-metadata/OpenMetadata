@@ -21,47 +21,58 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/azureSQLType",
       "default": "AzureSQL"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/azureSQLScheme",
       "default": "mssql+pyodbc"
     },
     "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Azure SQL.",
+      "title": "Username",
+      "description": "Username to connect to AzureSQL. This user should have privileges to read the metadata.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the Athena.",
+      "title": "Password",
+      "description": "Password to connect to AzureSQL.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
-      "description": "Host and port of the Athena",
+      "title": "Host and Port",
+      "description": "Host and port of AzureSQL",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Azure SQL.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
     "driver": {
-      "description": "SQLAlchemy driver for Azure SQL",
+      "title": "Driver",
+      "description": "SQLAlchemy driver for AzureSQL",
       "type": "string",
       "default": "{ODBC Driver 17 for SQL Server}"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
     "supportsProfiler": {
+      "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
