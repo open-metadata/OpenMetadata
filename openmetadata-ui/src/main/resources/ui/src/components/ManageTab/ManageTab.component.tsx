@@ -55,6 +55,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   entityType,
   entityId,
   isRecursiveDelete,
+  deletEntityMessage,
 }: ManageProps) => {
   const history = useHistory();
   const { userPermissions, isAdminUser } = useAuth();
@@ -183,6 +184,14 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     }
   };
 
+  const prepareDeleteMessage = () => {
+    if (isUndefined(deletEntityMessage)) {
+      return `Once you delete this ${entityType}, it will be removed permanently`;
+    } else {
+      return deletEntityMessage;
+    }
+  };
+
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(prepareEntityType(), entityId, isRecursiveDelete)
@@ -239,9 +248,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             <h4 className="tw-text-base" data-testid="danger-zone-text-title">
               Delete {entityType} {entityName}
             </h4>
-            <p data-testid="danger-zone-text-para">
-              {`Once you delete this ${entityType}, it will be removed permanently`}
-            </p>
+            <p data-testid="danger-zone-text-para">{prepareDeleteMessage()}</p>
           </div>
           <NonAdminAction
             className="tw-self-center"
