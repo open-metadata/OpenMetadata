@@ -15,7 +15,7 @@ from typing import Iterable, Optional
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from snowflake.sqlalchemy.custom_types import VARIANT
-from snowflake.sqlalchemy.snowdialect import ischema_names
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
@@ -40,7 +40,6 @@ ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 
 
 def normalize_names(self, name):
