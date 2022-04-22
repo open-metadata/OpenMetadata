@@ -79,6 +79,9 @@ describe('Test AddGlossary component', () => {
   });
 
   it('should be able to save', () => {
+    jest.spyOn(React, 'useRef').mockReturnValue({
+      current: { getEditorContent: jest.fn().mockReturnValue('description') },
+    });
     const { container } = render(<AddGlossary {...mockProps} />);
 
     const nameInput = getByTestId(container, 'name');
