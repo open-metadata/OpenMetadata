@@ -24,6 +24,7 @@ import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
+import { UserDetails } from '../../components/Users/Users.interface';
 import {
   onConfirmText,
   onErrorText,
@@ -165,7 +166,7 @@ const UserPage = () => {
       });
   };
 
-  const updateUserDetails = (data: Record<string, string | Array<string>>) => {
+  const updateUserDetails = (data: UserDetails) => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
     updateUserDetail(userData.id, jsonPatch)

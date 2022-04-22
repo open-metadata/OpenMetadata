@@ -21,6 +21,8 @@ export interface Option {
   value: string;
 }
 
+export type UserDetails = Record<string, string | Array<string> | boolean>;
+
 export interface Props {
   userData: User;
   feedData: EntityThread[];
@@ -28,7 +30,7 @@ export interface Props {
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;
-  updateUserDetails: (data: Record<string, string | Array<string>>) => void;
+  updateUserDetails: (data: UserDetails) => void;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
   postFeedHandler: (value: string, id: string) => void;

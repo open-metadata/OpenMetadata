@@ -154,7 +154,15 @@ const Users = ({
   };
 
   const handleRolesChange = () => {
-    updateUserDetails({ roles: selectedRoles.map((role) => role.value) });
+    // filter out the roles , and exclude the admin one
+    const updatedRoles = selectedRoles.filter((role) => role.value !== 'admin');
+
+    // get the admin role and send it as boolean value `iaAdmin=Boolean(isAdmin)
+    const isAdmin = selectedRoles.find((role) => role.value === 'admin');
+    updateUserDetails({
+      roles: updatedRoles.map((role) => role.value),
+      isAdmin: Boolean(isAdmin),
+    });
 
     setIsRolesEdit(false);
   };
@@ -389,6 +397,12 @@ const Users = ({
             <span>{getEntityName(role)}</span>
           </div>
         ))}
+        {userData.isAdmin && (
+          <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2">
+            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+            <span>Admin</span>
+          </div>
+        )}
       </Fragment>
     );
 
@@ -600,6 +614,31 @@ const Users = ({
     );
   };
 
+  const prepareSelectedRoles = () => {
+    const defaultRoles = [
+      ...(userData.roles?.map((role) => ({
+        label: getEntityName(role),
+        value: role.id,
+      })) || []),
+    ];
+    if (userData.isAdmin) {
+      defaultRoles.push({
+        label: 'Admin',
+        value: 'admin',
+      });
+    }
+    setSelectedRoles(defaultRoles);
+  };
+
+  const prepareSelectedTeams = () => {
+    setSelectedTeams(
+      getNonDeletedTeams(userData.teams || []).map((team) => ({
+        label: getEntityName(team),
+        value: team.id,
+      }))
+    );
+  };
+
   const fetchMoreFeed = (
     isElementInView: boolean,
     pagingObj: Paging,
@@ -623,18 +662,8 @@ const Users = ({
   }, []);
 
   useEffect(() => {
-    setSelectedRoles(
-      userData.roles?.map((role) => ({
-        label: getEntityName(role),
-        value: role.id,
-      })) || []
-    );
-    setSelectedTeams(
-      getNonDeletedTeams(userData.teams || []).map((team) => ({
-        label: getEntityName(team),
-        value: team.id,
-      }))
-    );
+    prepareSelectedRoles();
+    prepareSelectedTeams();
   }, [userData]);
 
   return (
