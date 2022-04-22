@@ -43,7 +43,7 @@ import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataResponse;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 
 @ExtendWith(MockitoExtension.class)
-public class CloudWatchReporterTest {
+class CloudWatchReporterTest {
   private static final String NAMESPACE = "namespace";
   private static final String ARBITRARY_COUNTER_NAME = "TheCounter";
   private static final String ARBITRARY_METER_NAME = "TheMeter";
@@ -61,12 +61,12 @@ public class CloudWatchReporterTest {
   private CloudWatchReporter.Builder reporterBuilder;
 
   @BeforeAll
-  public static void beforeClass() throws Exception {
+  static void beforeClass() throws Exception {
     reduceExponentialMovingAveragesDefaultTickInterval();
   }
 
   @BeforeEach
-  public void setUp() throws Exception {
+  void setUp() {
     metricRegistry = new MetricRegistry();
     reporterBuilder = CloudWatchReporter.forRegistry(metricRegistry, mockAmazonCloudWatchAsyncClient, NAMESPACE);
     lenient()
@@ -75,7 +75,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldNotInvokeCloudWatchClientInDryRunMode() throws Exception {
+  void shouldNotInvokeCloudWatchClientInDryRunMode() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.withDryRun().build().report();
 
@@ -83,7 +83,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void notSettingHighResolutionGeneratesMetricsWithStorageResolutionSetToSixty() throws Exception {
+  void notSettingHighResolutionGeneratesMetricsWithStorageResolutionSetToSixty() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.build().report();
 
@@ -93,7 +93,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void settingHighResolutionGeneratesMetricsWithStorageResolutionSetToOne() throws Exception {
+  void settingHighResolutionGeneratesMetricsWithStorageResolutionSetToOne() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.withHighResolution().build().report();
 
@@ -103,7 +103,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportWithoutGlobalDimensionsWhenGlobalDimensionsNotConfigured() throws Exception {
+  void shouldReportWithoutGlobalDimensionsWhenGlobalDimensionsNotConfigured() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.build().report(); // When 'withGlobalDimensions' was not called
 
@@ -114,7 +114,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedCounterShouldContainExpectedDimension() throws Exception {
+  void reportedCounterShouldContainExpectedDimension() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.build().report();
 
@@ -124,7 +124,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedGaugesAreInvokedOnlyOnce() {
+  void reportedGaugesAreInvokedOnlyOnce() {
     Gauge<Long> theGauge =
         spy(
             new Gauge<Long>() {
@@ -140,7 +140,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedGaugeShouldContainExpectedDimension() throws Exception {
+  void reportedGaugeShouldContainExpectedDimension() {
     metricRegistry.register(ARBITRARY_GAUGE_NAME, (Gauge<Long>) () -> 1L);
     reporterBuilder.build().report();
 
@@ -150,7 +150,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldNotReportGaugeWhenMetricValueNotOfTypeNumber() throws Exception {
+  void shouldNotReportGaugeWhenMetricValueNotOfTypeNumber() {
     metricRegistry.register(ARBITRARY_GAUGE_NAME, (Gauge<String>) () -> "bad value type");
     reporterBuilder.build().report();
 
@@ -158,7 +158,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void neverReportMetersCountersGaugesWithZeroValues() throws Exception {
+  void neverReportMetersCountersGaugesWithZeroValues() throws Exception {
     metricRegistry.register(ARBITRARY_GAUGE_NAME, (Gauge<Long>) () -> 0L);
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(0);
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc(0);
@@ -175,7 +175,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportMetersCountersGaugesWithZeroValuesOnlyWhenConfigured() throws Exception {
+  void reportMetersCountersGaugesWithZeroValuesOnlyWhenConfigured() throws Exception {
     metricRegistry.register(ARBITRARY_GAUGE_NAME, (Gauge<Long>) () -> 0L);
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(0);
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc(0);
@@ -200,7 +200,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedMeterShouldContainExpectedOneMinuteMeanRateDimension() throws Exception {
+  void reportedMeterShouldContainExpectedOneMinuteMeanRateDimension() throws Exception {
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(1);
     buildReportWithSleep(reporterBuilder.withOneMinuteMeanRate());
 
@@ -211,7 +211,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedMeterShouldContainExpectedFiveMinuteMeanRateDimension() throws Exception {
+  void reportedMeterShouldContainExpectedFiveMinuteMeanRateDimension() throws Exception {
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(1);
     buildReportWithSleep(reporterBuilder.withFiveMinuteMeanRate());
 
@@ -222,7 +222,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedMeterShouldContainExpectedFifteenMinuteMeanRateDimension() throws Exception {
+  void reportedMeterShouldContainExpectedFifteenMinuteMeanRateDimension() throws Exception {
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(1);
     buildReportWithSleep(reporterBuilder.withFifteenMinuteMeanRate());
 
@@ -233,7 +233,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedMeterShouldContainExpectedMeanRateDimension() throws Exception {
+  void reportedMeterShouldContainExpectedMeanRateDimension() {
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(1);
     reporterBuilder.withMeanRate().build().report();
 
@@ -244,7 +244,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedMeterShouldHaveChangedUnit() throws Exception {
+  void reportedMeterShouldHaveChangedUnit() {
     metricRegistry.meter(ARBITRARY_METER_NAME).mark(1);
     CloudWatchReporter.Builder builder = reporterBuilder.withMeanRate().withMeterUnitSentToCW(StandardUnit.TERABYTES);
     CloudWatchReporter cloudWatchReporter = builder.build();
@@ -260,7 +260,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedHistogramShouldContainExpectedArithmeticMeanDimension() throws Exception {
+  void reportedHistogramShouldContainExpectedArithmeticMeanDimension() {
     metricRegistry.histogram(ARBITRARY_HISTOGRAM_NAME).update(1);
     reporterBuilder.withArithmeticMean().build().report();
 
@@ -271,7 +271,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedHistogramShouldContainExpectedStdDevDimension() throws Exception {
+  void reportedHistogramShouldContainExpectedStdDevDimension() {
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(1);
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(2);
     reporterBuilder.withStdDev().build().report();
@@ -283,7 +283,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedTimerShouldContainExpectedArithmeticMeanDimension() throws Exception {
+  void reportedTimerShouldContainExpectedArithmeticMeanDimension() {
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(3, TimeUnit.MILLISECONDS);
     reporterBuilder.withArithmeticMean().build().report();
 
@@ -294,7 +294,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void reportedTimerShouldContainExpectedStdDevDimension() throws Exception {
+  void reportedTimerShouldContainExpectedStdDevDimension() {
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(1, TimeUnit.MILLISECONDS);
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(3, TimeUnit.MILLISECONDS);
     reporterBuilder.withStdDev().build().report();
@@ -306,7 +306,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportExpectedSingleGlobalDimension() throws Exception {
+  void shouldReportExpectedSingleGlobalDimension() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.withGlobalDimensions("Region=us-west-2").build().report();
 
@@ -316,7 +316,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportExpectedGlobalAndCustomDimensions() throws Exception {
+  void shouldReportExpectedGlobalAndCustomDimensions() {
 
     metricRegistry
         .counter(
@@ -336,7 +336,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportExpectedMultipleGlobalDimensions() throws Exception {
+  void shouldReportExpectedMultipleGlobalDimensions() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.withGlobalDimensions("Region=us-west-2", "Instance=stage").build().report();
 
@@ -347,7 +347,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldNotReportDuplicateGlobalDimensions() throws Exception {
+  void shouldNotReportDuplicateGlobalDimensions() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.withGlobalDimensions("Region=us-west-2", "Region=us-west-2").build().report();
 
@@ -357,7 +357,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportExpectedCounterValue() throws Exception {
+  void shouldReportExpectedCounterValue() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     reporterBuilder.build().report();
 
@@ -368,7 +368,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldNotReportUnchangedCounterValue() throws Exception {
+  void shouldNotReportUnchangedCounterValue() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     final CloudWatchReporter cloudWatchReporter = reporterBuilder.build();
 
@@ -383,7 +383,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportCounterValueDelta() throws Exception {
+  void shouldReportCounterValueDelta() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     final CloudWatchReporter cloudWatchReporter = reporterBuilder.build();
@@ -408,7 +408,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportArithmeticMeanAfterConversionByDefaultDurationWhenReportingTimer() throws Exception {
+  void shouldReportArithmeticMeanAfterConversionByDefaultDurationWhenReportingTimer() {
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(1_000_000, TimeUnit.NANOSECONDS);
     reporterBuilder.withArithmeticMean().build().report();
 
@@ -419,7 +419,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportStdDevAfterConversionByDefaultDurationWhenReportingTimer() throws Exception {
+  void shouldReportStdDevAfterConversionByDefaultDurationWhenReportingTimer() {
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(1_000_000, TimeUnit.NANOSECONDS);
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(2_000_000, TimeUnit.NANOSECONDS);
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(3_000_000, TimeUnit.NANOSECONDS);
@@ -433,7 +433,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportSnapshotValuesAfterConversionByCustomDurationWhenReportingTimer() throws Exception {
+  void shouldReportSnapshotValuesAfterConversionByCustomDurationWhenReportingTimer() {
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(1, TimeUnit.SECONDS);
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(2, TimeUnit.SECONDS);
     metricRegistry.timer(ARBITRARY_TIMER_NAME).update(3, TimeUnit.SECONDS);
@@ -450,7 +450,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportArithmeticMeanWithoutConversionWhenReportingHistogram() throws Exception {
+  void shouldReportArithmeticMeanWithoutConversionWhenReportingHistogram() {
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(1);
     reporterBuilder.withArithmeticMean().build().report();
 
@@ -461,7 +461,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportStdDevWithoutConversionWhenReportingHistogram() throws Exception {
+  void shouldReportStdDevWithoutConversionWhenReportingHistogram() {
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(1);
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(2);
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(3);
@@ -475,7 +475,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportSnapshotValuesWithoutConversionWhenReportingHistogram() throws Exception {
+  void shouldReportSnapshotValuesWithoutConversionWhenReportingHistogram() {
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(1);
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(2);
     metricRegistry.histogram(CloudWatchReporterTest.ARBITRARY_HISTOGRAM_NAME).update(3);
@@ -492,7 +492,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldReportHistogramSubsequentSnapshotValues_SumMaxMinValues() throws Exception {
+  void shouldReportHistogramSubsequentSnapshotValues_SumMaxMinValues() {
     CloudWatchReporter reporter = reporterBuilder.withStatisticSet().build();
 
     final Histogram slidingWindowHistogram = new Histogram(new SlidingWindowReservoir(4));
@@ -527,7 +527,7 @@ public class CloudWatchReporterTest {
   }
 
   @Test
-  public void shouldNotReportCounterValueDeltaWhenReportingRawCountValue() throws Exception {
+  void shouldNotReportCounterValueDeltaWhenReportingRawCountValue() {
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     metricRegistry.counter(ARBITRARY_COUNTER_NAME).inc();
     final CloudWatchReporter cloudWatchReporter = reporterBuilder.withReportRawCountValue().build();
