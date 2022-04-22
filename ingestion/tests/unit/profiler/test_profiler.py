@@ -102,9 +102,9 @@ class ProfilerTest(TestCase):
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
-            histogram=Histogram(
-                boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
-            ),
+            # histogram=Histogram(
+            #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
+            # ),
         )
 
     def test_required_metrics(self):
