@@ -210,7 +210,9 @@ public final class ChangeEventParser {
     switch (changeType) {
       case ADD:
         String fieldValue = getFieldValue(newFieldValue);
-        if (fieldValue != null && !fieldValue.isEmpty()) {
+        if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
+          message = String.format("Started to follow %s `%s`", link.getEntityType(), link.getEntityFQN());
+        } else if (fieldValue != null && !fieldValue.isEmpty()) {
           message = String.format("Added **%s**: `%s`", updatedField, fieldValue);
         }
         break;
@@ -218,7 +220,11 @@ public final class ChangeEventParser {
         message = getUpdateMessage(updatedField, oldFieldValue, newFieldValue);
         break;
       case DELETE:
-        message = String.format("Deleted **%s**", updatedField);
+        if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
+          message = String.format("Stopped following %s `%s`", link.getEntityType(), link.getEntityFQN());
+        } else {
+          message = String.format("Deleted **%s**", updatedField);
+        }
         break;
       default:
         break;
