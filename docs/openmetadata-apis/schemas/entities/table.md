@@ -108,7 +108,7 @@ This schema does not accept additional properties.
   * List of test cases that ran against a table.
   * Type: `array`
     * **Items**
-    * $ref: [../../tests/tableTest.json](../tests/tabletest.md)
+    * $ref: [../../tests/tableTest.json](https://github.com/open-metadata/OpenMetadata/blob/docs/docs/openmetadata-apis/schemas/tests/tabletest.md)
 * **dataModel**
   * This captures information about how the table is modeled. Currently only DBT model is supported.
   * $ref: [#/definitions/dataModel](table.md#datamodel)
@@ -313,14 +313,15 @@ This schema does not accept additional properties.
   36. _"UUID"_
 
 > > > > > > > a07bc411 (updated json schema and schema docs (#3219))
- - Type: `string`
- - The value is restricted to the following: 
-	 1. _"Regular"_
-	 2. _"External"_
-	 3. _"View"_
-	 4. _"SecureView"_
-	 5. _"MaterializedView"_
-	 6. _"Iceberg"_
+
+* Type: `string`
+* The value is restricted to the following:
+  1. _"Regular"_
+  2. _"External"_
+  3. _"View"_
+  4. _"SecureView"_
+  5. _"MaterializedView"_
+  6. _"Iceberg"_
 
 #### constraint
 
@@ -517,7 +518,7 @@ This schema does not accept additional properties.
     * List of column test cases that ran against a table column.
     * Type: `array`
       * **Items**
-      * $ref: [../../tests/columnTest.json](../tests/columntest.md)
+      * $ref: [../../tests/columnTest.json](https://github.com/open-metadata/OpenMetadata/blob/docs/docs/openmetadata-apis/schemas/tests/columntest.md)
 
 #### columnJoins
 

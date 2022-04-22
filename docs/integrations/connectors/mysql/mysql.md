@@ -511,13 +511,13 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your MySQL service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ### 3. Select service type
 
 Select MySQL as the service type.
 
-![](<../../../.gitbook/assets/image (39) (1).png>)
+![](<../../../.gitbook/assets/image (39) (1) (1).png>)
 
 
 
@@ -533,7 +533,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your MySQL service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (21) (1).png>)
+![](<../../../.gitbook/assets/image (21) (1) (1).png>)
 
 ### 5. Configure service connection
 

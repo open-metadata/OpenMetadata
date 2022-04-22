@@ -511,7 +511,7 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your ClickHouse service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ### 3. Select service type
 
@@ -565,7 +565,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your ClickHouse deployment. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../.gitbook/assets/image (61) (1).png>)
+![](<../../../.gitbook/assets/image (61) (1) (1).png>)
 
 #### Ingestion name
 

@@ -33,7 +33,7 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your BigQuery service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ## 4. Select service type
 
@@ -85,7 +85,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your BigQuery deployment. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![](<../../../.gitbook/assets/image (31) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (31) (1) (1) (1) (1) (1) (1).png>)
 
 #### Ingestion name
 
@@ -163,4 +163,4 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (25) (1).png>)
+![](<../../../.gitbook/assets/image (25) (1) (1).png>)

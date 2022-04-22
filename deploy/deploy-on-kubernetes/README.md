@@ -14,6 +14,6 @@ description: >-
 [values.yaml.md](values.yaml.md)
 {% endcontent-ref %}
 
-{% content-ref url="../deploy-on-bare-metal/enable-security/" %}
-[enable-security](../deploy-on-bare-metal/enable-security/)
+{% content-ref url="../../docs/deploy/secure-openmetadata/" %}
+[secure-openmetadata](../../docs/deploy/secure-openmetadata/)
 {% endcontent-ref %}

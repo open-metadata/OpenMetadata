@@ -6,11 +6,11 @@
 * Select the Account Type, i.e., Company or Personal
 * Click `I need advanced settings` and click `next`.
 
-![](<../../../.gitbook/assets/image (31).png>)
+![](<../../../.gitbook/assets/image (31) (1).png>)
 
 * Provide the Tenant Domain, select the region and click on `Create Account`.
 
-![](<../../../.gitbook/assets/image (41).png>)
+![](<../../../.gitbook/assets/image (41) (1).png>)
 
 * Once done, you will land on the dashboard page.
 
@@ -24,7 +24,7 @@
 
 * Click on `Create Applicaiton`.
 
-![](<../../../.gitbook/assets/image (33).png>)
+![](<../../../.gitbook/assets/image (33) (1).png>)
 
 * Enter the Application name
 * Choose an application type and click on `Create`.
@@ -36,4 +36,4 @@
 * Navigate to the Settings tab.
 * You will find you `Client ID`, `Client Secret` and `Domain`.
 
-![](<../../../.gitbook/assets/image (53).png>)
+![](<../../../.gitbook/assets/image (53) (1).png>)

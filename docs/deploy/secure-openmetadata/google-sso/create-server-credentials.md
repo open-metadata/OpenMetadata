@@ -20,13 +20,13 @@ description: >-
 * Enter the parent organization or folder in the **Location box**. That resource will be the hierarchical parent of the new project.
 * Click **Create**.
 
-![](<../../../.gitbook/assets/image (26).png>)
+![](<../../../.gitbook/assets/image (26) (1).png>)
 
 ## Step 3: How to Configure OAuth Consent
 
 * Select the project you created above and click on **APIs & Services** on the left-side panel.
 
-![](<../../../.gitbook/assets/image (60).png>)
+![](<../../../.gitbook/assets/image (60) (1).png>)
 
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
 * Provide the User Type.&#x20;
@@ -38,7 +38,7 @@ description: >-
 * Once the user type is selected, provide the **App Information** and other details.
 * Click **Save and Continue**.
 
-![](<../../../.gitbook/assets/image (63).png>)
+![](<../../../.gitbook/assets/image (63) (1).png>)
 
 * On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.&#x20;
 * Once done click on **Update**.
@@ -51,7 +51,7 @@ description: >-
 
 * Click on **Back to Dashboard**.
 
-![](<../../../.gitbook/assets/image (30).png>)
+![](<../../../.gitbook/assets/image (30) (1).png>)
 
 ![](<../../../.gitbook/assets/image (38).png>)
 
@@ -64,7 +64,7 @@ description: >-
 * Click on **Create Credentials**
 * Select **OAuth client ID** from the dropdown.
 
-![](<../../../.gitbook/assets/image (79).png>)
+![](<../../../.gitbook/assets/image (79) (1).png>)
 
 * Once selected, you will be asked to select the **Application type**. Select **Web application**.
 
@@ -72,7 +72,7 @@ description: >-
 
 * After selecting the **Application Type**, name your project and give the authorized URIs.
 
-![](<../../../.gitbook/assets/image (56).png>)
+![](<../../../.gitbook/assets/image (56) (1).png>)
 
 * Click **Create**
 * You will get the credentials

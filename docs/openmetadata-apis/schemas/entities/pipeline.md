@@ -81,7 +81,7 @@ This schema does not accept additional properties.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **serviceType**
   * Service type where this pipeline is hosted in.
-  * $ref: [../services/pipelineService.json#/definitions/pipelineServiceType](../services/pipelineservice.md#pipelineservicetype)
+  * $ref: [../services/pipelineService.json#/definitions/pipelineServiceType](https://github.com/open-metadata/OpenMetadata/blob/docs/docs/openmetadata-apis/schemas/services/pipelineservice.md#pipelineservicetype)
 * **changeDescription**
   * Change that lead to this version of the entity.
   * $ref: [../../type/entityHistory.json#/definitions/changeDescription](../types/entityhistory.md#changedescription)

@@ -33,13 +33,13 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your Snowflake service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ## 4. Select service type
 
 Select Snowflake as the service type.
 
-![](<../../../.gitbook/assets/image (60) (1) (1).png>)
+![](<../../../.gitbook/assets/image (60) (1) (1) (1).png>)
 
 ## 5. Name and describe your service
 
@@ -85,7 +85,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (27) (1).png>)
+![](<../../../.gitbook/assets/image (27) (1) (1).png>)
 
 #### Ingestion name
 

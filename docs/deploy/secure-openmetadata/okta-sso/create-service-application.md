@@ -76,14 +76,14 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 * Click on **Applications -> Applications** in the left navigation bar.
 * You should see your service account in the list.
 
-![](<../../../.gitbook/assets/image (35) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (35) (1) (1) (1) (1).png>)
 
 ## Step 4: Grant Allowed Scopes
 
 * To add scopes, navigate to your **Okta Dashboard**. Click on **Applications -> Applications** as in step 2.
 * Click on your service app.
 
-![](<../../../.gitbook/assets/image (35) (1) (1).png>)
+![](<../../../.gitbook/assets/image (35) (1) (1) (1).png>)
 
 * Now click on **Okta API Scopes** from the top nav bar.
 * Grant the scopes by clicking on **Grant**. Ensure that the following scopes are granted:

@@ -124,3 +124,7 @@ server {
     }
 }
 ```
+
+## Enable Security
+
+OpenMetadata has support for Google, Okta, Auth0, and Azure SSO as identity providers. Please check [Secure OpenMetadata](../../docs/deploy/secure-openmetadata/) for configuring Single Sign On.

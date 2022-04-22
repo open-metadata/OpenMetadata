@@ -21,13 +21,13 @@ description: This is a guide to create ingestion bot service account.
 * Once selected, scroll down until you see the `Application Properties` section.
 * Change the `Token Endpoint Authentication Method` from None to Basic.
 
-![](<../../../.gitbook/assets/image (40).png>)
+![](<../../../.gitbook/assets/image (40) (1).png>)
 
 * Now scroll further down to the section on `Advanced Settings`.
 * Click on it and select `Grant Types`.
 * In the `Grant Types`, check the option for `Client Credentials`.
 
-![](<../../../.gitbook/assets/image (46).png>)
+![](<../../../.gitbook/assets/image (46) (1).png>)
 
 * Once done, click on `Save Changes`.
 
@@ -39,7 +39,7 @@ description: This is a guide to create ingestion bot service account.
 
 * You will see the `Auth0 Management API`.
 
-![](<../../../.gitbook/assets/image (32).png>)
+![](<../../../.gitbook/assets/image (32) (1).png>)
 
 * Click on the `Auth0 Management API`.
 
@@ -48,7 +48,7 @@ description: This is a guide to create ingestion bot service account.
 * Click on the `Machine to Machine Applications` tab.
 * You will find your application listed below.
 
-![](<../../../.gitbook/assets/image (28).png>)
+![](<../../../.gitbook/assets/image (28) (1).png>)
 
 * Click on the toggle to authorize.
 * Once done you will find a down arrow, click on it.

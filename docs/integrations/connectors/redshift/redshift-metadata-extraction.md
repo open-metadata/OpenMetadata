@@ -513,7 +513,7 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your Redshift service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ### 3. Select service type
 

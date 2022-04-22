@@ -17,7 +17,7 @@ description: >-
 
 * Once done with **Signup/Sign in**, you will be redirected to the **Getting Started** page in Okta.
 
-![](<../../../.gitbook/assets/image (56) (1).png>)
+![](<../../../.gitbook/assets/image (56) (1) (1).png>)
 
 * Click on **Applications -> Applications** in the left navigation panel.
 
@@ -33,7 +33,7 @@ description: >-
 * Next, select the **Application type -> Single-Page Application**.
 * Once selected, click **Next**.
 
-![](<../../../.gitbook/assets/image (41) (1).png>)
+![](<../../../.gitbook/assets/image (41) (1) (1).png>)
 
 * From the **General Settings** page,&#x20;
   * Enter an **App integration name**
@@ -49,11 +49,11 @@ description: >-
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../.gitbook/assets/image (20) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1).png>)
 
 * The app is now configured.
 
-![](<../../../.gitbook/assets/image (28) (1).png>)
+![](<../../../.gitbook/assets/image (28) (1) (1).png>)
 
 ## Step 4: Add Authorization Server to get the Issuer URL
 
@@ -65,13 +65,13 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../.gitbook/assets/image (26) (1).png>)
+![](<../../../.gitbook/assets/image (26) (1) (1).png>)
 
 * Enter a Name and Description.&#x20;
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
 * **Save** the changes.
 
-![](<../../../.gitbook/assets/image (32) (1).png>)
+![](<../../../.gitbook/assets/image (32) (1) (1).png>)
 
 This will generate the Issuer URL.
 
@@ -106,7 +106,7 @@ This will generate the Issuer URL.
 * Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 * Click on **Create Rule** to save the changes.
 
-![](<../../../.gitbook/assets/image (40) (1).png>)
+![](<../../../.gitbook/assets/image (40) (1) (1).png>)
 
 ## Step 7: Where to Find the Credentials
 
@@ -132,7 +132,7 @@ This will generate the Issuer URL.
 
 ## Step 8: Adding the Details in openmetadata-security.yaml
 
-* Once the **Client ID**, **** and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
+* Once the **Client ID**, **** \*\*\*\* and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
 
 ```yaml
 authorizerConfiguration:

@@ -8,11 +8,11 @@ description: This is a guide to create ingestion bot service account.
 
 * Navigate to your project dashboard
 
-![](<../../../.gitbook/assets/image (21).png>)
+![](<../../../.gitbook/assets/image (21) (1).png>)
 
 * Click on **Credentials** on the left side panel
 
-![](<../../../.gitbook/assets/image (25).png>)
+![](<../../../.gitbook/assets/image (25) (1).png>)
 
 * Click on **Manage service accounts** available on the center-right side.
 
@@ -32,7 +32,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 * Click on **Select a role** and give the **Owner** role. Then click **Continue.**
 
-![](<../../../.gitbook/assets/image (61).png>)
+![](<../../../.gitbook/assets/image (61) (1).png>)
 
 * Click **DONE**
 
@@ -40,7 +40,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 * Now you should see your service account listed.
 
-![](<../../../.gitbook/assets/image (20).png>)
+![](<../../../.gitbook/assets/image (20) (1).png>)
 
 ## Step 2: Enable Domain-Wide Delegation
 
@@ -62,11 +62,11 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 * Once done with the above steps, click on **KEYS** available next to the **DETAILS** tab.
 * Click on **ADD KEY** and select **Create a new key**.
 
-![](<../../../.gitbook/assets/image (27).png>)
+![](<../../../.gitbook/assets/image (27) (1).png>)
 
 * Select the format. The **JSON format** is recommended.&#x20;
 * Next, click on **CREATE**
 
-![](<../../../.gitbook/assets/image (35).png>)
+![](<../../../.gitbook/assets/image (35) (1).png>)
 
 * The private-key/service-account JSON file will be downloaded.

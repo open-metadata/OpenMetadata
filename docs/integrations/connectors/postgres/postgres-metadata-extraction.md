@@ -529,7 +529,7 @@ You may configure scheduled ingestion workflows from the _Services_ page in the 
 
 From the Database Service UI, click the _Add New Service_ button to add your Postgres service to OpenMetadata for metadata ingestion.
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](<../../../.gitbook/assets/image (30) (1) (1).png>)
 
 ### 3. Select service type
 
@@ -667,7 +667,7 @@ Review your configuration settings. If they match what you intended, click Save 
 
 If something doesn't look right, click the _Previous_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (63) (1).png>)
+![](<../../../.gitbook/assets/image (63) (1) (1).png>)
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}

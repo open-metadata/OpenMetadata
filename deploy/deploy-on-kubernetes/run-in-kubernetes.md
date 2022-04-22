@@ -126,3 +126,7 @@ kubectl logs <POD_NAME> --namespace <NAMESPACE_NAME>
 ```
 
 For more information, visit the kubectl logs command line reference documentation [here](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-running-pod/).
+
+## Enable Security
+
+OpenMetadata has support for Google, Okta, Auth0, and Azure SSO as identity providers. Please check [Secure OpenMetadata](../../docs/deploy/secure-openmetadata/) for configuring Single Sign On.
