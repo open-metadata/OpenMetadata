@@ -28,6 +28,7 @@ T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 def ometa_logger():
     return logging.getLogger("OMetaAPI")
 
+
 def format_name(name: str) -> str:
     """
     Given a name, replace all special characters by `_`
