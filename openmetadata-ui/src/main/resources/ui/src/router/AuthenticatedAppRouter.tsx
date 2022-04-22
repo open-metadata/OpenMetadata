@@ -18,6 +18,7 @@ import AppState from '../AppState';
 import { ROUTES } from '../constants/constants';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
+import AddIngestionPage from '../pages/AddIngestionPage/AddIngestionPage.component';
 import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
@@ -25,6 +26,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetails from '../pages/database-details/index';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import EditIngestionPage from '../pages/EditIngestionPage/EditIngestionPage.component';
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
@@ -65,6 +67,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
+      <AdminProtectedRoute
+        exact
+        component={AddIngestionPage}
+        path={ROUTES.ADD_INGESTION}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditIngestionPage}
+        path={ROUTES.EDIT_INGESTION}
+      />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>

@@ -15,23 +15,26 @@ import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
-import { capitalize, isNil, isUndefined, lowerCase } from 'lodash';
+import { capitalize, isNil, lowerCase } from 'lodash';
 import React, { useCallback, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   PAGE_SIZE,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
-import { FormSubmitType } from '../../enums/form.enum';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
+import {
+  getAddIngestionPath,
+  getEditIngestionPath,
+} from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showInfoToast } from '../../utils/ToastUtils';
-import AddIngestion from '../AddIngestion/AddIngestion.component';
 import { Button } from '../buttons/Button/Button';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -43,32 +46,27 @@ import { IngestionProps, ModifiedConfig } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
-  serviceDetails,
   serviceName,
   serviceCategory,
   ingestionList,
   isRequiredDetailsAvailable,
   deleteIngestion,
   triggerIngestion,
-  addIngestion,
-  updateIngestion,
   paging,
   pagingHandler,
   currrentPage,
 }: IngestionProps) => {
+  const history = useHistory();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [searchText, setSearchText] = useState('');
-  const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
-  const [showIngestionForm, setShowIngestionForm] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
     name: '',
     state: '',
   });
-  const [updateSelection, setUpdateSelection] = useState<IngestionPipeline>();
   const noConnectionMsg = `${serviceName} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.`;
 
   const handleSearchAction = (searchValue: string) => {
@@ -117,13 +115,14 @@ const Ingestion: React.FC<IngestionProps> = ({
   };
 
   const handleUpdate = (ingestion: IngestionPipeline) => {
-    setUpdateSelection(ingestion);
-    setShowIngestionForm(true);
-  };
-
-  const handleCancelUpdate = () => {
-    setUpdateSelection(undefined);
-    setShowIngestionForm(false);
+    history.push(
+      getEditIngestionPath(
+        serviceCategory,
+        serviceName,
+        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
+        ingestion.pipelineType
+      )
+    );
   };
 
   const handleDelete = (id: string, displayName: string) => {
@@ -150,13 +149,56 @@ const Ingestion: React.FC<IngestionProps> = ({
   };
 
   const handleAddIngestionClick = () => {
-    if (!getIngestionPipelineTypeOption().length) {
+    const types = getIngestionPipelineTypeOption();
+    if (!types.length) {
       showInfoToast(
         `${serviceName} already has all the supported ingestion jobs added.`
       );
     } else {
-      setShowIngestionForm(true);
+      history.push(getAddIngestionPath(serviceCategory, serviceName, types[0]));
     }
+  };
+
+  const getAddIngestionButton = () => {
+    const types = getIngestionPipelineTypeOption();
+    let buttonText;
+
+    switch (types[0]) {
+      case PipelineType.Metadata: {
+        buttonText = 'Add Metadata Ingestion';
+
+        break;
+      }
+      case PipelineType.Usage: {
+        buttonText = 'Add Usage Ingestion';
+
+        break;
+      }
+      case PipelineType.Profiler:
+      default: {
+        buttonText = '';
+
+        break;
+      }
+    }
+
+    return buttonText ? (
+      <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+        <Button
+          className={classNames('tw-h-8 tw-rounded tw-mb-2')}
+          data-testid="add-new-ingestion-button"
+          disabled={
+            getIngestionPipelineTypeOption().length === 0 ||
+            (!isAdminUser && !isAuthDisabled)
+          }
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={handleAddIngestionClick}>
+          {buttonText}
+        </Button>
+      </NonAdminAction>
+    ) : null;
   };
 
   const getSearchedIngestions = useCallback(() => {
@@ -240,25 +282,7 @@ const Ingestion: React.FC<IngestionProps> = ({
             ) : null}
           </div>
           <div className="tw-w-8/12 tw-flex tw-justify-end">
-            {isRequiredDetailsAvailable && (
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  className={classNames('tw-h-8 tw-rounded tw-mb-2')}
-                  data-testid="add-new-ingestion-button"
-                  disabled={
-                    getIngestionPipelineTypeOption().length === 0 ||
-                    (!isAdminUser && !isAuthDisabled)
-                  }
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={handleAddIngestionClick}>
-                  Add Ingestion
-                </Button>
-              </NonAdminAction>
-            )}
+            {isRequiredDetailsAvailable && getAddIngestionButton()}
           </div>
         </div>
         {getSearchedIngestions().length ? (
@@ -422,46 +446,9 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
   };
 
-  const getIngestionForm = () => {
-    const type = getIngestionPipelineTypeOption();
-    let heading = '';
-
-    if (isUndefined(updateSelection)) {
-      heading = `Add ${capitalize(type[0])} Ingestion`;
-    } else {
-      heading = `Edit ${capitalize(updateSelection.pipelineType)} Ingestion`;
-    }
-
-    return (
-      <div className="tw-bg-white tw-pt-4 tw-w-full">
-        <div className="tw-max-w-2xl tw-mx-auto tw-pb-6">
-          <AddIngestion
-            activeIngestionStep={activeIngestionStep}
-            data={updateSelection}
-            handleCancelClick={handleCancelUpdate}
-            heading={heading}
-            pipelineType={type[0]}
-            serviceCategory={serviceCategory}
-            serviceData={serviceDetails}
-            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-            showSuccessScreen={false}
-            status={
-              isUndefined(updateSelection)
-                ? FormSubmitType.ADD
-                : FormSubmitType.EDIT
-            }
-            onAddIngestionSave={addIngestion}
-            onSuccessSave={handleCancelUpdate}
-            onUpdateIngestion={updateIngestion}
-          />
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div data-testid="ingestion-container">
-      {showIngestionForm ? getIngestionForm() : getIngestionTab()}
+      {getIngestionTab()}
 
       {isConfirmationModalOpen && (
         <EntityDeleteModal

@@ -21,7 +21,14 @@ import {
   ServicesData,
   ServiceTypes,
 } from 'Models';
+import React from 'react';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
+import {
+  addMetadataIngestionGuide,
+  addProfilerIngestionGuide,
+  addServiceGuide,
+  addUsageIngestionGuide,
+} from '../constants/service-guide.constant';
 import {
   AIRFLOW,
   arrServiceTypes,
@@ -65,6 +72,7 @@ import {
 import { ServiceCategory } from '../enums/service.enum';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
@@ -264,7 +272,7 @@ export const getAllServices = (
         }
       }
       getAllServiceList(allServiceCollectionArr, limit)
-        .then((res) => resolve(res))
+        .then((resAll) => resolve(resAll))
         .catch((err) => reject(err));
     });
   });
@@ -366,14 +374,12 @@ export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {
-  const newObj = Object.entries(obj).map((v) => {
+  return Object.entries(obj).map((v) => {
     return {
       key: v[0],
       value: v[1],
     };
   });
-
-  return newObj;
 };
 
 export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
@@ -445,7 +451,7 @@ export const servicePageTabs = (entity: string) => [
 ];
 
 export const getCurrentServiceTab = (tab: string) => {
-  let currentTab = 1;
+  let currentTab;
   switch (tab) {
     case 'ingestions':
       currentTab = 2;
@@ -481,4 +487,59 @@ export const getFormattedGuideText = (
   const regExp = isGlobal ? new RegExp(toReplace, 'g') : new RegExp(toReplace);
 
   return text.replace(regExp, replacement);
+};
+
+export const getServiceIngestionStepGuide = (
+  step: number,
+  isIngestion: boolean,
+  ingestionName: string,
+  serviceName: string,
+  ingestionType: IngestionPipelineType
+) => {
+  let guide;
+  if (isIngestion) {
+    switch (ingestionType) {
+      case IngestionPipelineType.Usage: {
+        guide = addUsageIngestionGuide.find((item) => item.step === step);
+
+        break;
+      }
+      case IngestionPipelineType.Profiler: {
+        guide = addProfilerIngestionGuide.find((item) => item.step === step);
+
+        break;
+      }
+      case IngestionPipelineType.Metadata:
+      default: {
+        guide = addMetadataIngestionGuide.find((item) => item.step === step);
+
+        break;
+      }
+    }
+  } else {
+    guide = addServiceGuide.find((item) => item.step === step);
+  }
+
+  return (
+    <>
+      {guide && (
+        <>
+          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+          <div className="tw-mb-5">
+            {isIngestion
+              ? getFormattedGuideText(
+                  guide.description,
+                  '<Ingestion Pipeline Name>',
+                  `${ingestionName}`
+                )
+              : getFormattedGuideText(
+                  guide.description,
+                  '<Service Name>',
+                  serviceName
+                )}
+          </div>
+        </>
+      )}
+    </>
+  );
 };

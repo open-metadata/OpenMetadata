@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -23,8 +23,10 @@ import { FormSubmitType } from '../../enums/form.enum';
 import {
   ConfigClass,
   CreateIngestionPipeline,
+  PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
+  ConfigType,
   FilterPattern,
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -88,7 +90,7 @@ const AddIngestion = ({
     )
   );
   const [includeView, setIncludeView] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.includeViews ?? false
+    Boolean((data?.source.sourceConfig.config as ConfigClass)?.includeViews)
   );
   const [enableDataProfiler, setEnableDataProfiler] = useState(
     (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
@@ -119,6 +121,23 @@ const AddIngestion = ({
     (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
+
+  const [queryLogDuration, setQueryLogDuration] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
+  );
+  const [stageFileLocation, setStageFileLocation] = useState<string>(
+    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ??
+      '/tmp/query_log'
+  );
+  const [resultLimit, setResultLimit] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+  );
+  const usageIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseUsage
+    );
+  }, [data]);
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
@@ -247,26 +266,37 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
-          includeViews: includeView,
-          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-          tableFilterPattern: getFilterPatternData(tableFilterPattern),
-          chartFilterPattern: getFilterPatternData(chartFilterPattern),
-          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
-          topicFilterPattern: getFilterPatternData(topicFilterPattern),
-        },
+        config:
+          pipelineType === PipelineType.Usage
+            ? {
+                queryLogDuration,
+                resultLimit,
+                stageFileLocation,
+                type: usageIngestionType,
+              }
+            : {
+                enableDataProfiler: enableDataProfiler,
+                generateSampleData: ingestSampleData,
+                includeViews: includeView,
+                schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
+                tableFilterPattern: getFilterPatternData(tableFilterPattern),
+                chartFilterPattern: getFilterPatternData(chartFilterPattern),
+                dashboardFilterPattern: getFilterPatternData(
+                  dashboardFilterPattern
+                ),
+                topicFilterPattern: getFilterPatternData(topicFilterPattern),
+              },
       },
     };
 
-    onAddIngestionSave(ingestionDetails).then(() => {
-      if (showSuccessScreen) {
-        setActiveIngestionStep(3);
-      } else {
-        onSuccessSave?.();
-      }
-    });
+    onAddIngestionSave &&
+      onAddIngestionSave(ingestionDetails).then(() => {
+        if (showSuccessScreen) {
+          setActiveIngestionStep(3);
+        } else {
+          onSuccessSave?.();
+        }
+      });
   };
 
   const updateIngestion = () => {
@@ -276,7 +306,7 @@ const AddIngestion = ({
         airflowConfig: {
           ...data.airflowConfig,
           startDate: startDate as unknown as Date,
-          endDate: endDate as unknown as Date,
+          endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
         source: {
@@ -284,16 +314,29 @@ const AddIngestion = ({
           sourceConfig: {
             config: {
               ...(data.source.sourceConfig.config as ConfigClass),
-              enableDataProfiler: enableDataProfiler,
-              generateSampleData: ingestSampleData,
-              includeViews: includeView,
-              schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-              tableFilterPattern: getFilterPatternData(tableFilterPattern),
-              chartFilterPattern: getFilterPatternData(chartFilterPattern),
-              dashboardFilterPattern: getFilterPatternData(
-                dashboardFilterPattern
-              ),
-              topicFilterPattern: getFilterPatternData(topicFilterPattern),
+              ...(pipelineType === PipelineType.Usage
+                ? {
+                    queryLogDuration,
+                    resultLimit,
+                    stageFileLocation,
+                    type: usageIngestionType,
+                  }
+                : {
+                    enableDataProfiler: enableDataProfiler,
+                    generateSampleData: ingestSampleData,
+                    includeViews: includeView,
+                    schemaFilterPattern:
+                      getFilterPatternData(schemaFilterPattern),
+                    tableFilterPattern:
+                      getFilterPatternData(tableFilterPattern),
+                    chartFilterPattern:
+                      getFilterPatternData(chartFilterPattern),
+                    dashboardFilterPattern: getFilterPatternData(
+                      dashboardFilterPattern
+                    ),
+                    topicFilterPattern:
+                      getFilterPatternData(topicFilterPattern),
+                  }),
             },
           },
         },
@@ -340,10 +383,16 @@ const AddIngestion = ({
             }
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
+            handleQueryLogDuration={(val) => setQueryLogDuration(val)}
+            handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
+            handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            pipelineType={pipelineType}
+            queryLogDuration={queryLogDuration}
+            resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
             serviceCategory={serviceCategory}
             showChartFilter={showChartFilter}
@@ -351,6 +400,7 @@ const AddIngestion = ({
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
             showTopicFilter={showTopicFilter}
+            stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
             topicFilterPattern={topicFilterPattern}
             onCancel={handleConfigureIngestionCancelClick}

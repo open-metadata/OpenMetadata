@@ -12,7 +12,6 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Operation } from 'fast-json-patch';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -57,16 +56,7 @@ export const deleteIngestionPipelineById = (
 };
 
 export const updateIngestionPipeline = (
-  id: string,
-  patch: Operation[]
+  data: CreateIngestionPipeline
 ): Promise<AxiosResponse> => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
-  return APIClient.patch(
-    `/services/ingestionPipelines/${id}`,
-    patch,
-    configOptions
-  );
+  return APIClient.put(`/services/ingestionPipelines`, data);
 };

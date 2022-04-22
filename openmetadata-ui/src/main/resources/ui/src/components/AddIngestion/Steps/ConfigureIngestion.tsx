@@ -14,6 +14,7 @@
 import React, { Fragment } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
@@ -31,17 +32,24 @@ const ConfigureIngestion = ({
   serviceCategory,
   enableDataProfiler,
   ingestSampleData,
+  pipelineType,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
   showTopicFilter,
   showChartFilter,
+  queryLogDuration,
+  stageFileLocation,
+  resultLimit,
   getExcludeValue,
   getIncludeValue,
   handleShowFilter,
   handleEnableDataProfiler,
   handleIncludeView,
   handleIngestSampleData,
+  handleQueryLogDuration,
+  handleStageFileLocation,
+  handleResultLimit,
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
@@ -124,52 +132,137 @@ const ConfigureIngestion = ({
     }
   };
 
+  const getMetadataFields = () => {
+    return (
+      <>
+        <div>{getFilterPatternField()}</div>
+        {getSeparator('')}
+        <div>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Include views</label>
+              <ToggleSwitchV1
+                checked={includeView}
+                handleCheck={handleIncludeView}
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Enable extracting views from the data source
+            </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Enable Data Profiler</label>
+              <ToggleSwitchV1
+                checked={enableDataProfiler}
+                handleCheck={handleEnableDataProfiler}
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Slowdown metadata extraction by calculate the metrics and
+              distribution of data in the table
+            </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Ingest Sample Data</label>
+              <ToggleSwitchV1
+                checked={ingestSampleData}
+                handleCheck={handleIngestSampleData}
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Extract sample data from each table
+            </p>
+            {getSeparator('')}
+          </Field>
+        </div>
+      </>
+    );
+  };
+
+  const getUsageFields = () => {
+    return (
+      <>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="query-log-duration">
+            Query Log Duration
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to tune how far we want to look back in query logs to
+            process usage data.
+          </p>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="query-log-duration"
+            id="query-log-duration"
+            name="query-log-duration"
+            type="number"
+            value={queryLogDuration}
+            onChange={(e) => handleQueryLogDuration(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="stage-file-location">
+            Stage File Location
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Temporary file name to store the query logs before processing.
+            Absolute file path required.
+          </p>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="stage-file-location"
+            id="stage-file-location"
+            name="stage-file-location"
+            type="text"
+            value={stageFileLocation}
+            onChange={(e) => handleStageFileLocation(e.target.value)}
+          />
+          {getSeparator('')}
+        </Field>
+        <Field>
+          <label
+            className="tw-block tw-form-label tw-mb-1"
+            htmlFor="result-limit">
+            Result Limit
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Configuration to set the limit for query logs.
+          </p>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="result-limit"
+            id="result-limit"
+            name="result-limit"
+            type="number"
+            value={resultLimit}
+            onChange={(e) => handleResultLimit(parseInt(e.target.value))}
+          />
+          {getSeparator('')}
+        </Field>
+      </>
+    );
+  };
+
+  const getIngestionPipelineFields = () => {
+    if (pipelineType === PipelineType.Usage) {
+      return getUsageFields();
+    } else {
+      return getMetadataFields();
+    }
+  };
+
   return (
     <div className="tw-px-2" data-testid="configure-ingestion-container">
-      <div>{getFilterPatternField()}</div>
-      {getSeparator('')}
-      <div>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>Include views</label>
-            <ToggleSwitchV1
-              checked={includeView}
-              handleCheck={handleIncludeView}
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            Enable extracting views from the data source
-          </p>
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>Enable Data Profiler</label>
-            <ToggleSwitchV1
-              checked={enableDataProfiler}
-              handleCheck={handleEnableDataProfiler}
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            Slowdown metadata extraction by calculate the metrics and
-            distribution of data in the table
-          </p>
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>Ingest Sample Data</label>
-            <ToggleSwitchV1
-              checked={ingestSampleData}
-              handleCheck={handleIngestSampleData}
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            Extract sample data from each table
-          </p>
-          {getSeparator('')}
-        </Field>
-      </div>
+      {getIngestionPipelineFields()}
 
       <Field className="tw-flex tw-justify-end">
         <Button
