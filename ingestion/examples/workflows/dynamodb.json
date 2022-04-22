@@ -8,8 +8,8 @@
         "awsConfig": {
           "awsAccessKeyId": "aws_access_key_id",
           "awsSecretAccessKey": "aws_secret_access_key",
-          "awsRegion": "us-east-2",
-          "hostPort": "https://dynamodb.us-east-2.amazonaws.com"
+          "awsRegion": "aws region",
+          "endPointURL": "https://dynamodb.<region_name>.amazonaws.com"
         },
         "database": "custom_database_name"
       }

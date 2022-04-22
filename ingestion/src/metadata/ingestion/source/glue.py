@@ -36,7 +36,6 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
-from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table

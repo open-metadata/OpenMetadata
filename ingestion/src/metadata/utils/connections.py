@@ -16,7 +16,6 @@ import logging
 from functools import singledispatch
 from typing import Union
 
-from botocore.client import ClientError
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
@@ -41,9 +40,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.utils.aws_client import AWSClient, DynamoClient, GlueClient
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
+from metadata.utils.test_connection_clients import DynamoClient, GlueClient
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")
@@ -140,12 +139,16 @@ def _(connection: BigQueryConnection, verbose: bool = False):
 
 @get_connection.register
 def _(connection: DynamoDBConnection, verbose: bool = False):
+    from metadata.utils.aws_client import AWSClient
+
     dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
     return dynomo_connection
 
 
 @get_connection.register
 def _(connection: GlueConnection, verbose: bool = False):
+    from metadata.utils.aws_client import AWSClient
+
     glue_connection = AWSClient(connection.awsConfig).get_glue_client()
     return glue_connection
 
@@ -188,6 +191,8 @@ def _(connection: DynamoClient) -> None:
     :param engine: boto service resource to test
     :return: None or raise an exception if we cannot connect
     """
+    from botocore.client import ClientError
+
     try:
         connection.client.tables.all()
     except ClientError as err:
@@ -207,6 +212,8 @@ def _(connection: GlueClient) -> None:
     :param engine: boto cliet to test
     :return: None or raise an exception if we cannot connect
     """
+    from botocore.client import ClientError
+
     try:
         connection.client.list_workflows()
     except ClientError as err:
