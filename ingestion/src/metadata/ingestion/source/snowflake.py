@@ -40,6 +40,10 @@ ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger: logging.Logger = logging.getLogger(__name__)
+formatter = logging.Formatter(
+    "[%(asctime)s] p%(process)s {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s",
+    "%m-%d %H:%M:%S",
+)
 
 
 def normalize_names(self, name):

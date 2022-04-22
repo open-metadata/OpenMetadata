@@ -73,7 +73,7 @@ from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import store_gcs_credentials
 
-logger = ometa_logger(__name__)
+logger = ometa_logger()
 
 
 @dataclass
