@@ -445,8 +445,9 @@
   /* react tostify */
 
   .Toastify__toast-container {
-    @apply tw-font-sans tw-break-all;
+    @apply tw-font-sans;
     width: 450px;
+    word-break: break-word;
   }
 
   .Toastify__toast {

@@ -21,7 +21,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { ColumnTestType } from '../enums/columnTest.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
@@ -127,7 +127,7 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: ownerValue
             ? ownerValue.type === 'team'
               ? true
@@ -205,7 +205,7 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: ownerValue
             ? ownerValue.type === 'team'
               ? true
@@ -253,7 +253,7 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
           isLink: ownerValue
             ? ownerValue.type === 'team'
               ? true

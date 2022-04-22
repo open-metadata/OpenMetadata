@@ -37,11 +37,9 @@ import ServicesPage from '../pages/services';
 import SignupPage from '../pages/signup';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
-import TeamsPage from '../pages/teams';
 import TeamsAndUsersPage from '../pages/TeamsAndUsersPage/TeamsAndUsersPage.component';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
-import UserListPage from '../pages/UserListPage/UserListPage';
 import UserPage from '../pages/UserPage/UserPage.component';
 import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -53,8 +51,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
       <Route
         exact
         component={TeamsAndUsersPage}
@@ -154,11 +150,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
-      />
-      <AdminProtectedRoute
-        exact
-        component={UserListPage}
-        path={ROUTES.USER_LIST}
       />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

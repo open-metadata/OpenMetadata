@@ -18,11 +18,13 @@ export interface ManageProps {
   currentUser?: string;
   hideTier?: boolean;
   isJoinable?: boolean;
+  allowSoftDelete?: boolean;
   onSave: (
     owner: TableDetail['owner'],
     tier: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
+  handleIsJoinable?: (bool: boolean) => void;
   hasEditAccess: boolean;
   allowTeamOwner?: boolean;
   entityId?: string;

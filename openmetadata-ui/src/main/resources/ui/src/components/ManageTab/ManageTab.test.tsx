@@ -14,7 +14,7 @@
 import {
   findAllByTestId,
   findByTestId,
-  fireEvent,
+  findByText,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -40,6 +40,10 @@ jest.mock('../../hooks/authHooks', () => ({
     },
   }),
 }));
+
+jest.mock('../common/toggle-switch/ToggleSwitchV1', () => {
+  return jest.fn().mockImplementation(() => <p>ToggleSwitchV1.Component</p>);
+});
 
 const mockTierData = {
   children: [
@@ -96,22 +100,10 @@ describe('Test Manage tab Component', () => {
       <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
     );
 
-    const isJoinableSwitch = await findByTestId(
+    const isJoinableSwitch = await findByText(
       container,
-      'team-isJoinable-switch'
+      'ToggleSwitchV1.Component'
     );
-
-    expect(isJoinableSwitch).toHaveClass('open');
-
-    fireEvent.click(
-      isJoinableSwitch,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(isJoinableSwitch).not.toHaveClass('open');
 
     expect(isJoinableSwitch).toBeInTheDocument();
   });

@@ -17,7 +17,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
-export const PAGE_SIZE_12 = 12;
+export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
@@ -50,7 +50,6 @@ const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
-const PLACEHOLDER_ROUTE_TEAM = ':team';
 const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
@@ -151,8 +150,6 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
-  TEAMS: '/teams',
-  TEAM_DETAILS: `/teams/${PLACEHOLDER_ROUTE_TEAM}`,
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: '/settings',
@@ -325,16 +322,6 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
   return path;
 };
 
-export const getTeamDetailsPath = (teamName?: string) => {
-  let path = ROUTES.TEAMS;
-  if (teamName) {
-    path = ROUTES.TEAM_DETAILS;
-    path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
-  }
-
-  return path;
-};
-
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, webhookName);
@@ -406,13 +393,7 @@ export const navLinkSettings = [
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Tags', to: '/tags', disabled: false },
   { name: 'Teams & Users', to: ROUTES.TEAMS_AND_USERS, disabled: false },
-  // { name: 'Teams', to: '/teams', disabled: false },
-  // { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
-  // { name: 'Store', to: '/store', disabled: false },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
-  // { name: 'Ingestions', to: '/ingestion', disabled: false },
-  // { name: 'Marketplace', to: '/marketplace', disabled: true },
-  // { name: 'Preferences', to: '/preference', disabled: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =
