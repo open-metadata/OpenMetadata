@@ -625,13 +625,13 @@ const Users = ({
   useEffect(() => {
     setSelectedRoles(
       userData.roles?.map((role) => ({
-        label: getEntityName(role as EntityReference),
+        label: getEntityName(role),
         value: role.id,
       })) || []
     );
     setSelectedTeams(
       getNonDeletedTeams(userData.teams || []).map((team) => ({
-        label: getEntityName(team as EntityReference),
+        label: getEntityName(team),
         value: team.id,
       }))
     );
