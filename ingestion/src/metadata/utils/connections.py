@@ -40,9 +40,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.utils.connection_clients import DynamoClient, GlueClient
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
-from metadata.utils.test_connection_clients import DynamoClient, GlueClient
 from metadata.utils.timeout import timeout
 
 logger = logging.getLogger("Utils")

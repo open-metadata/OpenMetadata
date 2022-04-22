@@ -14,7 +14,7 @@ from typing import Any
 from boto3 import Session
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.utils.test_connection_clients import DynamoClient, GlueClient
+from metadata.utils.connection_clients import DynamoClient, GlueClient
 
 
 class AWSClient:
