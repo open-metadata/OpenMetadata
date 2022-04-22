@@ -219,9 +219,11 @@ class OMetaServiceTest(TestCase):
                     "username": "tb_user",
                     "password": "tb_pwd",
                     "hostPort": "http://random:1234",
+                    "siteName": "openmetadata",
+                    "apiVersion": "3.15",
                 }
             },
-            "sourceConfig": {"config": {}},
+            "sourceConfig": {"config": {"topicFilterPattern": {}}},
         }
 
         workflow_source = WorkflowSource(**data)

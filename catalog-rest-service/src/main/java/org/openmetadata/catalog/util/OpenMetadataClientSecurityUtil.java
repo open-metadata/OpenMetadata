@@ -17,12 +17,14 @@ import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServer
 
 @Slf4j
 public final class OpenMetadataClientSecurityUtil {
+  public static final String CLIENT_ID = "clientId";
   public static final String AUDIENCE = "audience";
   public static final String DOMAIN = "domain";
   public static final String EMAIL = "email";
   public static final String SCOPES = "scopes";
   public static final String AUTHORITY = "authority";
   public static final String CLIENT_SECRET = "clientSecret";
+  public static final String SECRET_KEY = "secretKey";
 
   private OpenMetadataClientSecurityUtil() {
     /* Utility class with private constructor */
@@ -34,61 +36,49 @@ public final class OpenMetadataClientSecurityUtil {
     AuthConfiguration authConfig = airflowConfiguration.getAuthConfig();
     OpenMetadataServerConnection openMetadataServerConnection = new OpenMetadataServerConnection();
     openMetadataServerConnection.setAuthProvider(authProvider);
+    if (authProvider != AuthProvider.NO_AUTH && authConfig == null) {
+      throw new OpenMetadataClientSecurityConfigException(
+          String.format("%s SSO client config requires authConfig section", authProvider));
+    }
     switch (authProvider) {
       case GOOGLE:
-        validateAuthConfigs(authConfig, authProvider);
-        GoogleSSOClientConfig googleSSOClientConfig =
-            new GoogleSSOClientConfig()
-                .withSecretKey(authConfig.getGoogle().getSecretKey())
-                .withAudience(authConfig.getGoogle().getAudience());
+        GoogleSSOClientConfig googleSSOClientConfig = authConfig.getGoogle();
+        checkAuthConfig(googleSSOClientConfig, authProvider);
+        checkRequiredField(SECRET_KEY, googleSSOClientConfig.getSecretKey(), authProvider);
         openMetadataServerConnection.setSecurityConfig(googleSSOClientConfig);
         break;
       case AUTH_0:
-        validateAuthConfigs(authConfig, authProvider);
-        Auth0SSOClientConfig auth0SSOClientConfig =
-            new Auth0SSOClientConfig()
-                .withClientId(authConfig.getAuth0().getClientId())
-                .withSecretKey(authConfig.getAuth0().getSecretKey())
-                .withDomain(authConfig.getAuth0().getDomain());
+        Auth0SSOClientConfig auth0SSOClientConfig = authConfig.getAuth0();
+        checkAuthConfig(auth0SSOClientConfig, authProvider);
+        checkRequiredField(CLIENT_ID, auth0SSOClientConfig.getClientId(), authProvider);
+        checkRequiredField(SECRET_KEY, auth0SSOClientConfig.getSecretKey(), authProvider);
+        checkRequiredField(DOMAIN, auth0SSOClientConfig.getDomain(), authProvider);
         openMetadataServerConnection.setSecurityConfig(auth0SSOClientConfig);
         break;
       case OKTA:
-        validateAuthConfigs(authConfig, authProvider);
-        OktaSSOClientConfig oktaSSOClientConfig =
-            new OktaSSOClientConfig()
-                .withClientId(authConfig.getOkta().getClientId())
-                .withEmail(authConfig.getOkta().getEmail())
-                .withOrgURL(authConfig.getOkta().getOrgURL())
-                .withPrivateKey(authConfig.getOkta().getPrivateKey());
-
-        List<String> oktaScopesList = authConfig.getOkta().getScopes();
-        if (!oktaScopesList.isEmpty()) {
-          oktaSSOClientConfig.setScopes(oktaScopesList);
-        }
-
+        OktaSSOClientConfig oktaSSOClientConfig = authConfig.getOkta();
+        checkAuthConfig(oktaSSOClientConfig, authProvider);
+        checkRequiredField(CLIENT_ID, oktaSSOClientConfig.getClientId(), authProvider);
+        checkRequiredField("privateKey", oktaSSOClientConfig.getPrivateKey(), authProvider);
+        checkRequiredField(EMAIL, oktaSSOClientConfig.getEmail(), authProvider);
+        checkRequiredField("orgUrl", oktaSSOClientConfig.getOrgURL(), authProvider);
         openMetadataServerConnection.setSecurityConfig(oktaSSOClientConfig);
         break;
       case AZURE:
-        validateAuthConfigs(authConfig, authProvider);
-        AzureSSOClientConfig azureSSOClientConfig =
-            new AzureSSOClientConfig()
-                .withClientId(authConfig.getAzure().getClientId())
-                .withClientSecret(authConfig.getAzure().getClientSecret())
-                .withAuthority(authConfig.getAzure().getAuthority());
-        List<String> scopesList = authConfig.getAzure().getScopes();
-        if (!scopesList.isEmpty()) {
-          azureSSOClientConfig.setScopes(scopesList);
-        }
-
+        AzureSSOClientConfig azureSSOClientConfig = authConfig.getAzure();
+        checkAuthConfig(azureSSOClientConfig, authProvider);
+        checkRequiredField(CLIENT_ID, azureSSOClientConfig.getClientId(), authProvider);
+        checkRequiredField(CLIENT_SECRET, azureSSOClientConfig.getClientSecret(), authProvider);
+        checkRequiredField(AUTHORITY, azureSSOClientConfig.getAuthority(), authProvider);
+        checkRequiredField(SCOPES, azureSSOClientConfig.getScopes(), authProvider);
         openMetadataServerConnection.setSecurityConfig(azureSSOClientConfig);
         break;
       case CUSTOM_OIDC:
-        validateAuthConfigs(authConfig, authProvider);
-        CustomOIDCSSOClientConfig customOIDCSSOClientConfig =
-            new CustomOIDCSSOClientConfig()
-                .withClientId(authConfig.getCustomOidc().getClientId())
-                .withSecretKey(authConfig.getCustomOidc().getSecretKey())
-                .withTokenEndpoint(authConfig.getCustomOidc().getTokenEndpoint());
+        CustomOIDCSSOClientConfig customOIDCSSOClientConfig = authConfig.getCustomOidc();
+        checkAuthConfig(customOIDCSSOClientConfig, authProvider);
+        checkRequiredField(CLIENT_ID, customOIDCSSOClientConfig.getClientId(), authProvider);
+        checkRequiredField(SECRET_KEY, customOIDCSSOClientConfig.getSecretKey(), authProvider);
+        checkRequiredField("tokenEndpoint", customOIDCSSOClientConfig.getTokenEndpoint(), authProvider);
         openMetadataServerConnection.setSecurityConfig(customOIDCSSOClientConfig);
         break;
       case NO_AUTH:
@@ -100,127 +90,28 @@ public final class OpenMetadataClientSecurityUtil {
     return openMetadataServerConnection;
   }
 
-  public static void validateAuthConfigs(AuthConfiguration authConfig, AuthProvider authProvider)
-      throws OpenMetadataClientSecurityConfigException {
+  public static void checkAuthConfig(Object authConfig, AuthProvider authProvider) {
     if (authConfig == null) {
       throw new OpenMetadataClientSecurityConfigException(
-          String.format("%s SSO client config requires authConfig section", authProvider));
+          String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
     }
-    switch (authProvider) {
-      case NO_AUTH:
-        // No auth doesn't require auth configs
-        break;
-      case AZURE:
-        if (authConfig.getAzure() == null) {
-          throw new OpenMetadataClientSecurityConfigException(
-              String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
-        } else {
-          AzureSSOClientConfig azureSSOClientConfig = authConfig.getAzure();
-          if (azureSSOClientConfig.getClientId() == null || azureSSOClientConfig.getClientId().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires clientId", authProvider));
-          }
-          if (azureSSOClientConfig.getClientSecret() == null || azureSSOClientConfig.getClientSecret().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires clientSecret", authProvider));
-          }
-          if (azureSSOClientConfig.getAuthority() == null || azureSSOClientConfig.getAuthority().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires authority", authProvider));
-          }
-          if (azureSSOClientConfig.getScopes() == null || azureSSOClientConfig.getScopes().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires scopes", authProvider));
-          }
-        }
-        break;
-      case GOOGLE:
-        if (authConfig.getGoogle() == null) {
-          throw new OpenMetadataClientSecurityConfigException(
-              String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
-        } else {
-          GoogleSSOClientConfig googleSSOClientConfig = authConfig.getGoogle();
-          if (googleSSOClientConfig.getSecretKey() == null || googleSSOClientConfig.getSecretKey().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires secretKey", authProvider));
-          }
-        }
-        break;
-      case OKTA:
-        if (authConfig.getOkta() == null) {
-          throw new OpenMetadataClientSecurityConfigException(
-              String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
-        } else {
-          OktaSSOClientConfig oktaSSOClientConfig = authConfig.getOkta();
-          if (oktaSSOClientConfig.getClientId() == null || oktaSSOClientConfig.getClientId().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires clientId", authProvider));
-          }
-          if (oktaSSOClientConfig.getPrivateKey() == null || oktaSSOClientConfig.getPrivateKey().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires privateKey", authProvider));
-          }
-          if (oktaSSOClientConfig.getEmail() == null || oktaSSOClientConfig.getEmail().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires email", authProvider));
-          }
-          if (oktaSSOClientConfig.getOrgURL() == null || oktaSSOClientConfig.getOrgURL().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires orgUrl", authProvider));
-          }
-        }
-        break;
-      case AUTH_0:
-        if (authConfig.getAuth0() == null) {
-          throw new OpenMetadataClientSecurityConfigException(
-              String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
-        } else {
-          Auth0SSOClientConfig auth0SSOClientConfig = authConfig.getAuth0();
-          if (auth0SSOClientConfig.getClientId() == null || auth0SSOClientConfig.getClientId().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires clientId", authProvider));
-          }
-          if (auth0SSOClientConfig.getSecretKey() == null || auth0SSOClientConfig.getSecretKey().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires secretKey", authProvider));
-          }
-          if (auth0SSOClientConfig.getDomain() == null || auth0SSOClientConfig.getDomain().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires domain", authProvider));
-          }
-        }
-        break;
-      case CUSTOM_OIDC:
-        if (authConfig.getCustomOidc() == null) {
-          throw new OpenMetadataClientSecurityConfigException(
-              String.format("%s SSO client config requires authConfig.%s section", authProvider, authProvider));
-        } else {
-          CustomOIDCSSOClientConfig customOIDCSSOClientConfig = authConfig.getCustomOidc();
-          if (customOIDCSSOClientConfig.getClientId() == null || customOIDCSSOClientConfig.getClientId().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires clientId", authProvider));
-          }
-          if (customOIDCSSOClientConfig.getSecretKey() == null || customOIDCSSOClientConfig.getSecretKey().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires secretKey", authProvider));
-          }
-          if (customOIDCSSOClientConfig.getTokenEndpoint() == null
-              || customOIDCSSOClientConfig.getTokenEndpoint().isEmpty()) {
-            throw new OpenMetadataClientSecurityConfigException(
-                String.format("%s SSO client config requires tokenEndpoint", authProvider));
-          }
-        }
-        break;
+  }
 
-      default:
-        throw new IllegalStateException("Unexpected value: " + authProvider);
+  public static void checkRequiredField(String fieldName, String fieldValue, AuthProvider authProvider) {
+    if (fieldValue == null || fieldValue.isEmpty()) {
+      throw new OpenMetadataClientSecurityConfigException(
+          String.format("%s SSO client config requires %s", authProvider, fieldName));
+    }
+  }
+
+  public static void checkRequiredField(String fieldName, List<?> fieldValue, AuthProvider authProvider) {
+    if (fieldValue == null || fieldValue.isEmpty()) {
+      throw new OpenMetadataClientSecurityConfigException(
+          String.format("%s SSO client config requires %s", authProvider, fieldName));
     }
   }
 
   public static List<String> getSecurityScopes(String scopes) {
-    if (scopes != null && !scopes.isEmpty()) {
-      return Arrays.asList(scopes.split("\\s*,\\s*"));
-    }
-    return Collections.emptyList();
+    return scopes != null && !scopes.isEmpty() ? Arrays.asList(scopes.split("\\s*,\\s*")) : Collections.emptyList();
   }
 }

@@ -14,11 +14,13 @@
 export const cardStyle = {
   base: 'tw-flex tw-flex-col tw-rounded-md tw-border tw-mb-4',
   default: 'tw-border-main',
-  active: 'tw-border-primary',
+  active: 'tw-border-primary-lite',
+  selected: 'tw-border-primary',
   header: {
     base: 'tw-flex tw-px-5 tw-py-3 tw-cursor-pointer tw-justify-between tw-items-center',
     default: 'tw-bg-badge',
-    active: 'tw-bg-primary tw-rounded-t-md tw-text-white',
+    active: 'tw-bg-primary-lite tw-rounded-t-md',
+    selected: 'tw-bg-primary tw-rounded-t-md tw-text-white',
     title: 'tw-text-base tw-mb-0',
     description: 'tw-font-medium tw-pr-2',
   },
@@ -26,6 +28,7 @@ export const cardStyle = {
     base: 'tw-py-5 tw-px-10',
     default: 'tw-hidden',
     active: 'tw-block',
+    selected: 'tw-block',
     content: {
       withBorder: 'tw-py-3 tw-border-b tw-border-main',
       withoutBorder: 'tw-py-1',

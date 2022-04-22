@@ -21,7 +21,8 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
-import { ROUTES } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { UserType } from '../../enums/user.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
@@ -39,7 +40,7 @@ const CreateUserPage = () => {
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToUserListPage = () => {
-    history.push(ROUTES.USER_LIST);
+    history.push(getTeamAndUserDetailsPath(UserType.USERS));
   };
 
   const handleCancel = () => {

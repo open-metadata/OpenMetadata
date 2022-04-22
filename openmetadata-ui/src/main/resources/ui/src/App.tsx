@@ -16,6 +16,8 @@ import {
   faCheck,
   faCheckCircle,
   faCheckSquare,
+  faChevronDown,
+  faChevronRight,
   faPlus,
   faSearch,
   faTimes,
@@ -28,7 +30,16 @@ import { AuthProvider } from './authentication/auth-provider/AuthProvider';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
-  library.add(faTimes, faCheck, faSearch, faPlus, faCheckSquare, faCheckCircle);
+  library.add(
+    faTimes,
+    faCheck,
+    faSearch,
+    faPlus,
+    faCheckSquare,
+    faCheckCircle,
+    faChevronDown,
+    faChevronRight
+  );
 
   return (
     <div className="main-container">

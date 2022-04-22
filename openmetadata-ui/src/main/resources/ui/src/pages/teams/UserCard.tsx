@@ -42,6 +42,7 @@ interface Props {
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
+  isOwner?: boolean;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
 }
@@ -52,6 +53,7 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
+  isOwner = false,
   onSelect,
   onRemove,
 }: Props) => {
@@ -202,6 +204,7 @@ const UserCard = ({
           ) : (
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
+              isOwner={isOwner}
               permission={Operation.UpdateTeam}
               position="bottom">
               <span
@@ -209,6 +212,7 @@ const UserCard = ({
                   'tw-opacity-40':
                     !isAdminUser &&
                     !isAuthDisabled &&
+                    !isOwner &&
                     !userPermissions[Operation.UpdateTeam],
                 })}
                 data-testid="remove"

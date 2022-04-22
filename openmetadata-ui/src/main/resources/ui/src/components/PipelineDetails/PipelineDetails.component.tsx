@@ -19,7 +19,7 @@ import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
@@ -207,7 +207,7 @@ const PipelineDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -485,7 +485,7 @@ const PipelineDetails = ({
                                           alt="edit"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="12px"
                                         />
                                       </button>
                                     </NonAdminAction>
@@ -516,8 +516,8 @@ const PipelineDetails = ({
                                           trigger="mouseenter">
                                           <SVGIcons
                                             alt="request-description"
+                                            className="tw-mt-2.5"
                                             icon={Icons.REQUEST}
-                                            width="22px"
                                           />
                                         </PopOver>
                                       </button>

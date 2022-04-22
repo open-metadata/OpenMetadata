@@ -233,16 +233,7 @@ class MetadataRestSink(Sink[Entity]):
                     database=db_schema_and_table.database.name.__root__,
                 )
                 if not lineage_status:
-                    parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
-                    to_table_name = db_schema_and_table.table.name.__root__
-                    for from_table_name in parser.tables:
-
-                        self.metadata._create_lineage_by_table_name(
-                            f"{db_schema.name.__root__}.{from_table_name}",
-                            f"{db_schema.name.__root__}.{to_table_name}",
-                            db.service.name,
-                            db_schema_and_table.database.name.__root__,
-                        )
+                    self.create_lineage_via_es(db_schema_and_table, db_schema, db)
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
@@ -542,6 +533,25 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
+
+    def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
+        try:
+            parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
+            to_table_name = db_schema_and_table.table.name.__root__
+
+            for from_table_name in parser.tables:
+                if "." not in from_table_name:
+                    from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
+                self.metadata._create_lineage_by_table_name(
+                    from_table_name,
+                    f"{db_schema.name.__root__}.{to_table_name}",
+                    db.service.name,
+                    db_schema_and_table.database.name.__root__,
+                )
+        except Exception as e:
+            logger.error("Failed to create view lineage")
+            logger.debug(f"Query : {db_schema_and_table.table.viewDefinition.__root__}")
+            logger.debug(traceback.format_exc())
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
         """

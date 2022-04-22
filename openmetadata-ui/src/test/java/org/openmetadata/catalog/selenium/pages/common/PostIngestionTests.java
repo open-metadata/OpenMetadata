@@ -2,11 +2,8 @@ package org.openmetadata.catalog.selenium.pages.common;
 
 import java.io.IOException;
 import java.time.Duration;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import java.util.ArrayList;
+import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
@@ -60,12 +57,11 @@ public class PostIngestionTests {
     Events.click(webDriver, common.headerItem("explore"));
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
-    Events.click(webDriver, common.selectSuggestionSearch("sample_superset:34"));
+    Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.sendKeys(webDriver, common.ownerSearchBox(), "Cloud");
     Events.click(webDriver, common.tagListItem());
-    Events.click(webDriver, common.saveConnectionConfig());
   }
 
   @Test
@@ -76,8 +72,21 @@ public class PostIngestionTests {
     Events.click(webDriver, common.headerItem("explore"));
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), dashboard);
-    Events.click(webDriver, common.selectSuggestionSearch("sample_superset:34"));
+    Events.click(webDriver, common.selectSuggestionSearch("sample_superset34"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.containsText("Cloud_Infra"));
+  }
+
+  @AfterEach
+  public void closeTabs() {
+    ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
+    String originalHandle = webDriver.getWindowHandle();
+    for (String handle : webDriver.getWindowHandles()) {
+      if (!handle.equals(originalHandle)) {
+        webDriver.switchTo().window(handle);
+        webDriver.close();
+      }
+    }
+    webDriver.switchTo().window(tabs.get(0)).close();
   }
 }

@@ -86,15 +86,12 @@ public class TagsPageTest {
     Events.click(webDriver, common.addTagCategory());
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionSaveButton());
   }
 
@@ -104,7 +101,7 @@ public class TagsPageTest {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
@@ -116,15 +113,12 @@ public class TagsPageTest {
     Events.click(webDriver, common.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), tagDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionSaveButton());
   }
 
@@ -133,38 +127,11 @@ public class TagsPageTest {
   public void changeTagDescription() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
-  }
-
-  @Test
-  @Order(6)
-  public void addAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
-      Events.click(webDriver, common.tagListItem());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-  }
-
-  @Test
-  @Order(7)
-  public void removeAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    for (int i = 0; i <= 1; i++) {
-      Events.click(webDriver, tagsPage.removeAssociatedTag());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
   }
 
   @Test
@@ -176,9 +143,7 @@ public class TagsPageTest {
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, tagsPage.lastTableLink());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Thread.sleep(waitTime);
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
+    Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), tagCategoryDisplayName + "." + tagDisplayName);
     Events.click(webDriver, common.tagListItem());
@@ -288,24 +253,6 @@ public class TagsPageTest {
     String usageCount = webDriver.findElement(tagsPage.spanTagUsageCountElementIndex(2)).getAttribute("innerHTML");
     Assert.assertEquals(usageCount, "Not used");
   }*/
-
-  @Test
-  @Order(13)
-  public void addSelfAssociatedTag() throws Exception {
-    openTagsPage();
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagIndex(2));
-    Events.click(webDriver, common.enterAssociatedTagName());
-    try {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");
-      WebElement sameTag = webDriver.findElement(common.tagListItem());
-      if (sameTag.isDisplayed()) {
-        Assert.fail("Same name tag displayed");
-      }
-    } catch (NoSuchElementException exception) {
-      LOG.info("Success");
-    }
-  }
 
   @AfterEach
   public void closeTabs() {

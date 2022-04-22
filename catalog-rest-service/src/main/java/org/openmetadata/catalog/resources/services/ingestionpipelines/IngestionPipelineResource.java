@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_PIPELINE_STATUSES;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
@@ -169,7 +170,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       addStatus(ingestionPipelines.getData());
     }
     return ingestionPipelines;
@@ -226,7 +227,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       ingestionPipeline = addStatus(ingestionPipeline);
     }
     return ingestionPipeline;
@@ -292,7 +293,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-    if (fieldsParam != null && fieldsParam.contains("pipelineStatuses")) {
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
       ingestionPipeline = addStatus(ingestionPipeline);
     }
     return ingestionPipeline;
@@ -409,8 +410,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response testIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid TestServiceConnection testServiceConnection)
-      throws IOException {
+      @Valid TestServiceConnection testServiceConnection) {
     HttpResponse<String> response = airflowRESTClient.testConnection(testServiceConnection);
     return Response.status(200, response.body()).build();
   }

@@ -56,7 +56,7 @@ services:
       AUTHENTICATION_CALLBACK_URL: ${AUTHENTICATION_CALLBACK_URL:-""}
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
-      SERVER_HOST: ${SERVER_HOST:-http://localhost:8585/api}
+      SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
       # OpenMetadata Airflow Azure SSO Configuration
       AIRFLOW_AUTH_PROVIDER: ${AIRFLOW_AUTH_PROVIDER:-no-auth}
       OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
@@ -65,7 +65,7 @@ services:
       OM_AUTH_AIRFLOW_AZURE_CLIENT_ID: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
       # OpenMetadata Airflow Google SSO Configuration
       OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
-      OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-""}
+      OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
       # OpenMetadata Airflow Okta SSO Configuration
       OM_AUTH_AIRFLOW_OKTA_CLIENT_ID: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}

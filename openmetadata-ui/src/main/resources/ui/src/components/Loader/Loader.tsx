@@ -12,19 +12,21 @@
  */
 
 import classNames from 'classnames';
-import React, { FunctionComponent } from 'react';
+import React, { CSSProperties, FunctionComponent } from 'react';
 import './Loader.css';
 
 type Props = {
   size?: 'default' | 'small';
   type?: 'default' | 'success' | 'error' | 'white';
   className?: string;
+  style?: CSSProperties;
 };
 
 const Loader: FunctionComponent<Props> = ({
   size = 'default',
   type = 'default',
   className = '',
+  style,
 }: Props): JSX.Element => {
   let classes = 'loader';
   switch (size) {
@@ -54,7 +56,11 @@ const Loader: FunctionComponent<Props> = ({
   }
 
   return (
-    <div className={classNames(classes, className)} data-testid="loader" />
+    <div
+      className={classNames(classes, className)}
+      data-testid="loader"
+      style={style}
+    />
   );
 };
 

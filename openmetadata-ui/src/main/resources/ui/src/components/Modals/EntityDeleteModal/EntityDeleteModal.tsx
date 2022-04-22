@@ -28,6 +28,8 @@ interface Prop extends HTMLAttributes<HTMLDivElement> {
   entityName: string;
   entityType: string;
   loadingState: string;
+  bodyText?: string;
+  softDelete?: boolean;
 }
 
 const EntityDeleteModal: FC<Prop> = ({
@@ -37,6 +39,8 @@ const EntityDeleteModal: FC<Prop> = ({
   entityType,
   onCancel,
   onConfirm,
+  bodyText,
+  softDelete = false,
 }: Prop) => {
   const [name, setName] = useState('');
 
@@ -45,7 +49,7 @@ const EntityDeleteModal: FC<Prop> = ({
   };
 
   const isNameMatching = useCallback(() => {
-    return name === `${entityType}/${entityName}`;
+    return name === 'DELETE';
   }, [name]);
 
   return (
@@ -56,17 +60,24 @@ const EntityDeleteModal: FC<Prop> = ({
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header')}>
           <p className="tw-modal-title" data-testid="modal-header">
-            Delete <strong>{entityName}</strong>
+            {softDelete ? (
+              <span>
+                Soft delete <strong>{entityName}</strong>
+              </span>
+            ) : (
+              <span>
+                Delete <strong>{entityName}</strong>
+              </span>
+            )}
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2">{`Once you delete this ${entityType}, it would be removed permanently`}</p>
           <p className="tw-mb-2">
-            Type{' '}
-            <strong>
-              {entityType}/{entityName}
-            </strong>{' '}
-            to confirm
+            {bodyText ||
+              `Once you delete this ${entityType}, it will be removed permanently`}
+          </p>
+          <p className="tw-mb-2">
+            Type <strong>DELETE</strong> to confirm
           </p>
           <input
             autoComplete="off"
@@ -74,7 +85,7 @@ const EntityDeleteModal: FC<Prop> = ({
             data-testid="confirmation-text-input"
             disabled={loadingState === 'waiting'}
             name="entityName"
-            placeholder={`${entityType}/${entityName}`}
+            placeholder="DELETE"
             type="text"
             value={name}
             onChange={handleOnChange}

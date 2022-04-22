@@ -29,6 +29,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAuth } from '../../hooks/authHooks';
 import { isEven } from '../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import { Button } from '../buttons/Button/Button';
@@ -41,6 +42,7 @@ import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { IngestionProps, ModifiedConfig } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
+  airflowEndpoint,
   serviceDetails,
   serviceName,
   serviceCategory,
@@ -57,6 +59,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [searchText, setSearchText] = useState('');
+  const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [showIngestionForm, setShowIngestionForm] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -168,53 +171,49 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
   }, [searchText, ingestionList]);
 
-  /* eslint-disable max-len */
-  // TODO:- once api support status we need below function
-  // const getStatuses = (ingestion: AirflowPipeline) => {
-  //   const lastFiveIngestions = ingestion.pipelineStatuses
-  //     ?.sort((a, b) => {
-  //       // Turn your strings into millis, and then subtract them
-  //       // to get a value that is either negative, positive, or zero.
-  //       const date1 = new Date(a.startDate || '');
-  //       const date2 = new Date(b.startDate || '');
+  const getStatuses = (ingestion: IngestionPipeline) => {
+    const lastFiveIngestions = ingestion.pipelineStatuses
+      ?.sort((a, b) => {
+        // Turn your strings into millis, and then subtract them
+        // to get a value that is either negative, positive, or zero.
+        const date1 = new Date(a.startDate || '');
+        const date2 = new Date(b.startDate || '');
 
-  //       return date1.getTime() - date2.getTime();
-  //     })
-  //     .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
+        return date1.getTime() - date2.getTime();
+      })
+      .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
 
-  //   return lastFiveIngestions?.map((r, i) => {
-  //     return (
-  //       <PopOver
-  //         html={
-  //           <div className="tw-text-left">
-  //             {r.startDate ? (
-  //               <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
-  //             ) : null}
-  //             {r.endDate ? (
-  //               <p>End Date: {new Date(r.endDate).toUTCString()}</p>
-  //             ) : null}
-  //           </div>
-  //         }
-  //         key={i}
-  //         position="bottom"
-  //         theme="light"
-  //         trigger="mouseenter">
-  //         {i === lastFiveIngestions.length - 1 ? (
-  //           <p
-  //             className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
-  //             {capitalize(r.state)}
-  //           </p>
-  //         ) : (
-  //           <p
-  //             className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-  //           />
-  //         )}
-  //       </PopOver>
-  //     );
-  //   });
-  // };
-
-  /* eslint-enable max-len */
+    return lastFiveIngestions?.map((r, i) => {
+      return (
+        <PopOver
+          html={
+            <div className="tw-text-left">
+              {r.startDate ? (
+                <p>Start Date: {new Date(r.startDate).toUTCString()}</p>
+              ) : null}
+              {r.endDate ? (
+                <p>End Date: {new Date(r.endDate).toUTCString()}</p>
+              ) : null}
+            </div>
+          }
+          key={i}
+          position="bottom"
+          theme="light"
+          trigger="mouseenter">
+          {i === lastFiveIngestions.length - 1 ? (
+            <p
+              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+              {capitalize(r.state)}
+            </p>
+          ) : (
+            <p
+              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            />
+          )}
+        </PopOver>
+      );
+    });
+  };
 
   const getIngestionTab = () => {
     return (
@@ -273,6 +272,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                   <th className="tableHead-cell">Type</th>
                   <th className="tableHead-cell">Schedule</th>
                   <th className="tableHead-cell">Recent Runs</th>
+                  <th className="tableHead-cell">Airflow DAG</th>
                   <th className="tableHead-cell">Actions</th>
                 </tr>
               </thead>
@@ -312,10 +312,32 @@ const Ingestion: React.FC<IngestionProps> = ({
                       )}
                     </td>
                     <td className="tableBody-cell">
-                      {/* TODO:- update this once api support pipeline status */}
-                      {/* <div className="tw-flex">{getStatuses(ingestion)}</div> */}
+                      <div className="tw-flex">{getStatuses(ingestion)}</div>
                     </td>
-
+                    <td className="tableBody-cell">
+                      {airflowEndpoint ? (
+                        <NonAdminAction
+                          position="bottom"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <a
+                            className="link-text tw-mr-2"
+                            data-testid="airflow-tree-view"
+                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
+                            rel="noopener noreferrer"
+                            target="_blank">
+                            View
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle tw-ml-1"
+                              icon={Icons.EXTERNAL_LINK}
+                              width="12px"
+                            />
+                          </a>
+                        </NonAdminAction>
+                      ) : (
+                        <span className="tw-text-grey-muted">No endpoint</span>
+                      )}
+                    </td>
                     <td className="tableBody-cell">
                       <NonAdminAction
                         position="bottom"
@@ -414,12 +436,14 @@ const Ingestion: React.FC<IngestionProps> = ({
       <div className="tw-bg-white tw-pt-4 tw-w-full">
         <div className="tw-max-w-2xl tw-mx-auto tw-pb-6">
           <AddIngestion
+            activeIngestionStep={activeIngestionStep}
             data={updateSelection}
             handleCancelClick={handleCancelUpdate}
             heading={heading}
             pipelineType={type[0]}
             serviceCategory={serviceCategory}
             serviceData={serviceDetails}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
             showSuccessScreen={false}
             status={
               isUndefined(updateSelection)

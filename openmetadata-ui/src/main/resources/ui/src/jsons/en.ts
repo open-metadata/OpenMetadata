@@ -57,6 +57,8 @@ const jsonData = {
 
     'deploy-ingestion-error': 'Error while deploying ingestion workflow!',
 
+    'fetch-airflow-config-error':
+      'Error occurred while fetching airflow configs!',
     'fetch-auth-config-error': 'Error occurred while fetching auth configs!',
     'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
@@ -102,6 +104,8 @@ const jsonData = {
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
 
+    'test-connection-error': 'Error while testing connection!',
+
     'unexpected-server-response': 'Unexpected response from server!',
 
     'update-chart-error': 'Error while updating charts!',
@@ -127,12 +131,18 @@ const jsonData = {
     'update-reviewer-error': 'Error while updating reviewer!',
 
     'feed-post-error': 'Error while posting the message!',
+
+    'join-team-error': 'Error while joining the team!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
+
+    'join-team-success': 'Team joined successfully!',
+
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
     'delete-entity-success': 'Entity deleted successfully!',
+    'test-connection-success': 'Connection tested successfully!',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',

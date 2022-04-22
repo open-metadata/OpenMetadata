@@ -32,6 +32,7 @@ import {
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
+  DEFAULT_SERVICE,
   DRUID,
   DYNAMODB,
   GLUE,
@@ -173,6 +174,8 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else {
+        logo = DEFAULT_SERVICE;
       }
 
       return logo;
@@ -467,4 +470,15 @@ export const getCurrentServiceTab = (tab: string) => {
   }
 
   return currentTab;
+};
+
+export const getFormattedGuideText = (
+  text: string,
+  toReplace: string,
+  replacement: string,
+  isGlobal = false
+) => {
+  const regExp = isGlobal ? new RegExp(toReplace, 'g') : new RegExp(toReplace);
+
+  return text.replace(regExp, replacement);
 };

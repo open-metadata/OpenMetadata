@@ -628,7 +628,7 @@ const EntityTable = ({
                                         alt="edit"
                                         icon="icon-edit"
                                         title="Edit"
-                                        width="10px"
+                                        width="12px"
                                       />
                                     </button>
                                   </NonAdminAction>
@@ -651,8 +651,8 @@ const EntityTable = ({
                                         trigger="mouseenter">
                                         <SVGIcons
                                           alt="request-description"
+                                          className="tw-mt-2.5"
                                           icon={Icons.REQUEST}
-                                          width="22px"
                                         />
                                       </PopOver>
                                     </button>

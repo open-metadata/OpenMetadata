@@ -88,15 +88,15 @@ public class CommonTests {
     //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData:Personal");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
     Events.click(webDriver, common.tagListItem());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "User.FacePhoto");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PII.None");
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.containsText("#PersonalData:Personal")).size();
+    Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
     Assert.assertEquals(tagCount, 1);
   }
 
@@ -107,9 +107,10 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
@@ -118,7 +119,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "Testing Tag");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
     URL tagUrl = new URL(url + urlTag + tagCategoryDisplayName + "/");
@@ -135,9 +137,9 @@ public class CommonTests {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(common.displayName())));
     Events.sendKeys(webDriver, common.displayName(), "Space Tag");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     URL tagUrl = new URL(url + urlTag);
@@ -159,11 +161,11 @@ public class CommonTests {
     } else {
       Events.click(webDriver, common.noServicesAddServiceButton());
     }
-    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.serviceType("Mysql"));
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), " ");
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
     wait.until(ExpectedConditions.presenceOfElementLocated(common.containsText("Service name is required.")));
     WebElement emptyName = webDriver.findElement(common.containsText("Service name is required."));
@@ -202,7 +204,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -219,7 +222,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personal");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -235,7 +239,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "P");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -251,7 +256,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -268,7 +274,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "P");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -285,7 +292,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -348,21 +356,25 @@ public class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "U");
+    for (int i = 0; i < 2; i++) {
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editAssociatedTagButton());
     Object tagsCount = webDriver.findElements(common.tagCount()).size();
-    Thread.sleep(2000);
     Events.click(webDriver, common.explore());
-    Thread.sleep(2000);
-    Events.click(webDriver, common.viewMore());
-    Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
-    Assert.assertEquals(tagsFilterCount.toString(), count);
+    Thread.sleep(waitTime);
+    try {
+      Events.click(webDriver, common.viewMore());
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    } catch (NoSuchElementException | TimeoutException e) {
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    }
   }
 
   @Test

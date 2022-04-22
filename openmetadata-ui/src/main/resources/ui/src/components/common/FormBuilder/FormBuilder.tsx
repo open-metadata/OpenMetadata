@@ -18,8 +18,14 @@ import Form, {
   ObjectFieldTemplateProps,
 } from '@rjsf/core';
 import classNames from 'classnames';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useState,
+} from 'react';
 import { ConfigData } from '../../../interface/service.interface';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -31,6 +37,7 @@ interface Props extends FormProps<ConfigData> {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+  onTestConnection?: (formData: ConfigData) => Promise<void>;
 }
 
 function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
@@ -124,17 +131,26 @@ function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
+  formData,
+  schema,
   okText,
   cancelText,
   showFormHeader = false,
   status = 'initial',
   onCancel,
   onSubmit,
+  onTestConnection,
   ...props
 }: Props) => {
   let oForm: Form<ConfigData> | null;
+  const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
+    formData
+  );
+  const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
+  const [connectionTested, setConnectionTested] = useState<boolean>(false);
 
   const handleCancel = () => {
+    setLocalFormData(formData);
     if (onCancel) {
       onCancel();
     }
@@ -146,6 +162,40 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
+  const handleTestConnection = () => {
+    if (localFormData && onTestConnection) {
+      setConnectionTesting(true);
+      onTestConnection(localFormData)
+        .then(() => {
+          setConnectionTested(true);
+        })
+        .catch(() => {
+          setConnectionTested(false);
+        })
+        .finally(() => {
+          setConnectionTesting(false);
+        });
+    }
+  };
+  const debouncedOnChange = useCallback(
+    (updatedData: ConfigData): void => {
+      setLocalFormData(updatedData);
+    },
+    [setLocalFormData]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 1500), [
+    debouncedOnChange,
+  ]);
+  const handleChange = (updatedData: ConfigData) => {
+    debounceOnSearch(updatedData);
+    setConnectionTested(false);
+  };
+
+  const disableTestConnection = () => {
+    return connectionTesting || isEqual(localFormData, formData);
+  };
+
   return (
     <Form
       ArrayFieldTemplate={ArrayFieldTemplate}
@@ -153,48 +203,79 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
+      formData={localFormData}
       ref={(form) => {
         oForm = form;
       }}
+      schema={schema}
+      onChange={(e) => {
+        handleChange(e.formData);
+        props.onChange && props.onChange(e);
+      }}
       onSubmit={onSubmit}
       {...props}>
-      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
-        <Button
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={handleCancel}>
-          {cancelText}
-        </Button>
-        {status === 'waiting' ? (
+      {isEmpty(schema) && (
+        <div className="tw-text-grey-muted tw-text-center">
+          No Connection Configs available.
+        </div>
+      )}
+      <div className="tw-mt-6 tw-flex tw-justify-between">
+        <div>
+          {!isEmpty(schema) && onTestConnection && (
+            <Button
+              className={classNames({
+                'tw-opacity-40': disableTestConnection(),
+              })}
+              disabled={disableTestConnection()}
+              size="regular"
+              theme="primary"
+              variant="outlined"
+              onClick={handleTestConnection}>
+              Test Connection
+            </Button>
+          )}
+        </div>
+        <div className="tw-text-right" data-testid="buttons">
           <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
             size="regular"
             theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
+            variant="text"
+            onClick={handleCancel}>
+            {cancelText}
           </Button>
-        ) : status === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className="tw-w-16 tw-h-10"
-            data-testid="saveManageTab"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSubmit}>
-            {okText}
-          </Button>
-        )}
+          {status === 'waiting' ? (
+            <Button
+              disabled
+              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+              size="regular"
+              theme="primary"
+              variant="contained">
+              <Loader size="small" type="white" />
+            </Button>
+          ) : status === 'success' ? (
+            <Button
+              disabled
+              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+              size="regular"
+              theme="primary"
+              variant="contained">
+              <FontAwesomeIcon icon="check" />
+            </Button>
+          ) : (
+            <Button
+              className={classNames('tw-w-16 tw-h-10', {
+                'tw-opacity-40': !connectionTested && !isEmpty(schema),
+              })}
+              data-testid="saveManageTab"
+              disabled={!connectionTested && !isEmpty(schema)}
+              size="regular"
+              theme="primary"
+              variant="contained"
+              onClick={handleSubmit}>
+              {okText}
+            </Button>
+          )}
+        </div>
       </div>
     </Form>
   );

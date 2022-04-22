@@ -116,11 +116,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     return listEntities(Map.of("default", "true"), ADMIN_AUTH_HEADERS).getData();
   }
 
-  /**
-   * Creates the given number of roles and sets one of them as the default role.
-   *
-   * @return the default role
-   */
+  /** Creates the given number of roles and sets one of them as the default role. */
   public Role createRolesAndSetDefault(TestInfo test, @Positive int numberOfRoles, @Positive int offset)
       throws IOException {
     // Create a set of roles.

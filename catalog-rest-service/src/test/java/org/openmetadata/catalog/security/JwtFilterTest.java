@@ -184,9 +184,6 @@ class JwtFilterTest {
   /**
    * Creates the ContainerRequestsContext that is passed to the filter. This object can be quite complex, but the
    * JwtFilter cares only about the Authorization header and request URI.
-   *
-   * @param jwt JWT in string format to be added to headers
-   * @return Mocked ContainerRequestContext with an Authorization header and request URI info
    */
   private static ContainerRequestContext createRequestContextWithJwt(String jwt) {
     MultivaluedHashMap<String, String> headers =

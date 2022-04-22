@@ -76,13 +76,6 @@
           "type": "boolean",
           "default": false
         },
-        "associatedTags": {
-          "description": "Fully qualified names of tags associated with this tag. Associated tags captures relationship of one tag to another automatically. As an example a tag 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "children": {
           "description": "Tags under this tag group or empty for tags at the leaf level.",
           "type": "array",

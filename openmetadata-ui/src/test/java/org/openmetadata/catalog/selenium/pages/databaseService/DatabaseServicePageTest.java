@@ -91,32 +91,38 @@ public class DatabaseServicePageTest {
     } else {
       Events.click(webDriver, common.addServiceButton());
     }
-    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.serviceType("Mysql"));
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.urlLink(), faker.address().toString());
+    Events.sendKeys(webDriver, common.linkText(), faker.address().firstName());
+    Events.click(webDriver, common.okButton());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
-    Events.sendKeys(webDriver, common.servicePort(), "3306");
+    Events.click(webDriver, common.serviceUsername());
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
+    Events.click(webDriver, common.servicePassword());
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
+    Events.click(webDriver, common.hostPort());
+    Events.sendKeys(webDriver, common.hostPort(), "localhost");
+    Events.click(webDriver, common.databaseName());
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.saveServiceButton());
+    Events.click(webDriver, common.saveManage());
     Thread.sleep(waitTime);
-    webDriver.navigate().refresh();
+    Events.click(webDriver, common.addIngestion());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.deployButton());
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
     Events.click(webDriver, common.containsText(serviceName));
-    // Thread.sleep(5000); // for data ingestion
   }
 
   @Test
@@ -126,8 +132,7 @@ public class DatabaseServicePageTest {
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
@@ -135,7 +140,6 @@ public class DatabaseServicePageTest {
   @Order(4)
   public void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.ingestion());
     try {
@@ -150,33 +154,22 @@ public class DatabaseServicePageTest {
     webDriver.navigate().refresh();
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
-    try {
-      WebElement nextButton = wait.until(ExpectedConditions.presenceOfElementLocated(common.nextButton()));
-      Thread.sleep(2000);
-      if (nextButton.isDisplayed()) {
-        nextButton.click();
-      }
-    } catch (TimeoutException | NoSuchElementException e) {
-      Assert.fail("Next button not found");
-    }
-    Events.click(webDriver, common.saveServiceButton());
-
+    Events.click(webDriver, common.deployButton());
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.deployButton());
   }
 
   @Test
   @Order(5)
   public void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, common.serviceUsername(), "1");
-    Events.sendKeys(webDriver, common.servicePassword(), "1");
-    Events.sendKeys(webDriver, common.databaseName(), "1");
+    Events.sendKeys(webDriver, common.serviceUsername(), "test");
+    Events.sendKeys(webDriver, common.servicePassword(), "test");
+    Events.sendKeys(webDriver, common.databaseName(), "test");
     Events.click(webDriver, common.saveConnectionConfig());
     Thread.sleep(2000);
     try {
@@ -193,7 +186,6 @@ public class DatabaseServicePageTest {
   @Order(6)
   public void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }

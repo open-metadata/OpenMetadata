@@ -15,7 +15,6 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
-  fireEvent,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -41,6 +40,14 @@ jest.mock('../../hooks/authHooks', () => ({
     },
   }),
 }));
+
+jest.mock('../common/toggle-switch/ToggleSwitchV1', () => {
+  return jest.fn().mockImplementation(() => <p>ToggleSwitchV1.Component</p>);
+});
+
+jest.mock('../common/DeleteWidget/DeleteWidget', () => {
+  return jest.fn().mockImplementation(() => <p>DeleteWidget.Component</p>);
+});
 
 const mockTierData = {
   children: [
@@ -92,63 +99,15 @@ describe('Test Manage tab Component', () => {
     expect(card.length).toBe(3);
   });
 
-  it('there should be 2 buttons', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const buttons = await findByTestId(container, 'buttons');
-
-    expect(buttons.childElementCount).toBe(2);
-  });
-
-  it('Onclick of save, onSave function also called', async () => {
-    const { container } = render(
-      <ManageTab hasEditAccess onSave={mockFunction} />
-    );
-    const card = await findAllByTestId(container, 'card');
-
-    fireEvent.click(
-      card[1],
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    const save = await findByText(container, /Save/i);
-
-    fireEvent.click(
-      save,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockFunction).toBeCalledTimes(1);
-  });
-
   it('Should render switch if isJoinable is present', async () => {
     const { container } = render(
       <ManageTab hasEditAccess isJoinable onSave={mockFunction} />
     );
 
-    const isJoinableSwitch = await findByTestId(
+    const isJoinableSwitch = await findByText(
       container,
-      'team-isJoinable-switch'
+      'ToggleSwitchV1.Component'
     );
-
-    expect(isJoinableSwitch).toHaveClass('open');
-
-    fireEvent.click(
-      isJoinableSwitch,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(isJoinableSwitch).not.toHaveClass('open');
 
     expect(isJoinableSwitch).toBeInTheDocument();
   });
@@ -166,7 +125,9 @@ describe('Test Manage tab Component', () => {
     );
 
     const dangerZone = await findByTestId(container, 'danger-zone');
+    const DeleteWidget = await findByText(container, 'DeleteWidget.Component');
 
     expect(dangerZone).toBeInTheDocument();
+    expect(DeleteWidget).toBeInTheDocument();
   });
 });

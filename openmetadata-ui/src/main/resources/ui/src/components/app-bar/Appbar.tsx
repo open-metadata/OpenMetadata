@@ -23,12 +23,16 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   getUserPath,
   navLinkSettings,
   ROUTES,
 } from '../../constants/constants';
-import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
@@ -75,21 +79,22 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <span>
-          <SVGIcons
-            alt="API icon"
-            className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-            icon={Icons.VERSION_BLACK}
-            width="12"
-          />{' '}
           <span className="tw-text-grey-muted">{`Version ${
             (version ? version : '?').split('-')[0]
           }`}</span>
         </span>
       ),
-      to: '',
+      to: urlGithubRepo,
+      isOpenNewTab: true,
       disabled: false,
-      icon: <></>,
-      isText: true,
+      icon: (
+        <SVGIcons
+          alt="Version icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          icon={Icons.VERSION_BLACK}
+          width="12"
+        />
+      ),
     },
     {
       name: `Docs`,
@@ -176,7 +181,7 @@ const Appbar: React.FC = (): JSX.Element => {
             <span className="tw-font-medium tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
-                <Link to={getTeamDetailsPath(t.name as string)}>
+                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName}
                 </Link>
               </p>

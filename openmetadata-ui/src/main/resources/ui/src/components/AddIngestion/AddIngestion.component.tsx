@@ -36,6 +36,7 @@ import ConfigureIngestion from './Steps/ConfigureIngestion';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
+  activeIngestionStep,
   heading,
   status,
   pipelineType,
@@ -43,13 +44,13 @@ const AddIngestion = ({
   serviceData,
   serviceCategory,
   showSuccessScreen = true,
+  setActiveIngestionStep,
   onUpdateIngestion,
   onSuccessSave,
   onAddIngestionSave,
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
-  const [activeStepperStep, setActiveStepperStep] = useState(1);
   const [ingestionName] = useState(
     data?.name ?? `${serviceData.name}_${pipelineType}`
   );
@@ -204,11 +205,11 @@ const AddIngestion = ({
   };
 
   const handleConfigureIngestionNextClick = () => {
-    setActiveStepperStep(2);
+    setActiveIngestionStep(2);
   };
 
   const handleScheduleIntervalBackClick = () => {
-    setActiveStepperStep(1);
+    setActiveIngestionStep(1);
   };
 
   const getFilterPatternData = (data: FilterPattern) => {
@@ -261,7 +262,7 @@ const AddIngestion = ({
 
     onAddIngestionSave(ingestionDetails).then(() => {
       if (showSuccessScreen) {
-        setActiveStepperStep(3);
+        setActiveIngestionStep(3);
       } else {
         onSuccessSave?.();
       }
@@ -320,14 +321,14 @@ const AddIngestion = ({
       <h6 className="tw-heading tw-text-base">{heading}</h6>
 
       <IngestionStepper
-        activeStep={activeStepperStep}
+        activeStep={activeIngestionStep}
         className="tw-justify-between tw-w-10/12 tw-mx-auto"
         stepperLineClassName="add-ingestion-line"
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
       <div className="tw-pt-7">
-        {activeStepperStep === 1 && (
+        {activeIngestionStep === 1 && (
           <ConfigureIngestion
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
@@ -357,7 +358,7 @@ const AddIngestion = ({
           />
         )}
 
-        {activeStepperStep === 2 && (
+        {activeIngestionStep === 2 && (
           <ScheduleInterval
             endDate={endDate as string}
             handleEndDateChange={(value: string) => setEndDate(value)}
@@ -372,7 +373,7 @@ const AddIngestion = ({
           />
         )}
 
-        {activeStepperStep > 2 && handleViewServiceClick && (
+        {activeIngestionStep > 2 && handleViewServiceClick && (
           <SuccessScreen
             handleViewServiceClick={handleViewServiceClick}
             name={ingestionName}

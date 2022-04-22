@@ -68,7 +68,7 @@ public final class EntityUtil {
 
   // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
-      Comparator.comparing(entityReference -> entityReference.getId().toString());
+      Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
@@ -76,13 +76,14 @@ public final class EntityUtil {
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
+  public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
 
   //
   // Matchers used for matching two items in a list
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
+  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
@@ -178,6 +179,7 @@ public final class EntityUtil {
           LOG.debug("Error while populating Entity Reference", exception);
         }
       }
+      list.sort(compareEntityReference);
     }
     return entityReferences;
   }
@@ -188,6 +190,7 @@ public final class EntityUtil {
     for (String id : ids) {
       refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
     }
+    refs.sort(compareEntityReference);
     return refs;
   }
 

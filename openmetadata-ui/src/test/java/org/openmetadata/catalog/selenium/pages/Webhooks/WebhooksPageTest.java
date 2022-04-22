@@ -68,7 +68,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
     Events.click(webDriver, webhooks.checkbox());
     Thread.sleep(waitTime);
@@ -93,7 +93,7 @@ public class WebhooksPageTest {
       Events.click(webDriver, webhooks.addWebhook());
       Events.sendKeys(webDriver, webhooks.name(), name);
       Events.click(webDriver, webhooks.descriptionBox());
-      Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
+      Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
       Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
       Events.click(webDriver, webhooks.checkbox());
       Events.click(webDriver, webhooks.entityCreatedMenu());
@@ -116,7 +116,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), "");
     Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "test.com");
     Events.click(webDriver, webhooks.checkbox());
     Thread.sleep(waitTime);
@@ -138,7 +138,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), "test");
     Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "");
     Events.click(webDriver, webhooks.checkbox());
     Events.click(webDriver, webhooks.entityCreatedMenu());
@@ -159,7 +159,7 @@ public class WebhooksPageTest {
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), "test");
     Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.descriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.test.com");
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());

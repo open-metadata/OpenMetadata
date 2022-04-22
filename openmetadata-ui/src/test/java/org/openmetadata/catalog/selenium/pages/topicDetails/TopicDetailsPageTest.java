@@ -171,19 +171,19 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(2000);
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    String checkDescription = webDriver.findElement(topicDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -206,7 +206,7 @@ public class TopicDetailsPageTest {
     String user = topicDetails.getOwnerName();
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, topicDetails.selectTier());
     String ownerName = webDriver.findElement(common.ownerDropdown()).getText();
     Assert.assertEquals(ownerName, user);
   }

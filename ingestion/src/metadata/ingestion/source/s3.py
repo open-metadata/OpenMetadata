@@ -27,18 +27,19 @@ from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import S3StorageClass, StorageServiceType
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
-from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+from metadata.utils.aws_client import AWSClient
 from metadata.utils.helpers import get_storage_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class S3SourceConfig(AWSClientConfigModel):
+class S3SourceConfig(AWSCredentials):
     service_name: str
 
 

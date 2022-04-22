@@ -24,16 +24,17 @@ import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
   addIngestionPipeline,
   deleteIngestionPipelineById,
+  getIngestionPipelineByFqn,
   getIngestionPipelines,
   triggerIngestionPipelineById,
   updateIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import IngestionError from '../../components/common/error/IngestionError';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
@@ -47,7 +48,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -78,7 +79,6 @@ import {
   servicePageTabs,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -107,8 +107,6 @@ const ServicePage: FunctionComponent = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(getCurrentServiceTab(tab));
-  const [isConnectionAvailable, setConnectionAvailable] =
-    useState<boolean>(true);
   const [isError, setIsError] = useState(false);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
@@ -116,6 +114,7 @@ const ServicePage: FunctionComponent = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
+  const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -187,7 +186,7 @@ const ServicePage: FunctionComponent = () => {
       key: 'Owner',
       value:
         serviceDetails?.owner?.type === 'team'
-          ? getTeamDetailsPath(serviceDetails?.owner?.name || '')
+          ? getTeamAndUserDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
@@ -216,7 +215,7 @@ const ServicePage: FunctionComponent = () => {
 
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
-    getIngestionPipelines(['owner'], serviceFQN, paging)
+    getIngestionPipelines(['owner', 'pipelineStatuses'], serviceFQN, paging)
       .then((res) => {
         if (res.data.data) {
           setIngestions(res.data.data);
@@ -235,6 +234,25 @@ const ServicePage: FunctionComponent = () => {
         );
       })
       .finally(() => setIsloading(false));
+  };
+
+  const getAirflowEndpoint = () => {
+    fetchAirflowConfig()
+      .then((res) => {
+        if (res.data?.apiEndpoint) {
+          setAirflowEndpoint(res.data.apiEndpoint);
+        } else {
+          setAirflowEndpoint('');
+
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-airflow-config-error']
+        );
+      });
   };
 
   const triggerIngestionById = (
@@ -333,24 +351,28 @@ const ServicePage: FunctionComponent = () => {
           }
         })
         .catch((error: AxiosError) => {
-          const message = getErrorText(
-            error,
-            jsonData['api-error-messages']['create-ingestion-error']
-          );
-          if (message.includes('Connection refused')) {
-            setConnectionAvailable(false);
-          } else if (
-            message.includes(jsonData['message']['fail-to-deploy-pipeline'])
-          ) {
-            showErrorToast(
-              message,
-              jsonData['api-error-messages']['deploy-ingestion-error']
-            );
-            resolve();
-          } else {
-            showErrorToast(message);
-            reject();
-          }
+          getIngestionPipelineByFqn(`${serviceDetails?.name}.${data.name}`)
+            .then((res: AxiosResponse) => {
+              if (res.data) {
+                resolve();
+                getAllIngestionWorkflows();
+                showErrorToast(
+                  error,
+                  jsonData['api-error-messages']['deploy-ingestion-error']
+                );
+              } else {
+                throw jsonData['api-error-messages'][
+                  'unexpected-server-response'
+                ];
+              }
+            })
+            .catch(() => {
+              showErrorToast(
+                error,
+                jsonData['api-error-messages']['create-ingestion-error']
+              );
+              reject();
+            });
         });
     });
   };
@@ -688,6 +710,7 @@ const ServicePage: FunctionComponent = () => {
       // getDatabaseServices();
       getAllIngestionWorkflows();
     }
+    getAirflowEndpoint();
   }, []);
 
   const onCancel = () => {
@@ -697,21 +720,10 @@ const ServicePage: FunctionComponent = () => {
   const getServiceSpecificData = (serviceDetails?: ServiceDataObj) => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
-        return {
-          databaseConnection: serviceDetails?.connection ?? {},
-        };
-
       case ServiceCategory.MESSAGING_SERVICES:
-        return {
-          brokers: serviceDetails?.connection?.config?.bootstrapServers,
-          schemaRegistry: serviceDetails?.connection?.config?.schemaRegistryURL,
-        };
-
       case ServiceCategory.DASHBOARD_SERVICES:
         return {
-          dashboardUrl: serviceDetails?.connection?.config?.dashboardURL,
-          username: serviceDetails?.connection?.config?.username,
-          password: serviceDetails?.connection?.config?.password,
+          connection: serviceDetails?.connection,
         };
 
       case ServiceCategory.PIPELINE_SERVICES:
@@ -740,6 +752,7 @@ const ServicePage: FunctionComponent = () => {
           setDescription(updatedHTML);
           setServiceDetails({
             ...updatedServiceDetails,
+            id,
             owner: serviceDetails?.owner,
           });
           setIsEdit(false);
@@ -941,12 +954,15 @@ const ServicePage: FunctionComponent = () => {
                   </Fragment>
                 )}
 
-                {activeTab === 2 && (
-                  <div data-testid="ingestion-container">
-                    {isConnectionAvailable ? (
+                {activeTab === 2 &&
+                  (isUndefined(airflowEndpoint) ? (
+                    <Loader />
+                  ) : (
+                    <div data-testid="ingestion-container">
                       <Ingestion
                         isRequiredDetailsAvailable
                         addIngestion={onAddIngestionSave}
+                        airflowEndpoint={airflowEndpoint}
                         currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
                         ingestionList={ingestions}
@@ -959,11 +975,8 @@ const ServicePage: FunctionComponent = () => {
                         triggerIngestion={triggerIngestionById}
                         updateIngestion={updateIngestion}
                       />
-                    ) : (
-                      <IngestionError />
-                    )}
-                  </div>
-                )}
+                    </div>
+                  ))}
 
                 {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
                   <ServiceConfig
@@ -978,10 +991,11 @@ const ServicePage: FunctionComponent = () => {
                     <ManageTabComponent
                       allowDelete
                       hideTier
+                      isRecursiveDelete
                       currentUser={serviceDetails?.owner?.id}
                       entityId={serviceDetails?.id}
                       entityName={serviceDetails?.name}
-                      entityType={`services/${serviceCategory.slice(0, -1)}`}
+                      entityType={serviceCategory.slice(0, -1)}
                       hasEditAccess={hasEditAccess(
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''

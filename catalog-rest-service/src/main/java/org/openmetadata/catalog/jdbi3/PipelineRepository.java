@@ -366,7 +366,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("pipelineUrl", origPipeline.getPipelineUrl(), updatedPipeline.getPipelineUrl());
       recordChange("concurrency", origPipeline.getConcurrency(), updatedPipeline.getConcurrency());
       recordChange("pipelineLocation", origPipeline.getPipelineLocation(), updatedPipeline.getPipelineLocation());
-      recordChange("startDate", origPipeline.getStartDate(), updatedPipeline.getStartDate());
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
@@ -384,18 +383,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       List<Task> updatedTasks = listOrEmpty(updatedPipeline.getTasks());
       List<Task> origTasks = listOrEmpty(origPipeline.getTasks());
 
-      List<Task> added = new ArrayList<>();
-      List<Task> deleted = new ArrayList<>();
-      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
-
+      boolean newTasks = false;
       // Update the task descriptions
       for (Task updated : updatedTasks) {
         Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null || updated == null) { // New task added
+          newTasks = true;
           continue;
         }
-
         updateTaskDescription(stored, updated);
+      }
+
+      if (newTasks) {
+        List<Task> added = new ArrayList<>();
+        List<Task> deleted = new ArrayList<>();
+        recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 

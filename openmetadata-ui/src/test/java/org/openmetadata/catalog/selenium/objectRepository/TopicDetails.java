@@ -15,12 +15,14 @@ public class TopicDetails {
   By selectTag = By.xpath("(//div[@data-testid=\"list-item\"])[2]");
   By selectedTag =
       By.xpath("//span[@class=\"tw-no-underline hover:tw-no-underline tw-py-0.5 tw-px-2 tw-pl-2 tw-pr-1\"]");
-  By breadCrumbTags = By.xpath("//div[@data-testid='breadcrumb-tags']/div");
+  By breadCrumbTags = By.xpath("//div[@data-testid='entity-tags']/div/span");
   By editDescriptionButton = By.xpath("//button[@data-testid=\"edit-description\"]");
   By config = By.cssSelector("[data-testid = 'Config']");
   By manage = By.cssSelector("[data-testid ='Manage']");
   By topicName = By.linkText("orders");
   By ownerName = By.xpath("//div[@data-testid='list-item']");
+  By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
 
   public String getOwnerName() {
     return webDriver.findElement(ownerName).getText();

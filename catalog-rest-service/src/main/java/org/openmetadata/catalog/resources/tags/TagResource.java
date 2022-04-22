@@ -525,7 +525,6 @@ public class TagResource {
         .withName(create.getName())
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withDescription(create.getDescription())
-        .withAssociatedTags(create.getAssociatedTags())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }

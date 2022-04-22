@@ -218,16 +218,15 @@ class REST_API(AppBuilderBaseView):
         Check the status of a DAG runs
         """
         dag_id: str = self.get_request_arg(request, "dag_id")
-        run_id: Optional[str] = self.get_request_arg(request, "run_id")
 
         try:
-            return status(dag_id, run_id)
+            return status(dag_id)
 
         except Exception as exc:
-            logging.info(f"Failed to get dag {dag_id} {run_id} status")
+            logging.info(f"Failed to get dag {dag_id} status")
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Failed to get status for {dag_id} {run_id} due to {exc} - {traceback.format_exc()}",
+                error=f"Failed to get status for {dag_id} due to {exc} - {traceback.format_exc()}",
             )
 
     def delete_dag(self) -> Response:

@@ -50,11 +50,19 @@ export interface IngestionPipeline {
    * Name that identifies this pipeline instance uniquely.
    */
   name: string;
+  /**
+   * Next execution date from the underlying pipeline platform once the pipeline scheduled.
+   */
+  nextExecutionDate?: Date;
   openMetadataServerConnection: OpenMetadataConnection;
   /**
    * Owner of this Pipeline.
    */
   owner?: EntityReference;
+  /**
+   * List of executions and status for the Pipeline.
+   */
+  pipelineStatuses?: PipelineStatus[];
   pipelineType: PipelineType;
   /**
    * Link to the database service where this database is hosted in.
@@ -101,10 +109,6 @@ export interface AirflowConfig {
    */
   maxActiveRuns?: number;
   /**
-   * Next execution date from the underlying pipeline platform once the pipeline scheduled.
-   */
-  nextExecutionDate?: Date;
-  /**
    * pause the pipeline from running once the deploy is finished successfully.
    */
   pausePipeline?: boolean;
@@ -113,17 +117,9 @@ export interface AirflowConfig {
    */
   pipelineCatchup?: boolean;
   /**
-   * Timeout for the pipeline in seconds.
-   */
-  pipelineTimeout?: number;
-  /**
    * Timezone in which pipeline going to be scheduled.
    */
   pipelineTimezone?: string;
-  /**
-   * File system directory path where managed python operator files are stored.
-   */
-  pythonOperatorLocation?: string;
   /**
    * Retry pipeline in case of failure.
    */
@@ -136,10 +132,6 @@ export interface AirflowConfig {
    * Scheduler Interval for the pipeline in cron format.
    */
   scheduleInterval?: string;
-  /**
-   * python method call back on SLA miss.
-   */
-  slaMissCallback?: string;
   /**
    * Start date of the pipeline.
    */
@@ -217,9 +209,46 @@ export interface OpenMetadataConnection {
    */
   hostPort: string;
   /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
    * OpenMetadata Client security configuration.
    */
   securityConfig?: SsoClientConfig;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: OpenmetadataType;
 }
 
 /**
@@ -308,6 +337,15 @@ export interface SsoClientConfig {
 }
 
 /**
+ * Service Type
+ *
+ * OpenMetadata service type
+ */
+export enum OpenmetadataType {
+  OpenMetadata = 'OpenMetadata',
+}
+
+/**
  * Owner of this Pipeline.
  *
  * This schema defines the EntityReference type used for referencing an entity.
@@ -353,6 +391,28 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * This defines runtime status of Pipeline.
+ */
+export interface PipelineStatus {
+  /**
+   * endDate of the pipeline run for this particular execution.
+   */
+  endDate?: string;
+  /**
+   * Pipeline unique run ID.
+   */
+  runId?: string;
+  /**
+   * startDate of the pipeline run for this particular execution.
+   */
+  startDate?: string;
+  /**
+   * Pipeline status denotes if its failed or succeeded.
+   */
+  state?: string;
 }
 
 /**
@@ -420,7 +480,7 @@ export interface ServiceConnection {
  *
  * Databricks Connection Config
  *
- * DB2 Connection Config
+ * Db2 Connection Config
  *
  * DeltaLake Database Connection Config
  *
@@ -465,6 +525,10 @@ export interface ServiceConnection {
  * Pulsar Connection Config
  *
  * Amundsen Connection Config
+ *
+ * Metadata to ElasticSeach Connection Config
+ *
+ * OpenMetadata Connection Config
  */
 export interface Connection {
   /**
@@ -477,6 +541,10 @@ export interface Connection {
    * URL to Looker instance.
    *
    * Host and Port of Metabase instance.
+   *
+   * Dashboard URL for the power BI.
+   *
+   * URL for the redash instance
    *
    * URL for the superset instance
    *
@@ -494,10 +562,6 @@ export interface Connection {
    *
    * Host and port of the Druid
    *
-   * Host and port of the DynamoDB
-   *
-   * Host and port of the Glue
-   *
    * Host and port of the Hive.
    *
    * Host and port of the data source.
@@ -513,8 +577,10 @@ export interface Connection {
    * Host and port of the Redshift.
    *
    * Host and port of the Amundsen Neo4j Connection.
+   *
+   * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */
-  hostPort?: string;
+  hostPort?: any;
   /**
    * password to connect  to the Looker.
    *
@@ -565,7 +631,7 @@ export interface Connection {
   /**
    * Service Type
    */
-  type?: AmundsenType;
+  type?: Type;
   /**
    * username to connect  to the Looker. This user should have privileges to read all the
    * metadata in Looker.
@@ -649,12 +715,10 @@ export interface Connection {
   clientSecret?: string;
   /**
    * Credentials for the PowerBI.
+   *
+   * GCS Credentials
    */
-  credentials?: string;
-  /**
-   * Dashboard URL for the power BI.
-   */
-  dashboardURL?: string;
+  credentials?: GCSCredentials | string;
   /**
    * Dashboard redirect URI for the PowerBI.
    */
@@ -667,10 +731,6 @@ export interface Connection {
    * API key of the redash instance to access.
    */
   apiKey?: string;
-  /**
-   * URL for the redash instance
-   */
-  redashURL?: string;
   /**
    * Additional connection options that can be sent to service during the connection.
    */
@@ -685,6 +745,8 @@ export interface Connection {
   provider?: string;
   /**
    * Tableau API version
+   *
+   * OpenMetadata server API version to use.
    */
   apiVersion?: string;
   /**
@@ -795,9 +857,9 @@ export interface Connection {
    */
   partitionQueryDuration?: number;
   /**
-   * Google BigQuery project id.
+   * BigQuery project ID. Inform it here if passing the credentials path.
    */
-  projectID?: string;
+  projectId?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
@@ -848,7 +910,7 @@ export interface Connection {
   /**
    * AWS Access key ID.
    */
-  awsAccessKeyId?: any;
+  awsAccessKeyId?: string;
   /**
    * AWS Secret Access Key.
    */
@@ -950,6 +1012,105 @@ export interface Connection {
    * Enable SSL validation for the Amundsen Neo4j Connection.
    */
   validateSSL?: boolean;
+  /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
+   * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
+   * the one configured on OpenMetadaata server.
+   */
+  authProvider?: AuthProvider;
+  /**
+   * OpenMetadata Client security configuration.
+   */
+  securityConfig?: SsoClientConfig;
+}
+
+/**
+ * GCS Credentials
+ *
+ * GCS credentials configs.
+ */
+export interface GCSCredentials {
+  /**
+   * GCS configs.
+   */
+  gcsConfig: GCSValues | string;
+}
+
+/**
+ * GCS Credentials.
+ */
+export interface GCSValues {
+  /**
+   * Google Cloud auth provider certificate.
+   */
+  authProviderX509CertUrl?: string;
+  /**
+   * Google Cloud auth uri.
+   */
+  authUri?: string;
+  /**
+   * Google Cloud email.
+   */
+  clientEmail?: string;
+  /**
+   * Google Cloud Client ID.
+   */
+  clientId?: string;
+  /**
+   * Google Cloud client certificate uri.
+   */
+  clientX509CertUrl?: string;
+  /**
+   * Google Cloud private key.
+   */
+  privateKey?: string;
+  /**
+   * Google Cloud private key id.
+   */
+  privateKeyId?: string;
+  /**
+   * Google Cloud project id.
+   */
+  projectId?: string;
+  /**
+   * Google Cloud token uri.
+   */
+  tokenUri?: string;
+  /**
+   * Google Cloud service account type.
+   */
+  type?: string;
 }
 
 /**
@@ -1000,8 +1161,12 @@ export enum Scheme {
  * Pulsar service type
  *
  * Amundsen service type
+ *
+ * Metadata to Elastic Seach type
+ *
+ * OpenMetadata service type
  */
-export enum AmundsenType {
+export enum Type {
   Amundsen = 'Amundsen',
   Athena = 'Athena',
   AzureSQL = 'AzureSQL',
@@ -1018,8 +1183,10 @@ export enum AmundsenType {
   Looker = 'Looker',
   MariaDB = 'MariaDB',
   Metabase = 'Metabase',
+  MetadataES = 'MetadataES',
   Mssql = 'Mssql',
   Mysql = 'Mysql',
+  OpenMetadata = 'OpenMetadata',
   Oracle = 'Oracle',
   Postgres = 'Postgres',
   PowerBI = 'PowerBI',
@@ -1047,13 +1214,24 @@ export interface SourceConfig {
 
 export interface ConfigClass {
   /**
-   * DBT catalog file to extract dbt models with their column schemas.
+   * DBT Catalog file name
    */
-  dbtCatalogFilePath?: string;
+  dbtCatalogFileName?: string;
   /**
-   * DBT manifest file path to extract dbt models and associate with tables.
+   * DBT configuration.
    */
-  dbtManifestFilePath?: string;
+  dbtConfig?: LocalHTTPDbtConfig;
+  /**
+   * DBT Manifest file name
+   */
+  dbtManifestFileName?: string;
+  /**
+   * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+   * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+   * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+   * local system), 'http'(url path of dbt files).
+   */
+  dbtProvider?: DbtProvider;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -1132,4 +1310,64 @@ export interface FilterPattern {
    * List of strings/regex patterns to match and include only database entities that match.
    */
   includes?: string[];
+}
+
+/**
+ * DBT configuration.
+ *
+ * Local and HTTP DBT configs.
+ *
+ * GCS Credentials
+ *
+ * GCS credentials configs.
+ *
+ * AWS S3 credentials configs.
+ */
+export interface LocalHTTPDbtConfig {
+  /**
+   * DBT catalog file to extract dbt models with their column schemas.
+   */
+  dbtCatalogFilePath?: string;
+  /**
+   * DBT manifest file path to extract dbt models and associate with tables.
+   */
+  dbtManifestFilePath?: string;
+  /**
+   * GCS configs.
+   */
+  gcsConfig?: GCSValues | string;
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId?: string;
+  /**
+   * AWS Region
+   */
+  awsRegion?: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey?: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
+}
+
+/**
+ * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+ * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+ * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+ * local system), 'http'(url path of dbt files).
+ */
+export enum DbtProvider {
+  Gcs = 'gcs',
+  GcsPath = 'gcs-path',
+  HTTP = 'http',
+  Local = 'local',
+  S3 = 's3',
 }

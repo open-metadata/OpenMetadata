@@ -33,6 +33,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,6 +47,7 @@ import org.apache.maven.shared.utils.io.IOUtil;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -586,40 +588,22 @@ public abstract class EntityRepository<T> {
     }
 
     List<TagLabel> updatedTagLabels = new ArrayList<>();
+    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
     for (TagLabel tagLabel : tagLabels) {
-      TagLabel existingTag =
-          updatedTagLabels.stream().filter(c -> tagLabelMatch.test(c, tagLabel)).findAny().orElse(null);
-      if (existingTag != null) {
-        continue; // tag label is already seen. Don't add duplicate tags.
-      }
-
-      updatedTagLabels.add(tagLabel);
-      if (tagLabel.getSource() != Source.TAG) {
-        continue; // Related tags are not supported for Glossary yet
-      }
-      Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
-      EntityUtil.mergeTags(updatedTagLabels, derivedTags);
+      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
   }
 
   /** Get tags associated with a given set of tags */
-  private List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
-    List<TagLabel> derivedTags = new ArrayList<>();
-    for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
-      Tag tempTag = daoCollection.tagDAO().findEntityByName(fqn);
-      derivedTags.add(
-          new TagLabel()
-              .withTagFQN(fqn)
-              .withState(tagLabel.getState())
-              .withDescription(tempTag.getDescription())
-              .withLabelType(LabelType.DERIVED));
+  private List<TagLabel> getDerivedTags(TagLabel tagLabel) {
+    if (tagLabel.getSource() == Source.GLOSSARY) { // Related tags are only supported for Glossary
+      List<TagLabel> derivedTags = daoCollection.tagUsageDAO().getTags(tagLabel.getTagFQN());
+      derivedTags.forEach(tag -> tag.setLabelType(LabelType.DERIVED));
+      return derivedTags;
     }
-    return derivedTags;
+    return Collections.emptyList();
   }
 
   protected void applyTags(T entity) {
@@ -627,8 +611,6 @@ public abstract class EntityRepository<T> {
       // Add entity level tags by adding tag to the entity relationship
       EntityInterface<T> entityInterface = getEntityInterface(entity);
       applyTags(entityInterface.getTags(), entityInterface.getFullyQualifiedName());
-      // Update tag to handle additional derived tags
-      entityInterface.setTags(getTags(entityInterface.getFullyQualifiedName()));
     }
   }
 
@@ -636,9 +618,13 @@ public abstract class EntityRepository<T> {
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (tagLabel.getSource() == Source.TAG) {
-        daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
+        Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
+        tagLabel.withDescription(tag.getDescription());
+        tagLabel.setSource(Source.TAG);
       } else if (tagLabel.getSource() == Source.GLOSSARY) {
-        daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), Include.NON_DELETED);
+        GlossaryTerm term = daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), Include.NON_DELETED);
+        tagLabel.withDescription(term.getDescription());
+        tagLabel.setSource(Source.GLOSSARY);
       }
 
       // Apply tagLabel to targetFQN that identifies an entity or field
@@ -776,21 +762,21 @@ public abstract class EntityRepository<T> {
 
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
-      entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.userDAO().findEntityReferenceById(entityReference.getId());
         EntityUtil.copy(ref, entityReference);
       }
+      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 
   public void validateRoles(List<EntityReference> entityReferences) throws IOException {
     if (entityReferences != null) {
-      entityReferences.sort(EntityUtil.compareEntityReference);
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
         EntityUtil.copy(ref, entityReference);
       }
+      entityReferences.sort(EntityUtil.compareEntityReference);
     }
   }
 

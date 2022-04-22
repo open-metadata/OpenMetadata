@@ -23,6 +23,12 @@ export const addIngestionPipeline = (
   return APIClient.post('/services/ingestionPipelines', data);
 };
 
+export const getIngestionPipelineByFqn = (
+  fqn: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/services/ingestionPipelines/name/${fqn}`);
+};
+
 export const getIngestionPipelines = (
   arrQueryFields: Array<string>,
   serviceFilter?: string,

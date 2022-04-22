@@ -42,6 +42,7 @@ const CreateUser = ({
   const markdownRef = useRef<EditorContentRef>();
   const [description] = useState<string>('');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string | undefined>>(
@@ -52,6 +53,7 @@ const CreateUser = ({
   );
   const [showErrorMsg, setShowErrorMsg] = useState({
     email: false,
+    displayName: false,
     validEmail: false,
   });
 
@@ -74,6 +76,12 @@ const CreateUser = ({
       case 'email':
         setEmail(value);
         setShowErrorMsg({ ...showErrorMsg, email: false });
+
+        break;
+
+      case 'displayName':
+        setDisplayName(value);
+        setShowErrorMsg({ ...showErrorMsg, displayName: false });
 
         break;
 
@@ -166,6 +174,7 @@ const CreateUser = ({
       const userProfile: CreateUserSchema = {
         description: markdownRef.current?.getEditorContent() || undefined,
         name: email.split('@')[0],
+        displayName,
         roles: validRole.length ? validRole : undefined,
         teams: validTeam.length ? validTeam : undefined,
         email: email,
@@ -223,7 +232,7 @@ const CreateUser = ({
       <h6 className="tw-heading tw-text-base">Create User</h6>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="email">
-          {requiredField('Email:')}
+          {requiredField('Email')}
         </label>
         <input
           className="tw-form-inputs tw-px-3 tw-py-1"
@@ -243,13 +252,28 @@ const CreateUser = ({
           : null}
       </Field>
       <Field>
+        <label className="tw-block tw-form-label tw-mb-0" htmlFor="displayName">
+          Display Name
+        </label>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="displayName"
+          id="displayName"
+          name="displayName"
+          placeholder="displayName"
+          type="text"
+          value={displayName}
+          onChange={handleValidation}
+        />
+      </Field>
+      <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
-          Description:
+          Description
         </label>
         <RichTextEditor initialValue={description} ref={markdownRef} />
       </Field>
       <Field>
-        <label className="tw-block tw-form-label tw-mb-0">Teams:</label>
+        <label className="tw-block tw-form-label tw-mb-0">Teams</label>
         <DropDown
           className={classNames('tw-bg-white', {
             'tw-bg-gray-100 tw-cursor-not-allowed': teams.length === 0,
@@ -263,7 +287,7 @@ const CreateUser = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
-          Roles:
+          Roles
         </label>
         <DropDown
           className={classNames('tw-bg-white', {

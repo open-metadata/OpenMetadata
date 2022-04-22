@@ -17,6 +17,7 @@ import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
+import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
@@ -46,6 +47,23 @@ const Signup = () => {
 
   const history = useHistory();
 
+  const getUserPermissions = () => {
+    getLoggedInUserPermissions()
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          appState.updateUserPermissions(res.data.metadataOperations);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-user-permission-error']
+        );
+      });
+  };
+
   const selectedTeamsHandler = (id?: string) => {
     setSelectedTeams((prevState: Array<string | undefined>) => {
       if (prevState.includes(id as string)) {
@@ -68,6 +86,7 @@ const Signup = () => {
         if (res.data) {
           appState.updateUserDetails(res.data);
           fetchAllUsers();
+          getUserPermissions();
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);

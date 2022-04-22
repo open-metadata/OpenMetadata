@@ -21,7 +21,7 @@ public class TableDetails {
   By follow = By.cssSelector("button[data-testid='follow-button']");
   By schema = By.xpath("[data-testid='Schema']");;
   By lineage = By.cssSelector("[data-testid='Lineage']");;
-  By lineageComponents = By.xpath("//div[@class=\"tw-relative nowheel \"]");
+  By lineageComponents = By.cssSelector("[data-testid='node-label']");
   By profiler = By.cssSelector("[data-testid='Profiler']");
   By sampleData = By.cssSelector("[data-testid='Sample Data']");;
   By selectTier1 = By.xpath("(//div[@data-testid='card-list'])[1]");
@@ -29,7 +29,7 @@ public class TableDetails {
   By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");
   By selectTag = By.xpath("//div[@data-testid=\"list-item\"][2]");
   By saveTag = By.xpath("//button[@data-testid=\"saveAssociatedTag\"]");
-  By tagName = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
+  By editTags = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
   By removeTag = By.xpath("//span[@data-testid='remove']");
   By editDescriptionButton = By.xpath("//button[@data-testid= 'edit-description']");
   By editDescriptionBox = By.xpath("//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div");
@@ -77,13 +77,14 @@ public class TableDetails {
   By regex = By.cssSelector("[data-testid='regex']");
   By deleteTests = By.cssSelector("[data-testid='delete']");
   By deleteSave = By.cssSelector("[data-testid='save-button']");
-  By dismissToast = By.cssSelector("[data-testid='dismiss']");
+  By dismissToast = By.cssSelector("[class='Toastify__close-button Toastify__close-button--light']");
   By lineageNode = By.cssSelector("[data-testid='lineage-entity']");
   By checkTabs = By.cssSelector("[data-testid='tab']");
   By addTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
   By addDescriptionConversationThread = By.cssSelector("[data-testid='start-description-thread']");
   By openTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
   By startTagConversation = By.cssSelector("[data-testid='start-tag-thread']");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);

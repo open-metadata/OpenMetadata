@@ -35,10 +35,12 @@ import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrdering;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -746,6 +748,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
+    validateAlphabeticalOrdering(user.getTeams(), EntityUtil.compareEntityReference);
     return getEntityInterface(user);
   }
 
@@ -814,6 +817,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
     TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
+
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }
@@ -830,22 +834,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getIsBot(), expected.getIsBot());
     assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
 
-    compareEntityReferenceLists(expected.getRoles(), updated.getRoles());
-    compareEntityReferenceLists(expected.getTeams(), updated.getTeams());
+    assertEntityReferenceList(expected.getRoles(), updated.getRoles());
+    assertEntityReferenceList(expected.getTeams(), updated.getTeams());
 
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
-  }
-
-  private void compareEntityReferenceLists(List<EntityReference> expected, List<EntityReference> updated) {
-    List<EntityReference> expectedList = listOrEmpty(expected);
-    List<EntityReference> updatedList = new ArrayList<>(listOrEmpty(updated));
-
-    updatedList.forEach(TestUtils::validateEntityReference);
-    expectedList.sort(EntityUtil.compareEntityReference);
-    updatedList.sort(EntityUtil.compareEntityReference);
-    assertEquals(expectedList, updatedList);
   }
 
   @Override

@@ -21,50 +21,66 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/databricksType",
       "default": "Databricks"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/databricksScheme",
       "default": "databricks+connector"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect  to the Databricks. This user should have privileges to read all the metadata in Databricks.",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password to connect to the Databricks.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Host and port of the Databricks",
       "type": "string"
     },
     "database": {
+      "title": "Database",
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Databricks.",
       "type": "string"
     },
     "token": {
+      "title": "Token",
       "description": "Generated Token to connect to Databricks",
       "type": "string",
       "format": "password"
     },
+    "httpPath": {
+      "title": "Http Path",
+      "description": "Databricks compute resources URL",
+      "type": "string"
+    },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "token"
-  ]
+  "required": ["hostPort", "token"]
 }

@@ -90,15 +90,15 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
@@ -162,14 +162,14 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
@@ -235,13 +235,12 @@ public class DashboardDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, dashboardDetails.selectTier());
   }
 
   @Test
@@ -254,9 +253,9 @@ public class DashboardDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {

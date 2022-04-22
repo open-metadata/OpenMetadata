@@ -37,6 +37,7 @@ public class TableDetailsPageTest {
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
+  static String searchSuggestion = "sample_dataecommerce_dbshopifydim_location";
   Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -94,7 +95,7 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), tableName);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch("sample_dataecommerce_dbshopifydim_address"));
     Events.click(webDriver, tableDetails.profiler());
     Assert.assertTrue(tableDetails.schemaTableIsDisplayed());
     Events.click(webDriver, tableDetails.lineage());
@@ -116,7 +117,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(waitTime);
@@ -141,9 +142,7 @@ public class TableDetailsPageTest {
     for (int i = 0; i < 1; i++) {
       actions.moveToElement(webDriver.findElement(tableDetails.columnDescriptionButton())).perform();
       Events.click(webDriver, tableDetails.columnDescriptionButton());
-      columnDescripitonBox = webDriver.findElement(tableDetails.columnDescriptionBox());
-      Events.click(webDriver, tableDetails.columnDescriptionBox());
-      actions.moveToElement(columnDescripitonBox).sendKeys(sendKeys).perform();
+      Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
       Thread.sleep(2000);
       Events.click(webDriver, tableDetails.saveTableDescription());
       Thread.sleep(2000);
@@ -190,7 +189,7 @@ public class TableDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(1));
     Object count = webDriver.findElements(tableDetails.columnTags()).size();
-    Events.click(webDriver, tableDetails.tagName());
+    Events.click(webDriver, tableDetails.editTags());
     Thread.sleep(1000);
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
@@ -222,13 +221,12 @@ public class TableDetailsPageTest {
   public void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.manage());
     Events.click(webDriver, tableDetails.owner());
     Events.click(webDriver, tableDetails.selectUser());
     Events.click(webDriver, tableDetails.selectTier1());
-    Events.click(webDriver, tableDetails.saveManage());
+    Events.click(webDriver, tableDetails.selectTier());
   }
 
   @Test
@@ -240,7 +238,6 @@ public class TableDetailsPageTest {
     Events.click(webDriver, tableDetails.lineage());
     List<WebElement> nodes = tableDetails.lineageNodes();
     // Clicking and checking all the nodes text matches to side drawer text
-    WebElement sideDrawer = webDriver.findElement(tableDetails.sideDrawerLineage());
     for (WebElement e : nodes) {
       e.click();
       actions.dragAndDropBy(e, 100, 200).perform();
@@ -253,21 +250,20 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(1000);
+    Thread.sleep(waitTime);
     List<WebElement> br = tableDetails.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
     for (WebElement link : br) {
       try {
         link.click();
-        Thread.sleep(1000);
+        Thread.sleep(waitTime);
         Assert.assertTrue(link.isDisplayed());
-        Thread.sleep(1000);
       } catch (StaleElementReferenceException ex) {
         webDriver.navigate().back();
-        Thread.sleep(1000);
+        Thread.sleep(waitTime);
         Events.click(webDriver, By.xpath(xpath));
-        Thread.sleep(2000);
+        Thread.sleep(waitTime);
         Assert.assertTrue(webDriver.findElement(By.xpath(xpath)).isDisplayed());
         break;
       }
@@ -299,7 +295,7 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_location"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedTables());
@@ -314,7 +310,7 @@ public class TableDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcpshopifydim_location"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedColumns());

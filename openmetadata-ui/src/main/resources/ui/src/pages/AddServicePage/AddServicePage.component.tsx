@@ -14,7 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { addIngestionPipeline } from '../../axiosAPIs/ingestionPipelineAPI';
+import {
+  addIngestionPipeline,
+  getIngestionPipelineByFqn,
+} from '../../axiosAPIs/ingestionPipelineAPI';
 import { postService } from '../../axiosAPIs/serviceAPI';
 import AddService from '../../components/AddService/AddService.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -22,7 +25,6 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
@@ -67,25 +69,27 @@ const AddServicePage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          const errMessage = getErrorText(
-            err,
-            jsonData['api-error-messages']['create-ingestion-error']
-          );
-          if (
-            errMessage.includes(jsonData['message']['fail-to-deploy-pipeline'])
-          ) {
-            showErrorToast(
-              errMessage,
-              jsonData['api-error-messages']['deploy-ingestion-error']
-            );
-            resolve();
-          } else {
-            showErrorToast(
-              err,
-              jsonData['api-error-messages']['create-ingestion-error']
-            );
-            reject();
-          }
+          getIngestionPipelineByFqn(`${newServiceData?.name}.${data.name}`)
+            .then((res: AxiosResponse) => {
+              if (res.data) {
+                resolve();
+                showErrorToast(
+                  err,
+                  jsonData['api-error-messages']['deploy-ingestion-error']
+                );
+              } else {
+                throw jsonData['api-error-messages'][
+                  'unexpected-server-response'
+                ];
+              }
+            })
+            .catch(() => {
+              showErrorToast(
+                err,
+                jsonData['api-error-messages']['create-ingestion-error']
+              );
+              reject();
+            });
         });
     });
   };

@@ -143,6 +143,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected boolean supportsSoftDelete = true;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
+  protected boolean supportsEmptyDescription = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -271,11 +272,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public K createRequest(TestInfo test) {
-    return createRequest(getEntityName(test), null, null, null);
+    return createRequest(getEntityName(test), "", null, null);
   }
 
   public K createRequest(TestInfo test, int index) {
-    return createRequest(getEntityName(test, index), null, null, null);
+    return createRequest(getEntityName(test, index), "", null, null);
   }
 
   public abstract K createRequest(String name, String description, String displayName, EntityReference owner);
@@ -375,11 +376,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), ADMIN_AUTH_HEADERS))
+          getEntityInterface(createEntity(createRequest(getEntityName(test, i), "", null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test, -1), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> deleted = getEntityInterface(entity);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
@@ -709,19 +710,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void post_entityWithDots_200() throws HttpResponseException {
     // Entity without "." should not have quoted fullyQualifiedName
     String name = String.format("%s_foo_bar", entityType);
-    K request = createRequest(name, null, null, null);
+    K request = createRequest(name, "", null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
     assertFalse(entityInterface.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
     name = String.format("%s_foo.bar", entityType);
-    request = createRequest(name, null, null, null);
+    request = createRequest(name, "", null, null);
     entity = createEntity(request, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
     assertTrue(entityInterface.getFullyQualifiedName().contains("\""));
     String[] split = FullyQualifiedName.split(entityInterface.getFullyQualifiedName());
-    System.out.println("XXX fqn is " + entityInterface.getFullyQualifiedName());
     String actualName = split[split.length - 1];
     assertEquals(name, entityInterface.getName());
     assertEquals(FullyQualifiedName.quoteName(name), actualName);
@@ -756,15 +756,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    K request = createRequest(getEntityName(test), null, null, USER_OWNER1);
+    K request = createRequest(getEntityName(test), "", null, USER_OWNER1);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update the entity as USER_OWNER1
     request = createRequest(getEntityName(test), "newDescription", null, USER_OWNER1);
-    FieldChange fieldChange = new FieldChange().withName("description").withNewValue("newDescription");
+    FieldChange fieldChange = new FieldChange().withName("description").withOldValue("").withNewValue("newDescription");
     ChangeDescription change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+        getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
@@ -829,6 +829,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException {
+    if (!supportsEmptyDescription) {
+      return;
+    }
     // Create entity with null description
     K request = createRequest(getEntityName(test), null, "displayName", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1010,9 +1013,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       return;
     }
     // Create entity without description, owner
-    T entity = createEntity(createRequest(getEntityName(test), null, null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertListNull(entityInterface.getDescription(), entityInterface.getOwner());
+    assertListNull(entityInterface.getOwner());
 
     entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
@@ -1029,7 +1032,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Field changes
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue("").withNewValue("description"));
     if (supportsOwner) {
       entityInterface.setOwner(TEAM_OWNER1);
       change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1));
@@ -1324,14 +1329,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return createAndCheckEntity(create, authHeaders, create);
   }
 
-  /**
-   * Helper function to create an entity, submit POST API request and validate response.
-   *
-   * @param create entity to be created
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param created expected response from POST API after entity has been created
-   * @return entity response from the POST API
-   */
+  /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
@@ -1429,17 +1427,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
   }
 
-  /**
-   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
-   *
-   * @param updated entity to compare with response from PATCH API
-   * @param originalJson JSON representation of entity before the update
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param updateType type of update, see {@link TestUtils.UpdateType}
-   * @param expectedChange change description that is expected from the PATCH API response
-   * @param update entity used to diff against originalJson to generate JSON PATCH for PATCH API test
-   * @return entity response from the PATCH API
-   */
+  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,

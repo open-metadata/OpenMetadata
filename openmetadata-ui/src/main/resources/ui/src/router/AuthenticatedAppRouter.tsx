@@ -15,9 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { ROUTES } from '../constants/constants';
-import { useAuth } from '../hooks/authHooks';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
 import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
@@ -39,16 +37,13 @@ import ServicesPage from '../pages/services';
 import SignupPage from '../pages/signup';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
-import TeamsPage from '../pages/teams';
+import TeamsAndUsersPage from '../pages/TeamsAndUsersPage/TeamsAndUsersPage.component';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
-import UserListPage from '../pages/UserListPage/UserListPage';
 import UserPage from '../pages/UserPage/UserPage.component';
 import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
+import AdminProtectedRoute from './AdminProtectedRoute';
 const AuthenticatedAppRouter: FunctionComponent = () => {
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
@@ -56,8 +51,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
+      <Route
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS}
+      />
+      <Route
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS_DETAILS}
+      />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
@@ -118,37 +121,36 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <Route exact component={WebhooksPage} path={ROUTES.WEBHOOKS} />
       <Route exact component={EditWebhookPage} path={ROUTES.EDIT_WEBHOOK} />
-      {/* <Route exact component={GlossaryPage} path={ROUTES.GLOSSARY} /> */}
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
-      {/* <Route
-        exact
-        component={GlossaryTermPage}
-        path={ROUTES.GLOSSARY_DETAILS}
-      /> */}
-      {/* <Route exact component={GlossaryTermPage} path={ROUTES.GLOSSARY_TERMS} /> */}
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
-      {isAuthDisabled || isAdminUser ? (
-        <>
-          <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
-          <Route
-            exact
-            component={AddGlossaryTermPage}
-            path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
-          />
-          <Route
-            exact
-            component={AddGlossaryTermPage}
-            path={ROUTES.ADD_GLOSSARY_TERMS}
-          />
-          <Route exact component={AddWebhookPage} path={ROUTES.ADD_WEBHOOK} />
-          <Route exact component={RolesPage} path={ROUTES.ROLES} />
-          <Route exact component={CreateUserPage} path={ROUTES.CREATE_USER} />
-          <Route exact component={UserListPage} path={ROUTES.USER_LIST} />
-        </>
-      ) : null}
-
+      <AdminProtectedRoute
+        exact
+        component={AddGlossaryPage}
+        path={ROUTES.ADD_GLOSSARY}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddGlossaryTermPage}
+        path={ROUTES.ADD_GLOSSARY_TERMS_CHILD}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddGlossaryTermPage}
+        path={ROUTES.ADD_GLOSSARY_TERMS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddWebhookPage}
+        path={ROUTES.ADD_WEBHOOK}
+      />
+      <AdminProtectedRoute exact component={RolesPage} path={ROUTES.ROLES} />
+      <AdminProtectedRoute
+        exact
+        component={CreateUserPage}
+        path={ROUTES.CREATE_USER}
+      />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

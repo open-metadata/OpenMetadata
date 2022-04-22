@@ -170,6 +170,7 @@ module.exports = {
       },
       maxHeight: {
         32: '8rem',
+        '80vh': '80vh',
         '90vh': '90vh',
       },
       minHeight: {

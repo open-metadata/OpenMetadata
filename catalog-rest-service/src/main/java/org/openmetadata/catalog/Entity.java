@@ -62,6 +62,7 @@ public final class Entity {
   public static final String FIELD_FOLLOWERS = "followers";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_DELETED = "deleted";
+  public static final String FIELD_PIPELINE_STATUSES = "pipelineStatuses";
 
   //
   // Services

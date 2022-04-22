@@ -18,7 +18,7 @@ import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 
 public class FullyQualifiedName {
-  // Quoted name of format "sss" or sss
+  // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
   private FullyQualifiedName() {

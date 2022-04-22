@@ -46,9 +46,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
   const [access, setAccess] = useState<RuleAccess>(
     initialData.allow ? RuleAccess.ALLOW : RuleAccess.DENY
   );
-  const [isEnabled, setIsEnabled] = useState<boolean>(
-    Boolean(initialData.enabled)
-  );
   const onChangeHandler = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -70,7 +67,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
     const rule = {
       ...data,
       allow: access === RuleAccess.ALLOW,
-      enabled: isEnabled,
     };
     onSave(rule);
     onChange?.(rule);
@@ -135,18 +131,6 @@ const AddRuleModal: FC<AddRuleProps> = ({
                 <option value={RuleAccess.ALLOW}>ALLOW</option>
                 <option value={RuleAccess.DENY}>DENY</option>
               </select>
-            </div>
-            <div className="tw-flex tw-items-center">
-              <label>Enable</label>
-              <div
-                className={classNames(
-                  'toggle-switch tw-ml-4',
-                  isEnabled ? 'open' : null
-                )}
-                data-testid="rule-switch"
-                onClick={() => setIsEnabled((pre) => !pre)}>
-                <div className="switch" />
-              </div>
             </div>
           </div>
           <div className="tw-modal-footer" data-testid="cta-container">

@@ -15,40 +15,48 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/supersetType",
       "default": "Superset"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "URL for the superset instance",
       "type": "string",
       "format": "uri",
       "default": "http://localhost:8088"
     },
     "username": {
+      "title": "Username",
       "description": "username for the Superset",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password for the Superset",
       "type": "string",
       "format": "password"
     },
     "provider": {
+      "title": "Provider",
       "description": "authenticaiton provider for the Superset",
       "type": "string",
       "default": "db"
     },
-    "dbServiceConnection": {
+    "dbServiceName": {
+      "title": "Database Service Name",
       "description": "Database Service to create lineage",
       "type": "string",
       "default": null
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "description": "Additional connection options that can be sent to service during the connection.",
       "type": "object"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },

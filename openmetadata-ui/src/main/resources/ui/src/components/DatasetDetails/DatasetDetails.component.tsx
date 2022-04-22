@@ -17,7 +17,7 @@ import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath, ROUTES } from '../../constants/constants';
+import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -329,7 +329,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -626,30 +626,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     onUpdate={onColumnsUpdate}
                   />
                 </div>
-
-                {threadLink ? (
-                  <ActivityThreadPanel
-                    createThread={createThread}
-                    deletePostHandler={deletePostHandler}
-                    open={Boolean(threadLink)}
-                    postFeedHandler={postFeedHandler}
-                    threadLink={threadLink}
-                    onCancel={onThreadPanelClose}
-                  />
-                ) : null}
-                {selectedField ? (
-                  <RequestDescriptionModal
-                    createThread={createThread}
-                    defaultValue={getDefaultValue(owner)}
-                    header="Request description"
-                    threadLink={getEntityFeedLink(
-                      EntityType.TABLE,
-                      datasetFQN,
-                      selectedField
-                    )}
-                    onCancel={closeRequestModal}
-                  />
-                ) : null}
               </div>
             )}
             {activeTab === 2 && (
@@ -776,6 +752,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               {getLoader()}
             </div>
           </div>
+          {threadLink ? (
+            <ActivityThreadPanel
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              open={Boolean(threadLink)}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              onCancel={onThreadPanelClose}
+            />
+          ) : null}
+          {selectedField ? (
+            <RequestDescriptionModal
+              createThread={createThread}
+              defaultValue={getDefaultValue(owner)}
+              header="Request description"
+              threadLink={getEntityFeedLink(
+                EntityType.TABLE,
+                datasetFQN,
+                selectedField
+              )}
+              onCancel={closeRequestModal}
+            />
+          ) : null}
         </div>
       </div>
     </PageContainer>

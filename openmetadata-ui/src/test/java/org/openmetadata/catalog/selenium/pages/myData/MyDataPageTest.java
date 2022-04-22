@@ -42,13 +42,13 @@ public class MyDataPageTest {
   static Actions actions;
   static WebDriverWait wait;
   static String table = "dim_address";
+  static String searchSuggestion = "sample_dataecommerce_dbshopifydim_address";
   Integer waitTime = Property.getInstance().getSleepTime();
   MyDataPage myDataPage;
   TagsPage tagsPage;
   TeamsPage teamsPage;
   UserListPage userListPage;
   TableDetails tableDetails;
-  DatabaseServicePage databaseService;
   ExplorePage explorePage;
   Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
@@ -132,8 +132,8 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     wait.until(ExpectedConditions.elementToBeClickable(myDataPage.searchBox())); // Search bar/dim
     Events.sendKeys(webDriver, myDataPage.searchBox(), sendkeys); // Search bar/dim
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
-    Thread.sleep(1000);
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
+    Thread.sleep(waitTime);
     WebElement tableName =
         tableDetails
             .breadCrumb()
@@ -168,25 +168,13 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, common.headerSettingsTeams());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/teams");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users");
     try {
       if (teamsPage.heading().isDisplayed()) {
         LOG.info("Teams Heading is displayed");
       }
     } catch (NoSuchElementException e) {
       Assert.fail("Teams heading not displayed");
-    }
-    webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.settings());
-    Events.click(webDriver, common.headerSettingsMenu("Users"));
-    url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/user-list");
-    try {
-      if (userListPage.allUsers().isDisplayed()) {
-        LOG.info("All users is displayed");
-      }
-    } catch (NoSuchElementException e) {
-      Assert.fail("Users not displayed");
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
@@ -222,12 +210,11 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Events.click(webDriver, tableDetails.manage());
     Events.click(webDriver, tableDetails.owner()); // Owner
     Events.click(webDriver, tableDetails.users());
     Events.click(webDriver, tableDetails.selectUser());
-    Events.click(webDriver, tableDetails.saveManage());
     Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     try {
@@ -248,7 +235,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.follow());
@@ -277,7 +264,7 @@ public class MyDataPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();

@@ -18,10 +18,11 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   ROUTES,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { UserType } from '../../enums/user.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -93,7 +94,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
         icon: Icons.USERS,
         data: 'Users',
         count: users.length,
-        link: ROUTES.USER_LIST,
+        link: getTeamAndUserDetailsPath(UserType.USERS),
         dataTestId: 'user',
         adminOnly: true,
       },
@@ -101,7 +102,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
         count: userTeams.length,
-        link: getTeamDetailsPath(),
+        link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
       },
     };

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -241,6 +242,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
+
     pipeline =
         updateAndCheckEntity(
             request.withDescription("newDescription").withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -251,10 +253,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
     tasks.add(taskEmptyDesc);
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
-
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
-    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change = getChangeDescription(pipeline.getVersion());
+    // create a request with same tasks we shouldn't see any change
+    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
   }
 
   @Test
@@ -377,7 +381,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl(new URI("http://localhost:0"));
     tasks.add(taskEmptyDesc);
     change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(tasks));
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue("").withNewValue("newDescription"));
 
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());

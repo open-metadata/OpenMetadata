@@ -14,6 +14,7 @@
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { FeedFilter } from '../../enums/mydata.enum';
 import Users from './Users.component';
 
 const mockUserData = {
@@ -102,25 +103,68 @@ jest.mock('../common/TabsPane/TabsPane', () => {
   return jest.fn().mockReturnValue(<p data-testid="tabs">Tabs</p>);
 });
 
+jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
+  return jest.fn().mockReturnValue(<p>FeedCards</p>);
+});
+
+jest.mock('../common/description/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
+const mockObserve = jest.fn();
+const mockunObserve = jest.fn();
+
+window.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: mockObserve,
+  unobserve: mockunObserve,
+}));
+
+const mockFetchFeedHandler = jest.fn();
+const feedFilterHandler = jest.fn();
+const fetchData = jest.fn();
+const postFeed = jest.fn();
+const updateUserDetails = jest.fn();
+const mockPaging = {
+  after: 'MTY0OTIzNTQ3MzExMg==',
+  total: 202,
+};
+
+const mockProp = {
+  feedData: [],
+  feedFilter: FeedFilter.ALL,
+  feedFilterHandler: feedFilterHandler,
+  fetchData: fetchData,
+  fetchFeedHandler: mockFetchFeedHandler,
+  isFeedLoading: false,
+  paging: mockPaging,
+  postFeedHandler: postFeed,
+  isAdminUser: false,
+  updateUserDetails,
+};
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
-    const { container } = render(<Users userData={mockUserData} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const tabs = await findByTestId(container, 'tabs');
-    const noAssets = await findByTestId(container, 'no-assets');
     const leftPanel = await findByTestId(container, 'left-panel');
 
     expect(tabs).toBeInTheDocument();
-    expect(noAssets).toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
   });
 
   it('Should render non deleted teams', async () => {
-    const { container } = render(<Users userData={mockUserData} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const teamFinance = await findByTestId(container, 'Finance');
     const teamDataPlatform = await findByTestId(container, 'Data_Platform');
@@ -130,12 +174,30 @@ describe('Test User Component', () => {
   });
 
   it('Should not render deleted teams', async () => {
-    const { container } = render(<Users userData={mockUserData} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const deletedTeam = queryByTestId(container, 'Customer_Support');
 
     expect(deletedTeam).not.toBeInTheDocument();
+  });
+
+  it('Should create an observer if IntersectionObserver is available', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'observer-element');
+
+    expect(obServerElement).toBeInTheDocument();
+
+    expect(mockObserve).toHaveBeenCalled();
   });
 });

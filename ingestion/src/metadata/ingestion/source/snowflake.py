@@ -14,7 +14,6 @@ from typing import Iterable, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import dsa, rsa
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
@@ -43,13 +42,20 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+def normalize_names(self, name):
+    return name
+
+
+SnowflakeDialect.normalize_name = normalize_names
+
+
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config):
         connection_arguments = (
             config.serviceConnection.__root__.config.connectionArguments
         )
         if connection_arguments:
-            if connection_arguments.private_key:
+            if hasattr(connection_arguments, "private_key"):
                 private_key = connection_arguments.private_key
                 p_key = serialization.load_pem_private_key(
                     bytes(private_key, "utf-8"),
@@ -68,14 +74,12 @@ class SnowflakeSource(SQLSource):
         super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
-
-        if self.config.serviceConnection.__root__.config.database != None:
+        if self.config.serviceConnection.__root__.config.database:
             yield from super().get_databases()
         else:
             query = "SHOW DATABASES"
             results = self.connection.execute(query)
             for res in results:
-
                 row = list(res)
                 use_db_query = f"USE DATABASE {row[1]}"
                 self.connection.execute(use_db_query)
@@ -88,7 +92,7 @@ class SnowflakeSource(SQLSource):
         if not resp_sample_data:
             try:
                 logger.info("Using Table Name with quotes to fetch the data")
-                query = self.config.query.format(schema, f'"{table}"')
+                query = self.source_config.sampleDataQuery.format(schema, f'"{table}"')
                 logger.info(query)
                 results = self.connection.execute(query)
                 cols = []
@@ -101,6 +105,7 @@ class SnowflakeSource(SQLSource):
                 return TableData(columns=cols, rows=rows)
             except Exception as err:
                 logger.error(err)
+        return resp_sample_data
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

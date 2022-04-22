@@ -450,7 +450,7 @@ const EntityPageInfo = ({
               </p>
             ) : (
               <p
-                className="link-text tw-self-start tw-w-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+                className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
                 data-testid="start-tag-thread"
                 onClick={() =>
                   onThreadLinkSelect?.(

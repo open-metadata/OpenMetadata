@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.DATE;
+import static org.openmetadata.catalog.type.ColumnDataType.DECIMAL;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
@@ -190,6 +191,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
           BAD_REQUEST,
           "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
+  }
+
+  @Test
+  void post_tableInvalidPrecisionScale_400(TestInfo test) {
+    // No precision set but only column
+    final List<Column> columns = singletonList(getColumn("c1", DECIMAL, null).withScale(1));
+    final CreateTable create = createRequest(test).withColumns(columns);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale is set but precision is not set for the column c1");
+
+    // Scale (decimal digits) larger than precision (total number of digits)
+    columns.get(0).withScale(2).withPrecision(1);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale can't be greater than the precision for the column c1");
   }
 
   @Test
@@ -461,15 +480,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     //
     // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only
-    // tags and
-    // description can be changed
+    // tags and description can be changed
     //
     String tableJson = JsonUtils.pojoToJson(table1);
     c1 = table1.getColumns().get(0);
     c1.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c1 tag changed
 
     c2 = table1.getColumns().get(1);
-    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // c2 new tag added
+    c2.getTags().add(USER_ADDRESS_TAG_LABEL); // c2 new tag added
 
     c2_a = c2.getChildren().get(0);
     c2_a.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.a tag changed
@@ -1496,18 +1514,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getFieldsUpdated()
         .add(new FieldChange().withName(build("columns", "c2", "description")).withNewValue("new1").withOldValue("c2"));
 
-    columns.get(2).withTags(new ArrayList<>()); // Remove tag
-    // Column c3 tags were removed
+    columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
+    // Column c3 tags were removed and precision and scale were added
     change
         .getFieldsDeleted()
         .add(
             new FieldChange()
                 .withName(build("columns", "\"c.3\"", "tags"))
                 .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withNewValue(10));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withNewValue(3));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the precision and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withOldValue(10).withNewValue(7));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(3); // Precision change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the scale and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withOldValue(3).withNewValue(1));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(1); // Scale change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
   }
 
@@ -1519,13 +1567,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
-    // Ensure only three tag labels are found - Manual tags PersonalData.Personal, User.Address
-    // and a derived tag PII.Sensitive
+    // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
+    // and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEquals(3, updateTags.size());
+    assertEquals(4, updateTags.size());
+
+    TagLabel glossaryTerm1 =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL)).findAny().orElse(null);
+    assertNotNull(glossaryTerm1);
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
 
     TagLabel userAddress =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL)).findAny().orElse(null);

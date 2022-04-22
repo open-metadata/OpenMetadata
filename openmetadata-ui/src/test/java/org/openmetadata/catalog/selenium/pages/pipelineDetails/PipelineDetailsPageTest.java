@@ -44,8 +44,6 @@ public class PipelineDetailsPageTest {
   static String url = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  String pipelineName = "dim_product etl";
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Common common;
@@ -95,18 +93,18 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
-    Thread.sleep(2000);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    String checkDescription = webDriver.findElement(pipelineDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -168,7 +166,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -176,7 +174,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(2000);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -212,13 +210,12 @@ public class PipelineDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, pipelineDetails.selectTier());
   }
 
   @Test
@@ -231,9 +228,9 @@ public class PipelineDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {

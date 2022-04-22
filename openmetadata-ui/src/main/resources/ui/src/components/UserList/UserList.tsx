@@ -325,15 +325,15 @@ const UserList: FunctionComponent<Props> = ({
     let listUserData: Array<User> = [];
 
     switch (type) {
-      case UserType.ISADMIN:
+      case UserType.ADMINS:
         listUserData = admins;
 
         break;
-      case UserType.ISBOT:
+      case UserType.BOTS:
         listUserData = bots;
 
         break;
-      case UserType.ISUSER:
+      case UserType.USERS:
       default:
         listUserData = users;
 
@@ -391,9 +391,9 @@ const UserList: FunctionComponent<Props> = ({
             ) : (
               <>
                 {getTabs()}
-                {currentTab === 1 && getUserCards(UserType.ISUSER)}
-                {currentTab === 2 && getUserCards(UserType.ISADMIN)}
-                {currentTab === 3 && getUserCards(UserType.ISBOT)}
+                {currentTab === 1 && getUserCards(UserType.USERS)}
+                {currentTab === 2 && getUserCards(UserType.ADMINS)}
+                {currentTab === 3 && getUserCards(UserType.BOTS)}
                 {!isUndefined(selectedUser) && (
                   <UserDetailsModal
                     header="Update user"

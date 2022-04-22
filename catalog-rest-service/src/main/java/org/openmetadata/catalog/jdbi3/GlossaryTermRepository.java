@@ -118,7 +118,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate reviewers
     EntityUtil.populateEntityReferences(entity.getReviewers());
 
-    // Set tags
+    // Validate table tags and add derived tags to the list
     entity.setTags(addDerivedTags(entity.getTags()));
   }
 
