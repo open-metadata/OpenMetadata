@@ -9,26 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from dataclasses import dataclass
 from typing import Any
 
 from boto3 import Session
-from pydantic import SecretStr
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-
-
-@dataclass
-class GlueClient:
-    def __init__(self, client) -> None:
-        self.client = client
-
-
-@dataclass
-class DynamoClient:
-    def __init__(self, client) -> None:
-        self.client = client
+from metadata.utils.connection_clients import DynamoClient, GlueClient
 
 
 class AWSClient:
