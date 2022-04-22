@@ -1,7 +1,7 @@
 import React from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { Button } from '../buttons/Button/Button';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
+import { Button } from '../../buttons/Button/Button';
+import NonAdminAction from '../non-admin-action/NonAdminAction';
 
 type DeleteWidgetBodyProps = {
   header: string;

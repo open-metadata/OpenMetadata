@@ -85,7 +85,7 @@ const EntityDeleteModal: FC<Prop> = ({
             data-testid="confirmation-text-input"
             disabled={loadingState === 'waiting'}
             name="entityName"
-            placeholder={`${entityType}/${entityName}`}
+            placeholder="DELETE"
             type="text"
             value={name}
             onChange={handleOnChange}

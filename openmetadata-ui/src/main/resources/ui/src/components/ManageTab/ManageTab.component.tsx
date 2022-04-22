@@ -18,29 +18,24 @@ import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { deleteEntity } from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ENTITY_DELETE_STATE } from '../../constants/entity.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
+import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ToggleSwitchV1 from '../common/toggle-switch/ToggleSwitchV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import DeleteWidgetBody from './DeleteWidgetBody';
 import { ManageProps, Status } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
@@ -60,7 +55,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   deletEntityMessage,
   handleIsJoinable,
 }: ManageProps) => {
-  const history = useHistory();
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
@@ -74,8 +68,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
-  const [entityDeleteState, setEntityDeleteState] =
-    useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -164,120 +156,20 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setActiveTier(cardId);
   };
 
-  const handleOnEntityDelete = (softDelete = false) => {
-    setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
-  };
-
-  const handleOnEntityDeleteCancel = () => {
-    setEntityDeleteState(ENTITY_DELETE_STATE);
-  };
-
-  const prepareEntityType = () => {
-    const services = [
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.DATABASE_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-    ];
-
-    if (services.includes((entityType || '') as EntityType)) {
-      return `services/${entityType}s`;
-    } else {
-      return `${entityType}s`;
-    }
-  };
-
-  const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
-    const hardDeleteText = `Once you delete this ${entityType}, it will be removed permanently`;
-
-    return softDelete ? softDeleteText : hardDeleteText;
-  };
-
-  const handleOnEntityDeleteConfirm = () => {
-    setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
-    deleteEntity(
-      prepareEntityType(),
-      entityId,
-      isRecursiveDelete,
-      allowSoftDelete
-    )
-      .then((res: AxiosResponse) => {
-        if (res.status === 200) {
-          setTimeout(() => {
-            handleOnEntityDeleteCancel();
-            showSuccessToast(
-              jsonData['api-success-messages']['delete-entity-success']
-            );
-            setTimeout(() => {
-              history.push('/');
-            }, 500);
-          }, 1000);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-        }
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['delete-entity-error']
-        );
-      })
-      .finally(() => {
-        handleOnEntityDeleteCancel();
-      });
-  };
-
-  const getDeleteModal = () => {
-    if (allowDelete && entityDeleteState.state) {
-      return (
-        <EntityDeleteModal
-          bodyText={
-            deletEntityMessage ||
-            prepareDeleteMessage(entityDeleteState.softDelete)
-          }
-          entityName={entityName as string}
-          entityType={entityType as string}
-          loadingState={entityDeleteState.loading}
-          softDelete={entityDeleteState.softDelete}
-          onCancel={handleOnEntityDeleteCancel}
-          onConfirm={handleOnEntityDeleteConfirm}
-        />
-      );
-    } else {
-      return null;
-    }
-  };
-
   const getDeleteEntityWidget = () => {
     return allowDelete && entityId && entityName && entityType ? (
       <div className="tw-mt-1" data-testid="danger-zone">
         <hr className="tw-border-main tw-mb-4" />
-        <div className="tw-border tw-border-error tw-rounded tw-mt-3 tw-shadow">
-          {allowSoftDelete && (
-            <div className="tw-border-b">
-              <DeleteWidgetBody
-                buttonText="Soft delete"
-                description={prepareDeleteMessage(true)}
-                hasPermission={isAdminUser || isAuthDisabled}
-                header={`Soft delete ${entityType} ${entityName}`}
-                isOwner={isAdminUser}
-                onClick={() => handleOnEntityDelete(true)}
-              />
-            </div>
-          )}
-
-          <DeleteWidgetBody
-            buttonText="Delete"
-            description={prepareDeleteMessage()}
-            hasPermission={isAdminUser || isAuthDisabled}
-            header={`Delete ${entityType} ${entityName}`}
-            isOwner={isAdminUser}
-            onClick={handleOnEntityDelete}
-          />
-        </div>
+        <DeleteWidget
+          allowSoftDelete={allowSoftDelete}
+          deletEntityMessage={deletEntityMessage}
+          entityId={entityId}
+          entityName={entityName}
+          entityType={entityType}
+          hasPermission={isAdminUser || isAuthDisabled}
+          isAdminUser={isAdminUser}
+          isRecursiveDelete={isRecursiveDelete}
+        />
       </div>
     ) : null;
   };
@@ -510,7 +402,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       </div>
       {getTierCards()}
       {getDeleteEntityWidget()}
-      {getDeleteModal()}
     </div>
   );
 };
