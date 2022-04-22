@@ -23,7 +23,6 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import {
-  onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
@@ -32,7 +31,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
@@ -154,7 +153,6 @@ const UserPage = () => {
             const message = error?.message;
             showErrorToast(message ?? onUpdatedConversastionError);
           });
-        showSuccessToast(onConfirmText);
       })
       .catch((error) => {
         const message = error?.message;
