@@ -22,7 +22,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion[airflow-container]~=0.10",
+    "openmetadata-ingestion[airflow-container]~=0.9",
     "PyYAML<6.0",  # pycln requires < 6
     "pendulum~=2.1.2",
     "packaging~=21.2",
