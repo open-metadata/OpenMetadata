@@ -10,12 +10,13 @@
 #  limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from boto3 import Session
 from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 
 @dataclass
@@ -30,26 +31,14 @@ class DynamoClient:
         self.client = client
 
 
-class AWSClientConfigModel(ConfigModel):
-    """
-    AWSClientConfigModel holds all config parameters required to instantiate an AWSClient.
-    """
-
-    awsAccessKeyId: Optional[str]
-    awsSecretAccessKey: Optional[SecretStr]
-    awsSessionToken: Optional[str]
-    endPointURL: Optional[str]
-    awsRegion: Optional[str]
-
-
 class AWSClient:
     """
-    AWSClient creates a boto3 Session client based on AWSClientConfigModel.
+    AWSClient creates a boto3 Session client based on AWSCredentials.
     """
 
-    config: AWSClientConfigModel
+    config: AWSCredentials
 
-    def __init__(self, config: AWSClientConfigModel):
+    def __init__(self, config: AWSCredentials):
 
         self.config = config
 

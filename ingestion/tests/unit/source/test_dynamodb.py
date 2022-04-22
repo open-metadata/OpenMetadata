@@ -29,10 +29,13 @@ CONFIG = """
     "serviceName": "local_dynamodb",
     "serviceConnection": {
       "config": {
-        "awsAccessKeyId": "aws_access_key_id",
-        "awsSecretAccessKey": "aws_secret_access_key",
-        "awsRegion": "us-east-2",
-        "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
+        "type": "DynamoDB",
+        "awsConfig": {
+            "awsAccessKeyId": "aws_access_key_id",
+            "awsSecretAccessKey": "aws_secret_access_key",
+            "awsRegion": "us-east-2",
+            "endPointURL": "https://dynamodb.us-east-2.amazonaws.com"
+        },
         "database": "custom_database_name"
       }
     },

@@ -74,9 +74,9 @@ class GlueSource(Source[Entity]):
             {
                 "name": self.service_connection.pipelineServiceName,
                 "serviceType": "Glue",
-                "pipelineUrl": self.service_connection.endPointURL
-                if self.service_connection.endPointURL is not None
-                else f"https://glue.{self.service_connection.awsRegion}.amazonaws.com",
+                "pipelineUrl": self.service_connection.awsConfig.endPointURL
+                if self.service_connection.awsConfig.endPointURL is not None
+                else f"https://glue.{self.service_connection.awsConfig.awsRegion}.amazonaws.com",
             },
             metadata_config,
         )
