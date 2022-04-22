@@ -1,6 +1,5 @@
 import React from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
-import { Button } from '../../buttons/Button/Button';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 
 type DeleteWidgetBodyProps = {
@@ -21,29 +20,31 @@ const DeleteWidgetBody = ({
   onClick,
 }: DeleteWidgetBodyProps) => {
   return (
-    <div className="tw-flex tw-justify-between tw-px-4 tw-py-2">
+    <div className="tw-flex tw-justify-between tw-px-5 tw-py-3">
       <div className="tw-w-10/12" data-testid="danger-zone-text">
-        <h4 className="tw-text-base" data-testid="danger-zone-text-title">
+        <p
+          className="tw-text-sm tw-mb-1 tw-font-medium"
+          data-testid="danger-zone-text-title">
           {header}
-        </h4>
-        <p data-testid="danger-zone-text-para">{description}</p>
+        </p>
+        <p
+          className="tw-text-grey-muted tw-text-xs"
+          data-testid="danger-zone-text-para">
+          {description}
+        </p>
       </div>
       <NonAdminAction
         className="tw-self-center"
         html={<p>{TITLE_FOR_NON_ADMIN_ACTION}</p>}
         isOwner={isOwner}
         position="left">
-        <Button
-          className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-shadow"
+        <button
+          className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-font-medium tw-delete-outline-button "
           data-testid="delete-button"
           disabled={!hasPermission}
-          size="custom"
-          theme="primary"
-          type="button"
-          variant="outlined"
           onClick={onClick}>
           {buttonText}
-        </Button>
+        </button>
       </NonAdminAction>
     </div>
   );

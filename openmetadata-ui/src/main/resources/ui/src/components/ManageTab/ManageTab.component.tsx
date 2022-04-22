@@ -159,7 +159,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getDeleteEntityWidget = () => {
     return allowDelete && entityId && entityName && entityType ? (
       <div className="tw-mt-1" data-testid="danger-zone">
-        <hr className="tw-border-main tw-mb-4" />
         <DeleteWidget
           allowSoftDelete={allowSoftDelete}
           deletEntityMessage={deletEntityMessage}

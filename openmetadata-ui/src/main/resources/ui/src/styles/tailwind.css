@@ -457,4 +457,11 @@
   .Toastify__toast-body {
     @apply tw-items-start;
   }
+
+  /* delete button style */
+
+  .tw-delete-outline-button {
+    @apply tw-border-gray-300 tw-border tw-text-error focus:tw-outline-none focus:tw-bg-transparent hover:tw-border-error focus:tw-border-error 
+  hover:tw-text-error focus:tw-text-error focus:tw-ring focus:tw-ring-error;
+  }
 }
