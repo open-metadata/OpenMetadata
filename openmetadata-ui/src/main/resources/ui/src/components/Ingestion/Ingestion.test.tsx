@@ -233,6 +233,8 @@ describe('Test Ingestion page', () => {
     // on click of edit button
     const editButton = await findByTestId(container, 'edit');
     fireEvent.click(editButton);
+
+    expect(editButton).toBeInTheDocument();
   });
 
   it('CTA should work', async () => {
