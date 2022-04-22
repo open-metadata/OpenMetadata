@@ -44,8 +44,6 @@ public class PipelineDetailsPageTest {
   static String url = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  String pipelineName = "dim_product etl";
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Common common;
@@ -95,8 +93,8 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
-    Thread.sleep(2000);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
@@ -106,7 +104,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    String checkDescription = webDriver.findElement(pipelineDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -212,13 +210,12 @@ public class PipelineDetailsPageTest {
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, pipelineDetails.selectTier());
   }
 
   @Test
