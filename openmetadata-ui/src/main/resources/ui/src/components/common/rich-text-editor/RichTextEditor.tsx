@@ -83,7 +83,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
               previewHighlight={previewHighlight}
               previewStyle={previewStyle}
               ref={richTextEditorRef}
-              toolbarItems={[['bold', 'italic'], ['ul', 'ol'], ['link']]}
+              toolbarItems={[['bold', 'italic', 'ul', 'ol', 'link']]}
               useCommandShortcut={useCommandShortcut}
               onChange={onChangeHandler}
             />
