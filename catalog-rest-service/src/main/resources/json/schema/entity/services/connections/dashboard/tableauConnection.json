@@ -62,14 +62,15 @@
       "description": "Tableau Environment Name",
       "type": "string"
     },
+    "dbServiceName": {
+      "description": "Database Service Name in order to create a lineage",
+      "type": "string"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "apiVersion", "siteName"]
 }

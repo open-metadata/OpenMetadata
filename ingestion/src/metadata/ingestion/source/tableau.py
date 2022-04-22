@@ -174,7 +174,7 @@ class TableauSource(Source[Entity]):
             try:
                 table_fqdn = datasource.split("(")[1].split(")")[0]
                 dashboard_fqdn = f"{self.config.serviceName}.{dashboard_name}"
-                table_fqdn = f"{self.config.serviceName}.{table_fqdn}"
+                table_fqdn = f"{self.connection_config.dbServiceName}.{table_fqdn}"
                 table_entity = self.metadata_client.get_by_name(
                     entity=Table, fqdn=table_fqdn
                 )
@@ -194,6 +194,7 @@ class TableauSource(Source[Entity]):
                     )
                     yield lineage
             except (Exception, IndexError) as err:
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def _get_tableau_dashboard(self) -> Dashboard:
@@ -223,7 +224,7 @@ class TableauSource(Source[Entity]):
                     chart = self.all_dashboard_details["workbook"][chart_index]
                     if chart["id"] == dashboard_id:
                         dashboard_chart.append(
-                            self.all_dashboard_details["name"][chart_index]
+                            self.all_dashboard_details["id"][chart_index]
                         )
                 yield Dashboard(
                     id=uuid.uuid4(),
@@ -240,7 +241,7 @@ class TableauSource(Source[Entity]):
                     last_modified=dateparser.parse(chart["updatedAt"]).timestamp()
                     * 1000,
                 )
-                if self.config.serviceName:
+                if self.connection_config.dbServiceName:
                     yield from self.get_lineage(datasource_list, dashboard_id)
             except Exception as err:
                 logger.debug(traceback.format_exc())
