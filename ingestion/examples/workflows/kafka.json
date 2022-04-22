@@ -6,7 +6,8 @@
       "config": {
         "type": "Kafka",
         "bootstrapServers": "localhost:9092",
-        "schemaRegistryURL": "http://192.168.1.43:8081"
+        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "consumerConfig": {}
       }
     },
     "sourceConfig": {
@@ -20,11 +21,10 @@
     "config": {
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
