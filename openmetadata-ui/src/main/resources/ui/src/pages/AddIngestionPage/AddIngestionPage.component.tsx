@@ -120,19 +120,17 @@ const AddIngestionPage = () => {
     );
   };
 
-  useEffect(() => {
-    fetchServiceDetails();
-  }, [serviceCategory, serviceFQN]);
-
-  return (
-    <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
+  const renderAddIngestionPage = () => {
+    if (isLoading) {
+      return <Loader />;
+    } else if (isError) {
+      return (
         <ErrorPlaceHolder>
           {getEntityMissingError(serviceCategory, serviceFQN)}
         </ErrorPlaceHolder>
-      ) : (
+      );
+    } else {
+      return (
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           layout={PageLayoutType['2ColRTL']}
@@ -158,9 +156,15 @@ const AddIngestionPage = () => {
             />
           </div>
         </PageLayout>
-      )}
-    </PageContainerV1>
-  );
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchServiceDetails();
+  }, [serviceCategory, serviceFQN]);
+
+  return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;
 };
 
 export default AddIngestionPage;

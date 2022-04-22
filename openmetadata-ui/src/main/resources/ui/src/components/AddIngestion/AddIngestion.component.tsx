@@ -123,17 +123,17 @@ const AddIngestion = ({
   );
 
   const [queryLogDuration, setQueryLogDuration] = useState<number>(
-    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration || 1
+    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
   );
   const [stageFileLocation, setStageFileLocation] = useState<string>(
-    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ||
+    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ??
       '/tmp/query_log'
   );
   const [resultLimit, setResultLimit] = useState<number>(
-    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit || 100
+    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
   );
   const [usageIngestionType] = useState<ConfigType>(
-    (data?.source.sourceConfig.config as ConfigClass)?.type ||
+    (data?.source.sourceConfig.config as ConfigClass)?.type ??
       ConfigType.DatabaseUsage
   );
 

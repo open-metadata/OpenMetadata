@@ -182,17 +182,13 @@ const EditIngestionPage = () => {
     );
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [serviceCategory, serviceFQN]);
-
-  return (
-    <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : errorMsg ? (
-        <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>
-      ) : (
+  const renderAddIngestionPage = () => {
+    if (isLoading) {
+      return <Loader />;
+    } else if (errorMsg) {
+      return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+    } else {
+      return (
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           layout={PageLayoutType['2ColRTL']}
@@ -220,9 +216,15 @@ const EditIngestionPage = () => {
             />
           </div>
         </PageLayout>
-      )}
-    </PageContainerV1>
-  );
+      );
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [serviceCategory, serviceFQN]);
+
+  return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;
 };
 
 export default EditIngestionPage;

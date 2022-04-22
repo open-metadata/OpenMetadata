@@ -161,7 +161,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getAddIngestionButton = () => {
     const types = getIngestionPipelineTypeOption();
-    let buttonText = 'Add Ingestion';
+    let buttonText;
 
     switch (types[0]) {
       case PipelineType.Metadata: {

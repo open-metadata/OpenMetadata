@@ -272,7 +272,7 @@ export const getAllServices = (
         }
       }
       getAllServiceList(allServiceCollectionArr, limit)
-        .then((res) => resolve(res))
+        .then((resAll) => resolve(resAll))
         .catch((err) => reject(err));
     });
   });
@@ -374,14 +374,12 @@ export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {
-  const newObj = Object.entries(obj).map((v) => {
+  return Object.entries(obj).map((v) => {
     return {
       key: v[0],
       value: v[1],
     };
   });
-
-  return newObj;
 };
 
 export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
@@ -453,7 +451,7 @@ export const servicePageTabs = (entity: string) => [
 ];
 
 export const getCurrentServiceTab = (tab: string) => {
-  let currentTab = 1;
+  let currentTab;
   switch (tab) {
     case 'ingestions':
       currentTab = 2;
