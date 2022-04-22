@@ -91,6 +91,7 @@ class Histogram(QueryMetric):
                 ).label("boundaries"),
                 func.count().label("frequencies"),
             )
+            .select_from(ranges_cte)
             .group_by(
                 ranges_cte.c.bin_floor,
                 ranges_cte.c.bin_ceil,
