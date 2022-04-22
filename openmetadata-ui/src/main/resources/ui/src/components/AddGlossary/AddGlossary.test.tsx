@@ -101,4 +101,28 @@ describe('Test AddGlossary component', () => {
 
     expect(mockOnSave).toBeCalled();
   });
+
+  it('should not be able to save', () => {
+    jest.spyOn(React, 'useRef').mockReturnValue({
+      current: { getEditorContent: jest.fn().mockReturnValue('') },
+    });
+    const { container } = render(<AddGlossary {...mockProps} />);
+
+    const nameInput = getByTestId(container, 'name');
+    const saveButton = getByTestId(container, 'save-glossary');
+
+    expect(saveButton).toBeInTheDocument();
+
+    fireEvent.change(nameInput, { target: { value: 'Test Glossary' } });
+
+    fireEvent.click(
+      saveButton,
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    expect(mockOnSave).not.toBeCalled();
+  });
 });
