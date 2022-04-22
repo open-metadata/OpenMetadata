@@ -17,8 +17,8 @@ import React, { FunctionComponent } from 'react';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from '../../Loader/Loader';
-import { Props } from './CardWithListItems.interface';
-import { cardStyle } from './CardWithListItems.style';
+import { Props } from './CardWithListItem.interface';
+import { cardStyle } from './CardWithListItem.style';
 
 const CardListItem: FunctionComponent<Props> = ({
   card,
@@ -30,11 +30,15 @@ const CardListItem: FunctionComponent<Props> = ({
   className,
 }: Props) => {
   const getCardBodyStyle = () => {
-    return isSelected
-      ? cardStyle.selected
-      : isActive
-      ? cardStyle.active
-      : cardStyle.default;
+    if (isSelected) {
+      if (isActive) {
+        return cardStyle.active;
+      } else {
+        return cardStyle.selected;
+      }
+    } else {
+      return cardStyle.default;
+    }
   };
 
   const getCardHeaderStyle = () => {

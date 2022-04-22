@@ -13,7 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
-import CardListItem from './CardWithListItems';
+import CardListItem from './CardWithListItem';
 
 const mockSelectFunction = jest.fn();
 const mockSaveFuntion = jest.fn();

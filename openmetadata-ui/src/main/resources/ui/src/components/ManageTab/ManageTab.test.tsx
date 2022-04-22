@@ -68,7 +68,7 @@ const mockTierData = {
 
 const mockFunction = jest.fn().mockImplementation(() => Promise.resolve());
 
-jest.mock('../cardlist/CardListItem/CardWithListItems', () => {
+jest.mock('../cardlist/CardListItem/CardWithListItem', () => {
   return jest.fn().mockReturnValue(<p data-testid="card">CardWithListItems</p>);
 });
 
