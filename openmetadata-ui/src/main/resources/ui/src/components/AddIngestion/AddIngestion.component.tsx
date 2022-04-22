@@ -304,7 +304,7 @@ const AddIngestion = ({
         airflowConfig: {
           ...data.airflowConfig,
           startDate: startDate as unknown as Date,
-          endDate: endDate as unknown as Date,
+          endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
         source: {
