@@ -61,7 +61,10 @@ const TeamsAndUsersPage = () => {
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRightPannelLoading, setIsRightPannelLoading] = useState(true);
+  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState(true);
   const [isTeamVisible, setIsTeamVisible] = useState(true);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
@@ -84,6 +87,10 @@ const TeamsAndUsersPage = () => {
     setIsDescriptionEditable(value);
   };
 
+  const handleRightPannelLoading = (value: boolean) => {
+    setIsRightPannelLoading(value);
+  };
+
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
   };
@@ -101,6 +108,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const setAllTabList = (users: User[], type = '') => {
+    setIsUsersLoading(true);
     const dBots = users.filter((user) => user.isBot);
     const dUsers = users.filter((user) => !user.isBot);
     const dAdmins = users.filter((user) => user.isAdmin);
@@ -126,9 +134,11 @@ const TeamsAndUsersPage = () => {
           break;
       }
     }
+    setIsUsersLoading(false);
   };
 
   const handleUserSearchTerm = (value: string) => {
+    setIsUsersLoading(true);
     setUserSearchTerm(value);
     if (value) {
       let updatedList: User[] = [];
@@ -160,6 +170,7 @@ const TeamsAndUsersPage = () => {
     } else {
       setAllTabList(userList, activeUserTab);
     }
+    setIsUsersLoading(false);
   };
 
   const handleAddNewUser = () => {
@@ -167,7 +178,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const handleDeleteUser = (id: string) => {
-    setIsLoading(true);
+    setIsUsersLoading(true);
     deleteUser(id)
       .then(() => {
         AppState.updateUsers((userList || []).filter((item) => item.id !== id));
@@ -180,6 +191,7 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsUsersLoading(false);
       });
   };
 
@@ -190,21 +202,25 @@ const TeamsAndUsersPage = () => {
     team: string,
     pagin = {} as { [key: string]: string }
   ) => {
-    getUsers('', PAGE_SIZE_MEDIUM, { team, ...pagin }).then(
-      (res: AxiosResponse) => {
+    setIsTeamMemberLoading(true);
+    getUsers('', PAGE_SIZE_MEDIUM, { team, ...pagin })
+      .then((res: AxiosResponse) => {
         if (res.data) {
           setCurrentTeamUsers(res.data.data);
           setTeamUserPagin(res.data.paging);
         }
-      }
-    );
+      })
+      .catch(() => {
+        setCurrentTeamUsers([]);
+        setTeamUserPagin({ total: 0 });
+      })
+      .finally(() => setIsTeamMemberLoading(false));
   };
 
   /**
    * Make API call to fetch all the teams
    */
   const fetchTeams = () => {
-    setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -227,6 +243,7 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        handleRightPannelLoading(false);
       });
   };
 
@@ -235,7 +252,6 @@ const TeamsAndUsersPage = () => {
    */
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
-      // setIsLoading(true);
       getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -271,6 +287,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const searchUsers = (text: string, currentPage: number) => {
+    setIsTeamMemberLoading(true);
     searchData(
       text,
       currentPage,
@@ -289,7 +306,8 @@ const TeamsAndUsersPage = () => {
       })
       .catch(() => {
         setCurrentTeamUsers([]);
-      });
+      })
+      .finally(() => setIsTeamMemberLoading(false));
   };
 
   const teamUserPaginHandler = (cursorValue: string | number) => {
@@ -390,6 +408,7 @@ const TeamsAndUsersPage = () => {
    * @param name - team name
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
+    handleRightPannelLoading(true);
     history.push(getTeamAndUserDetailsPath(name));
     if (isUsersCategory) {
       setIsTeamVisible(false);
@@ -607,7 +626,10 @@ const TeamsAndUsersPage = () => {
           isAddingTeam={isAddingTeam}
           isAddingUsers={isAddingUsers}
           isDescriptionEditable={isDescriptionEditable}
+          isRightPannelLoading={isRightPannelLoading}
+          isTeamMemberLoading={isTeamMemberLoading}
           isTeamVisible={isTeamVisible}
+          isUsersLoading={isUsersLoading}
           removeUserFromTeam={removeUserFromTeam}
           selectedUserList={selectedUserList}
           teamUserPagin={teamUserPagin}

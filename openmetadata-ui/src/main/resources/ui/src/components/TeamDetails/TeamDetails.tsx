@@ -46,10 +46,10 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import TabsPane from '../common/TabsPane/TabsPane';
+import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
-import UserDataCard from '../UserDataCard/UserDataCard';
 import Form from './Form';
 
 const TeamDetails = ({
@@ -63,6 +63,7 @@ const TeamDetails = ({
   isDescriptionEditable,
   errorNewTeamData,
   isAddingTeam,
+  isTeamMemberLoading,
   handleAddTeam,
   createNewTeam,
   onNewTeamDataChange,
@@ -295,66 +296,71 @@ const TeamDetails = ({
             </div>
           )}
         </div>
-        {currentTeamUsers.length <= 0 ? (
-          <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-            <p>
-              There are no users{' '}
-              {teamUsersSearchText
-                ? `as ${teamUsersSearchText}.`
-                : `added yet.`}
-            </p>
-            {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
-              <>
-                <p>Would like to start adding some?</p>
-                <Button
-                  className="tw-h-8 tw-rounded tw-my-2"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => handleAddUser(true)}>
-                  Add new user
-                </Button>
-              </>
-            ) : null}
-          </div>
+        {isTeamMemberLoading ? (
+          <Loader />
         ) : (
-          <Fragment>
-            <div
-              className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-              data-testid="user-card-container">
-              {sortedUser.map((user, index) => {
-                const User = {
-                  description: user.displayName || user.name,
-                  email: user.name,
-                  type: 'user',
-                  id: user.id,
-                  name: user.name,
-                  isActiveUser: !user.deleted,
-                  profilePhoto: user.profile?.images?.image || '',
-                };
+          <div>
+            {currentTeamUsers.length <= 0 ? (
+              <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+                <p>
+                  There are no users{' '}
+                  {teamUsersSearchText
+                    ? `as ${teamUsersSearchText}.`
+                    : `added yet.`}
+                </p>
+                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                  <>
+                    <p>Would like to start adding some?</p>
+                    <Button
+                      className="tw-h-8 tw-rounded tw-my-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => handleAddUser(true)}>
+                      Add new user
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <Fragment>
+                <div
+                  className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+                  data-testid="user-card-container">
+                  {sortedUser.map((user, index) => {
+                    const User = {
+                      displayName: user.displayName || user.name,
+                      fqn: user.name || '',
+                      type: 'user',
+                      id: user.id,
+                      name: user.name,
+                    };
 
-                return (
-                  <UserDataCard
-                    item={User}
-                    key={index}
-                    showTeams={false}
-                    onClick={handleUserRedirection}
-                    onDelete={(id) => deleteUserHandler(id)}
+                    return (
+                      <UserCard
+                        isActionVisible
+                        isIconVisible
+                        item={User}
+                        key={index}
+                        onRemove={deleteUserHandler}
+                        onTitleClick={handleUserRedirection}
+                      />
+                    );
+                  })}
+                </div>
+                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                  <NextPrevious
+                    currentPage={currentTeamUserPage}
+                    isNumberBased={Boolean(teamUsersSearchText)}
+                    pageSize={PAGE_SIZE_MEDIUM}
+                    paging={teamUserPagin}
+                    pagingHandler={teamUserPaginHandler}
+                    totalCount={teamUserPagin.total}
                   />
-                );
-              })}
-            </div>
-            {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
-              <NextPrevious
-                currentPage={currentTeamUserPage}
-                isNumberBased={Boolean(teamUsersSearchText)}
-                pageSize={PAGE_SIZE_MEDIUM}
-                paging={teamUserPagin}
-                pagingHandler={teamUserPaginHandler}
-                totalCount={teamUserPagin.total}
-              />
+                )}
+              </Fragment>
             )}
-          </Fragment>
+          </div>
         )}
       </div>
     );

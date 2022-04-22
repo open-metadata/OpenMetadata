@@ -24,6 +24,7 @@ import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
@@ -31,6 +32,7 @@ type UserDetailsProps = {
   selectedUserList: User[];
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
+  isUsersLoading: boolean;
   handleDeleteUser: (id: string) => void;
   handleAddNewUser: () => void;
 };
@@ -43,6 +45,7 @@ interface DeleteUserInfo {
 const UserDetails = ({
   selectedUserList,
   userSearchTerm,
+  isUsersLoading,
   handleDeleteUser,
   handleUserSearchTerm,
   handleAddNewUser,
@@ -71,8 +74,10 @@ const UserDetails = ({
   };
 
   const getUserCards = () => {
-    return (
-      <>
+    return isUsersLoading ? (
+      <Loader />
+    ) : (
+      <div>
         {selectedUserList.length > 0 ? (
           <div
             className="tw-grid xxl:tw-grid-cols-3 lg:tw-grid-cols-2 tw-gap-4"
@@ -109,7 +114,7 @@ const UserDetails = ({
             <p>No user available</p>
           </ErrorPlaceHolder>
         )}
-      </>
+      </div>
     );
   };
 
