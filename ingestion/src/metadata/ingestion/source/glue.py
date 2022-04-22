@@ -38,6 +38,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
     get_pipeline_service_or_create,
@@ -48,7 +49,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GlueSource(Source[Entity]):
-    def __init__(self, config: GlueConnection, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.status = SQLSourceStatus()
         self.config = config
@@ -58,12 +59,12 @@ class GlueSource(Source[Entity]):
             entity=DatabaseService, config=config
         )
 
-        config_obj = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.__root__.config
 
         # TODO: add to service_mixin
         self.storage_service = get_storage_service_or_create(
             {
-                "name": config_obj.storageServiceName,
+                "name": self.service_connection.storageServiceName,
                 "serviceType": "S3",
             },
             metadata_config,
@@ -71,15 +72,17 @@ class GlueSource(Source[Entity]):
         self.task_id_mapping = {}
         self.pipeline_service = get_pipeline_service_or_create(
             {
-                "name": config_obj.pipelineServiceName,
+                "name": self.service_connection.pipelineServiceName,
                 "serviceType": "Glue",
-                "pipelineUrl": config_obj.endPointURL
-                if config_obj.endPointURL is not None
-                else f"https://glue.{config_obj.awsRegion}.amazonaws.com",
+                "pipelineUrl": self.service_connection.endPointURL
+                if self.service_connection.endPointURL is not None
+                else f"https://glue.{self.service_connection.awsRegion}.amazonaws.com",
             },
             metadata_config,
         )
-        self.glue = AWSClient(config_obj).get_client("glue")
+        self.connection = get_connection(self.service_connection)
+        self.glue = self.connection.client
+
         self.database_name = None
         self.next_db_token = None
 
