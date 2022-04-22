@@ -334,14 +334,15 @@
         <version>${spring.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.amazonaws</groupId>
-        <artifactId>aws-java-sdk-cloudwatch</artifactId>
-        <version>${aws-java-sdk-cloudwatch.version}</version>
-      </dependency>
-      <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>cloudwatch</artifactId>
         <version>${aws-java-sdk-cloudwatch.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
