@@ -296,10 +296,13 @@ def test_dynamo_db():
         "serviceName": "local_dynamodb",
         "serviceConnection": {
             "config": {
-                "awsAccessKeyId": "aws_access_key_id",
-                "awsSecretAccessKey": "aws_secret_access_key",
-                "awsRegion": "us-east-2",
-                "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
+                "type": "DynamoDB",
+                "awsConfig": {
+                    "awsAccessKeyId": "aws_access_key_id",
+                    "awsSecretAccessKey": "aws_secret_access_key",
+                    "awsRegion": "us-east-2",
+                    "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
+                },
                 "database": "custom_database_name",
             }
         },
@@ -326,10 +329,12 @@ def test_glue():
         "serviceConnection": {
             "config": {
                 "type": "Glue",
-                "awsAccessKeyId": "aws accessKey id",
-                "awsSecretAccessKey": "aws secret access key",
-                "awsRegion": "aws region",
-                "endPointURL": "https://glue.<region_name>.amazonaws.com/",
+                "awsConfig": {
+                    "awsAccessKeyId": "aws accessKey id",
+                    "awsSecretAccessKey": "aws secret access key",
+                    "awsRegion": "aws region",
+                    "endPointURL": "https://glue.<region_name>.amazonaws.com/",
+                },
                 "database": "local_glue_db",
                 "storageServiceName": "storage_name",
                 "pipelineServiceName": "pipeline_name",
