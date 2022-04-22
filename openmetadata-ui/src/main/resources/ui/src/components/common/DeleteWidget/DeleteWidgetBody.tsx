@@ -39,7 +39,7 @@ const DeleteWidgetBody = ({
         isOwner={isOwner}
         position="left">
         <button
-          className="tw-px-2 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-font-medium tw-delete-outline-button "
+          className="tw-px-3 tw-py-1 tw-rounded tw-h-auto tw-self-center tw-font-medium tw-delete-outline-button "
           data-testid="delete-button"
           disabled={!hasPermission}
           onClick={onClick}>

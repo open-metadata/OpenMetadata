@@ -57,20 +57,23 @@ const OwnerWidget = ({
   };
 
   const getOwnerUpdateLoader = () => {
-    return (
-      <span className="tw-ml-4">
-        {statusOwner === 'waiting' ? (
+    switch (statusOwner) {
+      case 'waiting':
+        return (
           <Loader
-            className="tw-inline-block"
+            className="tw-inline-block tw-ml-2"
             size="small"
             style={{ marginBottom: '-4px' }}
             type="default"
           />
-        ) : statusOwner === 'success' ? (
-          <FontAwesomeIcon icon="check" />
-        ) : null}
-      </span>
-    );
+        );
+
+      case 'success':
+        return <FontAwesomeIcon className="tw-ml-2" icon="check" />;
+
+      default:
+        return <></>;
+    }
   };
 
   return (
@@ -122,13 +125,14 @@ const OwnerWidget = ({
                       {ownerName}
                     </span>
                   ) : (
-                    'Select Owner'
+                    'Add Owner'
                   )}
                   {getOwnerUpdateLoader()}
                 </Button>
               </NonAdminAction>
               {listVisible && (
                 <DropDownList
+                  horzPosRight
                   showSearchBar
                   dropDownList={listOwners}
                   groupType="tab"

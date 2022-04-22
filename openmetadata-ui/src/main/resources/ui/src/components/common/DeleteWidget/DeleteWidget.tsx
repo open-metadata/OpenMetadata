@@ -108,8 +108,8 @@ const DeleteWidget = ({
             deletEntityMessage ||
             prepareDeleteMessage(entityDeleteState.softDelete)
           }
-          entityName={entityName as string}
-          entityType={entityType as string}
+          entityName={entityName}
+          entityType={entityType}
           loadingState={entityDeleteState.loading}
           softDelete={entityDeleteState.softDelete}
           onCancel={handleOnEntityDeleteCancel}
