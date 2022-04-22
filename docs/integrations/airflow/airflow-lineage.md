@@ -53,7 +53,7 @@ AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT="http://localhost:8585/api"
 AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="no-auth"
 ```
 
-We can choose the option that best adapts to our current architecture.&#x20;
+We can choose the option that best adapts to our current architecture.
 
 > Find more information on Airflow configurations [here](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-config.html).
 
@@ -82,7 +82,7 @@ t1 >> [t2, t3]
 
 Will capture this information as well, therefore showing how the DAG contains three tasks `t1`, `t2` and `t3`; and `t1` having `t2` and `t3` as downstream tasks.
 
-![Pipeline and Tasks example](<../../.gitbook/assets/image (13).png>)
+![Pipeline and Tasks example](<../../.gitbook/assets/image (13) (1).png>)
 
 ### Adding Lineage
 

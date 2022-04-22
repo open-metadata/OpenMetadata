@@ -10,7 +10,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![](<../../../.gitbook/assets/image (58).png>)
 
-* Navigate to `Applications > Applications`&#x20;
+* Navigate to `Applications > Applications`
 
 ![](<../../../.gitbook/assets/image (78).png>)
 
@@ -39,7 +39,7 @@ description: This is a guide to create ingestion bot service account.
 
 * You will see the `Auth0 Management API`.
 
-![](<../../../.gitbook/assets/image (32).png>)
+![](<../../../.gitbook/assets/image (32) (2).png>)
 
 * Click on the `Auth0 Management API`.
 

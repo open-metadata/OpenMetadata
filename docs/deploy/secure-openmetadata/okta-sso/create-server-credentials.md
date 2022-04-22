@@ -35,14 +35,14 @@ description: >-
 
 ![](<../../../.gitbook/assets/image (41) (1).png>)
 
-* From the **General Settings** page,&#x20;
+* From the **General Settings** page,
   * Enter an **App integration name**
   * Select the following in **Grant type**:
     * **Authorization Code**
     * **Refresh Token** - For the refresh token behavior, it is recommended to select the option to 'Rotate token after every use'.
     * **Implicit (hybrid)** - Select the options to allow ID Token and Access Token with implicit grant type.
   * Enter the **Sign-in redirect URIs**
-    * [http://localhost:8585/signin      \
+    * [http://localhost:8585/signin\
       http://localhost:8585](http://localhost:8585/signinhttp://localhost:8585)
   * Enter the **Sign-out redirect URIs**
   * Enter the **Base URIs**
@@ -67,7 +67,7 @@ It is recommended to create a separate authorization server for different applic
 
 ![](<../../../.gitbook/assets/image (26) (1).png>)
 
-* Enter a Name and Description.&#x20;
+* Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
 * **Save** the changes.
 
@@ -101,7 +101,7 @@ This will generate the Issuer URL.
 * To create a policy, add a Name and Description.
 * Assign the policy to the required clients.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 * Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 * Click on **Create Rule** to save the changes.
@@ -119,7 +119,7 @@ This will generate the Issuer URL.
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
 * The **Client authentication** is enabled by default.
-* By clicking on the Edit **** option for General Settings, you can deselect the option for **User consent**. Save the changes.
+* By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
 ![](<../../../.gitbook/assets/image (1) (1).png>)
 
@@ -132,7 +132,7 @@ This will generate the Issuer URL.
 
 ## Step 8: Adding the Details in openmetadata-security.yaml
 
-* Once the **Client ID**, **** and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
+* Once the **Client ID**, \*\*\*\* and **Issuer URL** are generated, add those details in the openmetadata-security.yaml file in the respective fields.
 
 ```yaml
 authorizerConfiguration:

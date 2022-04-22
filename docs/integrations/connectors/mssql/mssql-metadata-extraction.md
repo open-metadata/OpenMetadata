@@ -16,15 +16,13 @@ Please select the approach you would prefer to use for metadata ingestion from t
 
 {% tabs %}
 {% tab title="Airflow SDK" %}
-## Schedule Ingestion via the Airflow SDK <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
+### Schedule Ingestion via the Airflow SDK <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
 
-## **Requirements**
+### **Requirements**
 
 Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-
-
-### **OpenMetadata (version 0.8.0 or later)**
+#### **OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -33,9 +31,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-
-
-### **Python (version 3.8.0 or later)**
+#### **Python (version 3.8.0 or later)**
 
 Please use the following command to check the version of Python you have.
 
@@ -43,9 +39,7 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
-
-
-## Procedure
+### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
@@ -62,15 +56,13 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 11. Copy your configuration JSON into the ingestion script
 12. Run the script to create your ingestion DAG
 
-
-
-### **1. Prepare a Python virtual environment**
+#### **1. Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
-#### **1.1 Create a directory for openmetadata**
+**1.1 Create a directory for openmetadata**
 
 Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
@@ -78,7 +70,7 @@ Throughout the docs, we use a consistent directory structure for OpenMetadata se
 mkdir openmetadata; cd openmetadata
 ```
 
-#### **1.2 Create a virtual environment**
+**1.2 Create a virtual environment**
 
 Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
 
@@ -86,7 +78,7 @@ Run the following command to create a Python virtual environment called, `env`. 
 python3 -m venv env
 ```
 
-#### **1.3 Activate the virtual environment**
+**1.3 Activate the virtual environment**
 
 Run the following command to activate the virtual environment.
 
@@ -96,7 +88,7 @@ source env/bin/activate
 
 Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
 
-#### **1.4 Upgrade pip and setuptools to the latest versions**
+**1.4 Upgrade pip and setuptools to the latest versions**
 
 Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
@@ -104,9 +96,9 @@ Ensure that you have the latest version of pip by running the following command.
 pip3 install --upgrade pip setuptools
 ```
 
-****
+***
 
-### **2. Install the Python module for this connector**
+#### **2. Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -114,9 +106,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[mssql]'
 ```
 
-
-
-### 3. **Create a configuration file using template JSON**
+#### 3. **Create a configuration file using template JSON**
 
 Create a new file called `mssql.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
@@ -167,15 +157,13 @@ Note: The `source.config` field in the configuration JSON will include the major
 If `use_pyodbc` is true, then you need to provide \*\*\*\* a `uri_string`
 {% endhint %}
 
-
-
-### **4. Configure service settings**
+#### **4. Configure service settings**
 
 In this step we will configure the MSSQL service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MSSQL service as desired.
 
-****
+***
 
-#### **host\_port**
+**host\_port**
 
 Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL deployment. Use the `host:port` format illustrated in the example below.
 
@@ -185,9 +173,9 @@ Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL depl
 
 Please ensure that your MSSQL deployment is reachable from the host you are using to run metadata ingestion.
 
-#### ****
+**\*\*\*\***
 
-#### **username**
+**username**
 
 Edit the value for `source.config.username` to identify your MSSQL user.
 
@@ -199,9 +187,9 @@ Edit the value for `source.config.username` to identify your MSSQL user.
 **Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **password**
+**password**
 
 Edit the value for `source.config.password` with the password for your MSSQL user.
 
@@ -209,9 +197,9 @@ Edit the value for `source.config.password` with the password for your MSSQL use
 "password": "strong_password"
 ```
 
-#### ****
+**\*\*\*\***
 
-#### **service\_name**
+**service\_name**
 
 OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MSSQL services that you might be ingesting metadata from.
 
@@ -219,9 +207,9 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 "service_name": "local_mssql"
 ```
 
-#### ****
+**\*\*\*\***
 
-#### **database (optional)**
+**database (optional)**
 
 If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
@@ -231,11 +219,9 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "mssql_db"
 ```
 
+#### **5. Configure data filters (optional)**
 
-
-### **5. Configure data filters (optional)**
-
-#### **include\_views (optional)**
+**include\_views (optional)**
 
 Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
 
@@ -255,9 +241,9 @@ Exclude views as follows.
 **Note:** `source.config.include_views` is set to true by default.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **include\_tables (optional)**
+**include\_tables (optional)**
 
 Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
 
@@ -277,9 +263,9 @@ Exclude tables as follows.
 **Note:** `source.config.include_tables` is set to true by default.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **table\_filter\_pattern (optional)**
+**table\_filter\_pattern (optional)**
 
 Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
 
@@ -305,19 +291,17 @@ See the documentation for the[ Python re module](https://docs.python.org/3/libra
 You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **schema\_filter\_pattern (optional)**
+**schema\_filter\_pattern (optional)**
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mssql-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
+#### **6. Configure sample data (optional)**
 
-
-### **6. Configure sample data (optional)**
-
-#### **generate\_sample\_data (optional)**
+**generate\_sample\_data (optional)**
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
@@ -341,9 +325,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-
-
-### 7. Configure DBT (optional)
+#### 7. Configure DBT (optional)
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
@@ -351,9 +333,7 @@ DBT provides transformation logic that creates tables and views from raw data. O
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
-
-
-#### dbt\_manifest\_file (optional)
+**dbt\_manifest\_file (optional)**
 
 Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
 
@@ -361,9 +341,7 @@ Use the field `source.config.dbt_manifest_file` to specify the location of your 
 "dbt_manifest_file": "./dbt/manifest.json"
 ```
 
-
-
-#### dbt\_catalog\_file (optional)
+**dbt\_catalog\_file (optional)**
 
 Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
 
@@ -371,9 +349,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-
-
-### **8. Confirm `sink` settings**
+#### **8. Confirm `sink` settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -384,9 +360,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-
-
-### **9. Confirm `metadata_server` settings**
+#### **9. Confirm `metadata_server` settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -400,11 +374,9 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
+#### 10. Edit a Python script to define your ingestion DAG
 
-
-### 10. Edit a Python script to define your ingestion DAG
-
-Copy and paste the code below into a file called `openmetadata-airflow.py`.&#x20;
+Copy and paste the code below into a file called `openmetadata-airflow.py`.
 
 ```python
 import json
@@ -456,9 +428,7 @@ with DAG(
     )
 ```
 
-
-
-### 11. Copy your configuration JSON into the ingestion script
+#### 11. Copy your configuration JSON into the ingestion script
 
 In steps 3 - 9 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 10 as directed by the comment below.
 
@@ -468,9 +438,7 @@ config = """
 """
 ```
 
-
-
-### 12. Run the script to create your ingestion DAG
+#### 12. Run the script to create your ingestion DAG
 
 Run the following command to create your ingestion DAG in Airflow.
 
@@ -480,17 +448,15 @@ python openmetadata-airflow.py
 {% endtab %}
 
 {% tab title="OpenMetadata UI" %}
-## Schedule Ingestion via the OpenMetadata UI
+### Schedule Ingestion via the OpenMetadata UI
 
 The OpenMetadata UI provides an integrated workflow for adding a new data service and configuring ingestion workflows.
 
-## **Requirements**
+### **Requirements**
 
 Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for setting up a MSSQL service and ingestion workflow using the OpenMetadata UI.
 
-
-
-### **OpenMetadata (version 0.8.0 or later)**
+#### **OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. By default, OpenMetadata includes the following services:
 
@@ -499,107 +465,97 @@ You must have a running deployment of OpenMetadata to use this guide. By default
 * MySQL as the backing store for all metadata
 * Apache Airflow for metadata ingestion workflows
 
-
-
-### Apache Airflow (version 2.2 or later)
+#### Apache Airflow (version 2.2 or later)
 
 By default, OpenMetadata ships with Apache Airflow and is configured to use the distributed Airflow container. However, you may also use your own Airflow instance. To use your own Airflow instance, you will need to install the [OpenMetadata Airflow REST API plugin](https://pypi.org/project/openmetadata-airflow-managed-apis/).
 
-## Procedure (in Beta)
+### Procedure (in Beta)
 
-
-
-### 1. Visit the _Services_ page
+#### 1. Visit the _Services_ page
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 ![](<../../../.gitbook/assets/image (16) (1) (1) (1) (1).png>)
 
-### 2. Initiate a new service creation
+#### 2. Initiate a new service creation
 
 From the Database Service UI, click the _Add New Service_ button to add your MSSQL service to OpenMetadata for metadata ingestion.
 
 ![](<../../../.gitbook/assets/image (30) (1).png>)
 
-### 3. Select service type
+#### 3. Select service type
 
 Select MSSQL as the service type.
 
 ![](<../../../.gitbook/assets/image (64) (1).png>)
 
-
-
-### 4. Name and describe your service
+#### 4. Name and describe your service
 
 Provide a name and description for your service as illustrated below.
 
-#### Name
+**Name**
 
 OpenMetadata uniquely identifies services by their _Name_. Provide a name that distinguishes your deployment from other services, including other MSSQL services that you might be ingesting metadata from.
 
-#### Description
+**Description**
 
 Provide a description for your MSSQL service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (19).png>)
+![](<../../../.gitbook/assets/image (19) (1).png>)
 
-
-
-### 5. Configure service connection
+#### 5. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/image (14).png>)
+![](<../../../.gitbook/assets/image (14) (1).png>)
 
-#### Host
+**Host**
 
 Enter fully qualified hostname for your MSSQL deployment in the _Host_ field.
 
-#### Port
+**Port**
 
 Enter the port number on which your MSSQL deployment listens for client connections in the _Port_ field.
 
-#### Username
+**Username**
 
 Enter username of your MSSQL user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
-#### Password
+**Password**
 
-Enter the password for your MSSQL user in the _Password_ field.&#x20;
+Enter the password for your MSSQL user in the _Password_ field.
 
-#### Database (optional)
+**Database (optional)**
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-
-
-### 6. Configure metadata ingestion
+#### 6. Configure metadata ingestion
 
 In this step we will configure the metadata ingestion settings for your MSSQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (2).png>)
 
-#### Ingestion name
+**Ingestion name**
 
 OpenMetadata will pre-populate the _Ingestion name_ field. You may modify the _Ingestion name,_ but if you do, please ensure it is unique for this service.
 
-#### Include (Table Filter Pattern)
+**Include (Table Filter Pattern)**
 
 Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-#### Exclude (Table Filter Pattern)
+**Exclude (Table Filter Pattern)**
 
-Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.&#x20;
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### Include (Schema Filter Pattern)
+**Include (Schema Filter Pattern)**
 
 Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
 Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### Exclude (Schema Filter Pattern)
+**Exclude (Schema Filter Pattern)**
 
 Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
@@ -649,9 +605,7 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-
-
-### 7. Review configuration and save
+#### 7. Review configuration and save
 
 Review your configuration settings. If they match what you intended, click Save to create the service and schedule metadata ingestion.
 
@@ -661,15 +615,13 @@ If something doesn't look right, click the _Previous_ button to return to the ap
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
-## One-time Ingestion
+### One-time Ingestion
 
-## **Requirements**
+### **Requirements**
 
 Using the OpenMetadata MSSQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-
-
-### **OpenMetadata (version 0.8.0 or later)**
+#### **OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -678,9 +630,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-
-
-### **Python (version 3.8.0 or later)**
+#### **Python (version 3.8.0 or later)**
 
 Please use the following command to check the version of Python you have.
 
@@ -688,9 +638,7 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
-
-
-## Procedure
+### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
@@ -705,15 +653,13 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 9. Confirm metadata\_server settings
 10. Run ingestion workflow
 
-
-
-### **1. Prepare a Python virtual environment**
+#### **1. Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
 In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
 
-#### **1.1 Create a directory for openmetadata**
+**1.1 Create a directory for openmetadata**
 
 Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
 
@@ -721,7 +667,7 @@ Throughout the docs, we use a consistent directory structure for OpenMetadata se
 mkdir openmetadata; cd openmetadata
 ```
 
-#### **1.2 Create a virtual environment**
+**1.2 Create a virtual environment**
 
 Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
 
@@ -729,7 +675,7 @@ Run the following command to create a Python virtual environment called, `env`. 
 python3 -m venv env
 ```
 
-#### **1.3 Activate the virtual environment**
+**1.3 Activate the virtual environment**
 
 Run the following command to activate the virtual environment.
 
@@ -739,7 +685,7 @@ source env/bin/activate
 
 Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
 
-#### **1.4 Upgrade pip and setuptools to the latest versions**
+**1.4 Upgrade pip and setuptools to the latest versions**
 
 Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
 
@@ -747,9 +693,9 @@ Ensure that you have the latest version of pip by running the following command.
 pip3 install --upgrade pip setuptools
 ```
 
-****
+***
 
-### **2. Install the Python module for this connector**
+#### **2. Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -757,9 +703,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[mssql]'
 ```
 
-
-
-### 3. **Create a configuration file using template JSON**
+#### 3. **Create a configuration file using template JSON**
 
 Create a new file called `mssql.json`. Copy and paste the configuration template below into the `mssql.json` file you created.
 
@@ -808,15 +752,13 @@ Note: The `source.config` field in the configuration JSON will include the major
 If `use_pyodbc` is true, then you need to provide \*\*\*\* a `uri_string`
 {% endhint %}
 
-
-
-### **4. Configure service settings**
+#### **4. Configure service settings**
 
 In this step we will configure the MSSQL service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MSSQL service as desired.
 
-#### ****
+**\*\*\*\***
 
-#### **host\_port**
+**host\_port**
 
 Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL deployment. Use the `host:port` format illustrated in the example below.
 
@@ -826,9 +768,9 @@ Edit the value for `source.config.host_port` in `mssql.json` for your MSSQL depl
 
 Please ensure that your MSSQL deployment is reachable from the host you are using to run metadata ingestion.
 
-#### ****
+**\*\*\*\***
 
-#### **username**
+**username**
 
 Edit the value for `source.config.username` to identify your MSSQL user.
 
@@ -840,9 +782,9 @@ Edit the value for `source.config.username` to identify your MSSQL user.
 **Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **password**
+**password**
 
 Edit the value for `source.config.password` with the password for your MSSQL user.
 
@@ -850,9 +792,9 @@ Edit the value for `source.config.password` with the password for your MSSQL use
 "password": "strong_password"
 ```
 
-#### ****
+**\*\*\*\***
 
-#### **service\_name**
+**service\_name**
 
 OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MSSQL services that you might be ingesting metadata from.
 
@@ -860,9 +802,9 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 "service_name": "local_mssql"
 ```
 
-#### ****
+**\*\*\*\***
 
-#### **database (optional)**
+**database (optional)**
 
 If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
@@ -872,11 +814,9 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "mssql_db"
 ```
 
+#### **5. Configure data filters (optional)**
 
-
-### **5. Configure data filters (optional)**
-
-#### **include\_views (optional)**
+**include\_views (optional)**
 
 Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
 
@@ -896,9 +836,9 @@ Exclude views as follows.
 **Note:** `source.config.include_views` is set to true by default.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **include\_tables (optional)**
+**include\_tables (optional)**
 
 Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
 
@@ -918,9 +858,9 @@ Exclude tables as follows.
 **Note:** `source.config.include_tables` is set to true by default.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **table\_filter\_pattern (optional)**
+**table\_filter\_pattern (optional)**
 
 Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
 
@@ -946,19 +886,17 @@ See the documentation for the[ Python re module](https://docs.python.org/3/libra
 You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
 {% endhint %}
 
-#### ****
+**\*\*\*\***
 
-#### **schema\_filter\_pattern (optional)**
+**schema\_filter\_pattern (optional)**
 
 Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](mssql-metadata-extraction.md#table\_filter\_pattern-optional). Please check that section for details.
 
+#### **6. Configure sample data (optional)**
 
-
-### **6. Configure sample data (optional)**
-
-#### **generate\_sample\_data (optional)**
+**generate\_sample\_data (optional)**
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
@@ -982,9 +920,7 @@ You can exclude the collection of sample data by adding the following key-value 
 **Note:** `generate_sample_data` is set to true by default.
 {% endhint %}
 
-
-
-### 7. Configure DBT (optional)
+#### 7. Configure DBT (optional)
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
@@ -992,9 +928,7 @@ DBT provides transformation logic that creates tables and views from raw data. O
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
-
-
-#### dbt\_manifest\_file (optional)
+**dbt\_manifest\_file (optional)**
 
 Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
 
@@ -1002,9 +936,7 @@ Use the field `source.config.dbt_manifest_file` to specify the location of your 
 "dbt_manifest_file": "./dbt/manifest.json"
 ```
 
-
-
-#### dbt\_catalog\_file (optional)
+**dbt\_catalog\_file (optional)**
 
 Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
 
@@ -1012,9 +944,7 @@ Use the field `source.config.dbt_catalog_file` to specify the location of your D
 "dbt_catalog_file": "./dbt/catalog.json"
 ```
 
-
-
-### **8. Confirm `sink` settings**
+#### **8. Confirm `sink` settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -1025,9 +955,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-
-
-### **9. Confirm `metadata_server` settings**
+#### **9. Confirm `metadata_server` settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mssql.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -1041,9 +969,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-
-
-### **10. Run ingestion workflow**
+#### **10. Run ingestion workflow**
 
 Your `mssql.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -1053,15 +979,15 @@ To run an ingestion workflow, execute the following command from the `openmetada
 metadata ingest -c ./mssql.json
 ```
 
-## **Next Steps**
+### **Next Steps**
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from MSSQL, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MSSQL service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
 ![](<../../../.gitbook/assets/next\_steps (1).png>)
 
-## **Troubleshooting**
+### **Troubleshooting**
 
-### **ERROR: Failed building wheel for cryptography**
+#### **ERROR: Failed building wheel for cryptography**
 
 When attempting to install the `openmetadata-ingestion[mssql]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
 
@@ -1078,9 +1004,7 @@ pip3 install --upgrade pip setuptools
 
 Then re-run the install command in Step 2.
 
-
-
-### **requests.exceptions.ConnectionError**
+#### **requests.exceptions.ConnectionError**
 
 If you encounter the following error when attempting to run the ingestion workflow in Step 10, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 

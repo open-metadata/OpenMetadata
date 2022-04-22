@@ -4,6 +4,6 @@
 [run-in-production.md](run-in-production.md)
 {% endcontent-ref %}
 
-{% content-ref url="../deploy-on-kubernetes/enable-security/" %}
-[enable-security](../deploy-on-kubernetes/enable-security/)
+{% content-ref url="../../docs/deploy/secure-openmetadata/" %}
+[secure-openmetadata](../../docs/deploy/secure-openmetadata/)
 {% endcontent-ref %}

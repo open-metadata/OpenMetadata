@@ -29,7 +29,7 @@ description: >-
 ![](<../../../.gitbook/assets/image (60).png>)
 
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
-* Provide the User Type.&#x20;
+* Provide the User Type.
   * Chose **External** if you are testing,
   * Otherwise chose **Internal**
 
@@ -40,7 +40,7 @@ description: >-
 
 ![](<../../../.gitbook/assets/image (63).png>)
 
-* On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.&#x20;
+* On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.
 * Once done click on **Update**.
 
 ![](<../../../.gitbook/assets/image (44).png>)
@@ -88,4 +88,4 @@ description: >-
 
 * You will find the **Client ID** and **Client Secret** in the top right corner
 
-![](<../../../.gitbook/assets/image (17).png>)
+![](<../../../.gitbook/assets/image (17) (2).png>)

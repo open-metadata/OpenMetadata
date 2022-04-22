@@ -78,13 +78,13 @@ You can take a look at the supported metrics and tests here:
 
 {% tabs %}
 {% tab title="Deploy on Airflow" %}
-### Requirements
+#### Requirements
 
 Note that the Profiling Pipeline needs to run at least after one Ingestion Pipeline. Then, the easiest way to configure the Profiling and Testing is by updating an existing JSON configuration from existing ingestions.
 
 While we can configure the tests in the UI, the only supported method for running the profiling pipelines as a separated Workflow that includes testing is by deploying the workflows in **Airflow** or manually using the CLI.
 
-#### Python Packages
+**Python Packages**
 
 You might want to run the Workflow as a `PythonOperator` as shown in the example below. If so, you need to install the OpenMetadata ingestion package in your Airflow host. You can do so via:
 
@@ -100,7 +100,7 @@ pip install 'openmetadata-ingestion[airflow-container]'
 
 Which updates some of the Airflow dependencies to match `sqlalchemy>=1.4.0`.
 
-### Procedure
+#### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
@@ -109,7 +109,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 3. Configure the `processor` to specify our profiler
 4. Add the tests you'd like to run
 
-#### 1. Use an existing Ingestion JSON configuration
+**1. Use an existing Ingestion JSON configuration**
 
 We have taken a sample from MySQL, but feel free to adapt it.
 
@@ -146,13 +146,13 @@ We have taken a sample from MySQL, but feel free to adapt it.
 }  
 ```
 
-#### 2. Update the data filters (optional)
+**2. Update the data filters (optional)**
 
 Consider that Profiling pipelines can take longer to execute than Ingestion ones. You might want to run the Profiling in different processes and for specific tables/schemas for more significant data volumes.
 
 This would also allow running each process in a different frequency, depending on the data needs.
 
-#### 3. Configure the processor
+**3. Configure the processor**
 
 Let's start by adding a minimal configuration for the Profiler processor.
 
@@ -175,7 +175,7 @@ Leaving only the defaults shown below will just execute the profiler on the sour
 }  
 ```
 
-#### 4. Adding new tests
+**4. Adding new tests**
 
 Let's configure our example further to add a couple of tests:
 
@@ -236,7 +236,7 @@ We are going to now configure both Table and Column tests.
 
 `tests` is a list of test definitions that will be applied to `table`, informed by its FQDN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](tests.md).
 
-### How to run
+#### How to run
 
 You can run this pipeline in two ways:
 
@@ -295,7 +295,7 @@ with DAG(
 
 Note how it is exactly the same approach as with the Ingestion Pipeline. We are only changing the type of Workflow with `ProfilerWorkflow`.
 
-### Outcome
+#### Outcome
 
 This Pipeline will finish as a failure if any of the tests fail.
 
@@ -305,7 +305,7 @@ The workflow is then in charge of picking up the stored Entity information and r
 {% endtab %}
 
 {% tab title="Metadata CLI" %}
-### Requirements
+#### Requirements
 
 Note that the Profiling Pipeline needs to run at least after one Ingestion Pipeline. Then, the easiest way to configure the Profiling and Testing is by updating an existing JSON configuration from existing ingestions.
 
@@ -317,7 +317,7 @@ You just need to install the Python package for the OpenMetadata ingestion in yo
 pip install openmetadata-ingestion
 ```
 
-### Procedure
+#### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case. The process is the same as if we were going to configure the JSON to be run in Airflow.
 
@@ -326,7 +326,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 3. Configure the `processor` to specify our profiler
 4. Add the tests you'd like to run
 
-#### 1. Use an existing Ingestion JSON configuration
+**1. Use an existing Ingestion JSON configuration**
 
 We have taken a sample from MySQL, but feel free to adapt it.
 
@@ -363,13 +363,13 @@ We have taken a sample from MySQL, but feel free to adapt it.
 }  
 ```
 
-#### 2. Update the data filters (optional)
+**2. Update the data filters (optional)**
 
 Consider that Profiling pipelines can take longer to execute than Ingestion ones. You might want to run the Profiling in different processes and for specific tables/schemas for more significant data volumes.
 
 This would also allow running each process in a different frequency, depending on the data needs.
 
-#### 3. Configure the processor
+**3. Configure the processor**
 
 Let's start by adding a minimal configuration for the Profiler processor.
 
@@ -392,7 +392,7 @@ Leaving only the defaults shown below will just execute the profiler on the sour
 }  
 ```
 
-#### 4. Adding new tests
+**4. Adding new tests**
 
 Let's configure our example further to add a couple of tests:
 
@@ -453,7 +453,7 @@ We are going to now configure both Table and Column tests.
 
 `tests` is a list of test definitions that will be applied to `table`, informed by its FQDN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](tests.md).
 
-### How to run
+#### How to run
 
 Then, you can call the `metadata` CLI as:
 
@@ -461,7 +461,7 @@ Then, you can call the `metadata` CLI as:
 metadata profile -c <path-to-config.json>
 ```
 
-### Outcome
+#### Outcome
 
 This process will finish as a failure if any of the tests fail.
 

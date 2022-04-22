@@ -15,3 +15,7 @@ Enabling Security is only required for your production installation. If you are 
 {% content-ref url="auth0-sso/" %}
 [auth0-sso](auth0-sso/)
 {% endcontent-ref %}
+
+{% content-ref url="azure-sso/" %}
+[azure-sso](azure-sso/)
+{% endcontent-ref %}

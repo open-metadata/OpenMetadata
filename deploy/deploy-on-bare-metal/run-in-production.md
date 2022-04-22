@@ -46,7 +46,7 @@ To install or upgrade Elasticsearch to a supported version please see the instru
 
 We do not support ElasticSearch 8.x yet.
 
-Please follow the instructions[ here to install Elasticsearch ](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html)
+Please follow the instructions[ here to install Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.17/setup.html)
 
 ### Airflow (version 2.0.0 or greater) or other workflow schedulers
 
@@ -94,7 +94,7 @@ You may put one or more OpenMetadata instances behind a load balancer for revers
 
 ### Apache mod\_proxy
 
-To use the Apache mod\_proxy module as a reverse proxy for load balancing, update the `VirtualHost` tag in your Apache config file to resemble the following.&#x20;
+To use the Apache mod\_proxy module as a reverse proxy for load balancing, update the `VirtualHost` tag in your Apache config file to resemble the following.
 
 ```
   <VirtualHost *:80>
@@ -124,3 +124,7 @@ server {
     }
 }
 ```
+
+## Enable Security
+
+OpenMetadata has support for Google, Okta, Auth0, and Azure SSO as identity providers. Please check [Secure OpenMetadata](../../docs/deploy/secure-openmetadata/) for configuring Single Sign On.

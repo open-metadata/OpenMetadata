@@ -8,7 +8,7 @@ description: This is a guide to create ingestion bot service account.
 
 * Navigate to your project dashboard
 
-![](<../../../.gitbook/assets/image (21).png>)
+![](<../../../.gitbook/assets/image (21) (2).png>)
 
 * Click on **Credentials** on the left side panel
 
@@ -40,7 +40,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 * Now you should see your service account listed.
 
-![](<../../../.gitbook/assets/image (20).png>)
+![](<../../../.gitbook/assets/image (20) (2).png>)
 
 ## Step 2: Enable Domain-Wide Delegation
 
@@ -55,7 +55,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 * Enable Google Workspace Domain-wide Delegation
 * Click on **SAVE**
 
-![](../../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (15).png>)
 
 ## How to Generate Private-Key/Service-Account JSON File
 
@@ -64,7 +64,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 ![](<../../../.gitbook/assets/image (27).png>)
 
-* Select the format. The **JSON format** is recommended.&#x20;
+* Select the format. The **JSON format** is recommended.
 * Next, click on **CREATE**
 
 ![](<../../../.gitbook/assets/image (35).png>)

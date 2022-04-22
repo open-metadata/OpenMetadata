@@ -24,7 +24,7 @@
 
 * Click on `Create Applicaiton`.
 
-![](<../../../.gitbook/assets/image (33).png>)
+![](<../../../.gitbook/assets/image (33) (2).png>)
 
 * Enter the Application name
 * Choose an application type and click on `Create`.
