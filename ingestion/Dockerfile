@@ -28,6 +28,9 @@ COPY ingestion /ingestion
 
 RUN pip install ".[all]"
 
+# Install PyHive SASL dependency
+RUN apt-get update && apt-get install -y libsasl2-modules libsasl2-dev
+
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
 RUN cp -r /om-airflow/plugins /airflow/plugins
