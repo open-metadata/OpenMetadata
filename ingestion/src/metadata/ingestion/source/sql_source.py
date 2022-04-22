@@ -390,7 +390,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     if self.source_config.includeViews:
                         yield from self.fetch_views(inspector, schema)
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
                         yield from self.delete_tables(schema_fqdn)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -852,19 +852,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and column["policy_tags"]
                             ):
                                 self.metadata.create_primary_tag(
-                                    category_name=self.config.tag_category_name,
+                                    category_name=self.service_connection.tagCategoryName,
                                     primary_tag_body=CreateTagRequest(
                                         name=column["policy_tags"],
                                         description="Bigquery Policy Tag",
                                     ),
                                 )
                         except APIError:
-                            if column["policy_tags"] and self.config.enable_policy_tags:
+                            if (
+                                column["policy_tags"]
+                                and self.service_connection.enablePolicyTagImport
+                            ):
                                 col_dict.tags = [
                                     TagLabel(
                                         tagFQN=get_fqdn(
                                             Tag,
-                                            self.config.tag_category_name,
+                                            self.service_connection.tagCategoryName,
                                             column["policy_tags"],
                                         ),
                                         labelType="Automated",
