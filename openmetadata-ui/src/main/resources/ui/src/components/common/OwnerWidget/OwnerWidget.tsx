@@ -79,14 +79,8 @@ const OwnerWidget = ({
         <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-5 tw-py-3">
             <div className="tw-w-10/12">
-              <p
-                className="tw-text-sm tw-mb-1 tw-font-medium"
-                data-testid="danger-zone-text-title">
-                Owner
-              </p>
-              <p
-                className="tw-text-grey-muted tw-text-xs"
-                data-testid="danger-zone-text-para">
+              <p className="tw-text-sm tw-mb-1 tw-font-medium">Owner</p>
+              <p className="tw-text-grey-muted tw-text-xs">
                 Lorem ipsum dolor, sit amet consectetur adipisicing elit.
                 Necessitatibus, sint.
               </p>
@@ -148,14 +142,10 @@ const OwnerWidget = ({
           {isJoinableActionAllowed && !isUndefined(teamJoinable) && (
             <div className="tw-flex tw-justify-between tw-px-5 tw-py-3 tw-border-t">
               <div className="tw-w-10/12">
-                <p
-                  className="tw-text-sm tw-mb-1 tw-font-medium"
-                  data-testid="danger-zone-text-title">
+                <p className="tw-text-sm tw-mb-1 tw-font-medium">
                   Open to join
                 </p>
-                <p
-                  className="tw-text-grey-muted tw-text-xs"
-                  data-testid="danger-zone-text-para">
+                <p className="tw-text-grey-muted tw-text-xs">
                   Lorem ipsum dolor, sit amet consectetur adipisicing elit.
                   Necessitatibus, sint.
                 </p>

@@ -593,6 +593,7 @@ const TeamDetails = ({
                     entityType="team"
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
+                    manageSectionType="Team"
                     onSave={handleManageSave}
                   />
                 </div>

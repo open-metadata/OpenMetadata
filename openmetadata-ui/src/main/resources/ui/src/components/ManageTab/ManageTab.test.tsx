@@ -45,6 +45,10 @@ jest.mock('../common/toggle-switch/ToggleSwitchV1', () => {
   return jest.fn().mockImplementation(() => <p>ToggleSwitchV1.Component</p>);
 });
 
+jest.mock('../common/DeleteWidget/DeleteWidget', () => {
+  return jest.fn().mockImplementation(() => <p>DeleteWidget.Component</p>);
+});
+
 const mockTierData = {
   children: [
     {
@@ -121,7 +125,9 @@ describe('Test Manage tab Component', () => {
     );
 
     const dangerZone = await findByTestId(container, 'danger-zone');
+    const DeleteWidget = await findByText(container, 'DeleteWidget.Component');
 
     expect(dangerZone).toBeInTheDocument();
+    expect(DeleteWidget).toBeInTheDocument();
   });
 });
