@@ -92,6 +92,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
@@ -132,6 +133,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
@@ -163,12 +165,13 @@ describe('Test Ingestion page', () => {
 
     expect(ingestionTable).toBeInTheDocument();
     expect(tableHeaderContainer).toBeInTheDocument();
-    expect(tableHeaders.length).toBe(5);
+    expect(tableHeaders.length).toBe(6);
     expect(tableHeaders).toStrictEqual([
       'Name',
       'Type',
       'Schedule',
       'Recent Runs',
+      'Airflow DAG',
       'Actions',
     ]);
     expect(runButton).toBeInTheDocument();
@@ -186,6 +189,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
@@ -220,6 +224,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
@@ -258,6 +263,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         ingestionList={
@@ -304,5 +310,34 @@ describe('Test Ingestion page', () => {
     const ingestionModal = await findByTestId(container, 'ingestion-form');
 
     expect(ingestionModal).toBeInTheDocument();
+  });
+
+  it('Airflow DAG view button should be present if endpoint is available', async () => {
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        addIngestion={mockFunction}
+        airflowEndpoint="http://localhost"
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        triggerIngestion={mockTriggerIngestion}
+        updateIngestion={mockFunction}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const viewButton = await findByTestId(container, 'airflow-tree-view');
+
+    expect(viewButton).toBeInTheDocument();
   });
 });

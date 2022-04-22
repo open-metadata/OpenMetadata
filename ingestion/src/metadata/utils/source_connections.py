@@ -16,6 +16,9 @@ from urllib.parse import quote_plus
 
 from requests import Session
 
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
@@ -295,4 +298,21 @@ def _(connection: AzureSQLConnection):
         )
         url = f"{url}?{params}"
 
+    return url
+
+
+@get_connection_url.register
+def _(connection: AthenaConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.awsConfig.awsAccessKeyId:
+        url += connection.awsConfig.awsAccessKeyId
+        if connection.awsConfig.awsSecretAccessKey:
+            url += f":{connection.awsConfig.awsSecretAccessKey.get_secret_value()}"
+    else:
+        url += ":"
+    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
+    if connection.database:
+        url += f"/{connection.database}"
+    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
+    url += f"&work_group={connection.workgroup}"
     return url

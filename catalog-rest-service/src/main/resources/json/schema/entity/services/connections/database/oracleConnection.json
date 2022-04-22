@@ -49,8 +49,7 @@
     },
     "oracleServiceName": {
       "description": "Oracle Service Name to be passed. Note: either Database or Oracle service name can be sent, not both.",
-      "type": "string",
-      "default": null
+      "type": "string"
     },
     "connectionOptions": {
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -60,11 +59,11 @@
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }

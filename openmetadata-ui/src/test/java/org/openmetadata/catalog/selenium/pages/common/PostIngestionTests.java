@@ -62,7 +62,6 @@ public class PostIngestionTests {
     Events.click(webDriver, common.ownerDropdown());
     Events.sendKeys(webDriver, common.ownerSearchBox(), "Cloud");
     Events.click(webDriver, common.tagListItem());
-    Events.click(webDriver, common.saveConnectionConfig());
   }
 
   @Test

@@ -44,6 +44,7 @@ public class TeamsPageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
   static String teamDisplayName = faker.name().lastName();
+  static String teamName = faker.name().lastName();
   static Actions actions;
   static WebDriverWait wait;
   Common common;
@@ -52,7 +53,6 @@ public class TeamsPageTest {
   MyDataPage myDataPage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  String xpath = "//p[@title = '" + teamDisplayName + "']";
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -87,7 +87,7 @@ public class TeamsPageTest {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams());
     Events.click(webDriver, teamsPage.addTeam()); // add team
-    Events.sendKeys(webDriver, teamsPage.name(), faker.name().firstName()); // name
+    Events.sendKeys(webDriver, teamsPage.name(), teamName); // name
     Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
     Events.click(webDriver, common.descriptionBox());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -96,10 +96,9 @@ public class TeamsPageTest {
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     try {
-      webDriver.findElement(By.xpath(xpath));
+      Events.click(webDriver, common.containsText(teamDisplayName));
     } catch (NoSuchElementException e) {
       Assert.fail("Team not added");
-      System.out.println("xpath" + xpath);
     }
   }
 
@@ -108,9 +107,9 @@ public class TeamsPageTest {
   public void addUser() throws InterruptedException {
     int counter = 1;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    createTeam();
-    Events.click(webDriver, By.xpath(xpath));
-    Events.click(webDriver, teamsPage.addNewUser());
+    openTeamsPage();
+    Events.click(webDriver, common.containsText(teamDisplayName));
+    Events.click(webDriver, common.containsText("Add new user"));
     List<WebElement> checkbox = teamsPage.checkboxAddUser();
     List<String> selectedUser = new ArrayList<>();
     // Select the created listed team
@@ -144,9 +143,9 @@ public class TeamsPageTest {
   public void editDescription() throws InterruptedException {
     String sendKeys = faker.address().toString();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    createTeam();
+    openTeamsPage();
     // Select the created listed team
-    Events.click(webDriver, By.xpath(xpath));
+    Events.click(webDriver, common.containsText(teamDisplayName));
     Events.click(webDriver, teamsPage.editDescription());
     wait.until(ExpectedConditions.presenceOfElementLocated(common.focusedDescriptionBox()));
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
@@ -161,7 +160,8 @@ public class TeamsPageTest {
   @Order(5)
   public void addAsset() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    addUser();
+    openTeamsPage();
+    Events.click(webDriver, common.containsText(teamDisplayName));
     Events.click(webDriver, teamsPage.asset()); // Assets
     Events.click(webDriver, explorePage.explore()); // Explore
     Events.click(webDriver, common.selectTableLink(4));
@@ -172,10 +172,9 @@ public class TeamsPageTest {
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
     Events.click(webDriver, common.selectUser()); // Select User/Team
-    Events.click(webDriver, common.saveManage()); // Save
     Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
-    Events.click(webDriver, By.xpath(xpath));
+    Events.click(webDriver, common.containsText(teamDisplayName));
     Events.click(webDriver, teamsPage.asset());
     String asset =
         wait.until(ExpectedConditions.visibilityOf(webDriver.findElement(teamsPage.dataContainer()))).getText();
@@ -188,43 +187,39 @@ public class TeamsPageTest {
   @Order(6)
   public void ownerNameIsConsistentCheck() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    addAsset();
+    openTeamsPage();
     // Select the created listed team
-    Events.click(webDriver, By.xpath(xpath));
-    Thread.sleep(waitTime);
+    Events.click(webDriver, common.containsText(teamDisplayName));
     // Events.click(webDriver,teamsPage.getAsset());
-    Events.click(webDriver, teamsPage.dataContainer());
+    Events.click(webDriver, teamsPage.ownerDropdown());
+    String ownerName = webDriver.findElement(teamsPage.selectOwner()).getText();
+    Events.click(webDriver, teamsPage.selectOwner());
     Thread.sleep(waitTime);
-    String ownerName = webDriver.findElement(teamsPage.ownerName()).getText();
-    Events.click(webDriver, teamsPage.ownerLink());
-    String displayName = webDriver.findElement(By.xpath(xpath)).getText();
-    if (!ownerName.equalsIgnoreCase(displayName)) {
-      Assert.fail();
+    webDriver.navigate().refresh();
+    if (!webDriver.findElement(teamsPage.ownerName(ownerName)).isDisplayed()) {
+      Assert.fail("Owner not added");
     }
   }
 
   @Test
   @Order(7)
   public void checkTeamsFilterCount() throws InterruptedException {
-    for (int i = 0; i < 5; i++) {
-      createTeam();
-      webDriver.navigate().back();
-      Events.click(webDriver, myDataPage.openWhatsNew()); // What's New
-    }
+    String teamName = faker.name().firstName();
+    String teamDisplayName = faker.name().firstName();
     Events.click(webDriver, common.closeWhatsNew());
-    String teamsListCount = String.valueOf(webDriver.findElements(teamsPage.teamsCount()).size());
-    Thread.sleep(waitTime);
+    String myDataTeamsCount = webDriver.findElement(teamsPage.myDataTeamsCount()).getText();
+    Events.click(webDriver, teamsPage.teams());
+    Events.click(webDriver, teamsPage.addTeam()); // add team
+    Events.sendKeys(webDriver, teamsPage.name(), teamName); // name
+    Events.sendKeys(webDriver, teamsPage.displayName(), teamDisplayName); // displayname
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, teamsPage.saveTeam());
     Events.click(webDriver, myDataPage.home());
     Thread.sleep(waitTime);
-    String teamsFilterCount = webDriver.findElement(teamsPage.teamsFilterCount()).getText();
-    Events.click(webDriver, explorePage.explore()); // Tables
-    Events.click(webDriver, common.selectTable());
-    Events.click(webDriver, common.manage()); // Manage
-    Events.click(webDriver, common.ownerDropdown()); // Owner
-    Thread.sleep(waitTime);
-    String teamsCount = webDriver.findElement(teamsPage.teamsDropdownCount()).getText();
-    if (!teamsCount.equals(teamsListCount) && teamsListCount.equals(teamsFilterCount)) {
-      Assert.fail("Team count is mismatched");
+    String updatedCount = webDriver.findElement(teamsPage.myDataTeamsCount()).getText();
+    if (updatedCount.equals(myDataTeamsCount)) {
+      Assert.fail("Team filter not updated");
     }
   }
 

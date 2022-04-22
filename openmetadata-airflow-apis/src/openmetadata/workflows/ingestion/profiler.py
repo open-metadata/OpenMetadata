@@ -9,70 +9,62 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Metadata DAG function builder
+Profiler DAG function builder
 """
 
-
 from airflow import DAG
-from openmetadata.workflows.ingestion.common import (
-    build_dag,
-    metadata_ingestion_workflow,
-)
-
-from metadata.generated.schema.metadataIngestion.workflow import (
-    BulkSink,
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Stage,
-    WorkflowConfig,
-)
+from openmetadata.workflows.ingestion.common import build_dag, profiler_workflow
 
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-import tempfile
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+    Processor,
+    Sink,
+    WorkflowConfig,
+)
 
 
-def build_usage_workflow_config(
+def build_profiler_workflow_config(
     ingestion_pipeline: IngestionPipeline,
 ) -> OpenMetadataWorkflowConfig:
     """
     Given an airflow_pipeline, prepare the workflow config JSON
     """
-
-    with tempfile.NamedTemporaryFile() as tmp_file:
-
-        workflow_config = OpenMetadataWorkflowConfig(
-            source=ingestion_pipeline.source,
-            processor=Processor(type="query-parser", config={"filter": ""}),
-            stage=Stage(type="table-usage", config={"filename": tmp_file.name}),
-            bulkSink=BulkSink(
-                type="metadata-usage", config={"filename": tmp_file.name}
-            ),
-            workflowConfig=WorkflowConfig(
-                openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
-            ),
-        )
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=ingestion_pipeline.source,
+        sink=Sink(
+            type="metadata-rest",
+            config={},
+        ),
+        processor=Processor(
+            type="orm-profiler",
+            config={},
+        ),
+        workflowConfig=WorkflowConfig(
+            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
+        ),
+    )
 
     return workflow_config
 
 
-def build_usage_dag(airflow_pipeline: IngestionPipeline) -> DAG:
+def build_profiler_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     """
     Build a simple metadata workflow DAG
     """
-    workflow_config = build_usage_workflow_config(airflow_pipeline)
+    workflow_config = build_profiler_workflow_config(ingestion_pipeline)
     dag = build_dag(
-        task_name="usage_task",
-        ingestion_pipeline=airflow_pipeline,
+        task_name="profiler_task",
+        ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
-        workflow_fn=metadata_ingestion_workflow,
+        workflow_fn=profiler_workflow,
     )
 
     return dag

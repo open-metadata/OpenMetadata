@@ -1,12 +1,17 @@
 {
   "source": {
     "type": "kafka",
-    "config": {
-      "service_name": "local_kafka",
-      "bootstrap_servers": "localhost:9092",
-      "schema_registry_url": "http://192.168.1.43:8081",
-      "filter_pattern": {
-        "excludes": ["_confluent.*"]
+    "serviceName": "local_kafka",
+    "serviceConnection": {
+      "config": {
+        "type": "Kafka",
+        "bootstrapServers": "localhost:9092",
+        "schemaRegistryURL": "http://192.168.1.43:8081"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "topicFilterPattern": {}
       }
     }
   },

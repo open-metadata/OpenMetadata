@@ -52,6 +52,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
+import org.openmetadata.catalog.resources.databases.DatabaseUtil;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
@@ -623,6 +624,8 @@ public class TableRepository extends EntityRepository<Table> {
         .withDataTypeDisplay(column.getDataTypeDisplay())
         .withDataType(column.getDataType())
         .withDataLength(column.getDataLength())
+        .withPrecision(column.getPrecision())
+        .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
         .withChildren(children);
   }
@@ -1031,6 +1034,7 @@ public class TableRepository extends EntityRepository<Table> {
     public void entitySpecificUpdate() throws IOException {
       Table origTable = original.getEntity();
       Table updatedTable = updated.getEntity();
+      DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
       updateConstraints(origTable, updatedTable);
@@ -1099,6 +1103,8 @@ public class TableRepository extends EntityRepository<Table> {
 
         updateColumnDescription(stored, updated);
         updateColumnDataLength(stored, updated);
+        updateColumnPrecision(stored, updated);
+        updateColumnScale(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
             EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
@@ -1134,8 +1140,30 @@ public class TableRepository extends EntityRepository<Table> {
       String columnField = getColumnField(original.getEntity(), origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
       if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
-        // The data length of a column changed. Treat it as backward-incompatible change
+        // The data length of a column was reduced. Treat it as backward-incompatible change
         majorVersionChange = true;
+      }
+    }
+
+    private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+      String columnField = getColumnField(original.getEntity(), origColumn, "precision");
+      boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
+      if (origColumn.getPrecision() != null) { // Previously precision was set
+        if (updated && updatedColumn.getPrecision() < origColumn.getPrecision()) {
+          // The precision was reduced. Treat it as backward-incompatible change
+          majorVersionChange = true;
+        }
+      }
+    }
+
+    private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
+      String columnField = getColumnField(original.getEntity(), origColumn, "scale");
+      boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
+      if (origColumn.getScale() != null) { // Previously scale was set
+        if (updated && updatedColumn.getScale() < origColumn.getScale()) {
+          // The scale was reduced. Treat it as backward-incompatible change
+          majorVersionChange = true;
+        }
       }
     }
   }

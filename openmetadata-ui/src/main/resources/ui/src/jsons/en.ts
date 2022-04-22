@@ -57,6 +57,8 @@ const jsonData = {
 
     'deploy-ingestion-error': 'Error while deploying ingestion workflow!',
 
+    'fetch-airflow-config-error':
+      'Error occurred while fetching airflow configs!',
     'fetch-auth-config-error': 'Error occurred while fetching auth configs!',
     'fetch-chart-error': 'Error while fetching charts!',
     'fetch-dashboard-details-error': 'Error while fetching dashboard details!',
