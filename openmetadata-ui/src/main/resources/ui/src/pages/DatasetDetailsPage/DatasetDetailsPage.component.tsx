@@ -744,9 +744,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']

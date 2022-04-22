@@ -21,10 +21,12 @@ import { getErrorText } from './StringsUtils';
  * Display an error toast message.
  * @param error error text or AxiosError object
  * @param fallbackText Fallback error message to the displayed.
+ * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
   error: AxiosError | string,
-  fallbackText?: string
+  fallbackText?: string,
+  autoCloseTimer?: number
 ) => {
   let errorMessage;
   if (isString(error)) {
@@ -41,26 +43,30 @@ export const showErrorToast = (
       return;
     }
   }
-  toast.error(errorMessage);
+  toast.error(errorMessage, {
+    autoClose: autoCloseTimer,
+  });
 };
 
 /**
  * Display a success toast message.
  * @param message success message.
+ * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
-export const showSuccessToast = (message: string) => {
+export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
   toast.success(message, {
-    autoClose: 10000,
+    autoClose: autoCloseTimer,
   });
 };
 
 /**
  * Display an info toast message.
  * @param message info message.
+ * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
-export const showInfoToast = (message: string) => {
+export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
   toast.info(message, {
-    autoClose: 10000,
+    autoClose: autoCloseTimer,
   });
 };
 
