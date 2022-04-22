@@ -1313,14 +1313,26 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
-    @SqlQuery(
-        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
-            + "t.json ->> '$.description' AS description1, "
-            + "g.json ->> '$.description' AS description2 "
-            + "FROM tag_usage tu "
-            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
-            + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
-            + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
+                + "t.json ->> '$.description' AS description1, "
+                + "g.json ->> '$.description' AS description2 "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
+                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
+                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
+                + "t.json ->> 'description' AS description1, "
+                + "g.json ->> 'description' AS description2 "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
+                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
+                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
+        connectionType = POSTGRES)
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
