@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -90,7 +90,7 @@ const AddIngestion = ({
     )
   );
   const [includeView, setIncludeView] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.includeViews ?? false
+    Boolean((data?.source.sourceConfig.config as ConfigClass)?.includeViews)
   );
   const [enableDataProfiler, setEnableDataProfiler] = useState(
     (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
@@ -132,10 +132,12 @@ const AddIngestion = ({
   const [resultLimit, setResultLimit] = useState<number>(
     (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
   );
-  const [usageIngestionType] = useState<ConfigType>(
-    (data?.source.sourceConfig.config as ConfigClass)?.type ??
+  const usageIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
       ConfigType.DatabaseUsage
-  );
+    );
+  }, [data]);
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
