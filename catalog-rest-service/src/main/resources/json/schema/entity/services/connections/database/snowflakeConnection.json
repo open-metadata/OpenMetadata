@@ -68,6 +68,11 @@
       "description": "Snowflake warehouse.",
       "type": "string"
     },
+    "privateKey": {
+      "title": "Private Key",
+      "description": "Connection to Snowflake instance via Private Key",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -89,9 +94,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username",
-    "account"
-  ]
+  "required": ["hostPort", "username", "account"]
 }

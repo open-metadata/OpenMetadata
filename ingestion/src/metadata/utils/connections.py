@@ -29,14 +29,17 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
-    SampleDataConnection,
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
 )
 from metadata.utils.aws_client import AWSClient, DynamoClient, GlueClient
 from metadata.utils.credentials import set_google_credentials
@@ -80,6 +83,46 @@ def get_connection(
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
+    return create_generic_connection(connection, verbose)
+
+
+@get_connection.register
+def _(connection: DatabricksConnection, verbose: bool = False):
+    args = connection.connectionArguments
+    if not args:
+        connection.connectionArguments = dict()
+        connection.connectionArguments["http_path"] = connection.httpPath
+    return create_generic_connection(connection, verbose)
+
+
+@get_connection.register
+def _(connection: SnowflakeConnection, verbose: bool = False):
+    if connection.privateKey:
+        import os
+
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization
+
+        snowflake_private_key_passphrase = os.environ.get(
+            "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", ""
+        )
+        if not snowflake_private_key_passphrase:
+            logger.warning(
+                "Snowflake Private Key Passphrase not found, replacing it with empty string"
+            )
+        p_key = serialization.load_pem_private_key(
+            bytes(connection.privateKey, "utf-8"),
+            password=snowflake_private_key_passphrase.encode(),
+            backend=default_backend(),
+        )
+        pkb = p_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        if not connection.connectionArguments:
+            connection.connectionArguments = dict()
+            connection.connectionArguments["private_key"] = pkb
     return create_generic_connection(connection, verbose)
 
 

@@ -59,6 +59,11 @@
       "type": "string",
       "format": "password"
     },
+    "httpPath": {
+      "title": "Http Path",
+      "description": "Databricks compute resources URL",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -77,8 +82,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "token"
-  ]
+  "required": ["hostPort", "token"]
 }
