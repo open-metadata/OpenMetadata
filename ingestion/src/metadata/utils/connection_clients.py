@@ -22,3 +22,9 @@ class GlueClient:
 class DynamoClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class SalesforceClient:
+    def __init__(self, client) -> None:
+        self.client = client
