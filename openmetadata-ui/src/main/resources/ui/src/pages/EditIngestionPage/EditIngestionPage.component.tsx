@@ -182,7 +182,7 @@ const EditIngestionPage = () => {
     );
   };
 
-  const renderAddIngestionPage = () => {
+  const renderEditIngestionPage = () => {
     if (isLoading) {
       return <Loader />;
     } else if (errorMsg) {
@@ -224,7 +224,7 @@ const EditIngestionPage = () => {
     fetchData();
   }, [serviceCategory, serviceFQN]);
 
-  return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;
+  return <PageContainerV1>{renderEditIngestionPage()}</PageContainerV1>;
 };
 
 export default EditIngestionPage;
