@@ -50,7 +50,11 @@ const Signup = () => {
   const getUserPermissions = () => {
     getLoggedInUserPermissions()
       .then((res: AxiosResponse) => {
-        appState.updateUserPermissions(res.data.metadataOperations);
+        if (res.data) {
+          appState.updateUserPermissions(res.data.metadataOperations);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
