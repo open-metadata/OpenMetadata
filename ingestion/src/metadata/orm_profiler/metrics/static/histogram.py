@@ -86,7 +86,7 @@ class Histogram(QueryMetric):
 
         hist = (
             session.query(
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
+                ConcatFn(str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)).label(
                     "boundaries"
                 ),
                 func.count().label("frequencies"),
@@ -94,7 +94,7 @@ class Histogram(QueryMetric):
             .group_by(
                 ranges_cte.c.bin_floor,
                 ranges_cte.c.bin_ceil,
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
+                ConcatFn(str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)).label(
                     "boundaries"
                 ),
             )
