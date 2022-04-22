@@ -34,7 +34,7 @@
     },
     "awsConfig": {
       "title": "AWS Credentials Configuration",
-      "$ref": "../../../../security/credentials/s3Credentials.json"
+      "$ref": "../../../../security/credentials/awsCredentials.json"
     },
     "hostPort": {
       "title": "Host and Port",
