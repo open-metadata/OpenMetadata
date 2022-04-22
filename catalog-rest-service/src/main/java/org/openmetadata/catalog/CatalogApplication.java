@@ -78,8 +78,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException, SQLException {
-    final JdbiFactory factory = new JdbiFactory();
-    final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
+    final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -168,18 +167,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     String maxMigration = Migration.lastMigrationFile(conf);
 
     if (lastMigrated.isEmpty()) {
-      System.out.println(
-          "Could not validate Flyway migrations in MySQL."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
-      System.exit(1);
+      throw new IllegalStateException(
+          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
     }
     if (lastMigrated.get().compareTo(maxMigration) < 0) {
-      System.out.println(
-          "There are pending migrations to be run on MySQL."
+      throw new IllegalStateException(
+          "There are pending migrations to be run on the database."
               + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/install/upgrade-openmetadata");
-      System.exit(1);
     }
   }
 
