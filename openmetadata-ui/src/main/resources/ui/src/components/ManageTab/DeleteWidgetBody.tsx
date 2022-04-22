@@ -22,7 +22,7 @@ const DeleteWidgetBody = ({
 }: DeleteWidgetBodyProps) => {
   return (
     <div className="tw-flex tw-justify-between tw-px-4 tw-py-2">
-      <div data-testid="danger-zone-text">
+      <div className="tw-w-10/12" data-testid="danger-zone-text">
         <h4 className="tw-text-base" data-testid="danger-zone-text-title">
           {header}
         </h4>

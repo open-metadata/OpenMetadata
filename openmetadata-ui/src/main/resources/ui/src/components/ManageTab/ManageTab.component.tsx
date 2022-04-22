@@ -187,8 +187,11 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     }
   };
 
-  const prepareDeleteMessage = () => {
-    return `Once you delete this ${entityType}, it will be removed permanently`;
+  const prepareDeleteMessage = (softDelete = false) => {
+    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
+    const hardDeleteText = `Once you delete this ${entityType}, it will be removed permanently`;
+
+    return softDelete ? softDeleteText : hardDeleteText;
   };
 
   const handleOnEntityDeleteConfirm = () => {
@@ -231,7 +234,10 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (allowDelete && entityDeleteState.state) {
       return (
         <EntityDeleteModal
-          bodyText={deletEntityMessage || prepareDeleteMessage()}
+          bodyText={
+            deletEntityMessage ||
+            prepareDeleteMessage(entityDeleteState.softDelete)
+          }
           entityName={entityName as string}
           entityType={entityType as string}
           loadingState={entityDeleteState.loading}
@@ -251,10 +257,10 @@ const ManageTab: FunctionComponent<ManageProps> = ({
         <hr className="tw-border-main tw-mb-4" />
         <div className="tw-border tw-border-error tw-rounded tw-mt-3 tw-shadow">
           {allowSoftDelete && (
-            <div className="tw-border-b tw-border-error">
+            <div className="tw-border-b">
               <DeleteWidgetBody
-                buttonText={`Soft delete this ${entityType}`}
-                description={prepareDeleteMessage()}
+                buttonText="Soft delete"
+                description={prepareDeleteMessage(true)}
                 hasPermission={isAdminUser || isAuthDisabled}
                 header={`Soft delete ${entityType} ${entityName}`}
                 isOwner={isAdminUser}
@@ -264,7 +270,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           )}
 
           <DeleteWidgetBody
-            buttonText={`Delete this ${entityType}`}
+            buttonText="Delete"
             description={prepareDeleteMessage()}
             hasPermission={isAdminUser || isAuthDisabled}
             header={`Delete ${entityType} ${entityName}`}
