@@ -13,7 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
-import CardListItem from './CardWithListItems';
+import CardListItem from './CardWithListItem';
 
 const mockSelectFunction = jest.fn();
 const mockSaveFuntion = jest.fn();
@@ -36,8 +36,8 @@ describe('Test CardWithListing Component', () => {
         isActive={false}
         isSelected={false}
         tierStatus="initial"
+        onCardSelect={mockSelectFunction}
         onSave={mockSaveFuntion}
-        onSelect={mockSelectFunction}
       />
     );
 
@@ -55,8 +55,8 @@ describe('Test CardWithListing Component', () => {
         isActive={false}
         isSelected={false}
         tierStatus="initial"
+        onCardSelect={mockSelectFunction}
         onSave={mockSaveFuntion}
-        onSelect={mockSelectFunction}
       />
     );
 
@@ -79,8 +79,8 @@ describe('Test CardWithListing Component', () => {
         card={mockCard}
         isSelected={false}
         tierStatus="initial"
+        onCardSelect={mockSelectFunction}
         onSave={mockSaveFuntion}
-        onSelect={mockSelectFunction}
       />
     );
 
@@ -107,8 +107,8 @@ describe('Test CardWithListing Component', () => {
         card={mockCard}
         isSelected={false}
         tierStatus="initial"
+        onCardSelect={mockSelectFunction}
         onSave={mockSaveFuntion}
-        onSelect={mockSelectFunction}
       />
     );
 

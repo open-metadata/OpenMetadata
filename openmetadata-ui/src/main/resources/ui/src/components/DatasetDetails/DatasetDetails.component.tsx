@@ -741,6 +741,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   entityName={tableDetails.name}
                   entityType={EntityType.TABLE}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.TABLE}
                   onSave={onSettingsUpdate}
                 />
               </div>

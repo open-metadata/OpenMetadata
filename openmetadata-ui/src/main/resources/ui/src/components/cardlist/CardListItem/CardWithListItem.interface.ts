@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { HTMLAttributes } from 'react';
 import { Status } from '../../ManageTab/ManageTab.interface';
 
 export type CardWithListItems = {
@@ -20,11 +21,11 @@ export type CardWithListItems = {
   title: string;
 };
 
-export type Props = {
+export interface Props extends HTMLAttributes<HTMLDivElement> {
   card: CardWithListItems;
   isActive: boolean;
   isSelected: boolean;
   tierStatus: Status;
   onSave: (updatedTier: string) => void;
-  onSelect: (cardId: string) => void;
-};
+  onCardSelect: (cardId: string) => void;
+}

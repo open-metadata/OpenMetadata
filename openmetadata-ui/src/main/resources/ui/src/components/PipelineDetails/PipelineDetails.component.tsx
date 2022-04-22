@@ -601,6 +601,7 @@ const PipelineDetails = ({
                   entityName={pipelineDetails.name}
                   entityType={EntityType.PIPELINE}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.PIPELINE}
                   onSave={onSettingsUpdate}
                 />
               </div>

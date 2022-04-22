@@ -1000,6 +1000,7 @@ const ServicePage: FunctionComponent = () => {
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''
                       )}
+                      manageSectionType={serviceCategory.slice(0, -1)}
                       onSave={handleUpdateOwner}
                     />
                   </div>

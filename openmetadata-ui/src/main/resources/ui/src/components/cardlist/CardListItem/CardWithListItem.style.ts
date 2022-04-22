@@ -12,15 +12,15 @@
  */
 
 export const cardStyle = {
-  base: 'tw-flex tw-flex-col tw-rounded-md tw-border tw-mb-4',
-  default: 'tw-border-main',
-  active: 'tw-border-primary-lite',
+  base: 'tw-flex tw-flex-col tw-border tw-bg-white',
+  default: 'tw-border-main tw-border-b-0',
+  active: 'tw-border-primary',
   selected: 'tw-border-primary',
   header: {
     base: 'tw-flex tw-px-5 tw-py-3 tw-cursor-pointer tw-justify-between tw-items-center',
-    default: 'tw-bg-badge',
-    active: 'tw-bg-primary-lite tw-rounded-t-md',
-    selected: 'tw-bg-primary tw-rounded-t-md tw-text-white',
+    default: '',
+    active: 'tw-bg-primary-lite tw-border-b tw-border-primary',
+    selected: 'tw-bg-primary tw-text-white',
     title: 'tw-text-base tw-mb-0',
     description: 'tw-font-medium tw-pr-2',
   },

@@ -670,6 +670,7 @@ const DashboardDetails = ({
                   entityName={dashboardDetails.name}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.DASHBOARD}
                   onSave={onSettingsUpdate}
                 />
               </div>
