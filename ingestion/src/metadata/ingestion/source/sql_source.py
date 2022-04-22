@@ -525,6 +525,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
+
+                try:
+                    if self.source_config.enableDataProfiler:
+                        profile = self.run_profiler(table=table, schema=schema)
+                        table.tableProfile = [profile] if profile else None
+                # Catch any errors during the profile runner and continue
+                except Exception as err:
+                    logger.error(err)
+
                 # table.dataModel = self._get_data_model(schema, view_name)
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
