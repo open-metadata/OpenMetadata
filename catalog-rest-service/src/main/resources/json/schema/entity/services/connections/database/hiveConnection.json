@@ -55,7 +55,7 @@
     },
     "authOptions": {
       "title": "URL Authentication Options",
-      "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy. Example: auth=CUSTOM.",
+      "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
       "type": "string"
     },
     "connectionOptions": {
