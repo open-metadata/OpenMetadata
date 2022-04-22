@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -26,15 +25,12 @@ import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
 import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import ToggleSwitchV1 from '../common/toggle-switch/ToggleSwitchV1';
-import DropDownList from '../dropdown/DropDownList';
+import OwnerWidget from '../common/OwnerWidget/OwnerWidget';
 import Loader from '../Loader/Loader';
 import { ManageProps, Status } from './ManageTab.interface';
 
@@ -53,6 +49,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   allowSoftDelete,
   isRecursiveDelete,
   deletEntityMessage,
+  manageSectionType,
   handleIsJoinable,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
@@ -71,10 +68,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
-  };
-
-  const getOwnerGroup = () => {
-    return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
   };
 
   const setInitialOwnerLoadingState = () => {
@@ -208,29 +201,13 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     }
   };
 
-  const getJoinableWidget = () => {
-    const isActionAllowed =
+  const isJoinableActionAllowed = () => {
+    return (
       isAdminUser ||
       isAuthDisabled ||
       userPermissions[Operation.UpdateTeam] ||
-      !hasEditAccess;
-
-    const joinableSwitch =
-      isActionAllowed && !isUndefined(teamJoinable) ? (
-        <div className="tw-flex">
-          <label htmlFor="join-team">Open to join</label>
-          <ToggleSwitchV1
-            checked={teamJoinable}
-            handleCheck={() => {
-              handleIsJoinable?.(!teamJoinable);
-            }}
-          />
-        </div>
-      ) : null;
-
-    return !isUndefined(isJoinable) ? (
-      <div className="tw-mt-3 tw-mb-1">{joinableSwitch}</div>
-    ) : null;
+      !hasEditAccess
+    );
   };
 
   const ownerName = getOwnerById();
@@ -267,23 +244,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       .finally(() => {
         setIsLoadingTierData(false);
       });
-  };
-
-  const getOwnerUpdateLoader = () => {
-    return (
-      <span className="tw-ml-4">
-        {statusOwner === 'waiting' ? (
-          <Loader
-            className="tw-inline-block"
-            size="small"
-            style={{ marginBottom: '-4px' }}
-            type="default"
-          />
-        ) : statusOwner === 'success' ? (
-          <FontAwesomeIcon icon="check" />
-        ) : null}
-      </span>
-    );
   };
 
   useEffect(() => {
@@ -331,73 +291,30 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
+      <p className="tw-text-base tw-font-medium">
+        Manage {manageSectionType ? manageSectionType : 'Section'}
+      </p>
       <div
         className={classNames('tw-mt-2 tw-pb-4', {
           'tw-border-b tw-border-separator tw-mb-4': !hideTier,
         })}>
-        <div>
-          <span className="tw-mr-2">Owner:</span>
-          <span className="tw-relative">
-            <NonAdminAction
-              html={
-                <Fragment>
-                  <p>You do not have permissions to update the owner.</p>
-                </Fragment>
-              }
-              isOwner={hasEditAccess}
-              permission={Operation.UpdateOwner}
-              position="left">
-              <Button
-                className={classNames('tw-underline', {
-                  'tw-opacity-40':
-                    !userPermissions[Operation.UpdateOwner] &&
-                    !isAuthDisabled &&
-                    !hasEditAccess,
-                })}
-                data-testid="owner-dropdown"
-                disabled={
-                  !userPermissions[Operation.UpdateOwner] &&
-                  !isAuthDisabled &&
-                  !hasEditAccess
-                }
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => setListVisible((visible) => !visible)}>
-                {ownerName ? (
-                  <span
-                    className={classNames('tw-truncate', {
-                      'tw-w-52': ownerName.length > 32,
-                    })}
-                    title={ownerName}>
-                    {ownerName}
-                  </span>
-                ) : (
-                  'Select Owner'
-                )}
-                <SVGIcons
-                  alt="edit"
-                  className="tw-ml-1"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </Button>
-            </NonAdminAction>
-            {listVisible && (
-              <DropDownList
-                showSearchBar
-                dropDownList={listOwners}
-                groupType="tab"
-                listGroups={getOwnerGroup()}
-                value={owner}
-                onSelect={handleOwnerSelection}
-              />
-            )}
-            {getOwnerUpdateLoader()}
-          </span>
-        </div>
-        {getJoinableWidget()}
+        <OwnerWidget
+          allowTeamOwner={allowTeamOwner}
+          handleIsJoinable={handleIsJoinable}
+          handleOwnerSelection={handleOwnerSelection}
+          handleSelectOwnerDropdown={() =>
+            setListVisible((visible) => !visible)
+          }
+          hasEditAccess={hasEditAccess}
+          isAuthDisabled={isAuthDisabled}
+          isJoinableActionAllowed={isJoinableActionAllowed()}
+          listOwners={listOwners}
+          listVisible={listVisible}
+          owner={owner}
+          ownerName={ownerName}
+          statusOwner={statusOwner}
+          teamJoinable={teamJoinable}
+        />
       </div>
       {getTierCards()}
       {getDeleteEntityWidget()}

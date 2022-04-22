@@ -16,6 +16,7 @@ import { TableDetail } from 'Models';
 export interface ManageProps {
   currentTier?: string;
   currentUser?: string;
+  manageSectionType?: string;
   hideTier?: boolean;
   isJoinable?: boolean;
   allowSoftDelete?: boolean;
