@@ -131,7 +131,11 @@ const TeamDetails = ({
     {
       name: 'Manage',
       isProtected: false,
-      isHidden: isOwner() || userPermissions[Operation.UpdateOwner],
+      isHidden: !(
+        hasAccess ||
+        isOwner() ||
+        userPermissions[Operation.UpdateOwner]
+      ),
       position: 4,
     },
   ];
