@@ -49,9 +49,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "endPointURL",
-    "awsRegion",
-    "awsAccessKeyId",
-    "awsSecretAccessKey"
+    "awsConfig"
   ]
 }
