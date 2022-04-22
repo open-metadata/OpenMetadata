@@ -16,6 +16,7 @@ package org.openmetadata.catalog.events;
 import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
@@ -40,7 +42,6 @@ import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
@@ -54,6 +55,8 @@ public class ChangeEventHandler implements EventHandler {
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     String method = requestContext.getMethod();
+    SecurityContext securityContext = requestContext.getSecurityContext();
+    String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent == null) {
@@ -76,10 +79,15 @@ public class ChangeEventHandler implements EventHandler {
       // Add a new thread to the entity for every change event
       // for the event to appear in activity feeds
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
-        for (var thread : CommonUtil.listOrEmpty(getThreads(responseContext))) {
+        for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
           // Don't create a thread if there is no message
           if (!thread.getMessage().isEmpty()) {
             Object entity = responseContext.getEntity();
+            // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
+            if (entity instanceof ChangeEvent) {
+              ChangeEvent change = (ChangeEvent) entity;
+              entity = change.getEntity();
+            }
             var entityInterface = Entity.getEntityInterface(entity);
             EntityReference entityReference = Entity.getEntityReference(entity);
             EntityReference owner;
@@ -194,7 +202,7 @@ public class ChangeEventHandler implements EventHandler {
         .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
-  private List<Thread> getThreads(ContainerResponseContext responseContext) {
+  private List<Thread> getThreads(ContainerResponseContext responseContext, String loggedInUserName) {
     Object entity = responseContext.getEntity();
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
@@ -202,6 +210,17 @@ public class ChangeEventHandler implements EventHandler {
       return null; // Response has no entity to produce change event from
     }
 
+    // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
+    // Get the actual entity from ChangeEvent in those cases.
+    if (entity instanceof ChangeEvent) {
+      ChangeEvent changeEvent = (ChangeEvent) entity;
+      Object realEntity = changeEvent.getEntity();
+      if (realEntity != null) {
+        return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
+      } else {
+        return null; // Cannot create a thread without entity
+      }
+    }
     var entityInterface = Entity.getEntityInterface(entity);
 
     if (entityInterface != null && RestUtil.ENTITY_DELETED.equals(changeType)) {
@@ -229,10 +248,10 @@ public class ChangeEventHandler implements EventHandler {
       return null;
     }
 
-    return getThreads(entity, entityInterface.getChangeDescription());
+    return getThreads(entity, entityInterface.getChangeDescription(), loggedInUserName);
   }
 
-  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription) {
+  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription, String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
     var entityInterface = Entity.getEntityInterface(entity);
 
@@ -240,18 +259,21 @@ public class ChangeEventHandler implements EventHandler {
 
     // Create an automated thread
     for (var link : messages.keySet()) {
-      threads.add(
-          new Thread()
-              .withId(UUID.randomUUID())
-              .withThreadTs(System.currentTimeMillis())
-              .withCreatedBy(entityInterface.getUpdatedBy())
-              .withAbout(link.getLinkString())
-              .withUpdatedBy(entityInterface.getUpdatedBy())
-              .withUpdatedAt(System.currentTimeMillis())
-              .withMessage(messages.get(link)));
+      threads.add(getThread(link.getLinkString(), messages.get(link), loggedInUserName));
     }
 
     return threads;
+  }
+
+  private Thread getThread(String linkString, String message, String loggedInUserName) {
+    return new Thread()
+        .withId(UUID.randomUUID())
+        .withThreadTs(System.currentTimeMillis())
+        .withCreatedBy(loggedInUserName)
+        .withAbout(linkString)
+        .withUpdatedBy(loggedInUserName)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withMessage(message);
   }
 
   public void close() {

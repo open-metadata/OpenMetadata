@@ -452,6 +452,7 @@ public abstract class EntityRepository<T> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityType)
@@ -540,6 +541,7 @@ public abstract class EntityRepository<T> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())

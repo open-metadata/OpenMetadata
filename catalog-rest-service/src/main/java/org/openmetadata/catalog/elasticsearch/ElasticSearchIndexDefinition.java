@@ -458,13 +458,15 @@ class TopicESIndex extends ElasticSearchIndex {
             .fqdn(topic.getFullyQualifiedName())
             .lastUpdatedTimestamp(updatedTimestamp)
             .suggest(suggest)
-            .service(topic.getService().getName())
-            .serviceType(topic.getServiceType().toString())
             .serviceCategory("messagingService")
             .entityType("topic")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (topic.getService() != null) {
+      topicESIndexBuilder.service(topic.getService().getName());
+      topicESIndexBuilder.serviceType(topic.getServiceType().toString());
+    }
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
           topic.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
@@ -544,12 +546,14 @@ class DashboardESIndex extends ElasticSearchIndex {
             .chartDescriptions(chartDescriptions)
             .entityType("dashboard")
             .suggest(suggest)
-            .service(dashboard.getService().getName())
-            .serviceType(dashboard.getServiceType().toString())
             .serviceCategory("dashboardService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (dashboard.getService() != null) {
+      dashboardESIndexBuilder.service(dashboard.getService().getName());
+      dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
+    }
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder
           .weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
@@ -622,12 +626,14 @@ class PipelineESIndex extends ElasticSearchIndex {
             .taskDescriptions(taskDescriptions)
             .entityType("pipeline")
             .suggest(suggest)
-            .service(pipeline.getService().getName())
-            .serviceType(pipeline.getServiceType().toString())
             .serviceCategory("pipelineService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (pipeline.getService() != null) {
+      pipelineESIndexBuilder.service(pipeline.getService().getName());
+      pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
+    }
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(
           pipeline.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));

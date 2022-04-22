@@ -166,13 +166,20 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+    List<EntityReference> entityReferences = new ArrayList<>();
     if (list != null) {
       for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
-        EntityUtil.copy(ref2, ref);
+        try {
+          EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+          entityReferences.add(ref2);
+        } catch (EntityNotFoundException exception) {
+          // Cannot populate reference if entity is not found
+          // ignore the exception and continue
+          LOG.debug("Error while populating Entity Reference", exception);
+        }
       }
     }
-    return list;
+    return entityReferences;
   }
 
   public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
