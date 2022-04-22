@@ -7,7 +7,8 @@ Once the `client id` and `client secret` are generated, add the `client id` as t
 ```
 authenticationConfiguration:
   provider: "azure"
-  publicKey: "https://login.microsoftonline.com/common/discovery/keys"
+  publicKeyUrls: 
+    - "https://login.microsoftonline.com/common/discovery/keys"
   authority: "https://login.microsoftonline.com/{Tenant ID}"
   clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"
