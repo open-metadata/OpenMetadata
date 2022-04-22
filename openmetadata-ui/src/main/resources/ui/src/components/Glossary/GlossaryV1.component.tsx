@@ -29,7 +29,6 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
-import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -261,26 +260,8 @@ const GlossaryV1 = ({
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => {
-                setShowActions((show) => !show);
-              }}>
-              Actions{' '}
-              {showActions ? (
-                <DropdownIcon
-                  style={{
-                    transform: 'rotate(180deg)',
-                    marginTop: '2px',
-                    color: '#fff',
-                  }}
-                />
-              ) : (
-                <DropdownIcon
-                  style={{
-                    marginTop: '2px',
-                    color: '#fff',
-                  }}
-                />
-              )}
+              onClick={handleAddGlossaryTermClick}>
+              Add term
             </Button>
           </NonAdminAction>
           {showActions && (

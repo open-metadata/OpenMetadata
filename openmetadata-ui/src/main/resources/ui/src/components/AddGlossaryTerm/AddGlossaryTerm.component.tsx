@@ -63,6 +63,7 @@ const AddGlossaryTerm = ({
     name: false,
     invalidName: false,
     invalidReferences: false,
+    description: false,
   });
 
   const [name, setName] = useState('');
@@ -81,6 +82,10 @@ const AddGlossaryTerm = ({
       setReviewer(glossaryData?.reviewers as FormattedUsersData[]);
     }
   }, [glossaryData]);
+
+  const getDescription = () => {
+    return markdownRef.current?.getEditorContent() || undefined;
+  };
 
   const onRelatedTermsModalCancel = () => {
     setShowRelatedTermsModal(false);
@@ -187,6 +192,7 @@ const AddGlossaryTerm = ({
       name: !name.trim(),
       invalidName: !isUrlFriendlyName(name.trim()),
       invalidReferences: !isValidReferences(refs),
+      description: !getDescription()?.trim(),
     };
     setShowErrorMsg(errMsg);
 
@@ -210,7 +216,7 @@ const AddGlossaryTerm = ({
       const data: CreateGlossaryTerm = {
         name,
         displayName: name,
-        description: markdownRef.current?.getEditorContent() || undefined,
+        description: getDescription(),
         reviewers: reviewer.map((r) => ({
           id: r.id,
           type: r.type,
@@ -323,7 +329,7 @@ const AddGlossaryTerm = ({
           <label
             className="tw-block tw-form-label tw-mb-0"
             htmlFor="description">
-            Description:
+            {requiredField('Description:')}
           </label>
           <RichTextEditor
             data-testid="description"
@@ -331,6 +337,7 @@ const AddGlossaryTerm = ({
             readonly={!allowAccess}
             ref={markdownRef}
           />
+          {showErrorMsg.description && errorMsg('Description is required.')}
         </Field>
 
         <Field>
