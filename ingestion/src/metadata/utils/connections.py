@@ -97,13 +97,13 @@ def _(connection: BigQueryConnection, verbose: bool = False):
 
 @get_connection.register
 def _(connection: DynamoDBConnection, verbose: bool = False):
-    dynomo_connection = AWSClient(connection).get_dynomo_client()
+    dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
     return dynomo_connection
 
 
 @get_connection.register
 def _(connection: GlueConnection, verbose: bool = False):
-    glue_connection = AWSClient(connection).get_glue_client()
+    glue_connection = AWSClient(connection.awsConfig).get_glue_client()
     return glue_connection
 
 
