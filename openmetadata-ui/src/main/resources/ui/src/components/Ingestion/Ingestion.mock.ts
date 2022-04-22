@@ -17,6 +17,7 @@ export const mockIngestionWorkFlow = {
       {
         id: 'c804ec51-8fcf-4040-b830-5d967c4cbf49',
         name: 'test3_metadata',
+        deployed: true,
         displayName: 'test3_metadata',
         pipelineType: 'metadata',
         owner: {

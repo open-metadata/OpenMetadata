@@ -64,6 +64,7 @@ export interface IngestionProps {
   currrentPage: number;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
+  deployIngestion: (data: IngestionPipeline) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
 }
 

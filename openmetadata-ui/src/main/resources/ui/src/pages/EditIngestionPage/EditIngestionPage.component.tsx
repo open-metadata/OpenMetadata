@@ -137,41 +137,15 @@ const EditIngestionPage = () => {
           if (res.data) {
             resolve();
           } else {
-            showErrorToast(
-              jsonData['api-error-messages']['create-ingestion-error']
-            );
-            reject();
+            throw jsonData['api-error-messages']['update-ingestion-error'];
           }
         })
         .catch((err: AxiosError) => {
-          if (err.response?.status === 409) {
-            showErrorToast(
-              err,
-              jsonData['api-error-messages']['entity-already-exist-error']
-            );
-          } else {
-            getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
-              .then((res: AxiosResponse) => {
-                if (res.data) {
-                  resolve();
-                  showErrorToast(
-                    err,
-                    jsonData['api-error-messages']['deploy-ingestion-error']
-                  );
-                } else {
-                  throw jsonData['api-error-messages'][
-                    'unexpected-server-response'
-                  ];
-                }
-              })
-              .catch(() => {
-                showErrorToast(
-                  err,
-                  jsonData['api-error-messages']['update-ingestion-error']
-                );
-                reject();
-              });
-          }
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['update-ingestion-error']
+          );
+          reject();
         });
     });
   };

@@ -52,6 +52,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   isRequiredDetailsAvailable,
   deleteIngestion,
   triggerIngestion,
+  deployIngestion,
   paging,
   pagingHandler,
   currrentPage,
@@ -61,6 +62,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const { isAuthDisabled } = useAuthContext();
   const [searchText, setSearchText] = useState('');
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
+  const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
@@ -103,6 +105,16 @@ const Ingestion: React.FC<IngestionProps> = ({
         setTimeout(() => setCurrTriggerId({ id: '', state: '' }), 1500);
       })
       .catch(() => setCurrTriggerId({ id: '', state: '' }));
+  };
+
+  const handleDeployIngestion = (id: string, ingestion: IngestionPipeline) => {
+    setCurrDeployId({ id, state: 'waiting' });
+    deployIngestion(ingestion)
+      .then(() => {
+        setCurrDeployId({ id, state: 'success' });
+        setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
+      })
+      .catch(() => setCurrDeployId({ id: '', state: '' }));
   };
 
   const handleCancelConfirmationModal = () => {
@@ -257,6 +269,48 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   };
 
+  const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
+    if (ingestion.deployed) {
+      return (
+        <button
+          className="link-text tw-mr-2"
+          data-testid="run"
+          onClick={() =>
+            handleTriggerIngestion(ingestion.id as string, ingestion.name)
+          }>
+          {currTriggerId.id === ingestion.id ? (
+            currTriggerId.state === 'success' ? (
+              <FontAwesomeIcon icon="check" />
+            ) : (
+              <Loader size="small" type="default" />
+            )
+          ) : (
+            'Run'
+          )}
+        </button>
+      );
+    } else {
+      return (
+        <button
+          className="link-text tw-mr-2"
+          data-testid="deploy"
+          onClick={() =>
+            handleDeployIngestion(ingestion.id as string, ingestion)
+          }>
+          {currDeployId.id === ingestion.id ? (
+            currDeployId.state === 'success' ? (
+              <FontAwesomeIcon icon="check" />
+            ) : (
+              <Loader size="small" type="default" />
+            )
+          ) : (
+            'Deploy'
+          )}
+        </button>
+      );
+    }
+  };
+
   const getIngestionTab = () => {
     return (
       <div
@@ -296,7 +350,6 @@ const Ingestion: React.FC<IngestionProps> = ({
                   <th className="tableHead-cell">Type</th>
                   <th className="tableHead-cell">Schedule</th>
                   <th className="tableHead-cell">Recent Runs</th>
-                  <th className="tableHead-cell">Airflow DAG</th>
                   <th className="tableHead-cell">Actions</th>
                 </tr>
               </thead>
@@ -308,7 +361,30 @@ const Ingestion: React.FC<IngestionProps> = ({
                       !isEven(index + 1) ? 'odd-row' : null
                     )}
                     key={index}>
-                    <td className="tableBody-cell">{ingestion.name}</td>
+                    <td className="tableBody-cell">
+                      {airflowEndpoint ? (
+                        <NonAdminAction
+                          position="bottom"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <a
+                            className="link-text tw-mr-2"
+                            data-testid="airflow-tree-view"
+                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
+                            rel="noopener noreferrer"
+                            target="_blank">
+                            {ingestion.name}
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle tw-ml-1"
+                              icon={Icons.EXTERNAL_LINK}
+                              width="12px"
+                            />
+                          </a>
+                        </NonAdminAction>
+                      ) : (
+                        ingestion.name
+                      )}
+                    </td>
                     <td className="tableBody-cell">{ingestion.pipelineType}</td>
                     <td className="tableBody-cell">
                       {ingestion.airflowConfig?.scheduleInterval ? (
@@ -339,53 +415,11 @@ const Ingestion: React.FC<IngestionProps> = ({
                       <div className="tw-flex">{getStatuses(ingestion)}</div>
                     </td>
                     <td className="tableBody-cell">
-                      {airflowEndpoint ? (
-                        <NonAdminAction
-                          position="bottom"
-                          title={TITLE_FOR_NON_ADMIN_ACTION}>
-                          <a
-                            className="link-text tw-mr-2"
-                            data-testid="airflow-tree-view"
-                            href={`${airflowEndpoint}/tree?dag_id=${ingestion.name}`}
-                            rel="noopener noreferrer"
-                            target="_blank">
-                            View
-                            <SVGIcons
-                              alt="external-link"
-                              className="tw-align-middle tw-ml-1"
-                              icon={Icons.EXTERNAL_LINK}
-                              width="12px"
-                            />
-                          </a>
-                        </NonAdminAction>
-                      ) : (
-                        <span className="tw-text-grey-muted">No endpoint</span>
-                      )}
-                    </td>
-                    <td className="tableBody-cell">
                       <NonAdminAction
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <div className="tw-flex">
-                          <button
-                            className="link-text tw-mr-2"
-                            data-testid="run"
-                            onClick={() =>
-                              handleTriggerIngestion(
-                                ingestion.id as string,
-                                ingestion.name
-                              )
-                            }>
-                            {currTriggerId.id === ingestion.id ? (
-                              currTriggerId.state === 'success' ? (
-                                <FontAwesomeIcon icon="check" />
-                              ) : (
-                                <Loader size="small" type="default" />
-                              )
-                            ) : (
-                              'Run'
-                            )}
-                          </button>
+                          {getTriggerDeployButton(ingestion)}
                           <button
                             className="link-text tw-mr-2"
                             data-testid="edit"

@@ -45,6 +45,9 @@ const mockPaging = {
 
 const mockPaginghandler = jest.fn();
 const mockDeleteIngestion = jest.fn();
+const mockDeployIngestion = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve());
 const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
@@ -85,6 +88,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -125,6 +129,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -154,13 +159,12 @@ describe('Test Ingestion page', () => {
 
     expect(ingestionTable).toBeInTheDocument();
     expect(tableHeaderContainer).toBeInTheDocument();
-    expect(tableHeaders.length).toBe(6);
+    expect(tableHeaders.length).toBe(5);
     expect(tableHeaders).toStrictEqual([
       'Name',
       'Type',
       'Schedule',
       'Recent Runs',
-      'Airflow DAG',
       'Actions',
     ]);
     expect(runButton).toBeInTheDocument();
@@ -180,6 +184,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -214,6 +219,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -250,6 +256,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -299,6 +306,7 @@ describe('Test Ingestion page', () => {
         airflowEndpoint="http://localhost"
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
