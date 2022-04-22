@@ -64,7 +64,11 @@ from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import store_gcs_credentials
@@ -243,8 +247,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config
         )
-
-        self.engine = get_engine(self.service_connection)
+        self.engine = get_connection(self.service_connection)
         self.test_connection()
 
         self._session = None  # We will instantiate this just if needed

@@ -41,7 +41,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
 from metadata.utils.filters import filter_by_fqn
 
 logger = logger()
@@ -65,7 +69,7 @@ class ProfilerWorkflow:
 
         # Prepare the connection to the source service
         # We don't need the whole Source class, as it is the OM Server
-        engine = get_engine(self.config.source.serviceConnection.__root__.config)
+        engine = get_connection(self.config.source.serviceConnection.__root__.config)
         test_connection(engine)
 
         # Init and type the source config

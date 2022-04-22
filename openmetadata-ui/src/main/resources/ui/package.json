@@ -43,6 +43,7 @@
     "draft-js": "^0.11.7",
     "draftjs-md-converter": "^1.5.2",
     "fast-json-patch": "^3.0.0-1",
+    "fs-extra": "^10.1.0",
     "html-react-parser": "^1.2.6",
     "https-browserify": "^1.0.0",
     "ieee754": "^1.2.1",
@@ -103,11 +104,12 @@
     "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx}\"",
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx}' --fix",
     "pretty": "prettier . --config './.prettierrc' --write",
-    "build-check": "yarn run lint",
+    "build-check": "yarn run lint && yarn run parse-conn-schema",
     "build-test": "yarn run test",
     "commit-check": "yarn run pretty && yarn run build-check && yarn run build",
     "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && yarn run lint:fix",
-    "parse-conn-schema": "node parseConnectionSchema && yarn pretty",
+    "pretty-conn-schema": "prettier --config './.prettierrc' --write \"src/jsons/connectionSchemas/**/*.json\"",
+    "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp && yarn run pretty-conn-schema",
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4"
   },
   "browserslist": {

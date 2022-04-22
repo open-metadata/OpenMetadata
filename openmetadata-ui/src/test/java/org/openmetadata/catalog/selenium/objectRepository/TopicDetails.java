@@ -22,6 +22,7 @@ public class TopicDetails {
   By topicName = By.linkText("orders");
   By ownerName = By.xpath("//div[@data-testid='list-item']");
   By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
 
   public String getOwnerName() {
     return webDriver.findElement(ownerName).getText();

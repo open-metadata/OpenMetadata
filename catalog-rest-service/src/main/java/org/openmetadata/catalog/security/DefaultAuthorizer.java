@@ -64,7 +64,7 @@ public class DefaultAuthorizer implements Authorizer {
           user.setIsAdmin(true);
         }
         addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
+      } catch (EntityNotFoundException | IOException ex) {
         User user =
             new User()
                 .withId(UUID.randomUUID())
@@ -74,8 +74,6 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateUser(user);
-      } catch (IOException e) {
-        LOG.error("Failed to create admin user {}", adminUser, e);
       }
     }
   }
@@ -90,7 +88,7 @@ public class DefaultAuthorizer implements Authorizer {
           user.setIsBot(true);
         }
         addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
+      } catch (EntityNotFoundException | IOException ex) {
         User user =
             new User()
                 .withId(UUID.randomUUID())
@@ -100,8 +98,6 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateUser(user);
-      } catch (IOException e) {
-        LOG.error("Failed to create admin user {}", botUser, e);
       }
     }
   }
@@ -251,7 +247,7 @@ public class DefaultAuthorizer implements Authorizer {
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added user entry: {}", addedUser);
-    } catch (IOException exception) {
+    } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);

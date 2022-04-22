@@ -27,7 +27,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.engines import get_engine, test_connection
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
@@ -43,7 +43,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
             start_time=start, end_time=end
         )
         self.report = SQLSourceStatus()
-        self.engine = get_engine(self.connection)
+        self.engine = get_connection(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
