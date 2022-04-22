@@ -25,8 +25,8 @@ from metadata.generated.schema.type import basic
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 
 
-def ometa_logger():
-    return logging.getLogger("OMetaAPI")
+def ometa_logger(name: str = "OMetaAPI"):
+    return logging.getLogger(name)
 
 
 def format_name(name: str) -> str:
