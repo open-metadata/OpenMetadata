@@ -387,7 +387,7 @@ li.ProseMirror-selectednode:after {
   height: 32px;
   padding: 0;
   border-radius: 3px;
-  margin: 9px 5px;
+  margin: 10px 5px;
   border: 1px solid #f7f9fc;
   border-bottom: none;
 }
