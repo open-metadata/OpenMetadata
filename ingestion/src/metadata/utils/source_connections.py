@@ -14,6 +14,7 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
 from requests import Session
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
@@ -84,6 +85,8 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
         url += (
             f":{quote_plus(connection.password.get_secret_value())}"
             if connection
@@ -123,8 +126,8 @@ def get_connection_url(connection):
 @get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
-@get_connection_url.register(VerticaConnection)
 @get_connection_url.register(Db2Connection)
+@get_connection_url.register(VerticaConnection)
 def _(connection):
     return get_connection_url_common(connection)
 
