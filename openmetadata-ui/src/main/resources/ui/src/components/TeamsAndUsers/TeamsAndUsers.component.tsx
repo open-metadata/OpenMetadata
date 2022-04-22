@@ -28,7 +28,6 @@ const TeamsAndUsers = ({
   activeUserTab,
   userSearchTerm,
   selectedUserList,
-  updateUser,
   handleUserSearchTerm,
   handleDeleteUser,
   handleJoinTeamClick,
@@ -154,7 +153,6 @@ const TeamsAndUsers = ({
             handleDeleteUser={handleDeleteUser}
             handleUserSearchTerm={handleUserSearchTerm}
             selectedUserList={selectedUserList}
-            updateUser={updateUser}
             userSearchTerm={userSearchTerm}
           />
         ) : (

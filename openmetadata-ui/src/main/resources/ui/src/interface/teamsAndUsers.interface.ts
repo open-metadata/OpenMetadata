@@ -44,7 +44,6 @@ export interface TeamsAndUsersProps {
   isDescriptionEditable: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
-  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
   onNewTeamDataChange: (

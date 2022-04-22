@@ -166,34 +166,6 @@ const TeamsAndUsersPage = () => {
     history.push(ROUTES.CREATE_USER);
   };
 
-  const updateUser = (id: string, data: Operation[], updatedUser: User) => {
-    setIsLoading(true);
-    updateUserDetail(id, data)
-      .then((res) => {
-        if (res.data) {
-          const updatedData = (userList || []).map((user) => {
-            if (user.id === id) {
-              return updatedUser;
-            }
-
-            return user;
-          });
-          setAllTabList(updatedData, activeUserTab);
-          setUserList(updatedData);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-user-error']
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
   const handleDeleteUser = (id: string) => {
     setIsLoading(true);
     deleteUser(id)
@@ -643,7 +615,6 @@ const TeamsAndUsersPage = () => {
           teamUsersSearchText={teamUsersSearchText}
           teams={teams}
           updateTeamHandler={updateTeamHandler}
-          updateUser={updateUser}
           userSearchTerm={userSearchTerm}
           users={users}
           onDescriptionUpdate={onDescriptionUpdate}

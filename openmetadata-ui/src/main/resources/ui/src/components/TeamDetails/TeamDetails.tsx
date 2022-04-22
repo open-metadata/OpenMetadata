@@ -17,10 +17,11 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, orderBy } from 'lodash';
 import { ExtraInfo, TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
+  getUserPath,
   PAGE_SIZE_MEDIUM,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -48,6 +49,7 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
+import UserDataCard from '../UserDataCard/UserDataCard';
 import Form from './Form';
 
 const TeamDetails = ({
@@ -76,6 +78,7 @@ const TeamDetails = ({
   handleAddUser,
   removeUserFromTeam,
 }: TeamDetailsProp) => {
+  const history = useHistory();
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -218,6 +221,14 @@ const TeamDetails = ({
     return Promise.reject();
   };
 
+  /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
   useEffect(() => {
     if (currentTeam) {
       setHeading(currentTeam.displayName);
@@ -313,20 +324,22 @@ const TeamDetails = ({
               data-testid="user-card-container">
               {sortedUser.map((user, index) => {
                 const User = {
-                  displayName: user.displayName || user.name,
-                  fqn: user.name || '',
+                  description: user.displayName || user.name,
+                  email: user.name,
                   type: 'user',
                   id: user.id,
                   name: user.name,
+                  isActiveUser: !user.deleted,
+                  profilePhoto: user.profile?.images?.image || '',
                 };
 
                 return (
-                  <UserCard
-                    isActionVisible
-                    isIconVisible
+                  <UserDataCard
                     item={User}
                     key={index}
-                    onRemove={deleteUserHandler}
+                    showTeams={false}
+                    onClick={handleUserRedirection}
+                    onDelete={(id) => deleteUserHandler(id)}
                   />
                 );
               })}
