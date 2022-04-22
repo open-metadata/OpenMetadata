@@ -493,7 +493,7 @@ const TeamDetails = ({
   };
 
   return (
-    <div>
+    <div className="tw-h-full tw-flex tw-flex-col tw-flex-grow">
       {teams.length && currentTeam ? (
         <Fragment>
           <div
@@ -568,11 +568,12 @@ const TeamDetails = ({
           <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={currentTab}
+              className="tw-px-6"
               setActiveTab={(tab) => setCurrentTab(tab)}
               tabs={tabs}
             />
 
-            <div className="tw-flex-grow tw-pt-4">
+            <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
               {currentTab === 1 && getUserCards()}
 
               {currentTab === 2 && getDatasetCards()}
@@ -580,7 +581,7 @@ const TeamDetails = ({
               {currentTab === 3 && getDefaultRoles()}
 
               {currentTab === 4 && (
-                <div>
+                <div className="tw-bg-white tw-shadow-md tw-py-4 tw-flex-grow">
                   <ManageTab
                     allowDelete
                     allowSoftDelete
@@ -593,6 +594,7 @@ const TeamDetails = ({
                     entityType="team"
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
+                    manageSectionType="Team"
                     onSave={handleManageSave}
                   />
                 </div>
