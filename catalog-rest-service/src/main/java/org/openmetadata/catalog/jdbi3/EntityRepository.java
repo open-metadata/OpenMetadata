@@ -514,6 +514,8 @@ public abstract class EntityRepository<T> {
       changeType = RestUtil.ENTITY_SOFT_DELETED;
     } else {
       // Hard delete
+      daoCollection.relationshipDAO().deleteAll(id, entityType);
+      daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
       daoCollection.entityExtensionDAO().deleteAll(id);
       dao.delete(id);
       changeType = RestUtil.ENTITY_DELETED;
