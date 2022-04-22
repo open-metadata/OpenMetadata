@@ -30,44 +30,45 @@ const CardListItem: FunctionComponent<Props> = ({
   className,
 }: Props) => {
   const getCardBodyStyle = () => {
-    if (isSelected) {
-      if (isActive) {
-        return cardStyle.active;
-      } else {
-        return cardStyle.selected;
-      }
-    } else {
-      return cardStyle.default;
-    }
+    const activeStyle = isActive ? cardStyle.active : cardStyle.default;
+
+    return isSelected ? cardStyle.selected : activeStyle;
   };
 
   const getCardHeaderStyle = () => {
-    return isSelected
-      ? cardStyle.header.selected
-      : isActive
+    const activeHeaderStyle = isActive
       ? cardStyle.header.active
       : cardStyle.header.default;
+
+    return isSelected ? cardStyle.header.selected : activeHeaderStyle;
   };
 
   const getTierSelectButton = (tier: string) => {
-    return tierStatus === 'waiting' ? (
-      <Loader
-        className="tw-inline-block"
-        size="small"
-        style={{ marginBottom: '-4px' }}
-        type="default"
-      />
-    ) : tierStatus === 'success' ? (
-      <FontAwesomeIcon icon="check" />
-    ) : (
-      <Button
-        data-testid="select-tier-buuton"
-        size="small"
-        theme="primary"
-        onClick={() => onSave(tier)}>
-        Select
-      </Button>
-    );
+    switch (tierStatus) {
+      case 'waiting':
+        return (
+          <Loader
+            className="tw-inline-block"
+            size="small"
+            style={{ marginBottom: '-4px' }}
+            type="default"
+          />
+        );
+
+      case 'success':
+        return <FontAwesomeIcon icon="check" />;
+
+      default:
+        return (
+          <Button
+            data-testid="select-tier-buuton"
+            size="small"
+            theme="primary"
+            onClick={() => onSave(tier)}>
+            Select
+          </Button>
+        );
+    }
   };
 
   const getCardIcon = (cardId: string) => {
