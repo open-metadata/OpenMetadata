@@ -302,7 +302,7 @@ const Users = ({
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-3">Teams</h6>
           </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{teamsElement}</div>;
+          <div className="tw-pb-4 tw-mb-4 tw-border-b">{teamsElement}</div>
         </Fragment>
       );
     } else {
@@ -398,7 +398,7 @@ const Users = ({
           <div className="tw-flex">
             <h6 className="tw-heading tw-mb-3">Roles</h6>
           </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{rolesElement}</div>;
+          <div className="tw-pb-4 tw-mb-4 tw-border-b">{rolesElement}</div>
         </Fragment>
       );
     } else {
