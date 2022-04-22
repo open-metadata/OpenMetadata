@@ -17,10 +17,11 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, orderBy } from 'lodash';
 import { ExtraInfo, TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
+  getUserPath,
   PAGE_SIZE_MEDIUM,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
@@ -45,6 +46,7 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import TabsPane from '../common/TabsPane/TabsPane';
+import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
@@ -61,6 +63,7 @@ const TeamDetails = ({
   isDescriptionEditable,
   errorNewTeamData,
   isAddingTeam,
+  isTeamMemberLoading,
   handleAddTeam,
   createNewTeam,
   onNewTeamDataChange,
@@ -76,6 +79,7 @@ const TeamDetails = ({
   handleAddUser,
   removeUserFromTeam,
 }: TeamDetailsProp) => {
+  const history = useHistory();
   const DELETE_USER_INITIAL_STATE = {
     user: undefined,
     state: false,
@@ -127,7 +131,11 @@ const TeamDetails = ({
     {
       name: 'Manage',
       isProtected: false,
-      isHidden: isOwner() || userPermissions[Operation.UpdateOwner],
+      isHidden: !(
+        hasAccess ||
+        isOwner() ||
+        userPermissions[Operation.UpdateOwner]
+      ),
       position: 4,
     },
   ];
@@ -218,6 +226,14 @@ const TeamDetails = ({
     return Promise.reject();
   };
 
+  /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
   useEffect(() => {
     if (currentTeam) {
       setHeading(currentTeam.displayName);
@@ -284,64 +300,71 @@ const TeamDetails = ({
             </div>
           )}
         </div>
-        {currentTeamUsers.length <= 0 ? (
-          <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-            <p>
-              There are no users{' '}
-              {teamUsersSearchText
-                ? `as ${teamUsersSearchText}.`
-                : `added yet.`}
-            </p>
-            {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
-              <>
-                <p>Would like to start adding some?</p>
-                <Button
-                  className="tw-h-8 tw-rounded tw-my-2"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => handleAddUser(true)}>
-                  Add new user
-                </Button>
-              </>
-            ) : null}
-          </div>
+        {isTeamMemberLoading ? (
+          <Loader />
         ) : (
-          <Fragment>
-            <div
-              className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-              data-testid="user-card-container">
-              {sortedUser.map((user, index) => {
-                const User = {
-                  displayName: user.displayName || user.name,
-                  fqn: user.name || '',
-                  type: 'user',
-                  id: user.id,
-                  name: user.name,
-                };
+          <div>
+            {currentTeamUsers.length <= 0 ? (
+              <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+                <p>
+                  There are no users{' '}
+                  {teamUsersSearchText
+                    ? `as ${teamUsersSearchText}.`
+                    : `added yet.`}
+                </p>
+                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                  <>
+                    <p>Would like to start adding some?</p>
+                    <Button
+                      className="tw-h-8 tw-rounded tw-my-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => handleAddUser(true)}>
+                      Add new user
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <Fragment>
+                <div
+                  className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+                  data-testid="user-card-container">
+                  {sortedUser.map((user, index) => {
+                    const User = {
+                      displayName: user.displayName || user.name,
+                      fqn: user.name || '',
+                      type: 'user',
+                      id: user.id,
+                      name: user.name,
+                    };
 
-                return (
-                  <UserCard
-                    isActionVisible
-                    isIconVisible
-                    item={User}
-                    key={index}
-                    onRemove={deleteUserHandler}
+                    return (
+                      <UserCard
+                        isActionVisible
+                        isIconVisible
+                        item={User}
+                        key={index}
+                        onRemove={deleteUserHandler}
+                        onTitleClick={handleUserRedirection}
+                      />
+                    );
+                  })}
+                </div>
+                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                  <NextPrevious
+                    currentPage={currentTeamUserPage}
+                    isNumberBased={Boolean(teamUsersSearchText)}
+                    pageSize={PAGE_SIZE_MEDIUM}
+                    paging={teamUserPagin}
+                    pagingHandler={teamUserPaginHandler}
+                    totalCount={teamUserPagin.total}
                   />
-                );
-              })}
-            </div>
-            {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
-              <NextPrevious
-                currentPage={currentTeamUserPage}
-                isNumberBased={Boolean(teamUsersSearchText)}
-                pageSize={PAGE_SIZE_MEDIUM}
-                paging={teamUserPagin}
-                pagingHandler={teamUserPaginHandler}
-                totalCount={teamUserPagin.total}
-              />
+                )}
+              </Fragment>
             )}
-          </Fragment>
+          </div>
         )}
       </div>
     );

@@ -18,20 +18,22 @@ import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import PageLayout from '../containers/PageLayout';
+import Loader from '../Loader/Loader';
 import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
 
 const TeamsAndUsers = ({
   users,
+  isUsersLoading,
   admins,
   bots,
   activeUserTab,
   userSearchTerm,
   selectedUserList,
-  updateUser,
   handleUserSearchTerm,
   handleDeleteUser,
   handleJoinTeamClick,
+  isRightPannelLoading,
   hasAccess,
   isTeamVisible,
   teams,
@@ -54,6 +56,7 @@ const TeamsAndUsers = ({
   teamUserPaginHandler,
   changeCurrentTeam,
   isAddingUsers,
+  isTeamMemberLoading,
   getUniqueUserList,
   addUsersToTeam,
   handleAddUser,
@@ -145,47 +148,52 @@ const TeamsAndUsers = ({
 
   return (
     <PageLayout classes="tw-h-full tw-p-4" leftPanel={fetchLeftPanel()}>
-      <div
-        className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
-        data-testid="team-and-user-container">
-        {!isTeamVisible ? (
-          <UserDetails
-            handleAddNewUser={handleAddNewUser}
-            handleDeleteUser={handleDeleteUser}
-            handleUserSearchTerm={handleUserSearchTerm}
-            selectedUserList={selectedUserList}
-            updateUser={updateUser}
-            userSearchTerm={userSearchTerm}
-          />
-        ) : (
-          <TeamDetails
-            addUsersToTeam={addUsersToTeam}
-            createNewTeam={createNewTeam}
-            currentTeam={currentTeam}
-            currentTeamUserPage={currentTeamUserPage}
-            currentTeamUsers={currentTeamUsers}
-            descriptionHandler={descriptionHandler}
-            errorNewTeamData={errorNewTeamData}
-            getUniqueUserList={getUniqueUserList}
-            handleAddTeam={handleAddTeam}
-            handleAddUser={handleAddUser}
-            handleJoinTeamClick={handleJoinTeamClick}
-            handleTeamUsersSearchAction={handleTeamUsersSearchAction}
-            hasAccess={hasAccess}
-            isAddingTeam={isAddingTeam}
-            isAddingUsers={isAddingUsers}
-            isDescriptionEditable={isDescriptionEditable}
-            removeUserFromTeam={removeUserFromTeam}
-            teamUserPagin={teamUserPagin}
-            teamUserPaginHandler={teamUserPaginHandler}
-            teamUsersSearchText={teamUsersSearchText}
-            teams={teams}
-            updateTeamHandler={updateTeamHandler}
-            onDescriptionUpdate={onDescriptionUpdate}
-            onNewTeamDataChange={onNewTeamDataChange}
-          />
-        )}
-      </div>
+      {isRightPannelLoading ? (
+        <Loader />
+      ) : (
+        <div
+          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
+          data-testid="team-and-user-container">
+          {!isTeamVisible ? (
+            <UserDetails
+              handleAddNewUser={handleAddNewUser}
+              handleDeleteUser={handleDeleteUser}
+              handleUserSearchTerm={handleUserSearchTerm}
+              isUsersLoading={isUsersLoading}
+              selectedUserList={selectedUserList}
+              userSearchTerm={userSearchTerm}
+            />
+          ) : (
+            <TeamDetails
+              addUsersToTeam={addUsersToTeam}
+              createNewTeam={createNewTeam}
+              currentTeam={currentTeam}
+              currentTeamUserPage={currentTeamUserPage}
+              currentTeamUsers={currentTeamUsers}
+              descriptionHandler={descriptionHandler}
+              errorNewTeamData={errorNewTeamData}
+              getUniqueUserList={getUniqueUserList}
+              handleAddTeam={handleAddTeam}
+              handleAddUser={handleAddUser}
+              handleJoinTeamClick={handleJoinTeamClick}
+              handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+              hasAccess={hasAccess}
+              isAddingTeam={isAddingTeam}
+              isAddingUsers={isAddingUsers}
+              isDescriptionEditable={isDescriptionEditable}
+              isTeamMemberLoading={isTeamMemberLoading}
+              removeUserFromTeam={removeUserFromTeam}
+              teamUserPagin={teamUserPagin}
+              teamUserPaginHandler={teamUserPaginHandler}
+              teamUsersSearchText={teamUsersSearchText}
+              teams={teams}
+              updateTeamHandler={updateTeamHandler}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onNewTeamDataChange={onNewTeamDataChange}
+            />
+          )}
+        </div>
+      )}
     </PageLayout>
   );
 };

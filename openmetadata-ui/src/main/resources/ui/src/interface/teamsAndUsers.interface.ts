@@ -28,6 +28,8 @@ export type TeamDeleteType = {
 
 export interface TeamsAndUsersProps {
   hasAccess: boolean;
+  isUsersLoading: boolean;
+  isTeamMemberLoading: boolean;
   isTeamVisible: boolean;
   activeUserTab: UserType | undefined;
   activeUserTabHandler: (value: UserType | undefined) => void;
@@ -42,9 +44,9 @@ export interface TeamsAndUsersProps {
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
+  isRightPannelLoading: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
-  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
   onNewTeamDataChange: (
@@ -82,6 +84,7 @@ export interface TeamDetailsProp {
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
+  isTeamMemberLoading: boolean;
   hasAccess: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;

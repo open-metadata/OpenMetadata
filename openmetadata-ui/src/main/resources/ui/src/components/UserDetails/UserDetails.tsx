@@ -11,27 +11,28 @@
  *  limitations under the License.
  */
 
-import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import AppState from '../../AppState';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { Role } from '../../generated/entity/teams/role';
+import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import {
+  getUserPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import UserDetailsModal from '../Modals/UserDetailsModal/UserDetailsModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
 type UserDetailsProps = {
   selectedUserList: User[];
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
-  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
+  isUsersLoading: boolean;
   handleDeleteUser: (id: string) => void;
   handleAddNewUser: () => void;
 };
@@ -44,44 +45,13 @@ interface DeleteUserInfo {
 const UserDetails = ({
   selectedUserList,
   userSearchTerm,
+  isUsersLoading,
   handleDeleteUser,
   handleUserSearchTerm,
-  updateUser,
   handleAddNewUser,
 }: UserDetailsProps) => {
-  const [selectedUser, setSelectedUser] = useState<User>();
-  const [roles, setRoles] = useState<Role[]>([]);
+  const history = useHistory();
   const [deletingUser, setDeletingUser] = useState<DeleteUserInfo>();
-
-  const selectUser = (id: string) => {
-    const user = selectedUserList.find((user) => user.id === id);
-    if (user) {
-      setSelectedUser(user);
-    } else {
-      setSelectedUser(undefined);
-    }
-  };
-
-  const handleSave = (rolesData: Array<string>) => {
-    if (selectedUser) {
-      const updatedData: User = {
-        ...selectedUser,
-        isAdmin: Boolean(rolesData.find((role) => role === 'admin')),
-        roles: roles
-          .filter((role) => rolesData.includes(role.id))
-          .map((role) => ({
-            id: role.id,
-            type: 'role',
-            href: role.href,
-            displayName: role.displayName,
-          })),
-      };
-      const jsonPatch = compare(selectedUser, updatedData);
-      updateUser(selectedUser.id, jsonPatch, updatedData);
-
-      setSelectedUser(undefined);
-    }
-  };
 
   const handleDeleteUserModal = (id: string, name: string) => {
     setDeletingUser({
@@ -90,18 +60,24 @@ const UserDetails = ({
     });
   };
 
+  /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
   const onConfirmDeleteUser = (id: string) => {
     handleDeleteUser(id);
     setDeletingUser(undefined);
   };
 
-  useEffect(() => {
-    setRoles(AppState.userRoles);
-  }, [AppState.userRoles]);
-
   const getUserCards = () => {
-    return (
-      <>
+    return isUsersLoading ? (
+      <Loader />
+    ) : (
+      <div>
         {selectedUserList.length > 0 ? (
           <div
             className="tw-grid xxl:tw-grid-cols-3 lg:tw-grid-cols-2 tw-gap-4"
@@ -123,13 +99,10 @@ const UserDetails = ({
               };
 
               return (
-                <div
-                  className="tw-cursor-pointer"
-                  key={index}
-                  onClick={() => selectUser(User.id)}>
+                <div key={index}>
                   <UserDataCard
                     item={User}
-                    onClick={selectUser}
+                    onClick={handleUserRedirection}
                     onDelete={handleDeleteUserModal}
                   />
                 </div>
@@ -141,7 +114,7 @@ const UserDetails = ({
             <p>No user available</p>
           </ErrorPlaceHolder>
         )}
-      </>
+      </div>
     );
   };
 
@@ -172,16 +145,6 @@ const UserDetails = ({
         </div>
       </div>
       {getUserCards()}
-
-      {!isUndefined(selectedUser) && (
-        <UserDetailsModal
-          header="Update user"
-          roles={roles}
-          userData={selectedUser}
-          onCancel={() => setSelectedUser(undefined)}
-          onSave={handleSave}
-        />
-      )}
 
       {!isUndefined(deletingUser) && (
         <ConfirmationModal
