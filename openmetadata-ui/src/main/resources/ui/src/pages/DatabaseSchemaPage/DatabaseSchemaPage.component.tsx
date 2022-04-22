@@ -59,7 +59,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
@@ -174,7 +174,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: 'Owner',
       value:
         databaseSchema?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               databaseSchema?.owner?.displayName ||
                 databaseSchema?.owner?.name ||
                 ''

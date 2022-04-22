@@ -18,9 +18,9 @@ from openmetadata.api.response import ApiResponse
 from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
     TestServiceConnectionRequest,
 )
-from metadata.utils.engines import (
+from metadata.utils.connections import (
     SourceConnectionException,
-    get_engine,
+    get_connection,
     test_connection,
 )
 
@@ -33,15 +33,15 @@ def test_source_connection(
     :param workflow_source: Source to test
     :return: None or exception
     """
-    engine = get_engine(test_service_connection.connection.config)
+    connection = get_connection(test_service_connection.connection.config)
 
     try:
-        test_connection(engine)
+        test_connection(connection)
 
     except SourceConnectionException as err:
         return ApiResponse.error(
             status=ApiResponse.STATUS_SERVER_ERROR,
-            error=f"Connection error from {engine} - {err}",
+            error=f"Connection error from {connection} - {err}",
         )
 
-    return ApiResponse.success({"message": f"Connection with {engine} successful!"})
+    return ApiResponse.success({"message": f"Connection with {connection} successful!"})

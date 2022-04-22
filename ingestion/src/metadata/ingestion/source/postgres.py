@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.utils.engines import get_engine
+from metadata.utils.connections import get_connection
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -66,7 +66,7 @@ class PostgresSource(SQLSource):
                 try:
                     logger.info(f"Ingesting from database: {row[0]}")
                     self.service_connection.database = row[0]
-                    self.engine = get_engine(
+                    self.engine = get_connection(
                         self.config.serviceConnection.__root__.config
                     )
                     self.engine.connect()

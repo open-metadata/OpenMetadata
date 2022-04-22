@@ -14,7 +14,9 @@ Build and document all supported Engines
 """
 import logging
 from functools import singledispatch
+from typing import Union
 
+from botocore.client import ClientError
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
@@ -27,6 +29,16 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.glueConnection import (
+    GlueConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
+    SampleDataConnection,
+)
+from metadata.utils.aws_client import AWSClient, DynamoClient, GlueClient
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -40,7 +52,7 @@ class SourceConnectionException(Exception):
     """
 
 
-def create_generic_engine(connection, verbose: bool = False):
+def create_generic_connection(connection, verbose: bool = False):
     """
     Generic Engine creation from connection object
     :param connection: JSON Schema connection model
@@ -62,14 +74,16 @@ def create_generic_engine(connection, verbose: bool = False):
 
 
 @singledispatch
-def get_engine(connection, verbose: bool = False) -> Engine:
+def get_connection(
+    connection, verbose: bool = False
+) -> Union[Engine, DynamoClient, GlueClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
-    return create_generic_engine(connection, verbose)
+    return create_generic_connection(connection, verbose)
 
 
-@get_engine.register
+@get_connection.register
 def _(connection: BigQueryConnection, verbose: bool = False):
     """
     Prepare the engine and the GCS credentials
@@ -78,7 +92,19 @@ def _(connection: BigQueryConnection, verbose: bool = False):
     :return: Engine
     """
     set_google_credentials(gcs_credentials=connection.credentials)
-    return create_generic_engine(connection, verbose)
+    return create_generic_connection(connection, verbose)
+
+
+@get_connection.register
+def _(connection: DynamoDBConnection, verbose: bool = False):
+    dynomo_connection = AWSClient(connection).get_dynomo_client()
+    return dynomo_connection
+
+
+@get_connection.register
+def _(connection: GlueConnection, verbose: bool = False):
+    glue_connection = AWSClient(connection).get_glue_client()
+    return glue_connection
 
 
 def create_and_bind_session(engine: Engine) -> Session:
@@ -92,20 +118,59 @@ def create_and_bind_session(engine: Engine) -> Session:
 
 
 @timeout(seconds=120)
-def test_connection(engine: Engine) -> None:
+@singledispatch
+def test_connection(connection: Engine) -> None:
     """
     Test that we can connect to the source using the given engine
     :param engine: Engine to test
     :return: None or raise an exception if we cannot connect
     """
     try:
-        with engine.connect() as _:
+        with connection.connect() as _:
             pass
     except OperationalError as err:
         raise SourceConnectionException(
-            f"Connection error for {engine} - {err}. Check the connection details."
+            f"Connection error for {connection} - {err}. Check the connection details."
         )
     except Exception as err:
         raise SourceConnectionException(
-            f"Unknown error connecting with {engine} - {err}."
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: DynamoClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    try:
+        connection.client.tables.all()
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: GlueClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto cliet to test
+    :return: None or raise an exception if we cannot connect
+    """
+    try:
+        connection.client.list_workflows()
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
         )

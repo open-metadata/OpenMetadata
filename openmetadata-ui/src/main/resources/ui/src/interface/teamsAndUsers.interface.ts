@@ -47,16 +47,13 @@ export interface TeamsAndUsersProps {
   updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
-  handleDeleteTeam: (data: TeamDeleteType) => void;
-  deleteTeamById: (id: string) => void;
-  deletingTeam: TeamDeleteType;
   onNewTeamDataChange: (
     data: Team,
     forceSet?: boolean
   ) => {
     [key: string]: string;
   };
-  updateTeamHandler: (data: Team) => void;
+  updateTeamHandler: (data: Team) => Promise<void>;
   handleDeleteUser: (id: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
@@ -88,9 +85,6 @@ export interface TeamDetailsProp {
   hasAccess: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
-  handleDeleteTeam: (data: TeamDeleteType) => void;
-  deleteTeamById: (id: string) => void;
-  deletingTeam: TeamDeleteType;
   handleAddTeam: (value: boolean) => void;
   onNewTeamDataChange: (
     data: Team,
@@ -101,7 +95,7 @@ export interface TeamDetailsProp {
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
-  updateTeamHandler: (data: Team) => void;
+  updateTeamHandler: (data: Team) => Promise<void>;
   createNewTeam: (data: Team) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,

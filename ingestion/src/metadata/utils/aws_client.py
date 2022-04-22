@@ -9,12 +9,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from boto3 import Session
 from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
+
+
+@dataclass
+class GlueClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class DynamoClient:
+    def __init__(self, client) -> None:
+        self.client = client
 
 
 class AWSClientConfigModel(ConfigModel):
@@ -77,3 +90,9 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.resource(service_name=service_name)
+
+    def get_dynomo_client(self) -> DynamoClient:
+        return DynamoClient(self.get_resource("dynamodb"))
+
+    def get_glue_client(self) -> GlueClient:
+        return GlueClient(self.get_client("glue"))

@@ -48,7 +48,7 @@ import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -186,7 +186,7 @@ const ServicePage: FunctionComponent = () => {
       key: 'Owner',
       value:
         serviceDetails?.owner?.type === 'team'
-          ? getTeamDetailsPath(serviceDetails?.owner?.name || '')
+          ? getTeamAndUserDetailsPath(serviceDetails?.owner?.name || '')
           : serviceDetails?.owner?.name || '',
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
@@ -720,21 +720,10 @@ const ServicePage: FunctionComponent = () => {
   const getServiceSpecificData = (serviceDetails?: ServiceDataObj) => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
-        return {
-          databaseConnection: serviceDetails?.connection ?? {},
-        };
-
       case ServiceCategory.MESSAGING_SERVICES:
-        return {
-          brokers: serviceDetails?.connection?.config?.bootstrapServers,
-          schemaRegistry: serviceDetails?.connection?.config?.schemaRegistryURL,
-        };
-
       case ServiceCategory.DASHBOARD_SERVICES:
         return {
-          dashboardUrl: serviceDetails?.connection?.config?.dashboardURL,
-          username: serviceDetails?.connection?.config?.username,
-          password: serviceDetails?.connection?.config?.password,
+          connection: serviceDetails?.connection,
         };
 
       case ServiceCategory.PIPELINE_SERVICES:
@@ -763,6 +752,7 @@ const ServicePage: FunctionComponent = () => {
           setDescription(updatedHTML);
           setServiceDetails({
             ...updatedServiceDetails,
+            id,
             owner: serviceDetails?.owner,
           });
           setIsEdit(false);
