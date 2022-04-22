@@ -33,6 +33,13 @@
       "format": "uri",
       "default": "http://localhost:8081"
     },
+    "consumerConfig": {
+      "title": "Consumer Config",
+      "description": "Confluent Kafka Consumer Config",
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

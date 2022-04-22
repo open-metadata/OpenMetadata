@@ -85,12 +85,12 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.schema_registry_client = SchemaRegistryClient(
             {"url": self.service_connection.schemaRegistryURL}
         )
-        self.admin_client = AdminClient(
-            {
-                "bootstrap.servers": self.service_connection.bootstrapServers,
-                "session.timeout.ms": 6000,
-            }
-        )
+        admin_client_config = self.service_connection.consumerConfig
+        admin_client_config[
+            "bootstrap.servers"
+        ] = self.service_connection.bootstrapServers
+        admin_client_config["session.timeout.ms"] = 6000
+        self.admin_client = AdminClient(admin_client_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
