@@ -122,11 +122,20 @@ const AddIngestion = ({
       INITIAL_FILTER_PATTERN
   );
 
-  const [queryLogDuration, setQueryLogDuration] = useState<number>(1);
-  const [stageFileLocation, setStageFileLocation] =
-    useState<string>('/tmp/query_log');
-  const [resultLimit, setResultLimit] = useState<number>(100);
-  const [usageIngestionType] = useState<ConfigType>(ConfigType.DatabaseUsage);
+  const [queryLogDuration, setQueryLogDuration] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration || 1
+  );
+  const [stageFileLocation, setStageFileLocation] = useState<string>(
+    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ||
+      '/tmp/query_log'
+  );
+  const [resultLimit, setResultLimit] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit || 100
+  );
+  const [usageIngestionType] = useState<ConfigType>(
+    (data?.source.sourceConfig.config as ConfigClass)?.type ||
+      ConfigType.DatabaseUsage
+  );
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
@@ -278,13 +287,14 @@ const AddIngestion = ({
       },
     };
 
-    onAddIngestionSave(ingestionDetails).then(() => {
-      if (showSuccessScreen) {
-        setActiveIngestionStep(3);
-      } else {
-        onSuccessSave?.();
-      }
-    });
+    onAddIngestionSave &&
+      onAddIngestionSave(ingestionDetails).then(() => {
+        if (showSuccessScreen) {
+          setActiveIngestionStep(3);
+        } else {
+          onSuccessSave?.();
+        }
+      });
   };
 
   const updateIngestion = () => {
@@ -302,16 +312,29 @@ const AddIngestion = ({
           sourceConfig: {
             config: {
               ...(data.source.sourceConfig.config as ConfigClass),
-              enableDataProfiler: enableDataProfiler,
-              generateSampleData: ingestSampleData,
-              includeViews: includeView,
-              schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-              tableFilterPattern: getFilterPatternData(tableFilterPattern),
-              chartFilterPattern: getFilterPatternData(chartFilterPattern),
-              dashboardFilterPattern: getFilterPatternData(
-                dashboardFilterPattern
-              ),
-              topicFilterPattern: getFilterPatternData(topicFilterPattern),
+              ...(pipelineType === PipelineType.Usage
+                ? {
+                    queryLogDuration,
+                    resultLimit,
+                    stageFileLocation,
+                    type: usageIngestionType,
+                  }
+                : {
+                    enableDataProfiler: enableDataProfiler,
+                    generateSampleData: ingestSampleData,
+                    includeViews: includeView,
+                    schemaFilterPattern:
+                      getFilterPatternData(schemaFilterPattern),
+                    tableFilterPattern:
+                      getFilterPatternData(tableFilterPattern),
+                    chartFilterPattern:
+                      getFilterPatternData(chartFilterPattern),
+                    dashboardFilterPattern: getFilterPatternData(
+                      dashboardFilterPattern
+                    ),
+                    topicFilterPattern:
+                      getFilterPatternData(topicFilterPattern),
+                  }),
             },
           },
         },

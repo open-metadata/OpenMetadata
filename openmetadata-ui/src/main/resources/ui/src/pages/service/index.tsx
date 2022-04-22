@@ -13,7 +13,6 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { isNil, isUndefined } from 'lodash';
 import { ExtraInfo, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
@@ -22,12 +21,9 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
-  addIngestionPipeline,
   deleteIngestionPipelineById,
-  getIngestionPipelineByFqn,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-  updateIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
@@ -54,7 +50,6 @@ import {
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -301,80 +296,6 @@ const ServicePage: FunctionComponent = () => {
           reject();
         });
     }).finally(() => setIsloading(false));
-  };
-
-  const updateIngestion = (
-    data: IngestionPipeline,
-    oldData: IngestionPipeline,
-    id: string,
-    displayName: string,
-    triggerIngestion?: boolean
-  ): Promise<void> => {
-    const jsonPatch = compare(oldData, data);
-
-    return new Promise<void>((resolve, reject) => {
-      updateIngestionPipeline(id, jsonPatch)
-        .then(() => {
-          resolve();
-          getAllIngestionWorkflows();
-          if (triggerIngestion) {
-            triggerIngestionById(id, displayName).catch((error: AxiosError) => {
-              showErrorToast(
-                error,
-                `${jsonData['api-error-messages']['triggering-ingestion-error']} ${displayName}`
-              );
-            });
-          }
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-ingestion-error']}`
-          );
-          reject();
-        });
-    });
-  };
-
-  const onAddIngestionSave = (data: CreateIngestionPipeline) => {
-    return new Promise<void>((resolve, reject) => {
-      return addIngestionPipeline(data)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            getAllIngestionWorkflows();
-            resolve();
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['create-ingestion-error']
-            );
-            reject();
-          }
-        })
-        .catch((error: AxiosError) => {
-          getIngestionPipelineByFqn(`${serviceDetails?.name}.${data.name}`)
-            .then((res: AxiosResponse) => {
-              if (res.data) {
-                resolve();
-                getAllIngestionWorkflows();
-                showErrorToast(
-                  error,
-                  jsonData['api-error-messages']['deploy-ingestion-error']
-                );
-              } else {
-                throw jsonData['api-error-messages'][
-                  'unexpected-server-response'
-                ];
-              }
-            })
-            .catch(() => {
-              showErrorToast(
-                error,
-                jsonData['api-error-messages']['create-ingestion-error']
-              );
-              reject();
-            });
-        });
-    });
   };
 
   const handleConfigUpdate = (
@@ -961,7 +882,6 @@ const ServicePage: FunctionComponent = () => {
                     <div data-testid="ingestion-container">
                       <Ingestion
                         isRequiredDetailsAvailable
-                        addIngestion={onAddIngestionSave}
                         airflowEndpoint={airflowEndpoint}
                         currrentPage={ingestionCurrentPage}
                         deleteIngestion={deleteIngestionById}
@@ -973,7 +893,6 @@ const ServicePage: FunctionComponent = () => {
                         serviceList={serviceList}
                         serviceName={serviceFQN}
                         triggerIngestion={triggerIngestionById}
-                        updateIngestion={updateIngestion}
                       />
                     </div>
                   ))}

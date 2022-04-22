@@ -33,7 +33,7 @@ export interface AddIngestionProps {
   showSuccessScreen?: boolean;
   setActiveIngestionStep: (step: number) => void;
   handleCancelClick: () => void;
-  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,

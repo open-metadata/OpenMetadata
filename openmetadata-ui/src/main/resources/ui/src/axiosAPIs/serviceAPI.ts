@@ -47,12 +47,12 @@ export const getServiceById: Function = (
 };
 
 export const getServiceByFQN: Function = (
-  serviceName: string,
+  serviceCat: string,
   fqn: string,
   arrQueryFields = ''
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(
-    `/services/${serviceName}/name/${fqn}`,
+    `/services/${serviceCat}/name/${fqn}`,
     arrQueryFields
   );
 
@@ -60,25 +60,25 @@ export const getServiceByFQN: Function = (
 };
 
 export const postService: Function = (
-  serviceName: string,
+  serviceCat: string,
   options: ServiceOption
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/${serviceName}`, options);
+  return APIClient.post(`/services/${serviceCat}`, options);
 };
 
 export const updateService: Function = (
-  serviceName: string,
+  serviceCat: string,
   _id: string,
   options: ServiceOption
 ): Promise<AxiosResponse> => {
-  return APIClient.put(`/services/${serviceName}`, options);
+  return APIClient.put(`/services/${serviceCat}`, options);
 };
 
 export const deleteService: Function = (
-  serviceName: string,
+  serviceCat: string,
   id: string
 ): Promise<AxiosResponse> => {
-  return APIClient.delete(`/services/${serviceName}/${id}`);
+  return APIClient.delete(`/services/${serviceCat}/${id}`);
 };
 
 export const TestConnection = (

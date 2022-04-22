@@ -57,6 +57,8 @@ const jsonData = {
 
     'deploy-ingestion-error': 'Error while deploying ingestion workflow!',
 
+    'entity-already-exist-error': 'Entity already exists!',
+
     'fetch-airflow-config-error':
       'Error occurred while fetching airflow configs!',
     'fetch-auth-config-error': 'Error occurred while fetching auth configs!',
