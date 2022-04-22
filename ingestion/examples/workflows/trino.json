@@ -8,11 +8,21 @@
         "hostPort": "localhost:8080",
         "username": "user",
         "catalog": "tpcds",
-        "database": "tiny"
+        "database": "tiny",
+        "connectionOptions": {},
+        "connectionArguments": {}
       }
     },
     "sourceConfig": {
-      "config": {}
+      "config": {
+        "enableDataProfiler": true,
+        "generateSampleData": false,
+        "tableFilterPattern": {
+           "includes": [
+            "customer.*"
+          ]
+        }
+      }
     }
   },
   "sink": {
@@ -20,11 +30,10 @@
     "config": {
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+   "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
