@@ -71,6 +71,9 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 openmetadata-ui/src/main/resources/ui/src/test
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
+#UI - Dereferenced Schemas
+openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
+
 #vscode
 */.vscode/*
 

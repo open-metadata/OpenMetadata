@@ -206,7 +206,7 @@ public class TopicDetailsPageTest {
     String user = topicDetails.getOwnerName();
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, topicDetails.selectTier());
     String ownerName = webDriver.findElement(common.ownerDropdown()).getText();
     Assert.assertEquals(ownerName, user);
   }

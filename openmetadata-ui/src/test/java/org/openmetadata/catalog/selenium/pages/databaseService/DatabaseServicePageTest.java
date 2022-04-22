@@ -140,8 +140,7 @@ public class DatabaseServicePageTest {
   @Order(4)
   public void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
-    Events.click(webDriver, common.containsText("Tabatha"));
+    Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.ingestion());
     try {
       WebElement runIngestion =
@@ -166,7 +165,6 @@ public class DatabaseServicePageTest {
   @Order(5)
   public void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, common.serviceUsername(), "test");

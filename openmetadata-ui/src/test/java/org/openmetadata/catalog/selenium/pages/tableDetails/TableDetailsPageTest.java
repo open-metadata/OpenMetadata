@@ -221,13 +221,12 @@ public class TableDetailsPageTest {
   public void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.manage());
     Events.click(webDriver, tableDetails.owner());
     Events.click(webDriver, tableDetails.selectUser());
     Events.click(webDriver, tableDetails.selectTier1());
-    Events.click(webDriver, tableDetails.saveManage());
+    Events.click(webDriver, tableDetails.selectTier());
   }
 
   @Test
