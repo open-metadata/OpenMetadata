@@ -17,7 +17,7 @@ Admin permissions are required to register the application on the Azure portal.
 
 * Click on **New Registration**. This step is for registering the OpenMetadata UI.
 
-![](<../../../.gitbook/assets/image (34).png>)
+![](<../../../.gitbook/assets/image (34) (1).png>)
 
 * Provide an Application Name for registration
 * Provide a redirect URL as a **Single Page Application**.

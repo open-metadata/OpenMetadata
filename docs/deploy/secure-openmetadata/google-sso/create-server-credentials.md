@@ -77,7 +77,7 @@ description: >-
 * Click **Create**
 * You will get the credentials
 
-![](<../../../.gitbook/assets/image (12).png>)
+![](<../../../.gitbook/assets/image (12) (1).png>)
 
 ## Step 5: Where to Find the Credentials
 

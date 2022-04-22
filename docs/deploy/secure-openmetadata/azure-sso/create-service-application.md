@@ -7,7 +7,7 @@
 * Select the checkboxes for **Access Token** and **ID Tokens**.
 * Click Save.
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (2).png>)
 
 ## Step 2: Expose an API
 
@@ -36,7 +36,7 @@ Another Azure Application must be registered for Service ingestion.
 * Create a **public client redirect URI**.&#x20;
 * Click on Register.
 
-![](<../../../.gitbook/assets/image (3).png>)
+![](<../../../.gitbook/assets/image (3) (1).png>)
 
 ## Step 5: **API Permissions**
 
@@ -48,12 +48,12 @@ Another Azure Application must be registered for Service ingestion.
 
 * Search for the OpenMetadata Application
 
-![](../../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (3).png>)
 
 * Select the custom scope created in Step 3.
 * Click on Add Permissions.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 ## Step 6: Grant Admin Consent for Default Directory
 

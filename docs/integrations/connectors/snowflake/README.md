@@ -1,546 +1,188 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the Snowflake
-  connector.
+  This guide will help you configure metadata ingestion workflows using the
+  Snowflake connector.
 ---
 
 # Snowflake
 
-1. [Confirm your system meets requirements](./#1.-confirm-your-system-meets-requirements)
-2. [Install Snowflake Connector](./#install-snowflake-connector)
-3. [Configure Snowflake Connector](./#3.-configure-snowflake-connector)
-4. [Run Snowflake Connector](./#run-manually)
-5. [Troubleshooting](./#5.-troubleshooting)
+Configure and schedule Snowflake metadata ingestion workflows from the **OpenMetadata UI**:
 
-## 1. Confirm your system meets r**equirements**
+1. [Requirements](./#1.-ensure-your-system-meets-the-requirements)
+2. [Visit the _Services_ page](./#2.-visit-the-services-page)
+3. [Initiate new service creation](./#3.-initiate-a-new-service-creation)
+4. [Select service type](./#4.-select-service-type)
+5. [Name and describe your service](./#5.-name-and-describe-your-service)
+6. [Configure service connection](./#6.-configure-service-connection)
+7. [Configure metadata ingestion](./#7.-configure-metadata-ingestion)
+8. [Schedule for ingestion and Deploy](./#8.-schedule-for-ingestion-and-deploy)
+
+## **1. Requirements**
 
 Please ensure that your host system meets the requirements listed below.
 
-### **OpenMetadata (version 0.9.0 or later)**
+### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
 
-### **Python (version 3.8.0 or later)**
+## 2. Visit the _Services_ page
 
-Use the following command to check your Python version.
+You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-```
-python3 --version
-```
+![](<../../../.gitbook/assets/image (39).png>)
 
-## **2. Install Snowflake Connector**
+## 3. Initiate a new service creation
 
-### **2.1. Prepare a Python virtual environment**
+Click on the _Add New Service_ button to add your Snowflake service to OpenMetadata for metadata ingestion.
 
-If you have not already set up a Python virtual environment by following another guide. Follow the steps below. Otherwise, skip to [step 2.2](./#2.2-install-the-python-module-for-this-connector).
+![](<../../../.gitbook/assets/image (34).png>)
 
-Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+## 4. Select service type
 
-In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+Select Snowflake as the service type and click _Next_.
 
-#### **2.1.1 Create a directory called `openmetadata`**
+![](<../../../.gitbook/assets/image (12).png>)
 
-Create an openmetadata directory now and change into that directory in your command line environment.
+## 5. Name and describe your service
 
-```
-mkdir openmetadata; cd openmetadata
-```
+Provide a name and description for your service as illustrated below.
 
-#### **2.1.2 Create a virtual environment**
+#### Service Name
 
-Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-```
-python3 -m venv env
-```
+#### Description
 
-#### **2.1.3 Activate the virtual environment**
+Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-Run the following command to activate the virtual environment.
+![](../../../.gitbook/assets/image.png)
 
-```
-source env/bin/activate
-```
-
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
-
-#### **2.1.4 Upgrade pip and setuptools to the latest versions**
-
-Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
-
-```javascript
-pip3 install --upgrade pip setuptools
-```
-
-### **2.2 Install the Python module for this connector**
-
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
-
-```javascript
-pip3 install --upgrade 'openmetadata-ingestion[snowflake]'
-```
-
-## 3. Configure Snowflake Connector
-
-1. [Create a configuration file using template JSON](./#3.1-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#4.-configure-service-settings)
-3. [Enable the data profiler (optional)](./#3.3-enable-disable-the-data-profiler)
-4. [Install the data profiler Python module (optional)](./#3.4-install-the-data-profiler-python-module-optional)
-5. [Configure data filters (optional)](./#3.3.-configure-data-filters-optional)
-6. [Configure sample data (optional)](./#3.4.-configure-sample-data-optional)
-7. [Configure DBT (optional)](./#3.5.-configure-dbt-optional)
-8. [Confirm sink settings](./#3.6.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](./#3.7.-confirm-metadata\_server-settings)
-
-### 3.1 Create a configuration file using template JSON
-
-Create a new file called `snowflake.json`, then copy and paste the configuration JSON from one of the template options below. Your choice depends on how you will authenticate to Snowflake.
-
-#### Option 1: Authenticate with SSO using an external browser popup
-
-Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method.
-
-To use this method, copy and paste the template JSON below into your `snowflake.json` file.
-
-```json
-{
-  "source": {
-    "type": "snowflake",
-    "config": {
-      "host_port": "account.region.service.snowflakecomputing.com:443",
-      "username": "email",
-      "warehouse": "DEMO",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "account_name",
-      "service_name": "snowflake",
-      "data_profiler_enabled": "false",
-      "role": "Optional - Role",
-      "connect_args":{
-        "authenticator": "externalbrowser"
-      },
-      "table_filter_pattern": {
-        "excludes": [
-          "tpcds_.*temp"
-        ]
-      },
-      "schema_filter_pattern": {
-        "excludes": [
-          "tpcds_sf100tcl"
-        ]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-
-#### Option 2: Authenticate with SSO specifying provider, username, and password
-
-Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider.
-
-To use this method, copy and paste the template JSON below into your `snowflake.json` file.
-
-```json
-{
-  "source": {
-    "type": "snowflake",
-    "config": {
-      "host_port": "account.region.service.snowflakecomputing.com:443",
-      "username": "OKTA_USER",
-      "password": "OKTA_PASSWORD",
-      "warehouse": "DEMO",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "account_name",
-      "service_name": "snowflake",
-      "data_profiler_enabled": "false",
-      "role": "OPTIONAL - role",
-      "connect_args":{
-        "authenticator": "https://something.okta.com/"
-      },
-      "table_filter_pattern": {
-        "excludes": [
-          "tpcds_.*temp"
-        ]
-      },
-      "schema_filter_pattern": {
-        "excludes": [
-          "tpcds_sf100tcl"
-        ]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-
-#### Option 3: Authenticate with username and password
-
-Use this method to test metadata ingestion on a Snowflake instance to which you authenticate using a username and password.
-
-To use this method, copy and paste the template JSON below into your `snowflake.json` file.
-
-```json
-{
-  "source": {
-    "type": "snowflake",
-    "config": {
-      "host_port": "account.region.service.snowflakecomputing.com:443",
-      "username": "username",
-      "password": "strong_password",
-      "warehouse": "DEMO",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "account_name",
-      "service_name": "snowflake",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": [
-          "tpcds_.*temp"
-        ]
-      },
-      "schema_filter_pattern": {
-        "excludes": ["information_schema.*"]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-
-### 3.2. Configure service settings
-
-In this step we will configure the Snowflake service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
-
-#### host\_port
-
-Edit the value for `source.config.host_port` in `snowflake.json` for your Snowflake deployment. Use the `host:port` format illustrated in the example below.
-
-```json
-"host_port": "account.region.service.snowflakecomputing.com"
-```
-
-Please ensure that your Snowflake deployment is reachable from the host you are using to run metadata ingestion.
-
-#### username
-
-Edit the value for `source.config.username` to identify your Snowflake user.
-
-```json
-"username": "username"
-```
-
-{% hint style="danger" %}
-Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
-
-#### password
-
-Edit the value for `source.config.password` with the password for your Snowflake user.
-
-```json
-"password": "strong_password"
-```
-
-#### warehouse
-
-Edit the value for `source.config.warehouse` with the name of the Snowflake warehouse from which you want to ingest metadata.
-
-```json
-"warehouse": "DEMO",
-```
-
-#### database
-
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
-
-To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
-
-```json
-"database": "SNOWFLAKE_SAMPLE_DATA"
-```
-
-#### account
-
-Edit the value for `source.config.account` with your Snowflake account identifier.&#x20;
-
-```json
-"account": "account_name"
-```
-
-#### service\_name
-
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Snowflake services that you might be ingesting metadata from.
-
-```json
-"service_name": "snowflake"
-```
-
-### **3.3 Enable the data profiler (optional)**
-
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-#### **data\_profiler\_enabled**
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
-
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
-
-```javascript
-"data_profiler_enabled": "false"
-```
-
-If you want to enable the data profiler, update your configuration file as follows.
-
-```javascript
-"data_profiler_enabled": "true"
-```
-
-{% hint style="info" %}
-**Note:** The data profiler is disabled by default if no setting is provided for `data_profiler_enabled`
-{% endhint %}
-
-### **3.4 Install the data profiler Python module (optional)**
-
-If you’ve enabled the data profiler in Step 3.3, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
-
-```javascript
-pip3 install 'openmetadata-ingestion[data-profiler]'
-```
-
-The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
-
-### 3.5. Configure data filters (optional)
-
-#### include\_views (optional)
-
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
+## 6. Configure service connection
+
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
+
+![](<../../../.gitbook/assets/image (54).png>)
+
+#### Username
+
+Enter username of your Snowflake user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+
+#### Password
+
+Enter the password for your Snowflake user in the _Password_ field.
+
+#### Host and Port
+
+Enter fully qualified host name and port number for your Snowflake deployment in the _Host and Port_ field.
+
+#### Account
+
+Enter the details for the Snowflake _Account_.
+
+#### Role (Optional)
+
+Enter the details of the Snowflake Account _Role_. This is an optional detail.
+
+#### Database (optional)
+
+If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+
+#### Warehouse (Optional)
+
+Enter the details of the Snowflake warehouse. This is an optional requirement.
+
+#### Connection Options (Optional)
+
+Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+
+#### Connection Arguments (Optional)
+
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+
+#### Supports Profiler
+
+Choose to support the data profiler.
+
+## 7. Configure metadata ingestion
+
+In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
+
+![](<../../../.gitbook/assets/image (1).png>)
+
+#### Include (Table Filter Pattern)
+
+Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
+
+Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
+
+#### Exclude (Table Filter Pattern)
+
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
+
+#### Include (Schema Filter Pattern)
+
+Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
+
+Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+
+#### Exclude (Schema Filter Pattern)
+
+Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
+
+**Include views (toggle)**
+
+Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
 
 Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
 
-```json
-"include_views": "true"
-```
+**Enable data profiler (toggle)**
 
-Exclude views as follows.
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-```json
-"include_views": "false"
-```
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
 
-{% hint style="info" %}
-Note: `source.config.include_views` is set to `true` by default.
-{% endhint %}
+Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
 
-#### include\_tables (optional)
+**Ingest sample data (toggle)**
 
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
+Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
+## 8. Schedule for ingestion and Deploy
 
-```json
-"include_tables": "true"
-```
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-Exclude tables as follows.
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
-```json
-"include_tables": "false"
-```
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-{% hint style="info" %}
-Note: `source.config.include_tables` is set to `true` by default.
-{% endhint %}
+![](<../../../.gitbook/assets/image (2).png>)
 
-#### table\_filter\_pattern (optional)
+**Every**
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
 
-Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
 
-```json
-"table_filter_pattern": {
-    "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-}
-```
+**Day**
 
-Use `source.config.table_filter_pattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
 
-```json
-"table_filter_pattern": {
-    "includes": ["corp.*", "dept.*"]
-}
-```
+**Minute**
 
-See the documentation for the [Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
 
-{% hint style="info" %}
-You may use either `excludes` or `includes` but not both in `table_filter_pattern.`
-{% endhint %}
+**Time**
 
-#### schema\_filter\_pattern (optional)
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
 
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
+**Start date (UTC)**
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section (immediately above) for details.
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
 
-### 3.6. Configure sample data (optional)
+**End date (UTC)**
 
-#### generate\_sample\_data (optional)
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
-
-![](../../../.gitbook/assets/generate\_sample\_data.png)
-
-Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"generate_sample_data": "true"
-```
-
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
-
-You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
-
-```json
-"generate_sample_data": "false"
-```
-
-{% hint style="info" %}
-Note: `generate_sample_data` is set to `true` by default.
-{% endhint %}
-
-### 3.7. Configure DBT (optional)
-
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
-
-![](../../../.gitbook/assets/configure\_dbt.png)
-
-To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
-
-#### dbt\_manifest\_file (optional)
-
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
-
-```json
-"dbt_manifest_file": "./dbt/manifest.json"
-```
-
-#### dbt\_catalog\_file (optional)
-
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
-
-```json
-"dbt_catalog_file": "./dbt/catalog.json"
-```
-
-### 3.8. Confirm `sink` settings
-
-You need not make any changes to the fields defined for `sink` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
-
-```json
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
-```
-
-### 3.9. Confirm `metadata_server` settings
-
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake.json` in Step 1. This part of your configuration file should be as follows.
-
-```json
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-    }
-}
-```
-
-## 4. Run Snowflake Connector <a href="#run-manually" id="run-manually"></a>
-
-Your `snowflake.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
-
-To run an ingestion workflow, execute the following command from the `openmetadata` directory.
-
-```bash
-metadata ingest -c ./snowflake.json
-```
-
-### Next Steps
-
-As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Snowflake, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Snowflake service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
-
-![](<../../../.gitbook/assets/next\_steps (1).png>)
-
-## 5. Troubleshooting
-
-### ERROR: Failed building wheel for cryptography
-
-When attempting to install the `openmetadata-ingestion[snowflake]` Python package, you might encounter the following error. The error might include a mention of a Rust compiler.
-
-```
-Failed to build cryptography
-ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
-```
-
-This error usually occurs due to an older version of pip. Try upgrading pip as follows.
-
-```bash
-pip3 install --upgrade pip setuptools
-```
-
-Then re-run the install command in Step 2.
-
-### requests.exceptions.ConnectionError
-
-If you encounter the following error when attempting to run the ingestion workflow in Step 10, this is probably because there is no OpenMetadata server running at http://localhost:8585.
-
-```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/snowflake 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
-Failed to establish a new connection: [Errno 61] Connection refused'))
-```
-
-To correct this problem, please follow the steps in the [Run OpenMetadata](https://docs.open-metadata.org/v/main/try-openmetadata/run-openmetadata) guide to deploy OpenMetadata in Docker on your local machine.
-
-Then re-run the metadata ingestion workflow in Step 10.
-
-{% content-ref url="snowflake-metadata-extraction.md" %}
-[snowflake-metadata-extraction.md](snowflake-metadata-extraction.md)
-{% endcontent-ref %}
-
-{% content-ref url="snowflake-usage.md" %}
-[snowflake-usage.md](snowflake-usage.md)
-{% endcontent-ref %}
+![](<../../../.gitbook/assets/image (36).png>)

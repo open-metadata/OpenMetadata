@@ -4,13 +4,13 @@ description: >-
   and run metadata ingestion workflows manually.
 ---
 
-# Snowflake Usage
+# Snowflake Usage & Lineage
 
 ## **Requirements**
 
 Please ensure that your host system meets the requirements listed below.
 
-### **OpenMetadata (version 0.8.0 or later)**
+### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](https://docs.open-metadata.org/install/run-openmetadata).
 

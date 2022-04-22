@@ -485,7 +485,7 @@ Provide a description for your ClickHouse service that enables other users to de
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../.gitbook/assets/image (3) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (2).png>)
 
 **Host**
 
