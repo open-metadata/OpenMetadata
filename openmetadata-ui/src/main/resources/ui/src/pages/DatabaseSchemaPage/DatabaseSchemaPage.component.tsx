@@ -693,6 +693,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       databaseSchema?.owner?.type || '',
                       databaseSchema?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE_SCHEMA}
                     onSave={handleUpdateOwner}
                   />
                 )}

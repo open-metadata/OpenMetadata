@@ -802,6 +802,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       database?.owner?.type || '',
                       database?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE}
                     onSave={handleUpdateOwner}
                   />
                 )}

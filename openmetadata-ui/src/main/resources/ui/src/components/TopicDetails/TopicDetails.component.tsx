@@ -440,6 +440,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityName={topicDetails.name}
                   entityType={EntityType.TOPIC}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.TOPIC}
                   onSave={onSettingsUpdate}
                 />
               </div>

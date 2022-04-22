@@ -24,9 +24,10 @@ const CardListItem: FunctionComponent<Props> = ({
   card,
   isActive,
   isSelected,
-  onSelect,
+  onCardSelect,
   onSave,
   tierStatus,
+  className,
 }: Props) => {
   const getCardBodyStyle = () => {
     return isSelected
@@ -77,11 +78,15 @@ const CardListItem: FunctionComponent<Props> = ({
     }
   };
 
+  const handleCardSelect = () => {
+    onCardSelect(card.id);
+  };
+
   return (
     <div
-      className={classNames(cardStyle.base, getCardBodyStyle())}
+      className={classNames(cardStyle.base, getCardBodyStyle(), className)}
       data-testid="card-list"
-      onClick={() => onSelect(card.id)}>
+      onClick={handleCardSelect}>
       <div className={classNames(cardStyle.header.base, getCardHeaderStyle())}>
         <div className="tw-flex">
           <div className="tw-self-start tw-mr-2">

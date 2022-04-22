@@ -26,8 +26,8 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import CardListItem from '../card-list/CardListItem/CardWithListItems';
-import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
+import CardListItem from '../cardlist/CardListItem/CardWithListItems';
+import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItems.interface';
 import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import OwnerWidget from '../common/OwnerWidget/OwnerWidget';
@@ -167,37 +167,48 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   };
 
   const getTierCards = () => {
-    if (!hideTier) {
-      return isLoadingTierData ? (
-        <Loader />
-      ) : (
-        <div className="tw-flex tw-flex-col" data-testid="cards">
-          {tierData.map((card, i) => (
-            <NonAdminAction
-              html={
-                <Fragment>
-                  <p>You need to be owner to perform this action</p>
-                  <p>Claim ownership from above </p>
-                </Fragment>
-              }
-              isOwner={hasEditAccess || Boolean(owner && !currentUser)}
-              key={i}
-              permission={Operation.UpdateTags}
-              position="left">
-              <CardListItem
-                card={card}
-                isActive={activeTier === card.id}
-                isSelected={card.id === currentTier}
-                tierStatus={statusTier}
-                onSave={handleTierSave}
-                onSelect={handleCardSelection}
-              />
-            </NonAdminAction>
-          ))}
-        </div>
-      );
-    } else {
+    return (
+      <div className="tw-flex tw-flex-col tw-mb-7" data-testid="cards">
+        {tierData.map((card, i) => (
+          <NonAdminAction
+            html={
+              <Fragment>
+                <p>You need to be owner to perform this action</p>
+                <p>Claim ownership from above </p>
+              </Fragment>
+            }
+            isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+            key={i}
+            permission={Operation.UpdateTags}
+            position="left">
+            <CardListItem
+              card={card}
+              className={classNames(
+                'tw-mb-0 tw-shadow',
+                {
+                  'tw-rounded-t-md': i === 0,
+                },
+                {
+                  'tw-rounded-b-md ': i === tierData.length - 1,
+                }
+              )}
+              isActive={activeTier === card.id}
+              isSelected={card.id === currentTier}
+              tierStatus={statusTier}
+              onCardSelect={handleCardSelection}
+              onSave={handleTierSave}
+            />
+          </NonAdminAction>
+        ))}
+      </div>
+    );
+  };
+
+  const getTierWidget = () => {
+    if (hideTier) {
       return null;
+    } else {
+      return isLoadingTierData ? <Loader /> : getTierCards();
     }
   };
 
@@ -291,12 +302,12 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <p className="tw-text-base tw-font-medium">
+      <p className="tw-text-base tw-font-medium tw-mt-2">
         Manage {manageSectionType ? manageSectionType : 'Section'}
       </p>
       <div
         className={classNames('tw-mt-2 tw-pb-4', {
-          'tw-border-b tw-border-separator tw-mb-4': !hideTier,
+          'tw-mb-3': !hideTier,
         })}>
         <OwnerWidget
           allowTeamOwner={allowTeamOwner}
@@ -316,7 +327,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
           teamJoinable={teamJoinable}
         />
       </div>
-      {getTierCards()}
+      {getTierWidget()}
       {getDeleteEntityWidget()}
     </div>
   );
