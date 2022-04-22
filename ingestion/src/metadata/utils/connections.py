@@ -37,10 +37,13 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.utils.connection_clients import DynamoClient, GlueClient
+from metadata.utils.connection_clients import DynamoClient, GlueClient, SalesforceClient
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -153,6 +156,20 @@ def _(connection: GlueConnection, verbose: bool = False):
     return glue_connection
 
 
+@get_connection.register
+def _(connection: SalesforceConnection, verbose: bool = False):
+    from simple_salesforce import Salesforce
+
+    salesforce_connection = SalesforceClient(
+        Salesforce(
+            connection.username,
+            password=connection.password.get_secret_value(),
+            security_token=connection.securityToken,
+        )
+    )
+    return salesforce_connection
+
+
 def create_and_bind_session(engine: Engine) -> Session:
     """
     Given an engine, create a session bound
@@ -217,6 +234,22 @@ def _(connection: GlueClient) -> None:
     try:
         connection.client.list_workflows()
     except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: SalesforceClient) -> None:
+    from simple_salesforce.exceptions import SalesforceAuthenticationFailed
+
+    try:
+        connection.client.describe()
+    except SalesforceAuthenticationFailed as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
         )
