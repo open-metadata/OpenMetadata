@@ -195,6 +195,7 @@ const UserPage = () => {
           fetchFeedHandler={getFeedData}
           isAdminUser={Boolean(isAdminUser)}
           isFeedLoading={isFeedLoading}
+          isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
           updateUserDetails={updateUserDetails}

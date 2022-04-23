@@ -139,6 +139,7 @@ const mockProp = {
   paging: mockPaging,
   postFeedHandler: postFeed,
   isAdminUser: false,
+  isLoggedinUser: false,
   updateUserDetails,
 };
 

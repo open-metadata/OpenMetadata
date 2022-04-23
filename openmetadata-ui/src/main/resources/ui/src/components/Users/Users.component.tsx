@@ -93,6 +93,7 @@ const Users = ({
   paging,
   updateUserDetails,
   isAdminUser,
+  isLoggedinUser,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
@@ -205,7 +206,7 @@ const Users = ({
   };
 
   const getDisplayNameComponent = () => {
-    if (isAdminUser) {
+    if (isAdminUser || isLoggedinUser) {
       return (
         <div className="tw-mt-4 tw-w-full tw-text-center">
           {isDisplayNameEdit ? (
@@ -271,7 +272,7 @@ const Users = ({
   };
 
   const getDescriptionComponent = () => {
-    if (isAdminUser) {
+    if (isAdminUser || isLoggedinUser) {
       return (
         <Description
           description={userData.description || ''}

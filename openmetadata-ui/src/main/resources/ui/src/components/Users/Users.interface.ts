@@ -30,6 +30,7 @@ export interface Props {
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;
+  isLoggedinUser: boolean;
   updateUserDetails: (data: UserDetails) => void;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
