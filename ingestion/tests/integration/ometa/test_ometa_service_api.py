@@ -221,6 +221,7 @@ class OMetaServiceTest(TestCase):
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
                     "apiVersion": "3.15",
+                    "env": "tableau_prod",
                 }
             },
             "sourceConfig": {"config": {"topicFilterPattern": {}}},

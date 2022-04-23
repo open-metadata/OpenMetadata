@@ -60,7 +60,8 @@
     "env": {
       "title": "Tableau Environment",
       "description": "Tableau Environment Name",
-      "type": "string"
+      "type": "string",
+      "default": "tableau_prod"
     },
     "dbServiceName": {
       "description": "Database Service Name in order to create a lineage",
@@ -72,5 +73,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "apiVersion", "siteName"]
+  "required": ["hostPort", "apiVersion", "siteName", "env"]
 }
