@@ -303,7 +303,7 @@ def _(connection: DeltaLakeConnection, verbose: bool = False):
 def _(connection: KafkaClient) -> None:
 
     try:
-        connection.client.list_topics()
+        connection.client.describe_configs()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
