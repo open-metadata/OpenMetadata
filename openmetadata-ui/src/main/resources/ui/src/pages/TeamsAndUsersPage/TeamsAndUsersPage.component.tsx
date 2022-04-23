@@ -403,6 +403,31 @@ const TeamsAndUsersPage = () => {
       });
   };
 
+  const handleLeaveTeamClick = (id: string, data: Operation[]) => {
+    return new Promise<void>((resolve, reject) => {
+      updateUserDetail(id, data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            AppState.updateUserDetails(res.data);
+            fetchCurrentTeam(teamAndUser);
+            showSuccessToast(
+              jsonData['api-success-messages']['leave-team-success']
+            );
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['leave-team-error'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['leave-team-error']
+          );
+          reject();
+        });
+    });
+  };
+
   /**
    * Handle current team route
    * @param name - team name
@@ -620,6 +645,7 @@ const TeamsAndUsersPage = () => {
           handleAddUser={handleAddUser}
           handleDeleteUser={handleDeleteUser}
           handleJoinTeamClick={handleJoinTeamClick}
+          handleLeaveTeamClick={handleLeaveTeamClick}
           handleTeamUsersSearchAction={handleTeamUsersSearchAction}
           handleUserSearchTerm={handleUserSearchTerm}
           hasAccess={isAuthDisabled || isAdminUser}

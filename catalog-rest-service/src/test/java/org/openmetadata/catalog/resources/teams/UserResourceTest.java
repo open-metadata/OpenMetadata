@@ -792,7 +792,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(user), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(user),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        Entity.getEntityReference(user));
 
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
@@ -825,7 +828,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(expected), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(expected),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        Entity.getEntityReference(expected));
 
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());

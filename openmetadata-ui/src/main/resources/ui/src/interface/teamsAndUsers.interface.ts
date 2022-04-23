@@ -66,6 +66,7 @@ export interface TeamsAndUsersProps {
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
+  handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   isAddingUsers: boolean;
   getUniqueUserList: () => Array<UserTeams>;
   addUsersToTeam: (data: Array<UserTeams>) => void;
@@ -107,4 +108,5 @@ export interface TeamDetailsProp {
   handleAddUser: (data: boolean) => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
+  handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
 }
