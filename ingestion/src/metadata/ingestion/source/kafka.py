@@ -84,9 +84,9 @@ class KafkaSource(Source[CreateTopicRequest]):
             config=self.kafka_service_config,
             metadata_config=metadata_config,
         )
-        self.schema_registry_client = SchemaRegistryClient(
-            {"url": self.service_connection.schemaRegistryURL}
-        )
+        self.schema_registry_config = dict()
+        self.schema_registry_config["url"] = self.service_connection.schemaRegistryURL
+        self.schema_registry_client = SchemaRegistryClient(self.schema_registry_config)
         self.admin_client = AdminClient(
             {
                 "bootstrap.servers": self.service_connection.bootstrapServers,
@@ -193,3 +193,5 @@ class KafkaSource(Source[CreateTopicRequest]):
 
     def test_connection(self) -> None:
         test_connection(KafkaClient(client=self.admin_client))
+        if self.service_connection.schemaRegistryURL:
+            test_connection(KafkaClient(client=self.schema_registry_client))

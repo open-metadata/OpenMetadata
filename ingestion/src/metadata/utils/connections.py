@@ -46,9 +46,6 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
-)
 from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
@@ -301,9 +298,13 @@ def _(connection: DeltaLakeConnection, verbose: bool = False):
 
 @test_connection.register
 def _(connection: KafkaClient) -> None:
+    from confluent_kafka.admin import AdminClient
 
     try:
-        connection.client.describe_configs()
+        if isinstance(connection.client, AdminClient):
+            return connection.client.list_topics().topics
+        else:
+            return connection.client.get_subjects()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
