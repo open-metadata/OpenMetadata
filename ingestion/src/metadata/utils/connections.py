@@ -46,10 +46,14 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
+)
 from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
     GlueClient,
+    KafkaClient,
     SalesforceClient,
 )
 from metadata.utils.credentials import set_google_credentials
@@ -293,6 +297,17 @@ def _(connection: DeltaLakeConnection, verbose: bool = False):
         configure_spark_with_delta_pip(builder).getOrCreate()
     )
     return deltalake_connection
+
+
+@test_connection.register
+def _(connection: KafkaClient) -> None:
+
+    try:
+        connection.client.list_topics()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
 
 
 @test_connection.register

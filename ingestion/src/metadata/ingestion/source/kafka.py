@@ -39,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import logger
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.utils.connection_clients import KafkaClient
 from metadata.utils.connections import test_connection
 from metadata.utils.filters import filter_by_topic
 from metadata.utils.helpers import get_messaging_service_or_create
@@ -191,4 +192,4 @@ class KafkaSource(Source[CreateTopicRequest]):
         pass
 
     def test_connection(self) -> None:
-        test_connection(self.admin_client)
+        test_connection(KafkaClient(client=self.admin_client))
