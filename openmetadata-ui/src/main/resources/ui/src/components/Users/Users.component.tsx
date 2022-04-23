@@ -19,7 +19,7 @@ import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import Select, { MultiValue } from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { TERM_USER } from '../../constants/constants';
+import { TERM_ADMIN, TERM_USER } from '../../constants/constants';
 import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -395,7 +395,7 @@ const Users = ({
         {userData.isAdmin && (
           <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2">
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-            <span>Admin</span>
+            <span>{TERM_ADMIN}</span>
           </div>
         )}
         {userData.roles?.map((role, i) => (
