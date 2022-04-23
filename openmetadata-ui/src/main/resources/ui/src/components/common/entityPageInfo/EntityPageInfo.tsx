@@ -196,7 +196,7 @@ const EntityPageInfo = ({
           )}>
           <button
             className={classNames(
-              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center',
               !isUndefined(isVersionSelected)
                 ? 'tw-border-white'
                 : 'tw-border-primary'
@@ -304,7 +304,7 @@ const EntityPageInfo = ({
                   )}>
                   <button
                     className={classNames(
-                      'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+                      'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center',
                       isFollowing ? 'tw-border-white' : 'tw-border-primary',
                       { 'tw-cursor-not-allowed': deleted }
                     )}
