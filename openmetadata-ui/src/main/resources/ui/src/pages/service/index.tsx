@@ -744,24 +744,28 @@ const ServicePage: FunctionComponent = () => {
       owner,
     };
 
-    return new Promise<void>((_, reject) => {
+    return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, updatedData)
         .then((res: AxiosResponse) => {
           if (res.data) {
             setServiceDetails(res.data);
+
+            return resolve();
           } else {
             showErrorToast(
               jsonData['api-error-messages']['update-owner-error']
             );
           }
-          reject();
+
+          return reject();
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
             jsonData['api-error-messages']['update-owner-error']
           );
-          reject();
+
+          return reject();
         });
     });
   };
