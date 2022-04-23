@@ -390,6 +390,17 @@ const Users = ({
   };
 
   const getRolesComponent = () => {
+    const userRolesOption = roles?.map((role) => ({
+      label: getEntityName(role as unknown as EntityReference),
+      value: role.id,
+    }));
+    if (!userData.isAdmin) {
+      userRolesOption.push({
+        label: 'Admin',
+        value: 'admin',
+      });
+    }
+
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
@@ -444,10 +455,7 @@ const Users = ({
                   aria-label="Select roles"
                   className="tw-ml-1"
                   isSearchable={false}
-                  options={roles?.map((role) => ({
-                    label: getEntityName(role as unknown as EntityReference),
-                    value: role.id,
-                  }))}
+                  options={userRolesOption}
                   placeholder="Roles..."
                   styles={reactSingleSelectCustomStyle}
                   value={selectedRoles}
