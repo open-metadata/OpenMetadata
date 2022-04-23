@@ -324,6 +324,40 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     return freqJoin;
   };
 
+  const prepareTableRowInfo = () => {
+    const rowData =
+      (tableProfile
+        ?.map((d) => ({
+          date: d.profileDate,
+          value: d.rowCount ?? 0,
+        }))
+        .reverse() as Array<{
+        date: Date;
+        value: number;
+      }>) ?? [];
+
+    if (!isUndefined(tableProfile) && tableProfile.length > 0) {
+      return (
+        <div className="tw-flex">
+          {rowData.length > 1 && (
+            <TableProfilerGraph
+              className="tw--mt-4"
+              data={rowData}
+              height={38}
+              toolTipPos={{ x: 20, y: -30 }}
+            />
+          )}
+          <span
+            className={classNames({
+              'tw--ml-6': rowData.length > 1,
+            })}>{`${tableProfile[0].rowCount || 0} rows`}</span>
+        </div>
+      );
+    } else {
+      return '';
+    }
+  };
+
   const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
@@ -356,32 +390,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     {
       key: 'Rows',
-      value:
-        !isUndefined(tableProfile) && tableProfile.length > 0 ? (
-          <div className="tw-flex">
-            <TableProfilerGraph
-              className="tw--mt-4"
-              data={
-                tableProfile
-                  ?.map((d) => ({
-                    date: d.profileDate,
-                    value: d.rowCount ?? 0,
-                  }))
-                  .reverse() as Array<{
-                  date: Date;
-                  value: number;
-                }>
-              }
-              height={38}
-              toolTipPos={{ x: 20, y: -30 }}
-            />
-            <span className="tw--ml-6">{`${
-              tableProfile[0].rowCount || 0
-            } rows`}</span>
-          </div>
-        ) : (
-          ''
-        ),
+      value: prepareTableRowInfo(),
     },
     { key: 'Tests', value: getTableTestsValue(tableTestCase) },
   ];
