@@ -115,14 +115,21 @@ class DatabaseServicePageTest {
     Events.sendKeys(webDriver, common.hostPort(), "localhost");
     Events.click(webDriver, common.databaseName());
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
-    Events.click(webDriver, common.containsText(serviceName));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.getPageSource().contains(serviceName)) {
+        LOG.info("Success");
+      }
+    } catch (NoSuchElementException | TimeoutException r) {
+      Assert.fail("Service not added");
+    }
   }
 
   @Test
@@ -155,10 +162,10 @@ class DatabaseServicePageTest {
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
-    webDriver.navigate().refresh();
     Thread.sleep(waitTime);
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
-    Events.click(webDriver, common.deployButton());
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
   }
 
   @Test
@@ -170,7 +177,7 @@ class DatabaseServicePageTest {
     Events.sendKeys(webDriver, common.serviceUsername(), "test");
     Events.sendKeys(webDriver, common.servicePassword(), "test");
     Events.sendKeys(webDriver, common.databaseName(), "test");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.click(webDriver, common.saveServiceButton());
     Thread.sleep(2000);
     try {
       WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
@@ -188,6 +195,14 @@ class DatabaseServicePageTest {
     openDatabaseServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
+        Assert.fail("Service not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach

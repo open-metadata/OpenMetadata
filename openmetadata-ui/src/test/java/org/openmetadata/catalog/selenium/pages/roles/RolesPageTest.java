@@ -136,7 +136,7 @@ class RolesPageTest {
   @Order(5)
   void editRule() throws InterruptedException {
     openRolesPage();
-    Events.click(webDriver, common.containsText(roleDisplayName));
+    Events.click(webDriver, common.containsText("Data Steward"));
     Events.click(webDriver, rolesPage.editRuleButton());
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("deny"));
@@ -162,7 +162,7 @@ class RolesPageTest {
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
-    Events.click(webDriver, common.containsText("Data Steward Policy"));
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), "");
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
@@ -184,7 +184,7 @@ class RolesPageTest {
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
-    Events.click(webDriver, common.containsText("Data Steward Policy"));
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), "");
     Events.click(webDriver, common.descriptionBoldButton());
@@ -207,7 +207,7 @@ class RolesPageTest {
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
-    Events.click(webDriver, common.containsText("Data Steward Policy"));
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBox());
@@ -218,7 +218,7 @@ class RolesPageTest {
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
-    Events.click(webDriver, common.containsText("Data Steward Policy"));
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBox());

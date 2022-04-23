@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,13 +28,17 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.MessagingServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
+@Slf4j
 @Order(11)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MessagingServicePageTest {
@@ -43,7 +48,6 @@ class MessagingServicePageTest {
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
   static String serviceName = faker.name().firstName();
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -105,7 +109,22 @@ class MessagingServicePageTest {
     Events.sendKeys(
         webDriver, messagingServicePage.messagingServiceBootstrapServers(), "localhost:8080, localhost:9092");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "https://localhost:8081");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.addIngestion());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.deployButton());
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
+    Events.click(webDriver, common.selectServiceTab(2));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.getPageSource().contains(serviceName)) {
+        LOG.info("Success");
+      }
+    } catch (NoSuchElementException | TimeoutException r) {
+      Assert.fail("Service not added");
+    }
   }
 
   @Test
@@ -117,15 +136,31 @@ class MessagingServicePageTest {
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceBootstrapServers(), "test");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "test");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.click(webDriver, common.saveServiceButton());
   }
 
   @Test
   @Order(5)
   void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
+    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, common.ingestion());
+    Events.click(webDriver, messagingServicePage.deleteIngestion());
+    Events.sendKeys(webDriver, messagingServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices());
+    Events.click(webDriver, common.selectServiceTab(2));
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
+        Assert.fail("Service not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach

@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,13 +28,17 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.PipelineServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
+@Slf4j
 @Order(10)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PipelineServiceTestPage {
@@ -98,7 +103,19 @@ class PipelineServiceTestPage {
     Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "localhost:8080");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
+    Events.click(webDriver, common.selectServiceTab(4));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.getPageSource().contains(serviceName)) {
+        LOG.info("Success");
+      }
+    } catch (NoSuchElementException | TimeoutException r) {
+      Assert.fail("Service not added");
+    }
   }
 
   @Test
@@ -119,7 +136,7 @@ class PipelineServiceTestPage {
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "test");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.click(webDriver, common.saveServiceButton());
   }
 
   @Test
@@ -128,6 +145,14 @@ class PipelineServiceTestPage {
     openPipelineServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
+        Assert.fail("Service not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach
