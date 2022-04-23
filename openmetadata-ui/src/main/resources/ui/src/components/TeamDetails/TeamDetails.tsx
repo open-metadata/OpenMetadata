@@ -74,6 +74,7 @@ const TeamDetails = ({
   teamUserPaginHandler,
   isAddingUsers,
   handleJoinTeamClick,
+  handleLeaveTeamClick,
   getUniqueUserList,
   addUsersToTeam,
   handleAddUser,
@@ -168,12 +169,6 @@ const TeamDetails = ({
     }
   };
 
-  const handleRemoveUser = () => {
-    removeUserFromTeam(deletingUser.user?.id as string).then(() => {
-      setDeletingUser(DELETE_USER_INITIAL_STATE);
-    });
-  };
-
   const isAlreadyJoinedTeam = (teamId: string) => {
     if (currentUser) {
       return currentUser.teams?.find((team) => team.id === teamId);
@@ -200,6 +195,7 @@ const TeamDetails = ({
       newTeams.push({
         id: currentTeam.id,
         type: OwnerType.TEAM,
+        name: currentTeam.name,
       });
 
       const updatedData: User = {
@@ -210,6 +206,36 @@ const TeamDetails = ({
       const options = compare(currentUser, updatedData);
 
       handleJoinTeamClick(currentUser.id, options);
+    }
+  };
+
+  const leaveTeam = (): Promise<void> => {
+    if (currentUser && currentTeam) {
+      let newTeams = cloneDeep(currentUser.teams ?? []);
+      newTeams = newTeams.filter((team) => team.id !== currentTeam.id);
+
+      const updatedData: User = {
+        ...currentUser,
+        teams: newTeams,
+      };
+
+      const options = compare(currentUser, updatedData);
+
+      return handleLeaveTeamClick(currentUser.id, options);
+    }
+
+    return Promise.reject();
+  };
+
+  const handleRemoveUser = () => {
+    if (deletingUser.leave) {
+      leaveTeam().then(() => {
+        setDeletingUser(DELETE_USER_INITIAL_STATE);
+      });
+    } else {
+      removeUserFromTeam(deletingUser.user?.id as string).then(() => {
+        setDeletingUser(DELETE_USER_INITIAL_STATE);
+      });
     }
   };
 
@@ -244,6 +270,7 @@ const TeamDetails = ({
   /**
    * Take user id as input to find out the user data and set it for delete
    * @param id - user id
+   * @param leave - if "Leave Team" action is in progress
    */
   const deleteUserHandler = (id: string, leave = false) => {
     const user = [...(currentTeam?.users as Array<UserTeams>)].find(

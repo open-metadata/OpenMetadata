@@ -135,11 +135,13 @@ const jsonData = {
     'feed-post-error': 'Error while posting the message!',
 
     'join-team-error': 'Error while joining the team!',
+    'leave-team-error': 'Error while leaving the team!',
   },
   'api-success-messages': {
     'create-conversation': 'Conversation created successfully!',
 
     'join-team-success': 'Team joined successfully!',
+    'leave-team-success': 'Left the team successfully!',
 
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',

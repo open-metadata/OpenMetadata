@@ -33,6 +33,7 @@ const TeamsAndUsers = ({
   handleUserSearchTerm,
   handleDeleteUser,
   handleJoinTeamClick,
+  handleLeaveTeamClick,
   isRightPannelLoading,
   hasAccess,
   isTeamVisible,
@@ -176,6 +177,7 @@ const TeamsAndUsers = ({
               handleAddTeam={handleAddTeam}
               handleAddUser={handleAddUser}
               handleJoinTeamClick={handleJoinTeamClick}
+              handleLeaveTeamClick={handleLeaveTeamClick}
               handleTeamUsersSearchAction={handleTeamUsersSearchAction}
               hasAccess={hasAccess}
               isAddingTeam={isAddingTeam}

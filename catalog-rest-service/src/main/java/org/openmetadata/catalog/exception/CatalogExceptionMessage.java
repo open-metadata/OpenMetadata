@@ -61,6 +61,10 @@ public final class CatalogExceptionMessage {
     return String.format("User %s is deactivated", id);
   }
 
+  public static String userAlreadyPartOfTeam(String userName, String teamName) {
+    return String.format("User '%s' is already part of the team '%s'", userName, teamName);
+  }
+
   public static String invalidColumnFQN(String fqn) {
     return String.format("Invalid fully qualified column name %s", fqn);
   }

@@ -1015,7 +1015,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertListNull(entityInterface.getOwner());
+    // user will always have the same user assigned as the owner
+    if (!entityInterface.getEntityType().equals(Entity.USER)) {
+      assertListNull(entityInterface.getOwner());
+    }
 
     entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
