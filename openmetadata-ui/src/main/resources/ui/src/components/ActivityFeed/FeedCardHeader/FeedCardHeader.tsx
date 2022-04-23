@@ -17,7 +17,7 @@ import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
-import { getUserPath } from '../../../constants/constants';
+import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import {
   EntityType,
   FqnPart,
@@ -66,6 +66,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     const name = userData.name ?? '';
     const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
+    const isAdmin = userData?.isAdmin;
 
     return (
       <Fragment>
@@ -126,6 +127,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         Roles
                       </span>
                       <span className="tw-flex tw-flex-wrap tw-mt-1">
+                        {isAdmin && (
+                          <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
+                            {TERM_ADMIN}
+                          </span>
+                        )}
                         {roles.map((role, i) => (
                           <span
                             className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"

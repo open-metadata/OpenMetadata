@@ -26,6 +26,8 @@ export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
 export const isAdminUpdated = 'isAdminUpdated';
+export const TERM_ADMIN = 'Admin';
+export const TERM_USER = 'User';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
