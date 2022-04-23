@@ -43,6 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
+    SampleDataConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -90,7 +93,7 @@ def create_generic_connection(connection, verbose: bool = False):
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient]:
+) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient, SampleDataClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -181,6 +184,11 @@ def _(connection: SalesforceConnection, verbose: bool = False):
         )
     )
     return salesforce_connection
+
+
+@get_connection.register
+def _(connection: SampleDataConnection, verbose: bool = False):
+    return SampleDataClient()
 
 
 def create_and_bind_session(engine: Engine) -> Session:
