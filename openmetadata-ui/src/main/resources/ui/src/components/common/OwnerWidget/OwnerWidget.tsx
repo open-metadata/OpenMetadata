@@ -97,8 +97,8 @@ const OwnerWidget = ({
             <div className="tw-w-10/12">
               <p className="tw-text-sm tw-mb-1 tw-font-medium">Owner</p>
               <p className="tw-text-grey-muted tw-text-xs">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit.
-                Necessitatibus, sint.
+                The Team owner details are found here. Team ownership can be
+                changed
               </p>
             </div>
 
@@ -163,8 +163,8 @@ const OwnerWidget = ({
                   Open to join
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
-                  Lorem ipsum dolor, sit amet consectetur adipisicing elit.
-                  Necessitatibus, sint.
+                  Turn on toggle to allow any user to join the team. To restrict
+                  access, keep the toggle off
                 </p>
               </div>
               <div className="tw-flex tw-items-center">

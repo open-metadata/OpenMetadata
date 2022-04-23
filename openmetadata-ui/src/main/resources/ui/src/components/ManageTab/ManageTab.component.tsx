@@ -49,7 +49,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   allowSoftDelete,
   isRecursiveDelete,
   deletEntityMessage,
-  manageSectionType,
   handleIsJoinable,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
@@ -302,9 +301,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <p className="tw-text-base tw-font-medium tw-mt-2">
-        Manage {manageSectionType ? manageSectionType : 'Section'}
-      </p>
       <div
         className={classNames('tw-mt-2 tw-pb-4', {
           'tw-mb-3': !hideTier,
