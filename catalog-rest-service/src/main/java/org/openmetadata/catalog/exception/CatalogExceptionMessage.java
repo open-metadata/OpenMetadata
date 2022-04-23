@@ -115,4 +115,8 @@ public final class CatalogExceptionMessage {
         "Found multiple rules with operation %s within policy %s. Please ensure that operation across all rules within the policy are distinct",
         operation, policy);
   }
+
+  public static String entityIsNotEmpty(String entityType) {
+    return String.format("%s is not empty", entityType);
+  }
 }
