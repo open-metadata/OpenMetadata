@@ -396,7 +396,7 @@ const Users = ({
     }));
     if (!userData.isAdmin) {
       userRolesOption.push({
-        label: 'Admin',
+        label: TERM_ADMIN,
         value: 'admin',
       });
     }
@@ -632,7 +632,7 @@ const Users = ({
     ];
     if (userData.isAdmin) {
       defaultRoles.push({
-        label: 'Admin',
+        label: TERM_ADMIN,
         value: 'admin',
       });
     }
