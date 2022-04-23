@@ -169,7 +169,7 @@ public class SearchResource {
         break;
     }
 
-    if (nullOrEmpty(sortFieldParam)) {
+    if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
     LOG.info(searchSourceBuilder.toString());
