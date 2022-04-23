@@ -910,3 +910,24 @@ code {
 .public-DraftStyleDefault-block {
   margin: 0;
 }
+
+/* page not found css */
+
+.page-not-found-container {
+  width: 100%;
+  height: calc(100% - 68px);
+  display: flex;
+}
+
+.page-not-found-container::after,
+.page-not-found-container::before {
+  content: '';
+  width: 100%;
+}
+
+.page-not-found-container::after {
+  background-color: #f8f9fa;
+}
+.page-not-found-container::before {
+  background-color: #fff;
+}

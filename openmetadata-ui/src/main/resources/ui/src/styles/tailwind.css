@@ -38,6 +38,16 @@
     @apply tw-text-body tw-text-grey-body tw-font-normal;
   }
 
+  /* utils */
+
+  .tw-flex-center {
+    @apply tw-flex tw-justify-center tw-items-center;
+  }
+
+  .tw-hw-full {
+    @apply tw-w-full tw-h-full;
+  }
+
   .tw-table {
     @apply tw-w-full;
   }
