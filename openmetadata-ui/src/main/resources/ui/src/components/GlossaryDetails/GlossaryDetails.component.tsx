@@ -245,7 +245,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         ))}
       </div>
     ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
+      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main tw-shadow tw-rounded">
         <p className="tw-mb-3">No reviewers assigned</p>
         <p>{AddReviewerButton()}</p>
       </div>
@@ -370,11 +370,11 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
         <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
           {activeTab === 1 && (
-            <div data-testid="manage-glossary">
-              <div className="tw-border-b tw-border-separator tw-pb-4">
-                {getReviewerTabData()}
-              </div>
-              <div className="tw-mt-6">
+            <div
+              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
+              data-testid="manage-glossary">
+              <div className="tw-mx-3">{getReviewerTabData()}</div>
+              <div className="tw-mt-7">
                 <ManageTabComponent
                   allowDelete
                   hideTier

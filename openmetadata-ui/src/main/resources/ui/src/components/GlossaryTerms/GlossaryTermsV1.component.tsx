@@ -363,7 +363,7 @@ const GlossaryTermsV1 = ({
         ))}
       </div>
     ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
+      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main tw-shadow tw-rounded">
         <p className="tw-mb-3">No reviewers assigned</p>
         <p>{AddReviewerButton()}</p>
       </div>
@@ -614,11 +614,11 @@ const GlossaryTermsV1 = ({
             />
           )}
           {activeTab === 3 && (
-            <div data-testid="manage-glossary-term">
-              <div className="tw-border-b tw-border-separator tw-pb-4">
-                {getReviewerTabData()}
-              </div>
-              <div className="tw-mt-6">
+            <div
+              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
+              data-testid="manage-glossary-term">
+              <div className="tw-mx-3">{getReviewerTabData()}</div>
+              <div className="tw--mt-1">
                 <ManageTabComponent
                   allowDelete
                   hideOwner
