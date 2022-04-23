@@ -210,6 +210,25 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const getAirflowEndpoint = () => {
+    fetchAirflowConfig()
+      .then((res) => {
+        if (res.data?.apiEndpoint) {
+          setAirflowEndpoint(res.data.apiEndpoint);
+        } else {
+          setAirflowEndpoint('');
+
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-airflow-config-error']
+        );
+      });
+  };
+
   const getAllIngestionWorkflows = (paging?: string) => {
     setIsloading(true);
     getIngestionPipelines(['owner', 'pipelineStatuses'], serviceFQN, paging)
@@ -230,25 +249,11 @@ const ServicePage: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-ingestion-error']
         );
       })
-      .finally(() => setIsloading(false));
-  };
-
-  const getAirflowEndpoint = () => {
-    fetchAirflowConfig()
-      .then((res) => {
-        if (res.data?.apiEndpoint) {
-          setAirflowEndpoint(res.data.apiEndpoint);
-        } else {
-          setAirflowEndpoint('');
-
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+      .finally(() => {
+        setIsloading(false);
+        if (!airflowEndpoint) {
+          getAirflowEndpoint();
         }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-airflow-config-error']
-        );
       });
   };
 
@@ -678,7 +683,6 @@ const ServicePage: FunctionComponent = () => {
       // getDatabaseServices();
       getAllIngestionWorkflows();
     }
-    getAirflowEndpoint();
   }, []);
 
   const onCancel = () => {
