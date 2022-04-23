@@ -172,7 +172,7 @@ public class SearchResource {
     if (!nullOrEmpty(sortFieldParam)) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
-    LOG.info(searchSourceBuilder.toString());
+    LOG.debug(searchSourceBuilder.toString());
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
