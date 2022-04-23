@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
+    DeltaLakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -43,7 +46,12 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.utils.connection_clients import DynamoClient, GlueClient, SalesforceClient
+from metadata.utils.connection_clients import (
+    DeltaLakeClient,
+    DynamoClient,
+    GlueClient,
+    SalesforceClient,
+)
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 from metadata.utils.timeout import timeout
@@ -253,6 +261,44 @@ def _(connection: SalesforceClient) -> None:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
         )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: DeltaLakeConnection, verbose: bool = False):
+    import pyspark
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
+        pyspark.sql.SparkSession.builder.appName(connection.appName)
+        .enableHiveSupport()
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+    )
+    if connection.metastoreHostPort:
+        builder.config(
+            "hive.metastore.uris",
+            f"thrift://{connection.metastoreHostPort}",
+        )
+    elif connection.metastoreFilePath:
+        builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
+
+    deltalake_connection = DeltaLakeClient(
+        configure_spark_with_delta_pip(builder).getOrCreate()
+    )
+    return deltalake_connection
+
+
+@test_connection.register
+def _(connection: DeltaLakeClient) -> None:
+    try:
+        connection.client.catalog.listDatabases()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
