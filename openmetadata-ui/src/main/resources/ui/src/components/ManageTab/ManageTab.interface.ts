@@ -18,9 +18,10 @@ export interface ManageProps {
   currentUser?: string;
   manageSectionType?: string;
   hideTier?: boolean;
+  hideOwner?: boolean;
   isJoinable?: boolean;
   allowSoftDelete?: boolean;
-  onSave: (
+  onSave?: (
     owner: TableDetail['owner'],
     tier: TableDetail['tier'],
     isJoinable?: boolean

@@ -20,11 +20,13 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
+import { hasEditAccess } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -37,6 +39,7 @@ import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
+import ManageTabComponent from '../ManageTab/ManageTab.component';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
@@ -60,12 +63,12 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const tabs = [
     {
-      name: 'Reviewers',
+      name: 'Manage',
       icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
+        alt: 'manage',
+        name: 'icon-manage',
+        title: 'Manage',
+        selectedName: 'icon-managecolor',
       },
       isProtected: false,
       position: 1,
@@ -175,6 +178,20 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const setActiveTabHandler = (value: number) => {
     setActiveTab(value);
+  };
+
+  const handleUpdateOwner = (owner: Glossary['owner']) => {
+    const updatedData = {
+      ...glossary,
+      owner,
+    };
+
+    return new Promise<void>((_, reject) => {
+      updateGlossary(updatedData);
+      setTimeout(() => {
+        reject();
+      }, 500);
+    });
   };
 
   useEffect(() => {
@@ -352,7 +369,29 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         />
 
         <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-          {activeTab === 1 && getReviewerTabData()}
+          {activeTab === 1 && (
+            <div data-testid="manage-glossary">
+              <div className="tw-border-b tw-border-separator tw-pb-4">
+                {getReviewerTabData()}
+              </div>
+              <div className="tw-mt-6">
+                <ManageTabComponent
+                  allowDelete
+                  hideTier
+                  isRecursiveDelete
+                  currentUser={glossary?.owner?.id}
+                  entityId={glossary.id}
+                  entityName={glossary?.name}
+                  entityType={EntityType.GLOSSARY}
+                  hasEditAccess={hasEditAccess(
+                    glossary?.owner?.type || '',
+                    glossary?.owner?.id || ''
+                  )}
+                  onSave={handleUpdateOwner}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {showRevieweModal && (
