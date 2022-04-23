@@ -84,9 +84,12 @@ class KafkaSource(Source[CreateTopicRequest]):
             config=self.kafka_service_config,
             metadata_config=metadata_config,
         )
-        self.schema_registry_config = dict()
-        self.schema_registry_config["url"] = self.service_connection.schemaRegistryURL
-        self.schema_registry_client = SchemaRegistryClient(self.schema_registry_config)
+        self.service_connection.schemaRegistryConfig[
+            "url"
+        ] = self.service_connection.schemaRegistryURL
+        self.schema_registry_client = SchemaRegistryClient(
+            self.service_connection.schemaRegistryConfig
+        )
         self.admin_client = AdminClient(
             {
                 "bootstrap.servers": self.service_connection.bootstrapServers,

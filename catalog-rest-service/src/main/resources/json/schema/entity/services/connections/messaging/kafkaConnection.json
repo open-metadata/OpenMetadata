@@ -40,6 +40,13 @@
       "default": {},
       "additionalProperties": true
     },
+    "schemaRegistryConfig": {
+      "title": "Schema Registry Config",
+      "description": "Confluent Kafka Schema Registry Config.",
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
