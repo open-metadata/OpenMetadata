@@ -32,6 +32,7 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.rest.RestStatus;
@@ -435,7 +436,10 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       Database database = (Database) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("database", database.getName()));
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("database", database.getName()));
+      queryBuilder.must(new TermQueryBuilder("service", database.getService()));
+      request.setQuery(queryBuilder);
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
@@ -444,7 +448,10 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       DatabaseSchema databaseSchema = (DatabaseSchema) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName);
-      request.setQuery(new TermQueryBuilder("database_schema", databaseSchema.getName()));
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("database_schema", databaseSchema.getName()));
+      queryBuilder.must(new TermQueryBuilder("database", databaseSchema.getDatabase().getName()));
+      request.setQuery(queryBuilder);
       deleteEntityFromElasticSearchByQuery(request);
     }
   }
