@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
+import { isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import Select, { MultiValue } from 'react-select';
@@ -156,10 +156,14 @@ const Users = ({
 
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
-    const updatedRoles = selectedRoles.filter((role) => role.value !== 'admin');
+    const updatedRoles = selectedRoles.filter(
+      (role) => role.value !== toLower(TERM_ADMIN)
+    );
 
     // get the admin role and send it as boolean value `iaAdmin=Boolean(isAdmin)
-    const isAdmin = selectedRoles.find((role) => role.value === 'admin');
+    const isAdmin = selectedRoles.find(
+      (role) => role.value === toLower(TERM_ADMIN)
+    );
     updateUserDetails({
       roles: updatedRoles.map((role) => role.value),
       isAdmin: Boolean(isAdmin),
@@ -397,7 +401,7 @@ const Users = ({
     if (!userData.isAdmin) {
       userRolesOption.push({
         label: TERM_ADMIN,
-        value: 'admin',
+        value: toLower(TERM_ADMIN),
       });
     }
 
@@ -633,7 +637,7 @@ const Users = ({
     if (userData.isAdmin) {
       defaultRoles.push({
         label: TERM_ADMIN,
-        value: 'admin',
+        value: toLower(TERM_ADMIN),
       });
     }
     setSelectedRoles(defaultRoles);
