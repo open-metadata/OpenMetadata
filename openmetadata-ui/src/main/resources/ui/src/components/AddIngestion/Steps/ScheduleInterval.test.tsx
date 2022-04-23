@@ -27,6 +27,7 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 });
 
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
+  status: 'initial',
   repeatFrequency: '',
   handleRepeatFrequencyChange: jest.fn(),
   startDate: '',
@@ -34,7 +35,7 @@ const mockScheduleIntervalProps: ScheduleIntervalProps = {
   endDate: '',
   handleEndDateChange: jest.fn(),
   onBack: jest.fn(),
-  onDeloy: jest.fn(),
+  onDeploy: jest.fn(),
 };
 
 describe('Test ScheduleInterval component', () => {

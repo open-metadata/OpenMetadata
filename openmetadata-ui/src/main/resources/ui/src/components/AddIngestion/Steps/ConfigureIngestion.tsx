@@ -11,23 +11,28 @@
  *  limitations under the License.
  */
 
-import React, { Fragment } from 'react';
+import { EditorContentRef } from 'Models';
+import React, { Fragment, useRef } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import FilterPattern from '../../common/FilterPattern/FilterPattern';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 
 const ConfigureIngestion = ({
+  ingestionName,
+  description = '',
   dashboardFilterPattern,
   schemaFilterPattern,
   tableFilterPattern,
   topicFilterPattern,
   chartFilterPattern,
+  fqnFilterPattern,
   includeView,
   serviceCategory,
   enableDataProfiler,
@@ -38,11 +43,14 @@ const ConfigureIngestion = ({
   showTableFilter,
   showTopicFilter,
   showChartFilter,
+  showFqnFilter,
   queryLogDuration,
   stageFileLocation,
   resultLimit,
   getExcludeValue,
   getIncludeValue,
+  handleIngestionName,
+  handleDescription,
   handleShowFilter,
   handleEnableDataProfiler,
   handleIncludeView,
@@ -53,7 +61,9 @@ const ConfigureIngestion = ({
   onCancel,
   onNext,
 }: ConfigureIngestionProps) => {
-  const getFilterPatternField = () => {
+  const markdownRef = useRef<EditorContentRef>();
+
+  const getMetadataFilterPatternField = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
         return (
@@ -132,10 +142,27 @@ const ConfigureIngestion = ({
     }
   };
 
+  const getProfilerFilterPatternField = () => {
+    return (
+      <Fragment>
+        <FilterPattern
+          checked={showFqnFilter}
+          excludePattern={fqnFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.FQN)
+          }
+          includePattern={fqnFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.FQN}
+        />
+      </Fragment>
+    );
+  };
   const getMetadataFields = () => {
     return (
       <>
-        <div>{getFilterPatternField()}</div>
+        <div>{getMetadataFilterPatternField()}</div>
         {getSeparator('')}
         <div>
           <Field>
@@ -252,12 +279,70 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getProfilerFields = () => {
+    return (
+      <>
+        <div>
+          <Field>
+            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+              Name
+            </label>
+            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+              Name that identifies this pipeline instance uniquely.
+            </p>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="name"
+              id="name"
+              name="name"
+              type="text"
+              value={ingestionName}
+              onChange={(e) => handleIngestionName(e.target.value)}
+            />
+            {getSeparator('')}
+          </Field>
+        </div>
+        <div>{getProfilerFilterPatternField()}</div>
+        {getSeparator('')}
+        <div>
+          <Field>
+            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+              Description
+            </label>
+            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+              Description of the pipeline.
+            </p>
+            <RichTextEditor
+              data-testid="description"
+              initialValue={description}
+              ref={markdownRef}
+            />
+            {getSeparator('')}
+          </Field>
+        </div>
+      </>
+    );
+  };
+
   const getIngestionPipelineFields = () => {
-    if (pipelineType === PipelineType.Usage) {
-      return getUsageFields();
-    } else {
-      return getMetadataFields();
+    switch (pipelineType) {
+      case PipelineType.Usage: {
+        return getUsageFields();
+      }
+      case PipelineType.Profiler: {
+        return getProfilerFields();
+      }
+      case PipelineType.Metadata:
+      default: {
+        return getMetadataFields();
+      }
     }
+  };
+
+  const handleNext = () => {
+    handleDescription &&
+      handleDescription(markdownRef.current?.getEditorContent() || '');
+    onNext();
   };
 
   return (
@@ -280,7 +365,7 @@ const ConfigureIngestion = ({
           size="regular"
           theme="primary"
           variant="contained"
-          onClick={onNext}>
+          onClick={handleNext}>
           <span>Next</span>
         </Button>
       </Field>

@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   Bucket,
   DynamicFormFieldType,
@@ -542,4 +543,18 @@ export const getServiceIngestionStepGuide = (
       )}
     </>
   );
+};
+
+export const getIngestionName = (
+  serviceName: string,
+  type: IngestionPipelineType
+) => {
+  if (type === IngestionPipelineType.Profiler) {
+    return `${serviceName}_${type}_${cryptoRandomString({
+      length: 8,
+      type: 'alphanumeric',
+    })}`;
+  } else {
+    return `${serviceName}_${type}`;
+  }
 };

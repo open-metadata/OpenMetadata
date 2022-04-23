@@ -17,4 +17,5 @@ export enum FilterPatternEnum {
   CHART = 'chart',
   DASHBOARD = 'dashboard',
   TOPIC = 'topic',
+  FQN = 'fqn',
 }
