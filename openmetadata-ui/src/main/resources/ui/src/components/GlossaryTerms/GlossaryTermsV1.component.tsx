@@ -23,6 +23,7 @@ import {
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   GlossaryTerm,
   TermReference,
@@ -41,6 +42,7 @@ import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
+import ManageTabComponent from '../ManageTab/ManageTab.component';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -98,7 +100,7 @@ const GlossaryTermsV1 = ({
       position: 2,
     },
     {
-      name: 'Reviewers',
+      name: 'Manage',
       isProtected: false,
       position: 3,
     },
@@ -361,7 +363,7 @@ const GlossaryTermsV1 = ({
         ))}
       </div>
     ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
+      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main tw-shadow tw-rounded">
         <p className="tw-mb-3">No reviewers assigned</p>
         <p>{AddReviewerButton()}</p>
       </div>
@@ -611,7 +613,25 @@ const GlossaryTermsV1 = ({
               onAssetPaginate={onAssetPaginate}
             />
           )}
-          {activeTab === 3 && getReviewerTabData()}
+          {activeTab === 3 && (
+            <div
+              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
+              data-testid="manage-glossary-term">
+              <div className="tw-mx-3">{getReviewerTabData()}</div>
+              <div className="tw--mt-1">
+                <ManageTabComponent
+                  allowDelete
+                  hideOwner
+                  hideTier
+                  isRecursiveDelete
+                  entityId={glossaryTerm.id}
+                  entityName={glossaryTerm?.name}
+                  entityType={EntityType.GLOSSARY_TERM}
+                  hasEditAccess={false}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {showRelatedTermsModal && (

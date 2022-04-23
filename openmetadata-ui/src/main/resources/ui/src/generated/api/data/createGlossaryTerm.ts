@@ -19,7 +19,7 @@ export interface CreateGlossaryTerm {
   /**
    * Description of the glossary term.
    */
-  description?: string;
+  description: string;
   /**
    * Display Name that identifies this glossary.
    */
