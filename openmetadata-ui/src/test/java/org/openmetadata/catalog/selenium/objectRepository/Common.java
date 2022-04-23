@@ -32,7 +32,7 @@ public class Common {
   By serviceUsername = By.cssSelector("[id='root_username']");
   By servicePassword = By.cssSelector("[id='root_password']");
   By nextButton = By.cssSelector("[data-testid='next-button']");
-  By saveServiceButton = By.cssSelector("[data-testid='deploy-button']");
+  By saveServiceButton = By.cssSelector("[data-testid='submit-btn']");
   By saveEditedService = By.cssSelector("[data-testid='save-button']");
   By saveConnectionConfig = By.cssSelector("[data-testid='saveManageTab']");
   By searchResults = By.cssSelector("[data-testid='search-results']");
@@ -102,6 +102,7 @@ public class Common {
   By hostPort = By.cssSelector("[id='root_hostPort']");
   By addIngestion = By.cssSelector("[data-testid='add-ingestion-button']");
   By deployButton = By.cssSelector("[data-testid='deploy-button']");
+  By confirmButton = By.cssSelector("[data-testid='confirm-button']");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);
