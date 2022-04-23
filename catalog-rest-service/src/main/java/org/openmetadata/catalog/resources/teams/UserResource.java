@@ -376,12 +376,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
-          JsonObject value = patchOpObject.getJsonObject("value");
-          String teamId = value.getString("id");
-          dao.validateTeamAddition(id, teamId);
-          if (!dao.isTeamJoinable(teamId)) {
-            // Only admin can join closed teams
-            SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+          JsonObject value = null;
+          try {
+            value = patchOpObject.getJsonObject("value");
+          } catch (Exception ex) {
+            // ignore exception if value is not an object
+          }
+          if (value != null) {
+            String teamId = value.getString("id");
+            dao.validateTeamAddition(id, teamId);
+            if (!dao.isTeamJoinable(teamId)) {
+              // Only admin can join closed teams
+              SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+            }
           }
         }
       }
