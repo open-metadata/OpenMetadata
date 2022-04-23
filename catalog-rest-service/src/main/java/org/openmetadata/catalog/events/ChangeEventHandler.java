@@ -253,8 +253,6 @@ public class ChangeEventHandler implements EventHandler {
 
   private List<Thread> getThreads(Object entity, ChangeDescription changeDescription, String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
-    var entityInterface = Entity.getEntityInterface(entity);
-
     Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, entity);
 
     // Create an automated thread

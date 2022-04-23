@@ -89,6 +89,7 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.common.utils.CommonUtil;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -1583,7 +1584,7 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
-      if (entityTypes == null || entityTypes.isEmpty()) {
+      if (CommonUtil.nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {

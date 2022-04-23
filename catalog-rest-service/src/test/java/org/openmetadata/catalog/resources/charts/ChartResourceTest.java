@@ -81,11 +81,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     }
   }
 
-  @Test
-  void delete_nonEmptyChart_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Chart> validateGetWithDifferentFields(Chart chart, boolean byName)
       throws HttpResponseException {

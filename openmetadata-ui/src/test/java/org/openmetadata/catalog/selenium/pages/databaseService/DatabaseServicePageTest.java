@@ -42,7 +42,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(8)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DatabaseServicePageTest {
+class DatabaseServicePageTest {
 
   static WebDriver webDriver;
   static Common common;
@@ -57,7 +57,7 @@ public class DatabaseServicePageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -73,7 +73,7 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(1)
-  public void openDatabaseServicePage() throws InterruptedException {
+  void openDatabaseServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Thread.sleep(waitTime);
     Events.click(webDriver, common.headerSettings()); // Setting
@@ -83,7 +83,7 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(2)
-  public void addDatabaseService() throws InterruptedException {
+  void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
@@ -127,7 +127,7 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(3)
-  public void checkDatabaseServiceDetails() throws InterruptedException {
+  void checkDatabaseServiceDetails() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
@@ -138,7 +138,7 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(4)
-  public void checkIngestionTab() throws InterruptedException {
+  void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.ingestion());
@@ -163,7 +163,7 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(5)
-  public void checkConnectionConfigTab() throws InterruptedException {
+  void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
@@ -184,14 +184,14 @@ public class DatabaseServicePageTest {
 
   @Test
   @Order(6)
-  public void deleteDatabaseService() throws InterruptedException {
+  void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

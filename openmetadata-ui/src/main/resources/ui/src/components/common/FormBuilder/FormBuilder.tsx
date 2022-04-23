@@ -18,7 +18,7 @@ import Form, {
   ObjectFieldTemplateProps,
 } from '@rjsf/core';
 import classNames from 'classnames';
-import { debounce, isEmpty, isEqual } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   Fragment,
@@ -147,7 +147,6 @@ const FormBuilder: FunctionComponent<Props> = ({
     formData
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
-  const [connectionTested, setConnectionTested] = useState<boolean>(false);
 
   const handleCancel = () => {
     setLocalFormData(formData);
@@ -165,16 +164,9 @@ const FormBuilder: FunctionComponent<Props> = ({
   const handleTestConnection = () => {
     if (localFormData && onTestConnection) {
       setConnectionTesting(true);
-      onTestConnection(localFormData)
-        .then(() => {
-          setConnectionTested(true);
-        })
-        .catch(() => {
-          setConnectionTested(false);
-        })
-        .finally(() => {
-          setConnectionTesting(false);
-        });
+      onTestConnection(localFormData).finally(() => {
+        setConnectionTesting(false);
+      });
     }
   };
   const debouncedOnChange = useCallback(
@@ -189,11 +181,6 @@ const FormBuilder: FunctionComponent<Props> = ({
   ]);
   const handleChange = (updatedData: ConfigData) => {
     debounceOnSearch(updatedData);
-    setConnectionTested(false);
-  };
-
-  const disableTestConnection = () => {
-    return connectionTesting || isEqual(localFormData, formData);
   };
 
   return (
@@ -224,9 +211,10 @@ const FormBuilder: FunctionComponent<Props> = ({
           {!isEmpty(schema) && onTestConnection && (
             <Button
               className={classNames({
-                'tw-opacity-40': disableTestConnection(),
+                'tw-opacity-40': connectionTesting,
               })}
-              disabled={disableTestConnection()}
+              data-testid="test-connection-btn"
+              disabled={connectionTesting}
               size="regular"
               theme="primary"
               variant="outlined"
@@ -263,11 +251,8 @@ const FormBuilder: FunctionComponent<Props> = ({
             </Button>
           ) : (
             <Button
-              className={classNames('tw-w-16 tw-h-10', {
-                'tw-opacity-40': !connectionTested && !isEmpty(schema),
-              })}
-              data-testid="saveManageTab"
-              disabled={!connectionTested && !isEmpty(schema)}
+              className="tw-w-16 tw-h-10"
+              data-testid="submit-btn"
               size="regular"
               theme="primary"
               variant="contained"

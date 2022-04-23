@@ -23,7 +23,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
-public class TopicDetailsUIErrorHandlingTest {
+class TopicDetailsUIErrorHandlingTest {
   static ChromeDriver webDriver;
   static Common common;
   static TableDetails tableDetails;
@@ -43,7 +43,7 @@ public class TopicDetailsUIErrorHandlingTest {
   WebElement follow;
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -261,7 +261,7 @@ public class TopicDetailsUIErrorHandlingTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

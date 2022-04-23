@@ -36,7 +36,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(11)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MessagingServicePageTest {
+class MessagingServicePageTest {
   static WebDriver webDriver;
   static Common common;
   static MessagingServicePage messagingServicePage;
@@ -51,7 +51,7 @@ public class MessagingServicePageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -67,7 +67,7 @@ public class MessagingServicePageTest {
 
   @Test
   @Order(1)
-  public void openMessagingServicePage() throws InterruptedException {
+  void openMessagingServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
@@ -77,7 +77,7 @@ public class MessagingServicePageTest {
 
   @Test
   @Order(2)
-  public void addMessagingService() throws InterruptedException {
+  void addMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
@@ -110,7 +110,7 @@ public class MessagingServicePageTest {
 
   @Test
   @Order(4)
-  public void checkConnectionConfigTab() throws InterruptedException {
+  void checkConnectionConfigTab() throws InterruptedException {
     openMessagingServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
@@ -122,14 +122,14 @@ public class MessagingServicePageTest {
 
   @Test
   @Order(5)
-  public void deleteMessagingService() throws InterruptedException {
+  void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

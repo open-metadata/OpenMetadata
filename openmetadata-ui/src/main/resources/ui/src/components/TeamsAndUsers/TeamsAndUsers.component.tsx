@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { capitalize } from 'lodash';
 import React from 'react';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
 import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
+import AddUsersModal from '../../pages/teams/AddUsersModal';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
+import { Button } from '../buttons/Button/Button';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import TeamDetails from '../TeamDetails/TeamDetails';
@@ -86,8 +91,25 @@ const TeamsAndUsers = ({
     return (
       <>
         <div className="tw-mb-8">
-          <div className="tw-mb-2 tw-border-b">
+          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
             <p className="tw-heading">Teams</p>
+            {hasAccess && (
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className="tw-h-7 tw-px-2 tw-mb-4"
+                  data-testid="add-teams"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={() => {
+                    handleAddTeam(true);
+                  }}>
+                  <FontAwesomeIcon icon="plus" />
+                </Button>
+              </NonAdminAction>
+            )}
           </div>
           {teams.map((team) => (
             <div
@@ -117,8 +139,23 @@ const TeamsAndUsers = ({
         </div>
         {hasAccess && (
           <div>
-            <div className="tw-mb-2 tw-border-b">
+            <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
               <p className="tw-heading">All Users</p>
+              {hasAccess && (
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <Button
+                    className="tw-h-7 tw-px-2 tw-mb-4"
+                    data-testid="add-teams"
+                    size="small"
+                    theme="primary"
+                    variant="contained"
+                    onClick={handleAddNewUser}>
+                    <FontAwesomeIcon icon="plus" />
+                  </Button>
+                </NonAdminAction>
+              )}
             </div>
             {usersData.map((d) => (
               <div
@@ -157,7 +194,6 @@ const TeamsAndUsers = ({
           data-testid="team-and-user-container">
           {!isTeamVisible ? (
             <UserDetails
-              handleAddNewUser={handleAddNewUser}
               handleDeleteUser={handleDeleteUser}
               handleUserSearchTerm={handleUserSearchTerm}
               isUsersLoading={isUsersLoading}
@@ -166,14 +202,12 @@ const TeamsAndUsers = ({
             />
           ) : (
             <TeamDetails
-              addUsersToTeam={addUsersToTeam}
               createNewTeam={createNewTeam}
               currentTeam={currentTeam}
               currentTeamUserPage={currentTeamUserPage}
               currentTeamUsers={currentTeamUsers}
               descriptionHandler={descriptionHandler}
               errorNewTeamData={errorNewTeamData}
-              getUniqueUserList={getUniqueUserList}
               handleAddTeam={handleAddTeam}
               handleAddUser={handleAddUser}
               handleJoinTeamClick={handleJoinTeamClick}
@@ -181,7 +215,6 @@ const TeamsAndUsers = ({
               handleTeamUsersSearchAction={handleTeamUsersSearchAction}
               hasAccess={hasAccess}
               isAddingTeam={isAddingTeam}
-              isAddingUsers={isAddingUsers}
               isDescriptionEditable={isDescriptionEditable}
               isTeamMemberLoading={isTeamMemberLoading}
               removeUserFromTeam={removeUserFromTeam}
@@ -195,6 +228,17 @@ const TeamsAndUsers = ({
             />
           )}
         </div>
+      )}
+
+      {isAddingUsers && (
+        <AddUsersModal
+          header={`Adding new users to ${
+            currentTeam?.displayName ?? currentTeam?.name
+          }`}
+          list={getUniqueUserList()}
+          onCancel={() => handleAddUser(false)}
+          onSave={(data) => addUsersToTeam(data)}
+        />
       )}
     </PageLayout>
   );

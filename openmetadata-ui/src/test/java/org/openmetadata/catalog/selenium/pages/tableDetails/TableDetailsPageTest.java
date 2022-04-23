@@ -18,11 +18,29 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
+import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
+import org.openmetadata.catalog.selenium.objectRepository.TopicDetails;
+import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -32,7 +50,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(4)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TableDetailsPageTest {
+class TableDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
@@ -56,7 +74,7 @@ public class TableDetailsPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -133,7 +151,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(4)
-  public void searchColumnAndEditDescription() throws InterruptedException {
+  void searchColumnAndEditDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     WebElement columnDescripitonBox;
@@ -162,7 +180,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(5)
-  public void addTagsToColumn() throws InterruptedException {
+  void addTagsToColumn() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(3));
@@ -218,7 +236,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(8)
-  public void checkManage() throws InterruptedException {
+  void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(1));
@@ -272,7 +290,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(11)
-  public void checkVersion() throws InterruptedException {
+  void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
@@ -291,7 +309,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(12)
-  public void checkFrequentlyJoinedTables() throws InterruptedException {
+  void checkFrequentlyJoinedTables() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
@@ -306,7 +324,7 @@ public class TableDetailsPageTest {
 
   @Test
   @Order(13)
-  public void checkFrequentlyJoinedColumns() throws InterruptedException {
+  void checkFrequentlyJoinedColumns() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
@@ -320,7 +338,7 @@ public class TableDetailsPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

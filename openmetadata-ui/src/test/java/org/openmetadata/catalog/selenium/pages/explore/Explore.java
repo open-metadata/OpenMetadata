@@ -5,9 +5,18 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
+import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
+import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.NoSuchElementException;
@@ -41,7 +50,7 @@ class Explore {
   Integer[] check;
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -259,7 +268,7 @@ class Explore {
 
   @Test
   @Order(9)
-  public void checkRandomTopicCount() {
+  void checkRandomTopicCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -337,7 +346,7 @@ class Explore {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

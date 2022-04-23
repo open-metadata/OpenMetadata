@@ -299,11 +299,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyPolicy_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Policy> validateGetWithDifferentFields(Policy policy, boolean byName)
       throws HttpResponseException {

@@ -24,10 +24,15 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -37,7 +42,7 @@ import org.testng.Assert;
 
 @Order(2)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TeamsPageTest {
+class TeamsPageTest {
 
   static WebDriver webDriver;
   static String URL = Property.getInstance().getURL();
@@ -55,7 +60,7 @@ public class TeamsPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -73,7 +78,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(1)
-  public void openTeamsPage() throws InterruptedException {
+  void openTeamsPage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams()); // Setting/Teams
     Thread.sleep(waitTime);
@@ -82,7 +87,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(2)
-  public void createTeam() throws InterruptedException {
+  void createTeam() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams());
@@ -104,7 +109,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(3)
-  public void addUser() throws InterruptedException {
+  void addUser() throws InterruptedException {
     int counter = 1;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
@@ -140,7 +145,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(4)
-  public void editDescription() throws InterruptedException {
+  void editDescription() throws InterruptedException {
     String sendKeys = faker.address().toString();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
@@ -158,7 +163,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(5)
-  public void addAsset() throws InterruptedException {
+  void addAsset() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
     Events.click(webDriver, common.containsText(teamDisplayName));
@@ -185,7 +190,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(6)
-  public void ownerNameIsConsistentCheck() throws InterruptedException {
+  void ownerNameIsConsistentCheck() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
     // Select the created listed team
@@ -203,7 +208,7 @@ public class TeamsPageTest {
 
   @Test
   @Order(7)
-  public void checkTeamsFilterCount() throws InterruptedException {
+  void checkTeamsFilterCount() throws InterruptedException {
     String teamName = faker.name().firstName();
     String teamDisplayName = faker.name().firstName();
     Events.click(webDriver, common.closeWhatsNew());
@@ -262,7 +267,7 @@ public class TeamsPageTest {
   }*/
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

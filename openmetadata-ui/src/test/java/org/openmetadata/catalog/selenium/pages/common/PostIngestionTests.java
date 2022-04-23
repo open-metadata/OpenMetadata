@@ -15,8 +15,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(15)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PostIngestionTests {
-
+class PostIngestionTests {
   static WebDriver webDriver;
   static Common common;
   static String url = Property.getInstance().getURL();
@@ -28,7 +27,7 @@ public class PostIngestionTests {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -41,7 +40,7 @@ public class PostIngestionTests {
     webDriver.get(url);
   }
 
-  public void ingestSampleDataPostTests() throws IOException {
+  void ingestSampleDataPostTests() throws IOException {
     String[] installIngestion = {"bash", "-c", "cd ../ && pip install ingestion/"}; // install openmetadata ingestion
     String[] ingestSampleData = {
       "bash", "-c", "cd ../ingestion && metadata ingest -c ./pipelines/sample_data.json"
@@ -52,7 +51,7 @@ public class PostIngestionTests {
 
   @Test
   @Order(1)
-  public void setOwner() throws InterruptedException {
+  void setOwner() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
     Thread.sleep(waitTime);
@@ -66,7 +65,7 @@ public class PostIngestionTests {
 
   @Test
   @Order(2)
-  public void checkOwnerPostIngestion() throws InterruptedException, IOException {
+  void checkOwnerPostIngestion() throws InterruptedException, IOException {
     ingestSampleDataPostTests();
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));

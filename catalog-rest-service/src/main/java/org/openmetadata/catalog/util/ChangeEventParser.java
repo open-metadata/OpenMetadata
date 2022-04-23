@@ -13,7 +13,10 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.catalog.Entity.FIELD_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
@@ -98,12 +101,12 @@ public final class ChangeEventParser {
             Set<String> keys = item.asJsonObject().keySet();
             if (keys.contains("tagFQN")) {
               labels.add(item.asJsonObject().getString("tagFQN"));
-            } else if (keys.contains("displayName")) {
+            } else if (keys.contains(FIELD_DISPLAY_NAME)) {
               // Entity Reference will have a displayName
-              labels.add(item.asJsonObject().getString("displayName"));
-            } else if (keys.contains("name")) {
+              labels.add(item.asJsonObject().getString(FIELD_DISPLAY_NAME));
+            } else if (keys.contains(FIELD_NAME)) {
               // Glossary term references have only "name" field
-              labels.add(item.asJsonObject().getString("name"));
+              labels.add(item.asJsonObject().getString(FIELD_NAME));
             }
           } else if (item.getValueType() == ValueType.STRING) {
             // The string might be enclosed with double quotes
@@ -117,10 +120,10 @@ public final class ChangeEventParser {
         JsonObject jsonObject = json.asJsonObject();
         // Entity Reference will have a displayName
         Set<String> keys = jsonObject.asJsonObject().keySet();
-        if (keys.contains("displayName")) {
-          return jsonObject.asJsonObject().getString("displayName");
-        } else if (keys.contains("name")) {
-          return jsonObject.asJsonObject().getString("name");
+        if (keys.contains(FIELD_DISPLAY_NAME)) {
+          return jsonObject.asJsonObject().getString(FIELD_DISPLAY_NAME);
+        } else if (keys.contains(FIELD_NAME)) {
+          return jsonObject.asJsonObject().getString(FIELD_NAME);
         }
       }
     } catch (JsonParsingException ex) {
@@ -235,9 +238,7 @@ public final class ChangeEventParser {
   private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(oldValue, newValue);
-    return diff == null || diff.isEmpty()
-        ? StringUtils.EMPTY
-        : String.format("Updated **%s** : %s", updatedField, diff);
+    return nullOrEmpty(diff) ? StringUtils.EMPTY : String.format("Updated **%s** : %s", updatedField, diff);
   }
 
   private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {

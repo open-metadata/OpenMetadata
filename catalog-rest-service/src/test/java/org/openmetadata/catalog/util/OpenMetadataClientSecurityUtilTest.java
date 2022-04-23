@@ -18,7 +18,7 @@ import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
-public class OpenMetadataClientSecurityUtilTest {
+class OpenMetadataClientSecurityUtilTest {
 
   @Test
   void testOpenMetadataGoogleClientConfigs() {

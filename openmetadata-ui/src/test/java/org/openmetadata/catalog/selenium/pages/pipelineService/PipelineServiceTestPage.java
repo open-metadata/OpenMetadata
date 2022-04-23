@@ -36,7 +36,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(10)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PipelineServiceTestPage {
+class PipelineServiceTestPage {
   static WebDriver webDriver;
   static Common common;
   static PipelineServicePage pipelineServicePage;
@@ -50,7 +50,7 @@ public class PipelineServiceTestPage {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -66,7 +66,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(1)
-  public void openPipelineServicePage() throws InterruptedException {
+  void openPipelineServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
@@ -76,7 +76,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(2)
-  public void addPipelineService() throws InterruptedException {
+  void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
     Thread.sleep(waitTime);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
@@ -103,7 +103,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(3)
-  public void checkPipelineServiceDetails() throws InterruptedException {
+  void checkPipelineServiceDetails() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
@@ -114,7 +114,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(4)
-  public void checkConnectionConfig() throws InterruptedException {
+  void checkConnectionConfig() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
@@ -124,14 +124,14 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(5)
-  public void deletePipelineService() throws InterruptedException {
+  void deletePipelineService() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

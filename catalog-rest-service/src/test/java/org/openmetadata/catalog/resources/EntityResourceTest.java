@@ -249,7 +249,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
-    new PipelineServiceResourceTest().setupPipelineServices(test);
+    new PipelineServiceResourceTest().setupPipelineServices();
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
 
