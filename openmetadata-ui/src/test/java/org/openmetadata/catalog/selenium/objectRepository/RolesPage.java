@@ -16,7 +16,7 @@ public class RolesPage {
   By listAccess = By.cssSelector("[data-testid='select-access']");
   By ruleToggleButton = By.cssSelector("[data-testid='rule-switch']");
   By editRuleButton = By.xpath("(//tbody[@data-testid='table-body']/tr/td/div/span)[1]");
-  By accessValue = By.xpath("//tbody[@data-testid='table-body']/tr/td[2]/p");
+  By accessValue = By.xpath("(//tbody[@data-testid='table-body']/tr/td[2]/p)[1]");
   By deleteRuleButton = By.cssSelector("[data-testid='image'][title='Delete']");
   By rolesDisplayName = By.name("displayName");
   By errorMessage = By.xpath("//strong[@data-testid='error-message']");
