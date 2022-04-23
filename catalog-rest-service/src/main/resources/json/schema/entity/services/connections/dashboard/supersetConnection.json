@@ -46,9 +46,8 @@
     },
     "dbServiceName": {
       "title": "Database Service Name",
-      "description": "Database Service to create lineage",
-      "type": "string",
-      "default": null
+      "description": "Database Service Name to create lineage",
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -61,8 +60,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }
