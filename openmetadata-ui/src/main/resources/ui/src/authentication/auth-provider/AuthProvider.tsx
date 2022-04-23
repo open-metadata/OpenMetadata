@@ -127,6 +127,7 @@ export const AuthProvider = ({
     appState.updateUserDetails({} as User);
     appState.updateUserPermissions({} as UserPermissions);
     localStorage.removeItem(oidcTokenKey);
+    setIsUserAuthenticated(false);
     setLoadingIndicator(false);
     if (forceLogout) {
       onLogoutHandler();
