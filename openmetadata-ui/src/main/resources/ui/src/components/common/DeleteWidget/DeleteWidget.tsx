@@ -77,6 +77,8 @@ const DeleteWidget = ({
 
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
+    } else if (entityType === EntityType.GLOSSARY) {
+      return `glossaries`;
     } else {
       return `${entityType}s`;
     }

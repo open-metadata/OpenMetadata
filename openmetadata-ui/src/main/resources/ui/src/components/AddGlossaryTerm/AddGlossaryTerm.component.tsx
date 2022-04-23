@@ -84,7 +84,7 @@ const AddGlossaryTerm = ({
   }, [glossaryData]);
 
   const getDescription = () => {
-    return markdownRef.current?.getEditorContent() || undefined;
+    return markdownRef.current?.getEditorContent() || '';
   };
 
   const onRelatedTermsModalCancel = () => {
