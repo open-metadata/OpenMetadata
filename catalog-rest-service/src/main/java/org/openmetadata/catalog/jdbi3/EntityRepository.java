@@ -492,20 +492,7 @@ public abstract class EntityRepository<T> {
     T original = JsonUtils.readValue(json, entityClass);
     setFields(original, putFields); // TODO why this?
 
-    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
-    List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
-
-    if (!contains.isEmpty()) {
-      if (!recursive) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
-      }
-      // Soft delete all the contained entities
-      for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
-      }
-    }
+    deleteChildren(id, recursive, hardDelete, updatedBy);
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
@@ -517,14 +504,51 @@ public abstract class EntityRepository<T> {
       updater.update();
       changeType = RestUtil.ENTITY_SOFT_DELETED;
     } else {
-      // Hard delete
-      daoCollection.relationshipDAO().deleteAll(id, entityType);
-      daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-      daoCollection.entityExtensionDAO().deleteAll(id);
-      dao.delete(id);
+      cleanup(entityInterface);
       changeType = RestUtil.ENTITY_DELETED;
     }
     return new DeleteResponse<>(updated, changeType);
+  }
+
+  private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
+    List<EntityReference> contains =
+        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+
+    if (contains.isEmpty()) {
+      return;
+    }
+    // Entity being deleted contains children entities
+    if (!recursive) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
+    }
+    // Delete all the contained entities
+    for (EntityReference entityReference : contains) {
+      LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
+      Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
+    }
+  }
+
+  protected void cleanup(EntityInterface<T> entityInterface) {
+    String id = entityInterface.getId().toString();
+
+    // Delete all the relationships to other entities
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
+
+    // Delete all the field relationships to other entities
+    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+
+    // Delete all the extensions of entity
+    daoCollection.entityExtensionDAO().deleteAll(id);
+
+    // Delete all the tag labels
+    daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+
+    // Delete all the usage data
+    daoCollection.usageDAO().delete(id);
+
+    // Finally, delete the entity
+    dao.delete(id);
   }
 
   @Transaction
