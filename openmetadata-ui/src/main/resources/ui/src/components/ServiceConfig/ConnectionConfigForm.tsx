@@ -14,7 +14,7 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
@@ -36,7 +36,7 @@ import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -73,9 +73,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           // This api only responds with status 200 on success
           // No data sent on api success
           if (res.status === 200) {
-            showSuccessToast(
-              jsonData['api-success-messages']['test-connection-success']
-            );
             resolve();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -149,7 +146,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     );
   };
 
-  return <>{getDatabaseFields()}</>;
+  return <Fragment>{getDatabaseFields()}</Fragment>;
 };
 
 export default ConnectionConfigForm;

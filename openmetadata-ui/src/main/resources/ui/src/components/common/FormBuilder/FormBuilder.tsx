@@ -147,6 +147,8 @@ const FormBuilder: FunctionComponent<Props> = ({
     formData
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
+  const [connectionTestingState, setConnectionTestingState] =
+    useState<LoadingState>('initial');
 
   const handleCancel = () => {
     setLocalFormData(formData);
@@ -164,9 +166,23 @@ const FormBuilder: FunctionComponent<Props> = ({
   const handleTestConnection = () => {
     if (localFormData && onTestConnection) {
       setConnectionTesting(true);
-      onTestConnection(localFormData).finally(() => {
-        setConnectionTesting(false);
-      });
+      setConnectionTestingState('waiting');
+      onTestConnection(localFormData)
+        .then(() => {
+          setTimeout(() => {
+            setConnectionTestingState('success');
+          }, 500);
+        })
+        .catch(() => {
+          setTimeout(() => {
+            setConnectionTestingState('initial');
+          }, 500);
+        })
+        .finally(() => {
+          setTimeout(() => {
+            setConnectionTesting(false);
+          }, 500);
+        });
     }
   };
   const debouncedOnChange = useCallback(
@@ -181,6 +197,29 @@ const FormBuilder: FunctionComponent<Props> = ({
   ]);
   const handleChange = (updatedData: ConfigData) => {
     debounceOnSearch(updatedData);
+  };
+
+  const getConnectionTestingMessage = () => {
+    switch (connectionTestingState) {
+      case 'waiting':
+        return (
+          <div className="tw-flex">
+            <Loader size="small" type="default" />{' '}
+            <span className="tw-ml-2">Running test...</span>
+          </div>
+        );
+      case 'success':
+        return (
+          <div className="tw-flex">
+            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
+            <span className="tw-ml-2">Connection test was successful</span>
+          </div>
+        );
+
+      case 'initial':
+      default:
+        return 'Test your connections before creating service';
+    }
   };
 
   return (
@@ -206,23 +245,25 @@ const FormBuilder: FunctionComponent<Props> = ({
           No Connection Configs available.
         </div>
       )}
-      <div className="tw-mt-6 tw-flex tw-justify-between">
-        <div>
-          {!isEmpty(schema) && onTestConnection && (
-            <Button
-              className={classNames({
-                'tw-opacity-40': connectionTesting,
-              })}
-              data-testid="test-connection-btn"
-              disabled={connectionTesting}
-              size="regular"
-              theme="primary"
-              variant="outlined"
-              onClick={handleTestConnection}>
-              Test Connection
-            </Button>
-          )}
+      {!isEmpty(schema) && onTestConnection && (
+        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
+          <div className="tw-self-center">{getConnectionTestingMessage()}</div>
+          <Button
+            className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
+              'tw-opacity-40': connectionTesting,
+            })}
+            data-testid="test-connection-btn"
+            disabled={connectionTesting}
+            size="small"
+            theme="primary"
+            variant="outlined"
+            onClick={handleTestConnection}>
+            Test Connection
+          </Button>
         </div>
+      )}
+      <div className="tw-mt-6 tw-flex tw-justify-between">
+        <div />
         <div className="tw-text-right" data-testid="buttons">
           <Button
             size="regular"
