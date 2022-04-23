@@ -498,7 +498,7 @@ public abstract class EntityRepository<T> {
 
     if (!contains.isEmpty()) {
       if (!recursive) {
-        throw new IllegalArgumentException(entityType + " is not empty");
+        throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
       }
       // Soft delete all the contained entities
       for (EntityReference entityReference : contains) {
