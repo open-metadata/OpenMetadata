@@ -13,11 +13,12 @@
 
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
@@ -26,7 +27,11 @@ import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
   const history = useHistory();
-  const { isAuthDisabled, authConfig, onLoginHandler } = useAuthContext();
+  const { isAuthDisabled, authConfig, onLoginHandler, onLogoutHandler } =
+    useAuthContext();
+  const isAlreadyLoggedIn = useMemo(() => {
+    return isAuthDisabled || !isEmpty(appState.userDetails);
+  }, [isAuthDisabled, appState.userDetails]);
 
   const handleSignIn = () => {
     onLoginHandler && onLoginHandler();
@@ -82,10 +87,20 @@ const SigninPage = () => {
     );
   };
 
+  // If user is neither logged in or nor security is disabled
+  // invoke logout handler to clean-up any slug storage
+  useEffect(() => {
+    if (!isAlreadyLoggedIn) {
+      onLogoutHandler();
+    }
+  }, []);
+
   // If the user is already logged in or if security is disabled
   // redirect the user to the home page.
-  if (isAuthDisabled || !isEmpty(appState.userDetails)) {
+  if (isAlreadyLoggedIn) {
     history.push(ROUTES.HOME);
+
+    return <Loader />;
   }
 
   return (

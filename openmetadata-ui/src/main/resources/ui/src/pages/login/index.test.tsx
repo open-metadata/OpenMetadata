@@ -54,6 +54,7 @@ describe('Test SigninPage Component', () => {
       isAuthDisabled: false,
       authConfig: { provider: 'google' },
       onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
     });
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
@@ -81,6 +82,7 @@ describe('Test SigninPage Component', () => {
         isAuthDisabled: false,
         authConfig: { provider },
         onLoginHandler: jest.fn(),
+        onLogoutHandler: jest.fn(),
       });
       const { container } = render(<SigninPage />, {
         wrapper: MemoryRouter,
@@ -99,6 +101,7 @@ describe('Test SigninPage Component', () => {
       isAuthDisabled: false,
       authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
       onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
     });
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
