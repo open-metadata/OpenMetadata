@@ -140,9 +140,7 @@ CREATE TABLE IF NOT EXISTS database_schema_entity (
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName),
-    INDEX (updatedBy),
-    INDEX (updatedAt)
+    UNIQUE KEY unique_name(fullyQualifiedName)
 );
 
 --
