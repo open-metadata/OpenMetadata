@@ -20,7 +20,9 @@ import { ROUTES } from '../../constants/constants';
 
 const PageNotFound = () => {
   return (
-    <div className="page-not-found-container tw-relative">
+    <div
+      className="page-not-found-container tw-relative"
+      data-testid="no-page-found">
       <div className="tw-flex-center tw-hw-full tw-absolute tw-inset-0">
         <img alt="not found" src={notFoundNumber} />
       </div>
@@ -33,7 +35,7 @@ const PageNotFound = () => {
             <p className="tw-text-lg tw-text-grey-muted-muted">
               The page you are looking for is not available
             </p>
-            <div className="tw-text-center tw-mt-16">
+            <div className="tw-text-center tw-mt-16" data-testid="route-links">
               <Link to={ROUTES.HOME}>
                 <Button className="tw-mr-5" theme="primary">
                   Go To Homepage
