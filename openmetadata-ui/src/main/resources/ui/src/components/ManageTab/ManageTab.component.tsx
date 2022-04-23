@@ -307,6 +307,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
         })}>
         <OwnerWidget
           allowTeamOwner={allowTeamOwner}
+          entityType={entityType}
           handleIsJoinable={handleIsJoinable}
           handleOwnerSelection={handleOwnerSelection}
           handleSelectOwnerDropdown={() =>

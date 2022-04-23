@@ -12,7 +12,14 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isNil, isString, isUndefined } from 'lodash';
+import {
+  camelCase,
+  isEmpty,
+  isNil,
+  isString,
+  isUndefined,
+  startCase,
+} from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -128,11 +135,7 @@ export const getEntityOverview = (
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -206,11 +209,7 @@ export const getEntityOverview = (
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -254,11 +253,7 @@ export const getEntityOverview = (
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -542,4 +537,8 @@ export const isColumnTestSupported = (dataType: string) => {
   return supportedType.includes(
     getDataTypeString(dataType) as PrimaryTableDataTypes
   );
+};
+
+export const getTitleCase = (text?: string) => {
+  return text ? startCase(camelCase(text)) : '';
 };

@@ -19,6 +19,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
+import { getTitleCase } from '../../../utils/EntityUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -74,7 +75,9 @@ const EntityDeleteModal: FC<Prop> = ({
         <div className={classNames('tw-modal-body')} data-testid="body-text">
           <p className="tw-mb-2">
             {bodyText ||
-              `Once you delete this ${entityType}, it will be removed permanently`}
+              `Once you delete this ${getTitleCase(
+                entityType
+              )}, it will be removed permanently`}
           </p>
           <p className="tw-mb-2">
             Type <strong>DELETE</strong> to confirm
