@@ -126,7 +126,7 @@ def run_backup(
 
     command = " ".join([mysqldump_root, port_opt, *options, database, f"> {out}"])
 
-    res = subprocess.run(command, shell=True)
+    res = subprocess.run(command, shell=True, check=True)
     if res.returncode != 0:
         raise RuntimeError("Error encountered when running mysqldump!")
 

@@ -40,13 +40,13 @@ def timeout(seconds: int = TEN_MIN):
     :param seconds: seconds to wait until raising the timeout
     """
 
-    def decorator(fn):
-        @functools.wraps(fn)
+    def decorator(func):
+        @functools.wraps(func)
         def inner(*args, **kwargs):
             signal.signal(signal.SIGALRM, _handle_timeout)
             signal.alarm(seconds)
             try:
-                result = fn(*args, **kwargs)
+                result = func(*args, **kwargs)
             finally:
                 signal.alarm(0)
             return result

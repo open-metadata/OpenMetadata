@@ -81,6 +81,9 @@ from metadata.generated.schema.security.credentials.gcsCredentials import GCSVal
 
 
 def get_connection_url_common(connection):
+    """
+    Common method to return connection url for connectors
+    """
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -114,7 +117,7 @@ def get_connection_url_common(connection):
 
 @singledispatch
 def get_connection_url(connection):
-    raise NotImplemented(
+    raise NotImplementedError(
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
@@ -206,8 +209,7 @@ def _(connection: PrestoConnection):
 def get_connection_args(connection):
     if connection.connectionArguments:
         return connection.connectionArguments
-    else:
-        return {}
+    return {}
 
 
 @get_connection_args.register
@@ -217,10 +219,8 @@ def _(connection: TrinoConnection):
         session.proxies = connection.proxies
         if connection.connectionArguments:
             return {**connection.connectionArguments, "http_session": session}
-        else:
-            return {"http_session": session}
-    else:
-        return connection.connectionArguments
+        return {"http_session": session}
+    return connection.connectionArguments
 
 
 @get_connection_url.register

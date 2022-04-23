@@ -1,3 +1,7 @@
+"""
+Module to create a Atlas Client.
+"""
+
 import base64
 from typing import Any, List
 
@@ -29,6 +33,10 @@ class AtlasSourceConfig(ConfigModel):
 
 
 class AtlasClient:
+    """
+    Creates a Atlas client based on credentials.
+    """
+
     def __init__(self, config: AtlasSourceConfig, raw_data: bool = False):
         self.config = config
         self.auth_token = generate_http_basic_token(
@@ -72,7 +80,5 @@ def generate_http_basic_token(username, password):
     Generates a HTTP basic token from username and password
     Returns a token string (not a byte)
     """
-    token = base64.b64encode("{}:{}".format(username, password).encode("utf-8")).decode(
-        "utf-8"
-    )
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
     return token

@@ -1,3 +1,7 @@
+"""
+Module to store queries used in retrieving schema information
+"""
+
 import textwrap
 
 REDSHIFT_SQL_STATEMENT = """

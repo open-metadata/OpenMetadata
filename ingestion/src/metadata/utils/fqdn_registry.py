@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module to register custom functions for FQDN building
+"""
+
 from collections import namedtuple
 from typing import Type, TypeVar
 
@@ -21,13 +25,13 @@ def register_fqdn_build():
     """
     Helps us register custom functions for FQDN building
     """
-    registry = dict()
+    registry = {}
 
     def add(entity_type: Type[T]):
-        def inner(fn):
+        def inner(func):
             _name = entity_type.__name__
-            registry[_name] = fn
-            return fn
+            registry[_name] = func
+            return func
 
         return inner
 

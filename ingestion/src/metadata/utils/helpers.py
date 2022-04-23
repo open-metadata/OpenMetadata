@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module to store helper methods
+"""
+
 import json
 import logging
 import os
@@ -53,17 +57,20 @@ def get_start_and_end(duration):
     return start, end
 
 
-def snake_to_camel(s):
-    a = s.split("_")
-    a[0] = a[0].capitalize()
-    if len(a) > 1:
-        a[1:] = [u.title() for u in a[1:]]
-    return "".join(a)
+def snake_to_camel(snake_string):
+    split_st = snake_string.split("_")
+    split_st[0] = split_st[0].capitalize()
+    if len(split_st) > 1:
+        split_st[1:] = [u.title() for u in split_st[1:]]
+    return "".join(split_st)
 
 
 def get_database_service_or_create(
     config: WorkflowSource, metadata_config, service_name=None
 ) -> DatabaseService:
+    """
+    Method to get database service or create if not present
+    """
     metadata = OpenMetadata(metadata_config)
     if not service_name:
         service_name = config.serviceName
@@ -134,13 +141,12 @@ def get_messaging_service_or_create(
     )
     if service is not None:
         return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateMessagingServiceRequest(
-                name=service_name, serviceType=message_service_type, connection=config
-            )
+    created_service = metadata.create_or_update(
+        CreateMessagingServiceRequest(
+            name=service_name, serviceType=message_service_type, connection=config
         )
-        return created_service
+    )
+    return created_service
 
 
 def get_dashboard_service_or_create(
@@ -149,22 +155,24 @@ def get_dashboard_service_or_create(
     config: dict,
     metadata_config,
 ) -> DashboardService:
+    """
+    Method to get dashboard service or create if not present
+    """
     metadata = OpenMetadata(metadata_config)
     service: DashboardService = metadata.get_by_name(
         entity=DashboardService, fqdn=service_name
     )
     if service is not None:
         return service
-    else:
-        dashboard_config = {"config": config}
-        created_service = metadata.create_or_update(
-            CreateDashboardServiceRequest(
-                name=service_name,
-                serviceType=dashboard_service_type,
-                connection=dashboard_config,
-            )
+    dashboard_config = {"config": config}
+    created_service = metadata.create_or_update(
+        CreateDashboardServiceRequest(
+            name=service_name,
+            serviceType=dashboard_service_type,
+            connection=dashboard_config,
         )
-        return created_service
+    )
+    return created_service
 
 
 def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
@@ -174,11 +182,10 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
     )
     if service is not None:
         return service
-    else:
-        created_service = metadata.create_or_update(
-            CreatePipelineServiceRequest(**service_json)
-        )
-        return created_service
+    created_service = metadata.create_or_update(
+        CreatePipelineServiceRequest(**service_json)
+    )
+    return created_service
 
 
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
@@ -188,11 +195,10 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
     )
     if service is not None:
         return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateStorageServiceRequest(**service_json)
-        )
-        return created_service
+    created_service = metadata.create_or_update(
+        CreateStorageServiceRequest(**service_json)
+    )
+    return created_service
 
 
 def datetime_to_ts(date: datetime) -> int:
@@ -217,10 +223,10 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
 
 
 def create_credential_temp_file(credentials: dict) -> str:
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
-        return fp.name
+        temp_file.write(cred_json.encode())
+        return temp_file.name
 
 
 def store_gcs_credentials(options) -> bool:

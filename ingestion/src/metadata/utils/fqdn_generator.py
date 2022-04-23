@@ -8,6 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Module generate fqdn
+"""
+
 from typing import Type
 
 from metadata.config.common import FQDN_SEPARATOR
@@ -30,10 +34,10 @@ def replace_none(*args):
 
 
 def get_fqdn(entity_type: Type[T], *args, **kwargs):
-    fn = fqdn_build_registry.registry.get(entity_type.__name__)
-    if not fn:
+    func = fqdn_build_registry.registry.get(entity_type.__name__)
+    if not func:
         raise ValueError("Invalid Type")
-    return fn(*args, **kwargs)
+    return func(*args, **kwargs)
 
 
 @fqdn_build_registry.add(Table)

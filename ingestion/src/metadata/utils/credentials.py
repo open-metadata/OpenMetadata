@@ -36,11 +36,11 @@ def create_credential_tmp_file(credentials: dict) -> str:
     :param credentials: dictionary to store
     :return: path to find the file
     """
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
+        temp_file.write(cred_json.encode())
 
-        return fp.name
+        return temp_file.name
 
 
 def set_google_credentials(gcs_credentials: GCSCredentials) -> None:

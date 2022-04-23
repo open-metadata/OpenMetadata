@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module for getting versions of metadata and python
+"""
+
 import os
 import sys
 
@@ -18,14 +22,13 @@ version = pkg_resources.require("openmetadata-ingestion")[0].version
 
 
 def get_metadata_version() -> str:
+    """
+    Return the metadata version
+    """
     metadata_pkg_dir = os.path.join(os.path.dirname(__file__), "..", "..")
     metadata_pkg_dir = os.path.abspath(metadata_pkg_dir)
 
-    return "metadata {} from {} (python {})".format(
-        version,
-        metadata_pkg_dir,
-        get_major_minor_version(),
-    )
+    return f"metadata {version} from {metadata_pkg_dir} (python {get_major_minor_version()})"
 
 
 def get_major_minor_version() -> str:

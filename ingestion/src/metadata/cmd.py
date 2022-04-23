@@ -9,6 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Ingestion related commands
+"""
 import logging
 import os
 import pathlib
@@ -57,6 +60,7 @@ def check() -> None:
     required=False,
 )
 def metadata(debug: bool, log_level: str) -> None:
+    """Method to set logger information"""
     if debug:
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
@@ -88,8 +92,8 @@ def ingest(config: str) -> None:
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        click.echo(err, err=True)
         logger.debug(traceback.print_exc())
         sys.exit(1)
 
@@ -115,8 +119,8 @@ def profile(config: str) -> None:
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()
@@ -146,13 +150,13 @@ def report(config: str) -> None:
         workflow_config["sink"] = file_sink
         ### add json generation as the sink
         workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    ret = workflow.print_status()
+    workflow.print_status()
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE", "metadata_server.openmetadata.settings"
     )
@@ -160,7 +164,7 @@ def report(config: str) -> None:
         from django.core.management import call_command
         from django.core.wsgi import get_wsgi_application
 
-        application = get_wsgi_application()
+        get_wsgi_application()
         call_command("runserver", "localhost:8000")
     except ImportError as exc:
         logger.error(exc)

@@ -20,12 +20,12 @@ def enum_register():
     """
     Helps us register custom function for enum values
     """
-    registry = dict()
+    registry = {}
 
     def add(name: str):
-        def inner(fn):
-            registry[name] = fn
-            return fn
+        def inner(func):
+            registry[name] = func
+            return func
 
         return inner
 

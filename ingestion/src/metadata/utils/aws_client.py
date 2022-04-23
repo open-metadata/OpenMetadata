@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module to create a boto3 Session client based on AWSCredentials.
+"""
+
 from typing import Any
 
 from boto3 import Session

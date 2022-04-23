@@ -100,7 +100,7 @@ def get_connection(
 def _(connection: DatabricksConnection, verbose: bool = False):
     args = connection.connectionArguments
     if not args:
-        connection.connectionArguments = dict()
+        connection.connectionArguments = {}
         connection.connectionArguments["http_path"] = connection.httpPath
     return create_generic_connection(connection, verbose)
 
@@ -131,7 +131,7 @@ def _(connection: SnowflakeConnection, verbose: bool = False):
             encryption_algorithm=serialization.NoEncryption(),
         )
         if not connection.connectionArguments:
-            connection.connectionArguments = dict()
+            connection.connectionArguments = {}
             connection.connectionArguments["private_key"] = pkb
     return create_generic_connection(connection, verbose)
 
