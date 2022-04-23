@@ -309,6 +309,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
         {!hideOwner && (
           <OwnerWidget
             allowTeamOwner={allowTeamOwner}
+            entityType={entityType}
             handleIsJoinable={handleIsJoinable}
             handleOwnerSelection={handleOwnerSelection}
             handleSelectOwnerDropdown={() =>

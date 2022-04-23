@@ -154,11 +154,11 @@ const jsonData = {
   },
   label: {
     'delete-entity-text':
-      'Once you delete this entity, it would be removed permanently.',
+      'Once you delete this entity, it will be removed permanently.',
   },
   message: {
     'no-services': 'No services',
-    'fail-to-deploy-pipeline': 'Failed to deploy Ingestion Pipeline',
+    'fail-to-deploy-pipeline': 'Failed to deploy Ingestion Pipeline!',
   },
 };
 

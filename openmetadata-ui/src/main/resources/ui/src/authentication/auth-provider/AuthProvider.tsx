@@ -93,7 +93,7 @@ export const AuthProvider = ({
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
 
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
-    Boolean(oidcUserToken || localStorage.getItem('okta-token-storage'))
+    Boolean(oidcUserToken)
   );
   const [isAuthDisabled, setIsAuthDisabled] = useState(false);
   const [loading, setLoading] = useState(true);
