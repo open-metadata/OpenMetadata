@@ -51,6 +51,7 @@ class KafkaSourceConfig(ConfigModel):
     bootstrap_servers: str = "localhost:9092"
     schema_registry_url: str = "http://localhost:8081"
     consumer_config: dict = {}
+    schema_registry_config: dict = {}
     service_name: str
     service_type: str = MessagingServiceType.Kafka.value
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
@@ -79,8 +80,9 @@ class KafkaSource(Source[CreateTopicRequest]):
             brokers=config.bootstrap_servers.split(","),
             metadata_config=metadata_config,
         )
+        self.config.schema_registry_config["url"] = self.config.schema_registry_url
         self.schema_registry_client = SchemaRegistryClient(
-            {"url": self.config.schema_registry_url}
+            self.config.schema_registry_url
         )
         admin_client_config = self.config.consumer_config
         admin_client_config["bootstrap.servers"] = self.config.bootstrap_servers
