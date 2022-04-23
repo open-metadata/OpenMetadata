@@ -34,3 +34,9 @@ class SalesforceClient:
 class DeltaLakeClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class KafkaClient:
+    def __init__(self, client) -> None:
+        self.client = client

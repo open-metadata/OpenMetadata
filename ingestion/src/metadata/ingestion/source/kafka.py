@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.messagingService import (
+    MessagingService,
     MessagingServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -39,6 +40,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import logger
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connection_clients import KafkaClient
+from metadata.utils.connections import test_connection
 from metadata.utils.filters import filter_by_topic
 from metadata.utils.helpers import get_messaging_service_or_create
 
@@ -71,19 +75,16 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.source_config = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
         self.status = KafkaSourceStatus()
-        self.kafka_service_config = {
-            "bootstrapServers": self.service_connection.bootstrapServers,
-            "schemaRegistryURL": self.service_connection.schemaRegistryURL,
-        }
-        self.service = get_messaging_service_or_create(
-            service_name=config.serviceName,
-            message_service_type=MessagingServiceType.Kafka.name,
-            config=self.kafka_service_config,
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=MessagingService, config=config
         )
+        self.service_connection.schemaRegistryConfig[
+            "url"
+        ] = self.service_connection.schemaRegistryURL
         self.schema_registry_client = SchemaRegistryClient(
-            {"url": self.service_connection.schemaRegistryURL}
+            self.service_connection.schemaRegistryConfig
         )
         self.admin_client = AdminClient(
             {
@@ -190,4 +191,6 @@ class KafkaSource(Source[CreateTopicRequest]):
         pass
 
     def test_connection(self) -> None:
-        pass
+        test_connection(KafkaClient(client=self.admin_client))
+        if self.service_connection.schemaRegistryURL:
+            test_connection(KafkaClient(client=self.schema_registry_client))

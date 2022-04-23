@@ -50,6 +50,7 @@ from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
     GlueClient,
+    KafkaClient,
     SalesforceClient,
 )
 from metadata.utils.credentials import set_google_credentials
@@ -293,6 +294,21 @@ def _(connection: DeltaLakeConnection, verbose: bool = False):
         configure_spark_with_delta_pip(builder).getOrCreate()
     )
     return deltalake_connection
+
+
+@test_connection.register
+def _(connection: KafkaClient) -> None:
+    from confluent_kafka.admin import AdminClient
+
+    try:
+        if isinstance(connection.client, AdminClient):
+            return connection.client.list_topics().topics
+        else:
+            return connection.client.get_subjects()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
 
 
 @test_connection.register
