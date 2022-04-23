@@ -95,6 +95,7 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.0</testng.version>
+    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -317,6 +318,16 @@
         <groupId>org.springframework</groupId>
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-core</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-jdbi</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
       </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
