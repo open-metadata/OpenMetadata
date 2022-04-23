@@ -1,23 +1,23 @@
 ---
 description: >-
-  This guide will help you configure metadata ingestion workflows using the
-  Snowflake connector.
+  This guide will help you install and configure the Snowflake Usage connector
+  and run usage ingestion workflows.
 ---
 
-# Snowflake
+# Snowflake Usage via UI
 
-## Snowflake Metadata Ingestion via OpenMetadata UI
+In order to run the Snowflake usage ingestion workflows, the Snowflake metadata ingestion workflow must be set up first. Configure and schedule Snowflake Usage ingestion workflows from the **OpenMetadata UI**:
 
-Configure and schedule Snowflake metadata ingestion workflows from the OpenMetadata UI:
-
-1. [Requirements](./#1.-ensure-your-system-meets-the-requirements)
-2. [Visit the _Services_ page](./#2.-visit-the-services-page)
-3. [Initiate new service creation](./#3.-initiate-a-new-service-creation)
-4. [Select service type](./#4.-select-service-type)
-5. [Name and describe your service](./#5.-name-and-describe-your-service)
-6. [Configure service connection](./#6.-configure-service-connection)
-7. [Configure metadata ingestion](./#7.-configure-metadata-ingestion)
-8. [Schedule for ingestion and Deploy](./#8.-schedule-for-ingestion-and-deploy)
+1. [Requirements](snowflake-usage-via-ui.md#1.-ensure-your-system-meets-the-requirements)
+2. [Visit the _Services_ page](snowflake-usage-via-ui.md#2.-visit-the-services-page)
+3. [Initiate new service creation](snowflake-usage-via-ui.md#3.-initiate-a-new-service-creation)
+4. [Select service type](snowflake-usage-via-ui.md#4.-select-service-type)
+5. [Name and describe your service](snowflake-usage-via-ui.md#5.-name-and-describe-your-service)
+6. [Configure service connection](snowflake-usage-via-ui.md#6.-configure-service-connection)
+7. [Configure metadata ingestion](snowflake-usage-via-ui.md#7.-configure-metadata-ingestion)
+8. [Schedule for ingestion and deploy](snowflake-usage-via-ui.md#8.-schedule-for-ingestion-and-deploy)
+9. [Configure usage ingestion](snowflake-usage-via-ui.md#9.-add-usage-ingestion)
+10. [Schedule usage ingestion and deploy](snowflake-usage-via-ui.md#10.-schedule-usage-ingestion)
 
 ## **1. Requirements**
 
@@ -51,39 +51,39 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake Usage services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your Snowflake Usage service that enables other users to determine whether it might provide data of interest to them.
 
 ![](../../../.gitbook/assets/image.png)
 
 ## 6. Configure service connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake Usage service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
 
 ![](<../../../.gitbook/assets/image (54).png>)
 
 #### Username
 
-Enter username of your Snowflake user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter username of your Snowflake Usage user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your Snowflake user in the _Password_ field.
+Enter the password for your Snowflake Usage user in the _Password_ field.
 
 #### Host and Port
 
-Enter fully qualified host name and port number for your Snowflake deployment in the _Host and Port_ field.
+Enter fully qualified host name and port number for your Snowflake Usage deployment in the _Host and Port_ field.
 
 #### Account
 
-Enter the details for the Snowflake _Account_.
+Enter the details for the Snowflake Usage _Account_.
 
 #### Role (Optional)
 
-Enter the details of the Snowflake Account _Role_. This is an optional detail.
+Enter the details of the Snowflake Usage Account _Role_. This is an optional detail.
 
 #### Database (optional)
 
@@ -91,15 +91,15 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 #### Warehouse (Optional)
 
-Enter the details of the Snowflake warehouse. This is an optional requirement.
+Enter the details of the Snowflake Usage warehouse. This is an optional requirement.
 
 #### Connection Options (Optional)
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+Enter the details for any additional connection options that can be sent to Snowflake Usage during the connection. These details must be added as Key Value pairs.
 
 #### Connection Arguments (Optional)
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake Usage during the connection. These details must be added as Key Value pairs.
 
 In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key Value pair as follows.
 
@@ -115,7 +115,7 @@ Choose to support the data profiler.
 
 ## 7. Configure metadata ingestion
 
-In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
+In this step we will configure the metadata ingestion settings for your Snowflake Usage deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake Usage service as desired.
 
 ![](<../../../.gitbook/assets/image (1).png>)
 
@@ -157,13 +157,9 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-## 8. Schedule for ingestion and Deploy
+## 8. Schedule for ingestion and deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
-
-Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
-
-If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![](<../../../.gitbook/assets/image (2).png>)
 
@@ -195,4 +191,42 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-![](<../../../.gitbook/assets/image (36) (2).png>)
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
+
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
+
+![](<../../../.gitbook/assets/image (36).png>)
+
+## 9. Configure usage ingestion
+
+Once the metadata ingestion has been deployed successfully, click on **Add Usage Ingestion**.
+
+![](<../../../.gitbook/assets/image (17).png>)
+
+Enter the following details and click Next.
+
+![](<../../../.gitbook/assets/image (34).png>)
+
+#### Query Log Duration
+
+Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for duration, the data profiler will capture usage information for the 48 hours prior to when the ingestion workflow is run.
+
+#### Stage File Location
+
+Mention the absolute file path of the temporary file name to store the query logs before processing.
+
+#### &#x20;Result Limit
+
+Set the limit for the query log results to be run at a time.
+
+## 10. Schedule usage ingestion and deploy
+
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule the usage ingestion. It is optional to add an End Date. Click on Deploy.
+
+![](<../../../.gitbook/assets/image (4).png>)
+
+Click on View Service to check the ingestion details.
+
+![](<../../../.gitbook/assets/image (6).png>)
+
+![](<../../../.gitbook/assets/image (20).png>)

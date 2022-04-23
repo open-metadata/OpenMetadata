@@ -86,7 +86,7 @@ pip3 install --upgrade 'openmetadata-ingestion[snowflake]'
 6. [Configure sample data (optional)](snowflake-via-airflow-sdk.md#3.4.-configure-sample-data-optional)
 7. [Configure DBT (optional)](snowflake-via-airflow-sdk.md#3.5.-configure-dbt-optional)
 8. [Confirm sink settings](snowflake-via-airflow-sdk.md#3.6.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](snowflake-via-airflow-sdk.md#3.7.-confirm-metadata\_server-settings)
+9. [Confirm workflowConfig settings](snowflake-via-airflow-sdk.md#3.9.-confirm-workflowconfig-settings)
 
 ### 3.1 Create a configuration file using template JSON
 

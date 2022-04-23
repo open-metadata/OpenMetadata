@@ -1,10 +1,10 @@
 ---
 description: >-
   This guide will help you install and configure the Snowflake Usage connector
-  and run metadata ingestion workflows manually.
+  and run usage ingestion workflows manually.
 ---
 
-# Snowflake Usage & Lineage
+# Snowflake Usage via Airflow SDK
 
 ## **Requirements**
 
@@ -35,8 +35,8 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 7. [Configure data filters (optional)](snowflake-usage.md#7.-configure-data-filters-optional)
 8. [Configure sample data (optional)](snowflake-usage.md#8.-configure-sample-data-optional)
 9. [Configure DBT (optional)](snowflake-usage.md#9.-configure-dbt-optional)
-10. [Confirm sink settings](snowflake-usage.md#10.-confirm-sink-settings)
-11. [Confirm metadata\_server settings](snowflake-usage.md#11.-confirm-metadata\_server-settings)
+10. [Confirm bulkSink settings](snowflake-usage.md#10.-confirm-sink-settings)
+11. [Confirm workflowConfig settings](snowflake-usage.md#11.-confirm-workflowconfig-settings)
 12. [Run ingestion workflow](snowflake-usage.md#12.-run-ingestion-workflow)
 
 ### **1. Prepare a Python virtual environment**
@@ -91,27 +91,40 @@ pip3 install 'openmetadata-ingestion[snowflake-usage]'
 
 Create a new file called `snowflake_usage.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
 
-Copy and paste the configuration template below into the `snowflake_usage.json` file you created.
+Copy and paste the configuration JSON from one of the template options below. Your choice depends on how you will authenticate to Snowflake Usage.
 
-{% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
-{% endhint %}
+#### Option 1: Authenticate with SSO using an external browser popup
 
-You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulk_sink` along with `metadata-server` config
+Use this method to test metadata ingestion on a Snowflake Usage instance to which you authenticate using single-sign-on (SSO). This method will pop up a browser window to enable you to authenticate using your SSO method. To use this method, copy and paste the template JSON below into your `snowflake_usage.json` file.
 
-{% code title="snowflake_usage.json" %}
 ```javascript
 {
   "source": {
     "type": "snowflake-usage",
-    "config": {
-      "host_port": "account.region.service.snowflakecomputing.com",
-      "username": "username",
-      "password": "strong_password",
-      "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "account_name",
-      "service_name": "snowflake",
-      "duration": 2
+    "serviceName": "snowflake",
+    "serviceConnection": {
+      "config": {
+        "type": "Snowflake",
+        "hostPort": "account.region.service.snowflakecomputing.com",
+        "username": "username",
+        "password": "strong_password",
+        "database": "SNOWFLAKE_SAMPLE_DATA",
+        "warehouse": "COMPUTE_WH",
+        "duration": "2",
+        "account": "account_name"
+        "connectionOptions": {
+        },
+        "connectionArguments": {
+        "authenticator": "externalbrowser"
+      },
+        "supportsMetadataExtraction": true,
+        "supportsUsageExtraction": true
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "resultLimit": 1000
+      }
     }
   },
   "processor": {
@@ -126,33 +139,156 @@ You can optionally add the `query-parser` processor, `table-usage` stage and `me
       "filename": "/tmp/snowflake_usage"
     }
   },
-  "bulk_sink": {
+  "bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/snowflake_usage"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
 ```
-{% endcode %}
+
+#### Option 2: Authenticate with SSO specifying provider, username, and password
+
+Use this method to test metadata ingestion on a Snowflake Usage instance to which you authenticate using single-sign-on (SSO). Using this method, you will specify a url for your authentication provider and a username and password that will authenticate against this provider.
+
+To use this method, copy and paste the template JSON below into your `snowflake_usage.json` file.
+
+```javascript
+{
+  "source": {
+    "type": "snowflake-usage",
+    "serviceName": "snowflake",
+    "serviceConnection": {
+      "config": {
+        "type": "Snowflake",
+        "hostPort": "account.region.service.snowflakecomputing.com",
+        "username": "username",
+        "password": "strong_password",
+        "database": "SNOWFLAKE_SAMPLE_DATA",
+        "warehouse": "COMPUTE_WH",
+        "duration": "2",
+        "account": "account_name"
+        "connectionOptions": {
+        },
+        "connectionArguments": {
+        "authenticator": "https://something.okta.com/"
+      },
+        "supportsMetadataExtraction": true,
+        "supportsUsageExtraction": true
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "resultLimit": 1000
+      }
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "bulkSink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
+    }
+  }
+}
+```
+
+#### Option 3: Authenticate with username and password
+
+Use this method to test metadata ingestion on a Snowflake Usage instance to which you authenticate using a username and password.
+
+To use this method, copy and paste the template JSON below into your `snowflake_usage.json` file.
+
+{% hint style="info" %}
+Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
+{% endhint %}
+
+You can optionally add the `query-parser` processor, `table-usage` stage and `metadata-usage` `bulkSink` along with `workflowConfig`
+
+```javascript
+{
+  "source": {
+    "type": "snowflake-usage",
+    "serviceName": "snowflake",
+    "serviceConnection": {
+      "config": {
+        "type": "Snowflake",
+        "hostPort": "account.region.service.snowflakecomputing.com",
+        "username": "username",
+        "password": "strong_password",
+        "database": "SNOWFLAKE_SAMPLE_DATA",
+        "warehouse": "COMPUTE_WH",
+        "duration": "2",
+        "account": "account_name"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "resultLimit": 1000
+      }
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "bulkSink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
+    }
+  }
+}
+```
 
 ### **4. Configure service settings**
 
 In this step we will configure the Snowflake Usage service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Snowflake service as desired.
 
-#### **host\_port**
+#### **hostPort**
 
-Edit the value for `source.config.host_port` in `snowflake_usage.json` for your Snowflake Usage deployment. Use the `host:port` format illustrated in the example below.
+Edit the value for `source.config.hostPort` in `snowflake_usage.json` for your Snowflake Usage deployment. Use the `host:port` format illustrated in the example below.
 
 ```javascript
-"host_port": "account.region.service.snowflakecomputing.com"
+"hostPort": "account.region.service.snowflakecomputing.com",
 ```
 
 Please ensure that your Snowflake Usage deployment is reachable from the host you are using to run metadata ingestion.
@@ -177,12 +313,12 @@ Edit the value for `source.config.password` with the password for your Snowflake
 "password": "strong_password"
 ```
 
-#### **service\_name**
+#### **serviceName**
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Snowflake Usage services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their `serviceName`. Edit the value for `source.config.serviceName` with a name that distinguishes this deployment from other services, including other Snowflake Usage services that you might be ingesting metadata from.
 
 ```javascript
-"service_name": "snowflake"
+"serviceName": "snowflake",
 ```
 
 #### duration
@@ -207,24 +343,24 @@ To specify a single database to ingest metadata from, provide the name of the da
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-#### **data\_profiler\_enabled**
+#### enableDataProfiler
 
 When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
 
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
+You may disable the data profiler by setting the value for the key `source.config.enableDataProfiler` to `"false"` as follows. We’ve done this in the configuration template provided.
 
 ```javascript
-"data_profiler_enabled": "false"
+"enableDataProfiler": "false"
 ```
 
 If you want to enable the data profiler, update your configuration file as follows.
 
 ```javascript
-"data_profiler_enabled": "true"
+"enableDataProfiler": "true"
 ```
 
 {% hint style="info" %}
-**Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
+**Note:** The data profiler is enabled by default if no setting is provided for `enableDataProfiler`
 {% endhint %}
 
 ### **6. Install the data profiler Python module (optional)**
@@ -239,62 +375,62 @@ The data profiler module takes a few minutes to install. While it installs, cont
 
 ### **7. Configure data filters (optional)**
 
-#### **include\_views (optional)**
+#### **includeViews (optional)**
 
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
+Use `source.config.includeViews` to control whether or not to include views as part of metadata ingestion and data profiling.
 
 Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
 
 ```javascript
-"include_views": "true"
+"includeViews": "true"
 ```
 
 Exclude views as follows.
 
 ```javascript
-"include_views": "false"
+"includeViews": "false"
 ```
 
 {% hint style="info" %}
-**Note:** `source.config.include_views` is set to true by default.
+**Note:** `source.config.includeViews` is set to true by default.
 {% endhint %}
 
-#### **include\_tables (optional)**
+#### **includeTables (optional)**
 
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
+Use `source.config.includeTables` to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
 
 ```javascript
-"include_tables": "true"
+"includeTables": "true"
 ```
 
 Exclude tables as follows.
 
 ```javascript
-"include_tables": "false"
+"includeTables": "false"
 ```
 
 {% hint style="info" %}
-**Note:** `source.config.include_tables` is set to true by default.
+**Note:** `source.config.includeTables` is set to true by default.
 {% endhint %}
 
-#### **table\_filter\_pattern (optional)**
+#### tableFilterPattern **(optional)**
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
+Use `source.config.tableFilterPattern` to select tables for metadata ingestion by name.
 
-Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
+Use `source.config.tableFilterPattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
 
 ```javascript
-"table_filter_pattern": {
+"tableFilterPattern": {
 "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
 }
 ```
 
-Use `source.config.table_filter_pattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
+Use `source.config.tableFilterPattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
 
 ```javascript
-"table_filter_pattern": {
+"tableFilterPattern": {
 "includes": ["corp.*", "dept.*"]
 }
 ```
@@ -302,27 +438,27 @@ Use `source.config.table_filter_pattern.includes` to include all tables with nam
 See the documentation for the[ Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
 
 {% hint style="info" %}
-You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
+You may use either `excludes` or `includes` but not both in `tableFilterPattern`.
 {% endhint %}
 
-#### **schema\_filter\_pattern (optional)**
+#### schemaFilterPattern **(optional)**
 
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
+Use `source.config.schemaFilterPattern.excludes` and `source.config.schemaFilterPattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](snowflake-usage.md#table\_filter\_pattern-optional). Please check that section for details.
+The syntax and semantics for `schemaFilterPattern` are the same as for [`tableFilterPattern`](snowflake-usage.md#table\_filter\_pattern-optional). Please check that section for details.
 
 ### **8. Configure sample data (optional)**
 
-#### **generate\_sample\_data (optional)**
+#### generateSampleData **(optional)**
 
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
+Use the `source.config.generateSampleData` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
 ![](../../../.gitbook/assets/generate\_sample\_data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
 ```javascript
-"generate_sample_data": "true"
+"generateSampleData": "true"
 ```
 
 If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
@@ -330,11 +466,11 @@ If set to true, the connector will collect the first 50 rows of data from each t
 You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
 ```javascript
-"generate_sample_data": "false"
+"generateSampleData": "false"
 ```
 
 {% hint style="info" %}
-**Note:** `generate_sample_data` is set to true by default.
+**Note:** `generateSampleData` is set to true by default.
 {% endhint %}
 
 ### **9. Configure DBT (optional)**
@@ -345,28 +481,28 @@ DBT provides transformation logic that creates tables and views from raw data. O
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
-#### **dbt\_manifest\_file (optional)**
+#### dbtManifestFileName **(optional)**
 
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
+Use the field `source.config.dbtManifestFileName` to specify the location of your DBT manifest file. See below for an example.
 
 ```javascript
-"dbt_manifest_file": "./dbt/manifest.json"
+"dbtManifestFileName": "./dbt/manifest.json"
 ```
 
-#### **dbt\_catalog\_file (optional)**
+#### dbtCatalogFileName **(optional)**
 
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
+Use the field `source.config.dbtCatalogFileName` to specify the location of your DBT catalog file. See below for an example.
 
 ```javascript
-"dbt_catalog_file": "./dbt/catalog.json"
+"dbtCatalogFileName": "./dbt/catalog.json"
 ```
 
-### **10. Confirm sink settings**
+### **10. Confirm `bulkSink` settings**
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `snowflake_usage.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `bulkSink` in the template code you copied into `snowflake_usage.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"bulk_sink": {
+"bulkSink": {
     "type": "metadata-usage",
     "config": {
       "filename": "/tmp/snowflake_usage"
@@ -374,18 +510,17 @@ You need not make any changes to the fields defined for `sink` in the template c
   },
 ```
 
-### **11. Confirm metadata\_server settings**
+### **11. Confirm `workflowConfig` settings**
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `snowflake_usage.json` in Step 4. This part of your configuration file should be as follows.
+You need not make any changes to the fields defined for `workflowConfig` in the template code you copied into `snowflake_usage.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+"workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
-}
+  }
 ```
 
 ### **12. Run ingestion workflow**
