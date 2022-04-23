@@ -217,7 +217,7 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerOfPost(Post post) throws IOException {
+  public EntityReference getOwnerOfPost(Post post) {
     User fromUser = dao.userDAO().findEntityByName(post.getFrom());
     return Entity.getEntityReference(fromUser);
   }

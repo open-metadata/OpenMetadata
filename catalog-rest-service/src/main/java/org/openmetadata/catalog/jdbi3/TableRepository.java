@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -281,7 +282,7 @@ public class TableRepository extends EntityRepository<Table> {
       TableTest prevTableTest = storedMapTableTests.get(tableTest.getName());
       tableTest.setId(prevTableTest.getId());
       // process test result
-      if (tableTest.getResults() != null && !tableTest.getResults().isEmpty()) {
+      if (!nullOrEmpty(tableTest.getResults())) {
         List<TestCaseResult> prevTestCaseResults = prevTableTest.getResults();
         prevTestCaseResults.addAll(tableTest.getResults());
         tableTest.setResults(prevTestCaseResults);
@@ -348,7 +349,7 @@ public class TableRepository extends EntityRepository<Table> {
       columnTest.setId(prevColumnTest.getId());
 
       // process test results
-      if (columnTest.getResults() != null && !columnTest.getResults().isEmpty()) {
+      if (!nullOrEmpty(columnTest.getResults())) {
         List<TestCaseResult> prevTestCaseResults = prevColumnTest.getResults();
         prevTestCaseResults.addAll(columnTest.getResults());
         columnTest.setResults(prevTestCaseResults);
@@ -486,7 +487,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
-    if (table.getDescription() == null || table.getDescription().isEmpty()) {
+    if (nullOrEmpty(table.getDescription())) {
       table.setDescription(dataModel.getDescription());
     }
     // Carry forward the column description from the model to table columns, if empty
@@ -499,7 +500,7 @@ public class TableRepository extends EntityRepository<Table> {
       if (stored == null) {
         continue;
       }
-      if (stored.getDescription() == null || stored.getDescription().isEmpty()) {
+      if (nullOrEmpty(stored.getDescription())) {
         stored.setDescription(modelColumn.getDescription());
       }
     }
@@ -525,7 +526,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void addDerivedColumnTags(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
+    if (nullOrEmpty(columns)) {
       return;
     }
 
@@ -604,7 +605,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   List<Column> cloneWithoutTags(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
+    if (nullOrEmpty(columns)) {
       return columns;
     }
     List<Column> copy = new ArrayList<>();
@@ -1122,7 +1123,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription())) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedColumn.setDescription(origColumn.getDescription());
         return;

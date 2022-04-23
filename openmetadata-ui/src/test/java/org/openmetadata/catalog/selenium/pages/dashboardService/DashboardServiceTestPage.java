@@ -41,7 +41,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(9)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DashboardServiceTestPage {
+class DashboardServiceTestPage {
   static WebDriver webDriver;
   static Common common;
   static DashboardServicePage dashboardServicePage;
@@ -71,7 +71,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(1)
-  public void openDashboardServicePage() throws InterruptedException {
+  void openDashboardServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
@@ -81,7 +81,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(2)
-  public void addDashboardService() throws InterruptedException {
+  void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
@@ -114,7 +114,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(3)
-  public void checkDashboardServiceDetails() throws InterruptedException {
+  void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
@@ -125,7 +125,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(4)
-  public void checkConnectionConfigTab() throws InterruptedException, IOException {
+  void checkConnectionConfigTab() throws InterruptedException, IOException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
@@ -147,7 +147,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(5)
-  public void deleteDashboardService() throws InterruptedException {
+  void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.deleteServiceButton(serviceName));

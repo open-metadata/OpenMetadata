@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.teams;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.annotations.Api;
@@ -396,7 +397,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   private Role getRole(CreateRole cr, SecurityContext securityContext) {
-    if (cr.getPolicies() == null || cr.getPolicies().isEmpty()) {
+    if (nullOrEmpty(cr.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
     return new Role()

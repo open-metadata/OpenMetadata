@@ -42,6 +42,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrdering;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -703,8 +704,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
-
-    // TODO deactivated user can't be made owner
   }
 
   private User createUserAndCheckRoles(CreateUser create, List<UUID> expectedRolesIds) throws HttpResponseException {
@@ -755,7 +754,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public CreateUser createRequest(String name, String description, String displayName, EntityReference owner) {
     // user part of the email should be less than 64 in length
-    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
+    String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser()
         .withName(name)

@@ -44,7 +44,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(17)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class CommonTests {
+class CommonTests {
   static WebDriver webDriver;
   static Common common;
   static Actions actions;
@@ -59,7 +59,7 @@ public class CommonTests {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -72,14 +72,14 @@ public class CommonTests {
     webDriver.get(url);
   }
 
-  public void openHomePage() throws InterruptedException {
+  void openHomePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Thread.sleep(waitTime);
   }
 
   @Test
   @Order(1)
-  public void tagDuplicationCheck() throws InterruptedException {
+  void tagDuplicationCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tables"));
     Events.sendKeys(webDriver, common.searchBar(), "dim_location");
@@ -102,7 +102,7 @@ public class CommonTests {
 
   @Test
   @Order(2)
-  public void addTagWithSpaceCheck() throws InterruptedException, IOException {
+  void addTagWithSpaceCheck() throws InterruptedException, IOException {
     openHomePage();
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
@@ -132,7 +132,7 @@ public class CommonTests {
 
   @Test
   @Order(3)
-  public void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
+  void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
     openHomePage();
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
@@ -151,7 +151,7 @@ public class CommonTests {
 
   @Test
   @Order(4)
-  public void onlySpaceAsNameForServiceCheck() throws InterruptedException {
+  void onlySpaceAsNameForServiceCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("service"));
     Thread.sleep(2000);
@@ -197,7 +197,7 @@ public class CommonTests {
 
   @Test
   @Order(6)
-  public void sameNameTagCategoryUIMessageCheck() throws InterruptedException {
+  void sameNameTagCategoryUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -214,7 +214,7 @@ public class CommonTests {
 
   @Test
   @Order(7)
-  public void sameNameTagUIMessageCheck() throws InterruptedException {
+  void sameNameTagUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -232,7 +232,7 @@ public class CommonTests {
 
   @Test
   @Order(8)
-  public void shortTagCategoryNameUIMessageCheck() throws InterruptedException {
+  void shortTagCategoryNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -249,7 +249,7 @@ public class CommonTests {
 
   @Test
   @Order(9)
-  public void longTagCategoryNameUIMessageCheck() throws InterruptedException {
+  void longTagCategoryNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -266,7 +266,7 @@ public class CommonTests {
 
   @Test
   @Order(10)
-  public void shortTagNameUIMessageCheck() throws InterruptedException {
+  void shortTagNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -284,7 +284,7 @@ public class CommonTests {
 
   @Test
   @Order(11)
-  public void longTagNameUIMessageCheck() throws InterruptedException {
+  void longTagNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -302,7 +302,7 @@ public class CommonTests {
 
   @Test
   @Order(12)
-  public void searchMatchesCountCheck() throws InterruptedException {
+  void searchMatchesCountCheck() throws InterruptedException {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
@@ -315,7 +315,7 @@ public class CommonTests {
 
   @Test
   @Order(13)
-  public void overviewLinksAfterTour() throws InterruptedException {
+  void overviewLinksAfterTour() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tour"));
     webDriver.navigate().back();
@@ -326,7 +326,7 @@ public class CommonTests {
 
   @Test
   @Order(14)
-  public void tourStepSkippingCheck() throws InterruptedException {
+  void tourStepSkippingCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tour"));
     for (int i = 0; i < 2; i++) {
@@ -339,7 +339,7 @@ public class CommonTests {
 
   @Test
   @Order(15)
-  public void tagFilterCountCheck() throws InterruptedException {
+  void tagFilterCountCheck() throws InterruptedException {
     int count = 0;
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), tableName);
@@ -379,7 +379,7 @@ public class CommonTests {
 
   @Test
   @Order(16)
-  public void differentSearchDifferentResultCheck() throws InterruptedException {
+  void differentSearchDifferentResultCheck() throws InterruptedException {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
@@ -399,7 +399,7 @@ public class CommonTests {
 
   @Test
   @Order(17)
-  public void missingMatchesForSearchCheck() throws InterruptedException {
+  void missingMatchesForSearchCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("dashboards"));
     Events.sendKeys(webDriver, common.searchBar(), "sales");
@@ -412,7 +412,7 @@ public class CommonTests {
 
   @Test
   @Order(18)
-  public void searchNotShowingResultsCheck() throws InterruptedException {
+  void searchNotShowingResultsCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("pipelines"));
     Events.sendKeys(webDriver, common.searchBar(), "sample");
@@ -428,7 +428,7 @@ public class CommonTests {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

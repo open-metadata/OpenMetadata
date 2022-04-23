@@ -29,7 +29,11 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.objectRepository.PipelineDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -39,7 +43,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(6)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PipelineDetailsPageTest {
+class PipelineDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -55,7 +59,7 @@ public class PipelineDetailsPageTest {
   String xpath = "//div[@data-testid='description']/div/span";
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -114,7 +118,7 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(3)
-  public void addTag() throws InterruptedException {
+  void addTag() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -205,7 +209,7 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(7)
-  public void checkManage() throws InterruptedException {
+  void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -242,7 +246,7 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(9)
-  public void checkVersion() throws InterruptedException {
+  void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -263,7 +267,7 @@ public class PipelineDetailsPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

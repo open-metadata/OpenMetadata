@@ -19,6 +19,7 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -402,7 +403,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
-      if (operation.isPut() && origTask.getDescription() != null && !origTask.getDescription().isEmpty()) {
+      if (operation.isPut() && !nullOrEmpty(origTask.getDescription())) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedTask.setDescription(origTask.getDescription());
         return;

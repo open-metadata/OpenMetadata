@@ -491,11 +491,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // updateAndCheckEntity(request.withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyPipeline_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Pipeline> validateGetWithDifferentFields(Pipeline pipeline, boolean byName)
       throws HttpResponseException {
