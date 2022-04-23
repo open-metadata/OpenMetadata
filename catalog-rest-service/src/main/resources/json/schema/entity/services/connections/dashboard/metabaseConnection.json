@@ -34,6 +34,7 @@
     "hostPort": {
       "title": "Host and Port",
       "description": "Host and Port of Metabase instance.",
+      "type": "string",
       "format": "uri"
     },
     "dbServiceName": {
@@ -47,8 +48,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }
