@@ -34,7 +34,6 @@ import {
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
-import AddUsersModal from '../../pages/teams/AddUsersModal';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
@@ -72,10 +71,7 @@ const TeamDetails = ({
   descriptionHandler,
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
-  isAddingUsers,
   handleJoinTeamClick,
-  getUniqueUserList,
-  addUsersToTeam,
   handleAddUser,
   removeUserFromTeam,
 }: TeamDetailsProp) => {
@@ -524,27 +520,8 @@ const TeamDetails = ({
             data-testid="header">
             {getTeamHeading()}
             <div className="tw-flex">
-              {isActionAllowed() && (
-                <Fragment>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className="tw-h-8 tw-px-2"
-                      data-testid="add-teams"
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={() => {
-                        handleAddTeam(true);
-                      }}>
-                      Create New Team
-                    </Button>
-                  </NonAdminAction>
-                </Fragment>
-              )}
               {!isAlreadyJoinedTeam(currentTeam.id) ? (
-                currentTeam.isJoinable ? (
+                currentTeam.isJoinable || hasAccess ? (
                   <Button
                     className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
                     data-testid="join-teams"
@@ -670,17 +647,6 @@ const TeamDetails = ({
           header={deletingUser.leave ? 'Leave team' : 'Removing user'}
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onConfirm={handleRemoveUser}
-        />
-      )}
-
-      {isAddingUsers && (
-        <AddUsersModal
-          header={`Adding new users to ${
-            currentTeam?.displayName ?? currentTeam?.name
-          }`}
-          list={getUniqueUserList()}
-          onCancel={() => handleAddUser(false)}
-          onSave={(data) => addUsersToTeam(data)}
         />
       )}
     </div>

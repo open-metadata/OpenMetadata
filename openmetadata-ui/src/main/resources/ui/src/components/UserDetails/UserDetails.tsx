@@ -14,15 +14,10 @@
 import { isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import {
-  getUserPath,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { getUserPath } from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
-import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -34,7 +29,6 @@ type UserDetailsProps = {
   userSearchTerm: string;
   isUsersLoading: boolean;
   handleDeleteUser: (id: string) => void;
-  handleAddNewUser: () => void;
 };
 
 interface DeleteUserInfo {
@@ -48,7 +42,6 @@ const UserDetails = ({
   isUsersLoading,
   handleDeleteUser,
   handleUserSearchTerm,
-  handleAddNewUser,
 }: UserDetailsProps) => {
   const history = useHistory();
   const [deletingUser, setDeletingUser] = useState<DeleteUserInfo>();
@@ -129,19 +122,6 @@ const UserDetails = ({
             typingInterval={500}
             onSearch={handleUserSearchTerm}
           />
-        </div>
-        <div>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className="tw-h-8 tw-px-2"
-              data-testid="add-teams"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={handleAddNewUser}>
-              Create New User
-            </Button>
-          </NonAdminAction>
         </div>
       </div>
       {getUserCards()}
