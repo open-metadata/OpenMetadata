@@ -104,9 +104,6 @@ export interface TeamDetailsProp {
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  isAddingUsers: boolean;
-  getUniqueUserList: () => Array<UserTeams>;
-  addUsersToTeam: (data: Array<UserTeams>) => void;
   handleAddUser: (data: boolean) => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
