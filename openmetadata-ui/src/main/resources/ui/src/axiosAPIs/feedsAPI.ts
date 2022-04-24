@@ -12,11 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isUndefined } from 'lodash';
 import { Post } from 'Models';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
@@ -89,22 +87,4 @@ export const deletePostById: Function = (
   postId: string
 ): Promise<AxiosResponse> => {
   return APIClient.delete(`/feed/${threadId}/posts/${postId}`);
-};
-
-export const getFeedbyUserName: Function = (
-  user: string,
-  filterType?: FeedFilter,
-  after?: string
-): Promise<AxiosResponse> => {
-  const urlParams = new URLSearchParams({ user });
-  if (!isUndefined(filterType)) {
-    urlParams.set('filterType', filterType);
-  }
-  if (!isUndefined(after)) {
-    urlParams.set('after', after);
-  }
-
-  const path = getURLWithQueryFields(`/feed`, '', `${urlParams.toString()}`);
-
-  return APIClient.get(path);
 };
