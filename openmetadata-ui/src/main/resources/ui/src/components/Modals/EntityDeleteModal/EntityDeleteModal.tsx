@@ -103,7 +103,7 @@ const EntityDeleteModal: FC<Prop> = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           {loadingState === 'waiting' ? (
             <Button
