@@ -19,7 +19,7 @@ import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getFeedbyUserName, postFeedById } from '../../axiosAPIs/feedsAPI';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
@@ -89,7 +89,7 @@ const UserPage = () => {
 
   const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
-    getFeedbyUserName(username, filterType, after)
+    getFeedsWithFilter(userData.id, filterType, after)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -222,10 +222,10 @@ const UserPage = () => {
   }, [username, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   useEffect(() => {
-    if (!isUndefined(feedFilter)) {
+    if (!isUndefined(feedFilter) && userData.id) {
       getFeedData(feedFilter);
     }
-  }, [feedFilter]);
+  }, [feedFilter, userData]);
 
   return (
     <PageContainerV1 className="tw-pt-4">

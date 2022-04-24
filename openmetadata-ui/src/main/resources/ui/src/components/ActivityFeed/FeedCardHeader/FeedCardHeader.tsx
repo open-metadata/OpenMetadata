@@ -36,6 +36,7 @@ import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 import { FeedHeaderProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -195,7 +196,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           position="top"
           theme="light"
           trigger="click">
-          <span className="tw-cursor-pointer" onClick={onClickHandler}>
+          <span
+            className="thread-author tw-cursor-pointer"
+            onClick={onClickHandler}>
             {createdBy}
           </span>
         </PopOver>
