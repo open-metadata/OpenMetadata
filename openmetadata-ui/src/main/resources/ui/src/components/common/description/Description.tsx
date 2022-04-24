@@ -31,7 +31,7 @@ interface Props {
   hasEditAccess?: boolean;
   blurWithBodyBG?: boolean;
   removeBlur?: boolean;
-  description: string;
+  description?: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
   entityType?: string;

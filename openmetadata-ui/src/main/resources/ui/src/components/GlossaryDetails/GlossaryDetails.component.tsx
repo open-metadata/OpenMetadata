@@ -350,7 +350,7 @@ const GlossaryDetails = ({
         <Description
           blurWithBodyBG
           removeBlur
-          description={glossary?.description || ''}
+          description={glossary?.description}
           entityName={glossary?.displayName ?? glossary?.name}
           isEdit={isDescriptionEditable}
           onCancel={onCancel}
