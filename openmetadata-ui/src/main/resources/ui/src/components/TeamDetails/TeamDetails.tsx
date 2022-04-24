@@ -75,6 +75,7 @@ const TeamDetails = ({
   handleLeaveTeamClick,
   handleAddUser,
   removeUserFromTeam,
+  afterDeleteAction,
 }: TeamDetailsProp) => {
   const history = useHistory();
   const DELETE_USER_INITIAL_STATE = {
@@ -623,6 +624,7 @@ const TeamDetails = ({
                     allowSoftDelete
                     hasEditAccess
                     hideTier
+                    afterDeleteAction={afterDeleteAction}
                     allowTeamOwner={false}
                     currentUser={currentTeam.owner?.id}
                     entityId={currentTeam.id}
