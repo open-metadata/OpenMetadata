@@ -51,6 +51,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   isRecursiveDelete,
   deletEntityMessage,
   handleIsJoinable,
+  afterDeleteAction,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -153,6 +154,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return allowDelete && entityId && entityName && entityType ? (
       <div className="tw-mt-1" data-testid="danger-zone">
         <DeleteWidget
+          afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deletEntityMessage={deletEntityMessage}
           entityId={entityId}

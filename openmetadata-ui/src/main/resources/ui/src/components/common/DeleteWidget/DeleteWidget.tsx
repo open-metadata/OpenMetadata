@@ -32,6 +32,7 @@ interface DeleteSectionProps {
   isAdminUser?: boolean;
   entityId: string;
   isRecursiveDelete?: boolean;
+  afterDeleteAction?: () => void;
 }
 
 const DeleteWidget = ({
@@ -43,6 +44,7 @@ const DeleteWidget = ({
   deletEntityMessage,
   entityId,
   isRecursiveDelete,
+  afterDeleteAction,
 }: DeleteSectionProps) => {
   const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
@@ -99,9 +101,13 @@ const DeleteWidget = ({
             showSuccessToast(
               jsonData['api-success-messages']['delete-entity-success']
             );
-            setTimeout(() => {
-              history.push('/');
-            }, 500);
+            if (afterDeleteAction) {
+              afterDeleteAction();
+            } else {
+              setTimeout(() => {
+                history.push('/');
+              }, 500);
+            }
           }, 1000);
         } else {
           showErrorToast(

@@ -67,6 +67,7 @@ const TeamsAndUsers = ({
   addUsersToTeam,
   handleAddUser,
   removeUserFromTeam,
+  afterDeleteAction,
 }: TeamsAndUsersProps) => {
   const usersData = [
     {
@@ -202,6 +203,7 @@ const TeamsAndUsers = ({
             />
           ) : (
             <TeamDetails
+              afterDeleteAction={afterDeleteAction}
               createNewTeam={createNewTeam}
               currentTeam={currentTeam}
               currentTeamUserPage={currentTeamUserPage}

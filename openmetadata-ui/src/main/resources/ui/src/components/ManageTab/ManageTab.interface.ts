@@ -27,6 +27,7 @@ export interface ManageProps {
     isJoinable?: boolean
   ) => Promise<void>;
   handleIsJoinable?: (bool: boolean) => void;
+  afterDeleteAction?: () => void;
   hasEditAccess: boolean;
   allowTeamOwner?: boolean;
   entityId?: string;

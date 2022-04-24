@@ -49,9 +49,15 @@ type props = {
   isHasAccess: boolean;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => void;
+  afterDeleteAction?: () => void;
 };
 
-const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
+const GlossaryDetails = ({
+  isHasAccess,
+  glossary,
+  updateGlossary,
+  afterDeleteAction,
+}: props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -379,6 +385,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                   allowDelete
                   hideTier
                   isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
                   currentUser={glossary?.owner?.id}
                   entityId={glossary.id}
                   entityName={glossary?.name}

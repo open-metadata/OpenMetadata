@@ -607,6 +607,12 @@ const TeamsAndUsersPage = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    setIsLoading(true);
+    history.push(getTeamAndUserDetailsPath());
+    fetchTeams();
+  };
+
   useEffect(() => {
     if (teamAndUser) {
       if (Object.values(UserType).includes(teamAndUser as UserType)) {
@@ -637,6 +643,7 @@ const TeamsAndUsersPage = () => {
           activeUserTabHandler={activeUserTabHandler}
           addUsersToTeam={addUsersToTeam}
           admins={admins}
+          afterDeleteAction={afterDeleteAction}
           bots={bots}
           changeCurrentTeam={changeCurrentTeam}
           createNewTeam={createNewTeam}

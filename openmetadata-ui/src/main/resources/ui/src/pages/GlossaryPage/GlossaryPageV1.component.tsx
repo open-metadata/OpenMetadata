@@ -666,6 +666,13 @@ const GlossaryPageV1 = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    setGlossariesList([]);
+    setIsLoading(true);
+    history.push(getGlossaryPath());
+    fetchGlossaryList();
+  };
+
   useEffect(() => {
     fetchGlossaryTermAssets(
       (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
@@ -686,6 +693,7 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
+          afterDeleteAction={afterDeleteAction}
           assetData={assetData}
           currentPage={assetData.currPage}
           deleteStatus={deleteStatus}

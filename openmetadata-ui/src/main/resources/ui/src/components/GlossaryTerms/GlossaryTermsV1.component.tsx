@@ -59,6 +59,7 @@ type Props = {
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
+  afterDeleteAction?: () => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -68,6 +69,7 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
+  afterDeleteAction,
   currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -624,6 +626,7 @@ const GlossaryTermsV1 = ({
                   hideOwner
                   hideTier
                   isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
                   entityId={glossaryTerm.id}
                   entityName={glossaryTerm?.name}
                   entityType={EntityType.GLOSSARY_TERM}
