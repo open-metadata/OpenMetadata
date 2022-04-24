@@ -161,19 +161,31 @@ const Users = ({
       (role) => role.value !== toLower(TERM_ADMIN)
     );
 
-    // get the admin role and send it as boolean value `iaAdmin=Boolean(isAdmin)
+    // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
     const isAdmin = selectedRoles.find(
       (role) => role.value === toLower(TERM_ADMIN)
     );
     updateUserDetails({
-      roles: updatedRoles.map((role) => role.value),
+      roles: updatedRoles.map((item) => {
+        const roleId = item.value;
+        const role = roles.find((r) => r.id === roleId);
+
+        return { id: roleId, type: 'role', name: role?.name || '' };
+      }),
       isAdmin: Boolean(isAdmin),
     });
 
     setIsRolesEdit(false);
   };
   const handleTeamsChange = () => {
-    updateUserDetails({ teams: selectedTeams.map((team) => team.value) });
+    updateUserDetails({
+      teams: selectedTeams.map((item) => {
+        const teamId = item.value;
+        const team = teams.find((t) => t.id === teamId);
+
+        return { id: teamId, type: 'team', name: team?.name || '' };
+      }),
+    });
 
     setIsTeamsEdit(false);
   };
