@@ -27,7 +27,14 @@ module.exports = {
   mode: 'development',
 
   // Input configuration
-  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.js')],
+  entry: [
+    '@babel/polyfill',
+    // Runtime code for hot module replacement
+    'webpack/hot/dev-server.js',
+    // Dev server client for web socket transport, hot and live reload logic
+    'webpack-dev-server/client/index.js?hot=true&live-reload=true',
+    path.join(__dirname, 'src/index.js'),
+  ],
 
   // Output configuration
   output: {
@@ -208,12 +215,15 @@ module.exports = {
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer'],
     }),
+    // Plugin for hot module replacement
+    new webpack.HotModuleReplacementPlugin(),
   ],
 
   // webpack-dev-server
   devServer: {
     contentBase: outputPath,
     compress: true,
+    hot: true,
     port: 3000,
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
