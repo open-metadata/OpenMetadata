@@ -299,7 +299,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
         )
-        table_owner = str(table.owner.id.__root__) if table.owner is not None else None
         table_followers = []
         if table.followers:
             for follower in table.followers.__root__:
@@ -331,7 +330,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=table_owner,
+            owner=table.owner,
             followers=table_followers,
         )
         return table_doc
@@ -348,7 +347,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
-        topic_owner = str(topic.owner.id.__root__) if topic.owner else None
         topic_followers = []
         if topic.followers:
             for follower in topic.followers.__root__:
@@ -373,7 +371,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=topic_owner,
+            owner=topic.owner,
             followers=topic_followers,
         )
         return topic_doc
@@ -385,9 +383,6 @@ class ElasticsearchSink(Sink[Entity]):
         timestamp = dashboard.updatedAt.__root__
         service_entity = self.metadata.get_by_id(
             entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
-        )
-        dashboard_owner = (
-            str(dashboard.owner.id.__root__) if dashboard.owner is not None else None
         )
         dashboard_followers = []
         if dashboard.followers:
@@ -425,7 +420,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=dashboard_owner,
+            owner=dashboard.owner,
             followers=dashboard_followers,
             monthly_stats=dashboard.usageSummary.monthlyStats.count,
             monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
@@ -445,7 +440,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
         )
-        pipeline_owner = str(pipeline.owner.id.__root__) if pipeline.owner else None
         pipeline_followers = []
         if pipeline.followers:
             for follower in pipeline.followers.__root__:
@@ -482,7 +476,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=pipeline_owner,
+            owner=pipeline.owner,
             followers=pipeline_followers,
         )
 
@@ -529,7 +523,7 @@ class ElasticsearchSink(Sink[Entity]):
         owns = []
         if team.users:
             for user in team.users.__root__:
-                users.append(str(team.id.__root__))
+                users.append(user)
 
         if team.owns:
             for own in team.owns.__root__:
