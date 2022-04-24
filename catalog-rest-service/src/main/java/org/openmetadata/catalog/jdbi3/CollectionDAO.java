@@ -504,7 +504,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
-            + "(fromId = :id AND toEntity = :entity)")
+            + "(fromId = :id AND fromEntity = :entity)")
     int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
   }
 
