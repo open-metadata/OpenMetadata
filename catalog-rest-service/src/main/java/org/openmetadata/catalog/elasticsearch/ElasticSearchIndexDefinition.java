@@ -817,7 +817,7 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
     String description = glossaryTerm.getDescription() != null ? glossaryTerm.getDescription() : "";
     String displayName = glossaryTerm.getDisplayName() != null ? glossaryTerm.getDisplayName() : "";
     return internalBuilder()
-        .glossaryId(glossaryTerm.getGlossary().getId().toString())
+        .glossaryTermId(glossaryTerm.getId().toString())
         .name(glossaryTerm.getName())
         .displayName(displayName)
         .description(description)

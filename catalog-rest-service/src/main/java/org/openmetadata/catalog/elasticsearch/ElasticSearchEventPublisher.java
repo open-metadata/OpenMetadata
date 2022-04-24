@@ -32,6 +32,7 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
@@ -129,6 +130,8 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
         }
+      } catch (DocumentMissingException ex) {
+        LOG.error("Missing Document", ex);
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
@@ -202,7 +205,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TABLE_SEARCH_INDEX.indexName, event.getEntityId().toString());
     TableESIndex tableESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       Table table = (Table) event.getEntity();
       tableESIndex = TableESIndex.builder(table, event.getEventType()).build();
     }
@@ -237,7 +242,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TOPIC_SEARCH_INDEX.indexName, event.getEntityId().toString());
     TopicESIndex topicESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       Topic topic;
       topic = (Topic) event.getEntity();
       topicESIndex = TopicESIndex.builder(topic, event.getEventType()).build();
@@ -273,7 +280,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     DashboardESIndex dashboardESIndex = null;
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName, event.getEntityId().toString());
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       Dashboard dashboard = (Dashboard) event.getEntity();
       dashboardESIndex = DashboardESIndex.builder(dashboard, event.getEventType()).build();
     }
@@ -306,7 +315,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   private void updatePipeline(ChangeEvent event) throws IOException {
     PipelineESIndex pipelineESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       Pipeline pipeline = (Pipeline) event.getEntity();
       pipelineESIndex = PipelineESIndex.builder(pipeline, event.getEventType()).build();
     }
@@ -343,7 +354,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.USER_SEARCH_INDEX.indexName, event.getEntityId().toString());
     UserESIndex userESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       User user = (User) event.getEntity();
       userESIndex = UserESIndex.builder(user).build();
     }
@@ -374,7 +387,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TEAM_SEARCH_INDEX.indexName, event.getEntityId().toString());
     TeamESIndex teamESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       Team team = (Team) event.getEntity();
       teamESIndex = TeamESIndex.builder(team).build();
     }
@@ -405,7 +420,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
     GlossaryTermESIndex glossaryESIndex = null;
-    if (event.getEntity() != null && event.getEventType() != EventType.ENTITY_SOFT_DELETED) {
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
       GlossaryTerm glossaryTerm = (GlossaryTerm) event.getEntity();
       glossaryESIndex = GlossaryTermESIndex.builder(glossaryTerm, event.getEventType()).build();
     }

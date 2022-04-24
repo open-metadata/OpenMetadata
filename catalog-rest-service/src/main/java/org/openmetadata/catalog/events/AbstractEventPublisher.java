@@ -59,7 +59,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     } catch (Exception e) {
       LOG.error(
           "Failed to publish event type {} for entity {}", changeEvent.getEventType(), changeEvent.getEntityType());
-      LOG.error(e.getMessage());
+      LOG.error(e.getMessage(), e);
     }
   }
 

@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import random
+import sys
 import traceback
 import uuid
 from collections import namedtuple
@@ -625,6 +626,8 @@ class SampleDataSource(Source[Entity]):
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as err:
             logger.error(err)
+            logger.debug(traceback.format_exc())
+            logger.debug(sys.exc_info()[2])
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """
