@@ -20,8 +20,16 @@ export interface Option {
   label: string;
   value: string;
 }
+export interface PatchObject {
+  id: string;
+  name: string;
+  type: string;
+}
 
-export type UserDetails = Record<string, string | Array<string> | boolean>;
+export type UserDetails = Record<
+  string,
+  string | Array<string> | boolean | Array<PatchObject>
+>;
 
 export interface Props {
   userData: User;
