@@ -346,9 +346,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(err)
 
-                # check if we have any model to associate with
-                table_entity.dataModel = self._get_data_model(schema, table_name)
                 database = self._get_database(self.service_connection.database)
+                # check if we have any model to associate with
+                table_entity.dataModel = self._get_data_model(
+                    database.name.__root__, schema, table_name
+                )
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
@@ -488,6 +490,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
                     schema = mnode["schema"]
+                    database = mnode["database"]
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
                         modelType=ModelType.DBT,
@@ -498,7 +501,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = f"{schema}.{model_name}".lower()
+                    model_fqdn = f"{database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{model_name}".lower()
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -523,8 +526,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     continue
         return upstream_nodes
 
-    def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}{FQDN_SEPARATOR}{table_name}".lower()
+    def _get_data_model(self, database, schema, table_name):
+        table_fqn = (
+            f"{database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}".lower()
+        )
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
