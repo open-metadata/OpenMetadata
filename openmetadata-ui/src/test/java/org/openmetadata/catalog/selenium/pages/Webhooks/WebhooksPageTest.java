@@ -69,17 +69,17 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), faker.address().toString());
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
     Events.click(webDriver, webhooks.checkbox());
-    Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
     actions.click();
     actions.perform();
     Events.click(webDriver, common.saveWebhook());
-    Thread.sleep(2000);
-    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook()));
+    Thread.sleep(waitTime);
+    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook(name)));
+    Thread.sleep(waitTime);
     Assert.assertTrue(checkName.isDisplayed());
     Assert.assertEquals(checkName.getText(), name);
   }
@@ -102,7 +102,7 @@ class WebhooksPageTest {
       actions.click();
       actions.perform();
       Events.click(webDriver, common.saveWebhook());
-      Thread.sleep(2000);
+      Thread.sleep(waitTime);
     }
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());

@@ -345,7 +345,6 @@ class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 2; i++) {
@@ -364,7 +363,6 @@ class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editAssociatedTagButton());
-    Object tagsCount = webDriver.findElements(common.tagCount()).size();
     Events.click(webDriver, common.explore());
     Thread.sleep(waitTime);
     try {
