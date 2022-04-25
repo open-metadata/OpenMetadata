@@ -479,7 +479,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your MySQL service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (21) (1).png>)
+![](<../../../.gitbook/assets/image (21) (1) (1).png>)
 
 #### 5. Configure service connection
 
@@ -511,7 +511,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your MySQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![](<../../../.gitbook/assets/image (3) (1) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
 **Ingestion name**
 

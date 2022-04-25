@@ -501,13 +501,13 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your MSSQL service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (19) (1).png>)
+![](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
 #### 5. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/image (14) (1).png>)
+![](<../../../.gitbook/assets/image (14) (1) (1).png>)
 
 **Host**
 
@@ -533,7 +533,7 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 In this step we will configure the metadata ingestion settings for your MSSQL deployment. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/image (1) (2) (1).png>)
+![](<../../../.gitbook/assets/image (1) (2) (1) (1).png>)
 
 **Ingestion name**
 

@@ -43,7 +43,7 @@ description: >-
 * On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.
 * Once done click on **Update**.
 
-![](<../../../.gitbook/assets/image (44).png>)
+![](<../../../.gitbook/assets/image (44) (2).png>)
 
 * Click **Save and Continue**.
 
@@ -77,7 +77,7 @@ description: >-
 * Click **Create**
 * You will get the credentials
 
-![](<../../../.gitbook/assets/image (12) (1).png>)
+![](<../../../.gitbook/assets/image (12) (1) (2).png>)
 
 ## Step 5: Where to Find the Credentials
 
@@ -88,4 +88,4 @@ description: >-
 
 * You will find the **Client ID** and **Client Secret** in the top right corner
 
-![](<../../../.gitbook/assets/image (17) (2) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1).png>)

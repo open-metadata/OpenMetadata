@@ -8,7 +8,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Athena](athena.md)
 * [Azure SQL](azure-sql.md)
 * [BigQuery](bigquery/)
-* [BigQuery Usage](bigquery/bigquery-usage.md)
+* [BigQuery Usage](broken-reference)
 * [ClickHouse](clickhouse/)
 * [ClickHouse Usage](clickhouse/clickhouse-usage.md)
 * [Databricks](databricks.md)

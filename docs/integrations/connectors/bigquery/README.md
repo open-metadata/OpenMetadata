@@ -1,478 +1,339 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the BigQuery
+  In this section, we provide guides and references to use the BigQuery
   connector.
 ---
 
 # BigQuery
 
-1. [Requirements](./#1.-requirements)
-2. [Install BigQuery Connector](./#2.-install-bigquery-connector)
-3. [Configure BigQuery Connector](./#3.-configure-bigquery-connector)
-4. [Run BigQuery Connector](./#4.-run-bigquery-connector)
-5. [Troubleshooting](./#5.-troubleshooting)
+Configure and schedule BigQuery **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
-{% content-ref url="bigquery-usage.md" %}
-[bigquery-usage.md](bigquery-usage.md)
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
+
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
+
+{% content-ref url="run-bigquery-connector-using-airflow-sdk.md" %}
+[run-bigquery-connector-using-airflow-sdk.md](run-bigquery-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-## **1. Requirements**
+{% content-ref url="run-bigquery-connector-with-the-cli.md" %}
+[run-bigquery-connector-with-the-cli.md](run-bigquery-connector-with-the-cli.md)
+{% endcontent-ref %}
 
-Please ensure that your host system meets the requirements listed below.
+## Requirements
 
-### **OpenMetadata (version 0.9.0 or later)**
+#### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
 
-### **Python (version 3.8.0 or later)**
+To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-Use the following command to check your Python version.
+## Metadata Ingestion
 
-```
-python3 --version
-```
+### 1. Visit the _Services_ Page
 
-## 2. Install BigQuery Connector
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-### **2.1  Prepare a Python virtual environment**
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5).png>)
 
-In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+### 2. Create a New Service
 
-#### **1. Create a directory for openmetadata**
+Click on the _Add New Service_ button to start the Service creation.
 
-Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
 
-```
-mkdir openmetadata; cd openmetadata
-```
-
-#### **2. Create a virtual environment**
-
-Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
-
-```
-python3 -m venv env
-```
+### 3. Select the Service Type
 
-#### **3. Activate the virtual environment**
-
-Run the following command to activate the virtual environment.
-
-```
-source env/bin/activate
-```
-
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
-
-#### **4. Upgrade pip and setuptools to the latest versions**
-
-Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
-
-```javascript
-pip3 install --upgrade pip setuptools
-```
-
-### **2.2 Install the Python module for this connector**
-
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the BigQuery connector.
-
-```javascript
-pip3 install 'openmetadata-ingestion[bigquery]'
-```
-
-## 3. Configure BigQuery Connector
-
-Please follow the steps relevant to your use case.
-
-1. [Create a configuration file using template JSON](./#1.-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#2.-configure-service-settings)
-3. [Enable/disable the data profiler](./#3.-enable-disable-the-data-profiler)
-4. [Install the data profiler Python module (optional)](./#4.-install-the-data-profiler-python-module-optional)
-5. [Configure data filters (optional)](./#5.-configure-data-filters-optional)
-6. [Configure sample data (optional)](./#8.-configure-sample-data-optional)
-7. [Configure DBT (optional)](./#7.-configure-dbt-optional)
-8. [Confirm sink settings](./#8.-confirm-sink-settings)
-9. [Confirm metadata\_server settings](./#9.-confirm-metadata\_server-settings)
-
-### **3.1 Create a configuration file using template JSON**
-
-Create a new file called `bigquery.json` in the current directory. Note that the current directory should be the `openmetadata` directory you created in Step 1.
+Select BigQuery as the service type and click _Next_.
 
-Copy and paste the configuration template below into the `bigquery.json` file you created.
-
-{% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
-{% endhint %}
+![](<../../../.gitbook/assets/image (15).png>)
 
-{% code title="bigquery.json" %}
-```javascript
-{
-  "source": {
-    "type": "bigquery",
-    "config": {
-      "project_id": "project_id",
-      "host_port": "bigquery.googleapis.com",
-      "username": "username",
-      "service_name": "gcp_bigquery",
-      "data_profiler_enabled": "true",
-      "data_profiler_offset": "0",
-      "data_profiler_limit": "50000",
-      "options": {
-        "credentials_path": "examples/creds/bigquery-cred.json"
-      },
-      "table_filter_pattern": {
-        "excludes": ["demo.*","orders.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": [
-          "[\\w]*cloudaudit.*",
-          "[\\w]*logging_googleapis_com.*",
-          "[\\w]*clouderrorreporting.*"
-        ]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
-    }
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-{% endcode %}
+### 4. Name and Describe your Service
 
-When adding the details for the credentials path, you can either choose to pass the `credentials file`, or add the `credentials_path`, or use a secure way to pass the credentials path using the environment variables, i.e., `Application Default Credentials` (ADC).
+Provide a name and description for your service as illustrated below.
 
-#### 3.1.1 Using Credentials File or Credentials Path
+#### Service Name
 
-{% code title="bigquery-creds.json (boilerplate)" %}
-```javascript
-{
-  "type": "service_account",
-  "project_id": "project_id",
-  "private_key_id": "private_key_id",
-  "private_key": "",
-  "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
-  "client_id": "",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": ""
-}
-```
-{% endcode %}
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
 
-#### 3.1.2 Using Application Default Credentials (ADC)
+#### Description
 
-{% code title="env variables" %}
-```
-export GOOGLE_APPLICATION_CREDENTIALS=<path-to-your-credentials-file>
-```
-{% endcode %}
+Provide a description for your BigQuery service that enables other users to determine whether it might provide data of interest to them.
 
-Users can export the path to the credentials file. Using this option, you can export the env in terminal and run BigQuery config without providing `credentials_path`.
+![Provide a Name and description for your Service](<../../../.gitbook/assets/image (14).png>)
 
-### **3.2 Configure service settings**
+### 5. Configure the Service Connection
 
-In this step we will configure the BigQuery service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your BigQuery service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-#### project\_id
+![Configure the Service connection](<../../../.gitbook/assets/image (22).png>)
 
-Edit the value for `source.config.project_id` in `bigquery.json`. The `project_id` is a mandatory field.
+Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-```javascript
-   "project_id": "project_id"
-```
+![Test Connection and save the Service](<../../../.gitbook/assets/image (20).png>)
 
-#### **host\_port**
+#### Host and Port
 
-Edit the value for `source.config.host_port` in `bigquery.json` for your BigQuery deployment. Use the `host:port` format illustrated in the example below.
+This is the BigQuery APIs URL.
 
-```javascript
-"host_port": "bigquery.googleapis.com"
-```
+#### Username (Optional)
 
-Please ensure that your BigQuery deployment is reachable from the host you are using to run metadata ingestion.
+Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 
-#### **username**
+#### Project ID (Optional)
 
-Edit the value for `source.config.username` to identify your BigQuery user.
+The BigQuery Project ID is required only if the credentials path is being used instead of values.
 
-```javascript
-"username": "username"
-```
+#### GCS Credentials
 
-{% hint style="danger" %}
-**Note:** The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
+We support two ways of authenticating to BigQuery:
 
-#### **password**
+1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
+   1. Credentials type, e.g. `service_account`.
+   2. Project ID
+   3. Private Key ID
+   4. Private Key
+   5. Client Email
+   6. Client ID
+   7. Auth URI, [https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth) by default
+   8. Token URI, [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
+   9. Authentication Provider X509 Certificate URL, [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
+   10. Client X509 Certificate URL
+2. Passing a local file path that contains the credentials:
+   1. GCS Credentials Path
 
-Edit the value for `source.config.password` with the password for your BigQuery user.
+#### Enable Policy Tag Import (Optional)
 
-```javascript
-"password": "strong_password"
-```
+Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
 
-#### **service\_name**
+#### Tag Category Name (Optional)
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other BigQuery services that you might be ingesting metadata from.
+If the Tag import is enabled, the name of the Tag Category will be created at OpenMetadata.
 
-```javascript
-"service_name": "bigquery"
-```
+#### Database (Optional)
 
-#### **database (optional)**
+The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
+#### Connection Options (Optional)
 
-To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
+Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key Value pairs.
 
-```javascript
-"database": "bigquery_db"
-```
+#### Connection Arguments (Optional)
 
-### **3.3 Enable/disable the data profiler**
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key Value pairs.
 
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
+In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key Value pair as follows.
 
-#### **data\_profiler\_enabled**
+`"authenticator" : "sso_login_url"`
 
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
+In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key Value pair as follows.
 
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
+`"authenticator" : "externalbrowser"`
 
-```javascript
-"data_profiler_enabled": "false"
-```
+![Service has been saved](<../../../.gitbook/assets/image (13).png>)
 
-If you want to enable the data profiler, update your configuration file as follows.
+### 6. Configure the Metadata Ingestion
 
-```javascript
-"data_profiler_enabled": "true"
-```
+Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-{% hint style="info" %}
-**Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
-{% endhint %}
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
 
-### **3.4 Install the data profiler Python module (optional)**
+#### Include (Table Filter Pattern)
 
-If you’ve enabled the data profiler in Step 3.3, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
+Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
-```javascript
-pip3 install 'openmetadata-ingestion[data-profiler]'
-```
+Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
+#### Exclude (Table Filter Pattern)
 
-### **3.5 Configure data filters (optional)**
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### **include\_views (optional)**
+#### Include (Schema Filter Pattern)
 
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
+Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
+
+Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
+
+#### Exclude (Schema Filter Pattern)
+
+Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
+
+**Include views (toggle)**
+
+Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
 
 Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
 
-```javascript
-"include_views": "true"
-```
+**Enable data profiler (toggle)**
 
-Exclude views as follows.
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-```javascript
-"include_views": "false"
-```
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
 
-{% hint style="info" %}
-**Note:** `source.config.include_views` is set to true by default.
-{% endhint %}
+Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
 
-#### **include\_tables (optional)**
+**Ingest sample data (toggle)**
 
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
+Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
+### 7. Schedule the Ingestion and Deploy
 
-```javascript
-"include_tables": "true"
-```
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-Exclude tables as follows.
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
-```javascript
-"include_tables": "false"
-```
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-{% hint style="info" %}
-**Note:** `source.config.include_tables` is set to true by default.
-{% endhint %}
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
 
-#### **table\_filter\_pattern (optional)**
+**Every**
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
 
-Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
 
-```javascript
-"table_filter_pattern": {
-"excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-}
-```
+**Day**
 
-Use `source.config.table_filter_pattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
 
-```javascript
-"table_filter_pattern": {
-"includes": ["corp.*", "dept.*"]
-}
-```
+**Minute**
 
-See the documentation for the[ Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
 
-{% hint style="info" %}
-You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
-{% endhint %}
+**Time**
 
-#### **schema\_filter\_pattern (optional)**
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
 
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
+**Start date (UTC)**
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
 
-### **3.6 Configure sample data (optional)**
+**End date (UTC)**
 
-#### **generate\_sample\_data (optional)**
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../../.gitbook/assets/sample-data.png)
 
-Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-```javascript
-"generate_sample_data": "true"
-```
+![Metadata Ingestion Pipeline has been deployed](<../../../.gitbook/assets/image (7).png>)
 
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
+### 8. View the Ingestion Pipeline
 
-You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
+Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-```javascript
-"generate_sample_data": "false"
-```
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
 
-{% hint style="info" %}
-**Note:** `generate_sample_data` is set to true by default.
-{% endhint %}
+### 9. Workflow Deployment Error
 
-### **3.7 Configure DBT (optional)**
+If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata’s integration for DBT enables you to view the models used to generate a table from that table's details page in the OpenMetadata UI. The image below provides an example.
+You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![](../../../.gitbook/assets/dbt.png)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
 
-To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
+From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-#### **dbt\_manifest\_file (optional)**
+## Query Usage and Lineage Ingestion
 
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
+Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage and Entity Lineage information.
 
-```javascript
-"dbt_manifest_file": "./dbt/manifest.json"
-```
+This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-#### **dbt\_catalog\_file (optional)**
+![Table Entity Page](../../../.gitbook/assets/image.png)
 
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
+We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
-```javascript
-"dbt_catalog_file": "./dbt/catalog.json"
-```
+### 1. Add a Usage Ingestion
 
-### **3.8 Confirm sink settings**
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Usage Ingestion_.
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
-```javascript
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
-```
+### 2. Configure the Usage Ingestion
 
-### **3.9 Confirm metadata\_server settings**
+Here you can enter the Usage Ingestion details:
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 4. This part of your configuration file should be as follows.
+![Configure the Usage Ingestion](<../../../.gitbook/assets/image (36).png>)
 
-```javascript
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-    }
-}
-```
+#### Query Log Duration
 
-## **4. Run BigQuery Connector**
+Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture usage information for 48 hours prior to when the ingestion workflow is run.
 
-Your `bigquery.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+#### Stage File Location
 
-To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
+Mention the absolute file path of the temporary file name to store the query logs before processing.
 
-```
-metadata ingest -c ./bigquery.json
-```
+#### &#x20;Result Limit
 
-### **Setup BigQuery connector in production (optional)**
+Set the limit for the query log results to be run at a time.
 
-If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
+### 3. Schedule and Deploy
 
-## **Next Steps**
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
-To view the metadata ingested from BigQuery, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the BigQuery service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
+![View Service Ingestion pipelines](<../../../.gitbook/assets/image (37).png>)
 
-![](../../../.gitbook/assets/explore.png)
+## Data Profiler and Quality Tests
 
-## **5. Troubleshooting**
+After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 
-### **ERROR: Failed building wheel for cryptography**
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-When attempting to install the `openmetadata-ingestion[bigquery]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3).png>)
 
-```
-Failed to build cryptography
-ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
-```
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6).png>)
 
-```
-pip3 install --upgrade pip setuptools
-```
+You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
-Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-this-connector).
+### 1. Add a Profiler Ingestion
 
-### **requests.exceptions.ConnectionError**
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-If you encounter the following error when attempting to run the ingestion workflow, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
-```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/bigquery 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
-Failed to establish a new connection: [Errno 61] Connection refused'))
-```
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
+### 2. Configure the Profiler Ingestion
 
-Then re-run the metadata ingestion workflow in[ Run BigQuery Connector](./#run-bigquery-ingestion-workflow)
+Here you can enter the Profiler Ingestion details.
+
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19).png>)
+
+#### Name
+
+Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
+
+As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
+
+#### FQN Filter Pattern
+
+Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
+
+#### Description
+
+Give the Ingestion Pipeline a description to show what type of data we are profiling.
+
+### 3. Schedule and Deploy
+
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
+
+## Run using Airflow SDK
+
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-bigquery-connector-using-airflow-sdk.md).
+
+## One-time ingestion with the CLI
+
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-bigquery-connector-with-the-cli.md).

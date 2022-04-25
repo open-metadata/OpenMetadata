@@ -55,7 +55,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 * Enable Google Workspace Domain-wide Delegation
 * Click on **SAVE**
 
-![](<../../../.gitbook/assets/image (15).png>)
+![](<../../../.gitbook/assets/image (15) (1).png>)
 
 ## How to Generate Private-Key/Service-Account JSON File
 

@@ -29,7 +29,7 @@
 * Enter the Application name
 * Choose an application type and click on `Create`.
 
-![](<../../../.gitbook/assets/image (11).png>)
+![](<../../../.gitbook/assets/image (11) (2).png>)
 
 ## Step 3: Where to Find the Credentials
 

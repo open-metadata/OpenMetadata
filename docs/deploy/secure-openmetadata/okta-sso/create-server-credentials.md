@@ -49,7 +49,7 @@ description: >-
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../.gitbook/assets/image (20) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1).png>)
 
 * The app is now configured.
 
@@ -101,7 +101,7 @@ This will generate the Issuer URL.
 * To create a policy, add a Name and Description.
 * Assign the policy to the required clients.
 
-![](<../../../.gitbook/assets/image (2) (1) (1).png>)
+![](<../../../.gitbook/assets/image (2) (1) (1) (1).png>)
 
 * Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 * Click on **Create Rule** to save the changes.
@@ -128,5 +128,5 @@ This will generate the Issuer URL.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5).png>)
+![](<../../../.gitbook/assets/image (5) (1).png>)
 

@@ -31,7 +31,7 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (39) (2).png>)
+![](<../../../.gitbook/assets/image (39) (2) (1).png>)
 
 ## 3. Initiate a new service creation
 
@@ -43,7 +43,7 @@ Click on the _Add New Service_ button to add your Snowflake service to OpenMetad
 
 Select Snowflake as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (12).png>)
+![](<../../../.gitbook/assets/image (12) (1).png>)
 
 ## 5. Name and describe your service
 
@@ -57,13 +57,13 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![](../../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (2).png>)
 
 ## 6. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
 
-![](<../../../.gitbook/assets/image (54).png>)
+![](<../../../.gitbook/assets/image (54) (1).png>)
 
 #### Username
 
@@ -117,7 +117,7 @@ Choose to support the data profiler.
 
 In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (2).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -165,7 +165,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 **Every**
 
@@ -195,4 +195,4 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-![](<../../../.gitbook/assets/image (36) (2).png>)
+![](<../../../.gitbook/assets/image (36) (2) (1).png>)

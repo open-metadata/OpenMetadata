@@ -31,7 +31,7 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![](<../../../.gitbook/assets/image (39) (2).png>)
+![](<../../../.gitbook/assets/image (39) (2) (1).png>)
 
 ## 3. Initiate a new service creation
 
@@ -43,7 +43,7 @@ Click on the _Add New Service_ button to add your Snowflake service to OpenMetad
 
 Select Snowflake as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (12).png>)
+![](<../../../.gitbook/assets/image (12) (1).png>)
 
 ## 5. Name and describe your service
 
@@ -57,13 +57,13 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake Usage service that enables other users to determine whether it might provide data of interest to them.
 
-![](../../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (2).png>)
 
 ## 6. Configure service connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake Usage service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
 
-![](<../../../.gitbook/assets/image (54).png>)
+![](<../../../.gitbook/assets/image (54) (1).png>)
 
 #### Username
 
@@ -117,7 +117,7 @@ Choose to support the data profiler.
 
 In this step we will configure the metadata ingestion settings for your Snowflake Usage deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake Usage service as desired.
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (2).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -161,7 +161,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 **Every**
 
@@ -195,13 +195,13 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (36).png>)
+![](<../../../.gitbook/assets/image (36) (2).png>)
 
 ## 9. Configure usage ingestion
 
 Once the metadata ingestion has been deployed successfully, click on **Add Usage Ingestion**.
 
-![](<../../../.gitbook/assets/image (17).png>)
+![](<../../../.gitbook/assets/image (17) (2).png>)
 
 Enter the following details and click Next.
 
@@ -223,10 +223,10 @@ Set the limit for the query log results to be run at a time.
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule the usage ingestion. It is optional to add an End Date. Click on Deploy.
 
-![](<../../../.gitbook/assets/image (4).png>)
+![](<../../../.gitbook/assets/image (4) (1).png>)
 
 Click on View Service to check the ingestion details.
 
-![](<../../../.gitbook/assets/image (6).png>)
+![](<../../../.gitbook/assets/image (6) (1).png>)
 
-![](<../../../.gitbook/assets/image (20).png>)
+![](<../../../.gitbook/assets/image (20) (1).png>)
