@@ -1207,7 +1207,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "name";
+      return "status";
     }
 
     @Override

@@ -56,8 +56,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/webhook")
@@ -87,6 +85,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     super(Webhook.class, new WebhookRepository(dao), authorizer);
   }
 
+  static final String FIELDS = "status";
+
   @GET
   @Operation(
       summary = "List webhooks",
@@ -101,6 +101,14 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public ResultList<Webhook> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Filter webhooks by status", schema = @Schema(type = "string", example = "active"))
+          @QueryParam("status")
+          String statusParam,
       @Parameter(description = "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -120,16 +128,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-    ListFilter filter = new ListFilter(include);
-    ResultList<Webhook> webhooks;
-    if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
-    } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
-    }
-    webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
-    return webhooks;
+    ListFilter filter = new ListFilter().addQueryParam("status", statusParam);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

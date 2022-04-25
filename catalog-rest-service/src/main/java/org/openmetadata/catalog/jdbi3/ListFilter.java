@@ -38,6 +38,7 @@ public class ListFilter {
     condition = addCondition(condition, getDatabaseCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
+    condition = addCondition(condition, getWebhookCondition());
     return condition.isEmpty() ? "WHERE true" : "WHERE " + condition;
   }
 
@@ -67,10 +68,19 @@ public class ListFilter {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
   }
 
+  public String getWebhookCondition() {
+    String webhookStatus = queryParams.get("status");
+    return webhookStatus == null ? "" : getStatusPrefixCondition(webhookStatus);
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
         ? String.format("fullyQualifiedName LIKE \"%s%s%%\"", fqnPrefix, Entity.SEPARATOR)
         : String.format("%s.fullyQualifiedName LIKE \"%s%s%%\"", tableName, fqnPrefix, Entity.SEPARATOR);
+  }
+
+  private String getStatusPrefixCondition(String statusPrefix) {
+    return String.format("status LIKE \"%s%s%%\"", statusPrefix, "");
   }
 
   private String addCondition(String condition1, String condition2) {
