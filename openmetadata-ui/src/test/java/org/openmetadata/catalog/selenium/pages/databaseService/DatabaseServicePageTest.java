@@ -35,7 +35,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -137,7 +136,7 @@ class DatabaseServicePageTest {
   void checkDatabaseServiceDetails() throws InterruptedException {
     openDatabaseServicePage();
     Thread.sleep(2000);
-    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, databaseServicePage.serviceName(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
@@ -147,22 +146,17 @@ class DatabaseServicePageTest {
   @Order(4)
   void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
-    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, databaseServicePage.serviceName(serviceName));
     Events.click(webDriver, common.ingestion());
     try {
-      WebElement runIngestion =
-          wait.until(ExpectedConditions.presenceOfElementLocated(databaseServicePage.runIngestion()));
-      if (runIngestion.isDisplayed()) {
-        Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
-      }
+      Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
     } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Ingestion is not created");
     }
-    webDriver.navigate().refresh();
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
-    Thread.sleep(waitTime);
+    Events.click(webDriver, databaseServicePage.viewService());
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion
     Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
@@ -172,7 +166,7 @@ class DatabaseServicePageTest {
   @Order(5)
   void checkConnectionConfigTab() throws InterruptedException {
     openDatabaseServicePage();
-    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, databaseServicePage.serviceName(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, common.serviceUsername(), "test");
     Events.sendKeys(webDriver, common.servicePassword(), "test");
@@ -193,6 +187,16 @@ class DatabaseServicePageTest {
   @Order(6)
   void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
+    Events.click(webDriver, databaseServicePage.serviceName(serviceName));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, databaseServicePage.clickDatabase());
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, databaseServicePage.deleteDatabase());
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsServices());
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
     Thread.sleep(waitTime);

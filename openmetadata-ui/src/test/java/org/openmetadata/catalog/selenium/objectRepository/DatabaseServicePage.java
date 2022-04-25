@@ -16,8 +16,15 @@ public class DatabaseServicePage {
   By deleteIngestion = By.cssSelector("[data-testid='delete']");
   By selectInterval = By.xpath("//select[@id='ingestionType']");
   By confirmationDeleteText = By.cssSelector("[data-testid='confirmation-text-input']");
+  By viewService = By.cssSelector("[data-testid='view-service-button']");
+  By clickDatabase = By.xpath("//tr[@data-testid='column']/td");
+  By deleteDatabase = By.cssSelector("[data-testid='delete-button']");
 
   public By ingestionInterval(String interval) {
     return By.xpath("//select[@id='ingestionType']/option[@value='" + interval + "']");
+  }
+
+  public By serviceName(String serviceName) {
+    return By.cssSelector("[data-testid='service-name-" + serviceName + "']");
   }
 }

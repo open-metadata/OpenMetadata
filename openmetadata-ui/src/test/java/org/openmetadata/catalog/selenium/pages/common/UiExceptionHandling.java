@@ -84,7 +84,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     interceptor("/api/v1/teams", "/api/v1/testing");
-    Events.click(webDriver, common.headerSettingsMenu("Users"));
+    Events.click(webDriver, common.headerSettingsMenu("Teams & Users"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(400, 400);
   }
@@ -118,7 +118,7 @@ class UiExceptionHandling {
     Events.sendKeys(webDriver, common.servicePort(), "3306");
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
     interceptor("services/databaseServices", "services/testing");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
     //    Assert.assertEquals(500, 500);
   }
 

@@ -39,7 +39,7 @@ class UsersPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     common = new Common(webDriver);
     userPage = new UserPage(webDriver);
     actions = new Actions(webDriver);
