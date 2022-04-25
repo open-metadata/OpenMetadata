@@ -12,19 +12,19 @@
  *  limitations under the License.
  */
 
-export interface MessagingServiceMetadataPipelineClass {
+export interface DatabaseServiceProfilerPipelineClass {
   /**
-   * Regex to only fetch topics that matches the pattern.
+   * Regex to only fetch tables with FQN matching the pattern.
    */
-  topicFilterPattern?: FilterPattern;
+  fqnFilterPattern?: FilterPattern;
   /**
    * Pipeline type
    */
-  type?: MessagingMetadataConfigType;
+  type?: ProfilerConfigType;
 }
 
 /**
- * Regex to only fetch topics that matches the pattern.
+ * Regex to only fetch tables with FQN matching the pattern.
  *
  * Regex to only fetch dashboards or charts that matches the pattern.
  */
@@ -42,8 +42,8 @@ export interface FilterPattern {
 /**
  * Pipeline type
  *
- * Messaging Source Config Metadata Pipeline type
+ * Profiler Source Config Pipeline type
  */
-export enum MessagingMetadataConfigType {
-  MessagingMetadata = 'MessagingMetadata',
+export enum ProfilerConfigType {
+  Profiler = 'Profiler',
 }

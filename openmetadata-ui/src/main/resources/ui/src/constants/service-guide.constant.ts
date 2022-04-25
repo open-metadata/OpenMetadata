@@ -47,6 +47,11 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 3,
+    title: 'Add DBT Config',
+    description: 'DBT Catalog and Manifest file path config.',
+  },
+  {
+    step: 4,
     title: 'Metadata Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
@@ -64,7 +69,7 @@ export const addUsageIngestionGuide = [
     ...schedulingIngestionGuide,
   },
   {
-    step: 3,
+    step: 4,
     title: 'Usage Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
@@ -80,7 +85,7 @@ export const addProfilerIngestionGuide = [
   },
   { ...schedulingIngestionGuide },
   {
-    step: 3,
+    step: 4,
     title: 'Profiler Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',

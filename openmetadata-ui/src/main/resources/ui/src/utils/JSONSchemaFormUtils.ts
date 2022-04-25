@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 
-import { StepperStepType } from 'Models';
-import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { isString } from 'lodash';
 
-export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
-  { name: 'Configure Ingestion', step: 1 },
-  { name: 'Configure DBT', step: 2 },
-  { name: 'Schedule Interval', step: 3 },
-];
+export function escapeBackwardSlashChar<T>(formData: T): T {
+  for (const key in formData) {
+    if (typeof formData[key as keyof T] === 'object') {
+      escapeBackwardSlashChar(formData[key as keyof T]);
+    } else {
+      const data = formData[key as keyof T];
+      if (isString(data)) {
+        formData[key as keyof T] = data.replace(
+          /\\n/g,
+          '\n'
+        ) as unknown as T[keyof T];
+      }
+    }
+  }
 
-export const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
-
-export const INITIAL_FILTER_PATTERN: FilterPattern = {
-  includes: [],
-  excludes: [],
-};
+  return formData;
+}

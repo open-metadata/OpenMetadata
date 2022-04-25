@@ -109,7 +109,8 @@
     "commit-check": "yarn run pretty && yarn run build-check && yarn run build",
     "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && yarn run lint:fix",
     "pretty-conn-schema": "prettier --config './.prettierrc' --write \"src/jsons/connectionSchemas/**/*.json\"",
-    "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp && yarn run pretty-conn-schema",
+    "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
+    "parse-ing-schema": "node parseIngestionSchema && rm -rf ingTemp",
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4"
   },
   "browserslist": {

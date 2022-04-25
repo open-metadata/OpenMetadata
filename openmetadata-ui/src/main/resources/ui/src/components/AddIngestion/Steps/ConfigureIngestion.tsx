@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -34,6 +35,7 @@ const ConfigureIngestion = ({
   chartFilterPattern,
   fqnFilterPattern,
   includeView,
+  markDeletedTables,
   serviceCategory,
   enableDataProfiler,
   ingestSampleData,
@@ -54,6 +56,7 @@ const ConfigureIngestion = ({
   handleShowFilter,
   handleEnableDataProfiler,
   handleIncludeView,
+  handleMarkDeletedTables,
   handleIngestSampleData,
   handleQueryLogDuration,
   handleStageFileLocation,
@@ -205,6 +208,26 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
+          {!isNil(markDeletedTables) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTables}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTables) {
+                      handleMarkDeletedTables();
+                    }
+                  }}
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Configuration to soft delete tables in OpenMetadata if the
+                source tables are deleted.
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
         </div>
       </>
     );

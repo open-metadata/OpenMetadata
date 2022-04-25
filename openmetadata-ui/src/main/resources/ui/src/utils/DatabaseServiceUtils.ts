@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { JSONSchema7 } from 'json-schema';
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
@@ -42,6 +43,7 @@ import snowflakeConnection from '../jsons/connectionSchemas/connections/database
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
+import databaseServiceMetadata from '../jsons/ingestionSchemas/metadataIngestion/databaseServiceMetadataPipeline.json';
 
 export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
   let schema = {};
@@ -175,4 +177,28 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
   }
 
   return cloneDeep({ schema, uiSchema });
+};
+
+export const getDBTConfig = () => {
+  const {
+    properties: {
+      dbtProvider,
+      dbtConfig,
+      dbtSecurityConfig,
+      dbtCatalogFileName,
+      dbtManifestFileName,
+    },
+  } = databaseServiceMetadata;
+  const schema = {
+    ...databaseServiceMetadata,
+    properties: {
+      dbtProvider,
+      dbtConfig,
+      dbtSecurityConfig,
+      dbtCatalogFileName,
+      dbtManifestFileName,
+    },
+  } as unknown as JSONSchema7;
+
+  return cloneDeep({ schema });
 };

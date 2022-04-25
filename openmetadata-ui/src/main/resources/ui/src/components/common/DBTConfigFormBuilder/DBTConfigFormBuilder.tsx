@@ -17,23 +17,21 @@ import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useCallback, useState } from 'react';
-import { ConfigData } from '../../../interface/service.interface';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { DatabaseServiceMetadataPipelineClass } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
 
-interface Props extends FormProps<ConfigData> {
+interface Props extends FormProps<DatabaseServiceMetadataPipelineClass> {
   okText: string;
   cancelText: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
-  onTestConnection?: (formData: ConfigData) => Promise<void>;
 }
 
-const FormBuilder: FunctionComponent<Props> = ({
+const DBTConfigFormBuilder: FunctionComponent<Props> = ({
   formData,
   schema,
   okText,
@@ -42,16 +40,12 @@ const FormBuilder: FunctionComponent<Props> = ({
   status = 'initial',
   onCancel,
   onSubmit,
-  onTestConnection,
   ...props
 }: Props) => {
-  let oForm: Form<ConfigData> | null;
-  const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formData
-  );
-  const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
-  const [connectionTestingState, setConnectionTestingState] =
-    useState<LoadingState>('initial');
+  let oForm: Form<DatabaseServiceMetadataPipelineClass> | null;
+  const [localFormData, setLocalFormData] = useState<
+    DatabaseServiceMetadataPipelineClass | undefined
+  >(formData);
 
   const handleCancel = () => {
     setLocalFormData(formData);
@@ -66,30 +60,8 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
-  const handleTestConnection = () => {
-    if (localFormData && onTestConnection) {
-      setConnectionTesting(true);
-      setConnectionTestingState('waiting');
-      onTestConnection(localFormData)
-        .then(() => {
-          setTimeout(() => {
-            setConnectionTestingState('success');
-          }, 500);
-        })
-        .catch(() => {
-          setTimeout(() => {
-            setConnectionTestingState('initial');
-          }, 500);
-        })
-        .finally(() => {
-          setTimeout(() => {
-            setConnectionTesting(false);
-          }, 500);
-        });
-    }
-  };
   const debouncedOnChange = useCallback(
-    (updatedData: ConfigData): void => {
+    (updatedData: DatabaseServiceMetadataPipelineClass): void => {
       setLocalFormData(updatedData);
     },
     [setLocalFormData]
@@ -98,31 +70,8 @@ const FormBuilder: FunctionComponent<Props> = ({
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 1500), [
     debouncedOnChange,
   ]);
-  const handleChange = (updatedData: ConfigData) => {
+  const handleChange = (updatedData: DatabaseServiceMetadataPipelineClass) => {
     debounceOnSearch(updatedData);
-  };
-
-  const getConnectionTestingMessage = () => {
-    switch (connectionTestingState) {
-      case 'waiting':
-        return (
-          <div className="tw-flex">
-            <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Running test...</span>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
-            <span className="tw-ml-2">Connection test was successful</span>
-          </div>
-        );
-
-      case 'initial':
-      default:
-        return 'Test your connections before creating service';
-    }
   };
 
   return (
@@ -145,24 +94,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       {...props}>
       {isEmpty(schema) && (
         <div className="tw-text-grey-muted tw-text-center">
-          No Connection Configs available.
-        </div>
-      )}
-      {!isEmpty(schema) && onTestConnection && (
-        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-          <div className="tw-self-center">{getConnectionTestingMessage()}</div>
-          <Button
-            className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-              'tw-opacity-40': connectionTesting,
-            })}
-            data-testid="test-connection-btn"
-            disabled={connectionTesting}
-            size="small"
-            theme="primary"
-            variant="outlined"
-            onClick={handleTestConnection}>
-            Test Connection
-          </Button>
+          No DBT Configs available.
         </div>
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">
@@ -210,4 +142,4 @@ const FormBuilder: FunctionComponent<Props> = ({
   );
 };
 
-export default FormBuilder;
+export default DBTConfigFormBuilder;

@@ -57,6 +57,7 @@ export interface ConfigureIngestionProps {
   chartFilterPattern: FilterPattern;
   fqnFilterPattern: FilterPattern;
   includeView: boolean;
+  markDeletedTables?: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
@@ -72,6 +73,7 @@ export interface ConfigureIngestionProps {
   handleIngestionName: (value: string) => void;
   handleDescription?: (value: string) => void;
   handleIncludeView: () => void;
+  handleMarkDeletedTables?: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
