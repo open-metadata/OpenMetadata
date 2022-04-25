@@ -35,6 +35,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -188,8 +189,9 @@ class DatabaseServicePageTest {
   void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, databaseServicePage.serviceName(serviceName));
-    Thread.sleep(waitTime);
     Events.click(webDriver, databaseServicePage.clickDatabase());
+    Thread.sleep(waitTime);
+    wait.until(ExpectedConditions.urlContains("/database/" + serviceName + ".default"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, databaseServicePage.deleteDatabase());
     Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");

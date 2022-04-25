@@ -36,6 +36,7 @@ public class TagsPage {
   By headerSettingsTags = By.cssSelector("[data-testid='menu-item-Tags']");
   By sortBy = By.cssSelector("[data-testid='sortBy']");
   By editTags = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
+  By editBreadcrumbTag = By.xpath("//div[@data-testid='tag-container']/div/button");
 
   public By tagFilter(String tagCategoryDisplayName, String tagDisplayName) {
     return By.cssSelector("[data-testid='checkbox'][id='" + tagCategoryDisplayName + "." + tagDisplayName + "']");

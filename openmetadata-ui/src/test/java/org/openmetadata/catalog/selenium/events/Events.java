@@ -25,17 +25,17 @@ public final class Events {
   private Events() {}
 
   public static void click(WebDriver driver, By by) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).click();
   }
 
   public static void sendKeys(WebDriver driver, By by, String sendKeys) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).sendKeys(sendKeys);
   }
 
   public static void sendEnter(WebDriver driver, By by) {
-    (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
+    (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).sendKeys(Keys.ENTER);
   }
 }
