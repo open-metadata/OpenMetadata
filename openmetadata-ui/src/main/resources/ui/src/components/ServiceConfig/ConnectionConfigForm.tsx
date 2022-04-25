@@ -52,7 +52,7 @@ interface Props {
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   okText = 'Save',
-  cancelText = 'Discard',
+  cancelText = 'Cancel',
   serviceCategory,
   status,
   onCancel,

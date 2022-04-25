@@ -227,7 +227,8 @@ public class ChangeEventHandler implements EventHandler {
       // In this case, the entity itself got deleted
       // for which there will be no change description.
       String message =
-          String.format("Deleted %s **%s**", entityInterface.getEntityType(), entityInterface.getFullyQualifiedName());
+          String.format(
+              "Deleted **%s**: `%s`", entityInterface.getEntityType(), entityInterface.getFullyQualifiedName());
       EntityLink about =
           new EntityLink(entityInterface.getEntityType(), entityInterface.getFullyQualifiedName(), null, null, null);
       Thread thread =

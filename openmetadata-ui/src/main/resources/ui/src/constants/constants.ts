@@ -352,6 +352,18 @@ export const getGlossaryPath = (fqn?: string) => {
   return path;
 };
 
+export const getParentGlossaryPath = (fqn?: string) => {
+  if (fqn) {
+    const parts = fqn.split(FQN_SEPARATOR_CHAR);
+    if (parts.length > 1) {
+      // remove the last part to get parent FQN
+      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
+    }
+  }
+
+  return getGlossaryPath(fqn);
+};
+
 export const getGlossaryTermsPath = (
   glossaryName: string,
   glossaryTerm = ''

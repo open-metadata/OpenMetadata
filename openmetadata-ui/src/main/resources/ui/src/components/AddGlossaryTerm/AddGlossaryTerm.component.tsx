@@ -487,7 +487,7 @@ const AddGlossaryTerm = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           {getSaveButton()}
         </Field>

@@ -265,7 +265,7 @@ const AddGlossary = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           {getSaveButton()}
         </div>

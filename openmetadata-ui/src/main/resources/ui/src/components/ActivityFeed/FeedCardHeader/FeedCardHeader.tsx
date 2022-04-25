@@ -63,8 +63,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   const getUserData = () => {
-    const displayName = userData.displayName ?? '';
     const name = userData.name ?? '';
+    const displayName = userData.displayName ?? name;
     const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
     const isAdmin = userData?.isAdmin;
@@ -89,7 +89,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         {displayName}
                       </span>
                     </a>
-                    <span className="tw-text-grey-muted">{name}</span>
+                    {displayName !== name ? (
+                      <span className="tw-text-grey-muted">{name}</span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="tw-text-left">

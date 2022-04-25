@@ -821,7 +821,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                 theme="primary"
                 variant="text"
                 onClick={onCancel}>
-                Discard
+                Cancel
               </Button>
               {getSaveButton()}
             </div>
@@ -830,7 +830,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
         {data && isDelete && (
           <ConfirmationModal
             bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
-            cancelText="Discard"
+            cancelText="Cancel"
             confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
             confirmText="Delete"
             header="Are you sure?"

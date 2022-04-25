@@ -302,7 +302,7 @@ const GlossaryV1 = ({
       {selectedData && isDelete && (
         <ConfirmationModal
           bodyText={`You want to delete ${selectedData.name} permanently? This action cannot be reverted.`}
-          cancelText="Discard"
+          cancelText="Cancel"
           confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
           confirmText="Delete"
           header="Are you sure?"
