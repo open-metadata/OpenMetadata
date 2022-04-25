@@ -26,7 +26,6 @@ describe('Test TableTestForm component', () => {
     const cancelButton = await findByTestId(container, 'cancel-test');
     const saveButton = await findByTestId(container, 'save-test');
     const value = await findByTestId(container, 'value');
-    const frequency = await findByTestId(container, 'frequency');
     const description = await findByText(
       container,
       /MarkdownWithPreview component/i
@@ -37,6 +36,5 @@ describe('Test TableTestForm component', () => {
     expect(value).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
-    expect(frequency).toBeInTheDocument();
   });
 });
