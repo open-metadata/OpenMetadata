@@ -78,6 +78,7 @@ plugins: Dict[str, Set[str]] = {
         "sqlalchemy-bigquery==1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
+        "cryptography",
     },
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
