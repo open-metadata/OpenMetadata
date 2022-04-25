@@ -70,9 +70,7 @@ export const getUserDataFromOidc = (
   return {
     ...userData,
     displayName: oidcUser.profile.name,
-    profile: !isEmpty(images)
-      ? { images: getImages(oidcUser.profile.picture) }
-      : userData.profile,
+    profile: !isEmpty(images) ? { images } : userData.profile,
   };
 };
 
