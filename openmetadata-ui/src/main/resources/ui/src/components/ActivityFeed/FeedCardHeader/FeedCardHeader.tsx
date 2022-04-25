@@ -203,7 +203,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       EntityType.GLOSSARY_TERM,
     ];
 
-    const entityLink = getEntityLink(entityType as string, entityFQN as string);
+    const entityLink = getEntityLink(entityType, entityFQN);
 
     if (!withoutFeedEntities.includes(entityType as EntityType)) {
       return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
