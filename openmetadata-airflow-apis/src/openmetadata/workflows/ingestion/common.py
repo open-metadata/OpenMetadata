@@ -13,12 +13,13 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from airflow import DAG
 
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
 try:
     from airflow.operators.python import PythonOperator
@@ -43,13 +44,31 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     Task that creates and runs the ingestion workflow.
 
     The workflow_config gets cooked form the incoming
-    airflow_pipeline.
+    ingestionPipeline.
 
     This is the callable used to create the PythonOperator
     """
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = Workflow.create(config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """
+    Task that creates and runs the profiler workflow.
+
+    The workflow_config gets cooked form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+    """
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+    workflow = ProfilerWorkflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
@@ -107,10 +126,11 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     }
 
 
-def build_ingestion_dag(
+def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
     workflow_config: OpenMetadataWorkflowConfig,
+    workflow_fn: Callable,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
@@ -120,7 +140,7 @@ def build_ingestion_dag(
 
         PythonOperator(
             task_id=task_name,
-            python_callable=metadata_ingestion_workflow,
+            python_callable=workflow_fn,
             op_kwargs={"workflow_config": workflow_config},
             retries=ingestion_pipeline.airflowConfig.retries,
             retry_delay=ingestion_pipeline.airflowConfig.retryDelay,

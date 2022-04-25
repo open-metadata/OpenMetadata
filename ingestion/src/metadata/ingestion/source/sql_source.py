@@ -64,7 +64,11 @@ from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import store_gcs_credentials
@@ -138,7 +142,7 @@ def get_dbt_http(config) -> Optional[Tuple[str, str]]:
 
 def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
     try:
-        dbt_options = config.dbtConfig.gcsConfig
+        dbt_options = config.dbtSecurityConfig.gcsConfig
         if config.dbtProvider.value == "gcs":
             options = {
                 "credentials": {
@@ -179,7 +183,7 @@ def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
     try:
         from metadata.utils.aws_client import AWSClient
 
-        aws_client = AWSClient(config.dbtConfig).get_resource("s3")
+        aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
         buckets = aws_client.buckets.all()
         for bucket in buckets:
             for bucket_object in bucket.objects.all():
@@ -243,8 +247,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config
         )
-
-        self.engine = get_engine(self.service_connection)
+        self.engine = get_connection(self.service_connection)
         self.test_connection()
 
         self._session = None  # We will instantiate this just if needed
@@ -387,7 +390,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     if self.source_config.includeViews:
                         yield from self.fetch_views(inspector, schema)
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
                         yield from self.delete_tables(schema_fqdn)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -522,6 +525,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
+
+                try:
+                    if self.source_config.enableDataProfiler:
+                        profile = self.run_profiler(table=table, schema=schema)
+                        table.tableProfile = [profile] if profile else None
+                # Catch any errors during the profile runner and continue
+                except Exception as err:
+                    logger.error(err)
+
                 # table.dataModel = self._get_data_model(schema, view_name)
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
@@ -840,19 +852,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and column["policy_tags"]
                             ):
                                 self.metadata.create_primary_tag(
-                                    category_name=self.config.tag_category_name,
+                                    category_name=self.service_connection.tagCategoryName,
                                     primary_tag_body=CreateTagRequest(
                                         name=column["policy_tags"],
                                         description="Bigquery Policy Tag",
                                     ),
                                 )
                         except APIError:
-                            if column["policy_tags"] and self.config.enable_policy_tags:
+                            if (
+                                column["policy_tags"]
+                                and self.service_connection.enablePolicyTagImport
+                            ):
                                 col_dict.tags = [
                                     TagLabel(
                                         tagFQN=get_fqdn(
                                             Tag,
-                                            self.config.tag_category_name,
+                                            self.service_connection.tagCategoryName,
                                             column["policy_tags"],
                                         ),
                                         labelType="Automated",

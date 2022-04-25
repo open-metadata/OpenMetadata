@@ -22,7 +22,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(16)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UiExceptionHandling {
+class UiExceptionHandling {
 
   static ChromeDriver webDriver;
   static Common common;
@@ -35,7 +35,7 @@ public class UiExceptionHandling {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
-  public void interceptor(String content, String replaceContent) {
+  void interceptor(String content, String replaceContent) {
     devTools.createSession();
     devTools.send(Fetch.enable(Optional.empty(), Optional.empty()));
     devTools.addListener(
@@ -80,7 +80,7 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForUserList() {
+  void exceptionCheckForUserList() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     interceptor("/api/v1/teams", "/api/v1/testing");
@@ -90,7 +90,7 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForGetServices() throws InterruptedException {
+  void exceptionCheckForGetServices() throws InterruptedException {
     interceptor("databaseService", "testing");
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
@@ -101,7 +101,7 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForPostService() {
+  void exceptionCheckForPostService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
@@ -123,7 +123,7 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForUpdateService() {
+  void exceptionCheckForUpdateService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
@@ -137,7 +137,7 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForDeleteService() {
+  void exceptionCheckForDeleteService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services

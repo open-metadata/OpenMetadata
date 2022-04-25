@@ -19,7 +19,7 @@ import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
@@ -207,7 +207,7 @@ const PipelineDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -601,6 +601,7 @@ const PipelineDetails = ({
                   entityName={pipelineDetails.name}
                   entityType={EntityType.PIPELINE}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.PIPELINE}
                   onSave={onSettingsUpdate}
                 />
               </div>

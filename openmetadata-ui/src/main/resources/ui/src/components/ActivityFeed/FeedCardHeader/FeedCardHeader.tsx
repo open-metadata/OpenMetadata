@@ -17,7 +17,7 @@ import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
-import { getUserPath } from '../../../constants/constants';
+import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import {
   EntityType,
   FqnPart,
@@ -36,6 +36,7 @@ import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 import { FeedHeaderProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -62,10 +63,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   const getUserData = () => {
-    const displayName = userData.displayName ?? '';
     const name = userData.name ?? '';
+    const displayName = userData.displayName ?? name;
     const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
+    const isAdmin = userData?.isAdmin;
 
     return (
       <Fragment>
@@ -87,7 +89,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         {displayName}
                       </span>
                     </a>
-                    <span className="tw-text-grey-muted">{name}</span>
+                    {displayName !== name ? (
+                      <span className="tw-text-grey-muted">{name}</span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="tw-text-left">
@@ -126,6 +130,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         Roles
                       </span>
                       <span className="tw-flex tw-flex-wrap tw-mt-1">
+                        {isAdmin && (
+                          <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
+                            {TERM_ADMIN}
+                          </span>
+                        )}
                         {roles.map((role, i) => (
                           <span
                             className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
@@ -189,7 +198,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           position="top"
           theme="light"
           trigger="click">
-          <span className="tw-cursor-pointer" onClick={onClickHandler}>
+          <span
+            className="thread-author tw-cursor-pointer"
+            onClick={onClickHandler}>
             {createdBy}
           </span>
         </PopOver>

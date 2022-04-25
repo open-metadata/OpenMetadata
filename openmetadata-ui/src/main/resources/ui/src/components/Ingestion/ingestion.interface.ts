@@ -12,7 +12,6 @@
  */
 
 import { IngestionType, ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import {
   Connection,
@@ -54,8 +53,9 @@ export interface IngestionData {
 }
 
 export interface IngestionProps {
+  airflowEndpoint: string;
   serviceDetails: DataObj;
-  serviceName?: string;
+  serviceName: string;
   serviceCategory: ServiceCategory;
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
@@ -64,15 +64,8 @@ export interface IngestionProps {
   currrentPage: number;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
+  deployIngestion: (data: IngestionPipeline) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  addIngestion: (data: CreateIngestionPipeline) => Promise<void>;
-  updateIngestion: (
-    data: IngestionPipeline,
-    oldData: IngestionPipeline,
-    id: string,
-    displayName: string,
-    triggerIngestion?: boolean
-  ) => Promise<void>;
 }
 
 export interface ModifiedConfig extends Connection {

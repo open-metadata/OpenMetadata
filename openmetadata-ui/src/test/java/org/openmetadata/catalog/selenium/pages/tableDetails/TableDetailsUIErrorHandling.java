@@ -6,7 +6,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
@@ -25,7 +30,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(21)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TableDetailsUIErrorHandling {
+class TableDetailsUIErrorHandling {
 
   static ChromeDriver webDriver;
   static Common common;
@@ -47,7 +52,7 @@ public class TableDetailsUIErrorHandling {
   WebElement follow;
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -366,7 +371,7 @@ public class TableDetailsUIErrorHandling {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

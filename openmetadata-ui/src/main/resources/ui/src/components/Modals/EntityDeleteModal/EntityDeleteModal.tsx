@@ -19,6 +19,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
+import { getTitleCase } from '../../../utils/EntityUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -29,6 +30,7 @@ interface Prop extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   loadingState: string;
   bodyText?: string;
+  softDelete?: boolean;
 }
 
 const EntityDeleteModal: FC<Prop> = ({
@@ -39,6 +41,7 @@ const EntityDeleteModal: FC<Prop> = ({
   onCancel,
   onConfirm,
   bodyText,
+  softDelete = false,
 }: Prop) => {
   const [name, setName] = useState('');
 
@@ -58,13 +61,23 @@ const EntityDeleteModal: FC<Prop> = ({
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header')}>
           <p className="tw-modal-title" data-testid="modal-header">
-            Delete <strong>{entityName}</strong>
+            {softDelete ? (
+              <span>
+                Soft delete <strong>{entityName}</strong>
+              </span>
+            ) : (
+              <span>
+                Delete <strong>{entityName}</strong>
+              </span>
+            )}
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
           <p className="tw-mb-2">
             {bodyText ||
-              `Once you delete this ${entityType}, it will be removed permanently`}
+              `Once you delete this ${getTitleCase(
+                entityType
+              )}, it will be removed permanently`}
           </p>
           <p className="tw-mb-2">
             Type <strong>DELETE</strong> to confirm
@@ -75,7 +88,7 @@ const EntityDeleteModal: FC<Prop> = ({
             data-testid="confirmation-text-input"
             disabled={loadingState === 'waiting'}
             name="entityName"
-            placeholder={`${entityType}/${entityName}`}
+            placeholder="DELETE"
             type="text"
             value={name}
             onChange={handleOnChange}
@@ -90,7 +103,7 @@ const EntityDeleteModal: FC<Prop> = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           {loadingState === 'waiting' ? (
             <Button

@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.DATE;
+import static org.openmetadata.catalog.type.ColumnDataType.DECIMAL;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
@@ -190,6 +191,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
           BAD_REQUEST,
           "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
+  }
+
+  @Test
+  void post_tableInvalidPrecisionScale_400(TestInfo test) {
+    // No precision set but only column
+    final List<Column> columns = singletonList(getColumn("c1", DECIMAL, null).withScale(1));
+    final CreateTable create = createRequest(test).withColumns(columns);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale is set but precision is not set for the column c1");
+
+    // Scale (decimal digits) larger than precision (total number of digits)
+    columns.get(0).withScale(2).withPrecision(1);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale can't be greater than the precision for the column c1");
   }
 
   @Test
@@ -1495,18 +1514,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getFieldsUpdated()
         .add(new FieldChange().withName(build("columns", "c2", "description")).withNewValue("new1").withOldValue("c2"));
 
-    columns.get(2).withTags(new ArrayList<>()); // Remove tag
-    // Column c3 tags were removed
+    columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
+    // Column c3 tags were removed and precision and scale were added
     change
         .getFieldsDeleted()
         .add(
             new FieldChange()
                 .withName(build("columns", "\"c.3\"", "tags"))
                 .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withNewValue(10));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withNewValue(3));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the precision and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withOldValue(10).withNewValue(7));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(3); // Precision change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the scale and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withOldValue(3).withNewValue(1));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(1); // Scale change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
   }
 

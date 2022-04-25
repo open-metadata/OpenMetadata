@@ -24,9 +24,6 @@ public class JsonPatchUtils {
     Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
     String path = jsonPatchMap.get("path").toString();
 
-    // To get operation, use the following:
-    // JsonPatch.Operation op =  JsonPatch.Operation.fromOperationName(jsonPatchMap.get("op").toString());
-
     if (path.contains(FIELD_DESCRIPTION)) {
       return MetadataOperation.UpdateDescription;
     }

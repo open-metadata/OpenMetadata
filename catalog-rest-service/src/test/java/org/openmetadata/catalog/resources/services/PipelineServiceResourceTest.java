@@ -70,7 +70,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     this.supportsAuthorizedMetadataOperations = false;
   }
 
-  public void setupPipelineServices(TestInfo tst) throws URISyntaxException, HttpResponseException {
+  public void setupPipelineServices() throws URISyntaxException, HttpResponseException {
     // Create Airflow pipeline service
     PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
     CreatePipelineService createPipeline =

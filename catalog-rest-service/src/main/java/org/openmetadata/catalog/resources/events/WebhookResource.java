@@ -270,7 +270,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
       })
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
-      throws IOException, InterruptedException {
+      throws IOException {
     Webhook webhook = getWebhook(securityContext, create);
     Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
     dao.updateWebhookPublisher((Webhook) response.getEntity());

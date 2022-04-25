@@ -18,6 +18,7 @@ import AppState from '../AppState';
 import { ROUTES } from '../constants/constants';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
+import AddIngestionPage from '../pages/AddIngestionPage/AddIngestionPage.component';
 import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
@@ -25,6 +26,7 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetails from '../pages/database-details/index';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import EditIngestionPage from '../pages/EditIngestionPage/EditIngestionPage.component';
 import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
@@ -37,11 +39,9 @@ import ServicesPage from '../pages/services';
 import SignupPage from '../pages/signup';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
-import TeamsPage from '../pages/teams';
 import TeamsAndUsersPage from '../pages/TeamsAndUsersPage/TeamsAndUsersPage.component';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPageComponent from '../pages/tour-page/TourPage.component';
-import UserListPage from '../pages/UserListPage/UserListPage';
 import UserPage from '../pages/UserPage/UserPage.component';
 import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -53,8 +53,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
-      <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
       <Route
         exact
         component={TeamsAndUsersPage}
@@ -69,6 +67,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
+      <AdminProtectedRoute
+        exact
+        component={AddIngestionPage}
+        path={ROUTES.ADD_INGESTION}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditIngestionPage}
+        path={ROUTES.EDIT_INGESTION}
+      />
       <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
@@ -154,11 +162,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
-      />
-      <AdminProtectedRoute
-        exact
-        component={UserListPage}
-        path={ROUTES.USER_LIST}
       />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

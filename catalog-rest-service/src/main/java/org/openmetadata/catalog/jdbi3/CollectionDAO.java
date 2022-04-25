@@ -94,6 +94,7 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.common.utils.CommonUtil;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -518,7 +519,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
-            + "(fromId = :id AND toEntity = :entity)")
+            + "(fromId = :id AND fromEntity = :entity)")
     int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
   }
 
@@ -1347,6 +1348,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
+    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
+    void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
+
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
@@ -1682,7 +1686,7 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
-      if (entityTypes == null || entityTypes.isEmpty()) {
+      if (CommonUtil.nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {

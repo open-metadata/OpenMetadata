@@ -17,6 +17,8 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.awaitility.Awaitility.with;
+import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -533,10 +535,24 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Make the USER follow TABLE2
     followTable(TABLE2.getId(), USER.getId(), AUTH_HEADERS);
 
+    // Following the table will create a thread saying
+    // User started following this table
+    with()
+        .pollInterval(ONE_SECOND)
+        .await("Threads With Follows")
+        .until(
+            () -> {
+              ThreadList threads =
+                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);
+              return threads.getPaging().getTotal().equals(initialThreadCount + 3);
+            });
     ThreadList threads = listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);
-    assertEquals(initialThreadCount + 2, threads.getPaging().getTotal());
-    assertEquals(initialThreadCount + 2, threads.getData().size());
-    assertEquals("Message 2", threads.getData().get(0).getMessage());
+    assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
+    assertEquals(initialThreadCount + 3, threads.getData().size());
+    assertEquals(
+        String.format("Started to follow **table** `%s`", TABLE2.getFullyQualifiedName()),
+        threads.getData().get(0).getMessage());
+    assertEquals("Message 2", threads.getData().get(1).getMessage());
 
     // Filter by follows for another user should return 0 threads
     threads = listThreadsWithFilter(USER2.getId().toString(), FilterType.FOLLOWS.toString(), AUTH_HEADERS);

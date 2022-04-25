@@ -203,11 +203,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyTopic_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Topic> validateGetWithDifferentFields(Topic topic, boolean byName)
       throws HttpResponseException {

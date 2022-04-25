@@ -23,10 +23,12 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   getUserPath,
   navLinkSettings,
   ROUTES,
+  TERM_ADMIN,
+  TERM_USER,
 } from '../../constants/constants';
 import {
   urlGitbookDocs,
@@ -144,7 +146,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ? appState.users[0]
       : appState.userDetails;
 
-    return currentUser?.displayName || currentUser?.name || 'User';
+    return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
 
   const getUserData = () => {
@@ -152,9 +154,11 @@ const Appbar: React.FC = (): JSX.Element => {
       ? appState.users[0]
       : appState.userDetails;
 
-    const name = currentUser?.displayName || currentUser?.name || 'User';
+    const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
-    const roles = currentUser?.roles;
+    const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+
+    currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
     const teams = getNonDeletedTeams(currentUser?.teams ?? []);
 
@@ -165,12 +169,12 @@ const Appbar: React.FC = (): JSX.Element => {
           <span className="tw-font-medium tw-cursor-pointer">{name}</span>
         </Link>
         <hr className="tw-my-1.5" />
-        {(roles?.length ?? 0) > 0 ? (
+        {roles.length > 0 ? (
           <div>
             <div className="tw-font-medium tw-text-xs">Roles</div>
-            {roles?.map((r, i) => (
+            {roles.map((r, i) => (
               <p className="tw-text-grey-muted" key={i}>
-                {r.displayName}
+                {r}
               </p>
             ))}
             <hr className="tw-my-1.5" />
@@ -181,7 +185,7 @@ const Appbar: React.FC = (): JSX.Element => {
             <span className="tw-font-medium tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
-                <Link to={getTeamDetailsPath(t.name as string)}>
+                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName}
                 </Link>
               </p>

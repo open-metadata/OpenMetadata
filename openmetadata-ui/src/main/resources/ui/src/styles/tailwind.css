@@ -38,6 +38,16 @@
     @apply tw-text-body tw-text-grey-body tw-font-normal;
   }
 
+  /* utils */
+
+  .tw-flex-center {
+    @apply tw-flex tw-justify-center tw-items-center;
+  }
+
+  .tw-hw-full {
+    @apply tw-w-full tw-h-full;
+  }
+
   .tw-table {
     @apply tw-w-full;
   }
@@ -445,8 +455,9 @@
   /* react tostify */
 
   .Toastify__toast-container {
-    @apply tw-font-sans tw-break-all;
+    @apply tw-font-sans;
     width: 450px;
+    word-break: break-word;
   }
 
   .Toastify__toast {
@@ -455,5 +466,17 @@
 
   .Toastify__toast-body {
     @apply tw-items-start;
+  }
+
+  /* delete button style */
+
+  .tw-delete-outline-button {
+    @apply tw-border-gray-300 tw-border tw-text-error focus:tw-outline-none focus:tw-bg-transparent hover:tw-border-error focus:tw-border-error 
+  hover:tw-text-error focus:tw-text-error focus:tw-ring focus:tw-ring-error;
+  }
+
+  /* ToastUI Editor style */
+  .ProseMirror .placeholder {
+    @apply tw-text-grey-muted;
   }
 }

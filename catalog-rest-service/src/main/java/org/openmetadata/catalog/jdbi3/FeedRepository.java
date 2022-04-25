@@ -69,21 +69,15 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException {
+  public Thread create(Thread thread, UUID entityId, EntityReference entityOwner, EntityLink about) throws IOException {
+
     String createdBy = thread.getCreatedBy();
 
     // Validate user creating thread
     User createdByUser = dao.userDAO().findEntityByName(createdBy);
 
-    // Validate about data entity is valid
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-    // Get owner for the addressed to Entity
-    EntityReference owner = Entity.getOwner(aboutRef);
-
     // Add entity id to thread
-    thread.withEntityId(aboutRef.getId());
+    thread.withEntityId(entityId);
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
@@ -108,13 +102,13 @@ public class FeedRepository {
             Relationship.IS_ABOUT.ordinal());
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
-    if (owner != null) {
+    if (entityOwner != null) {
       dao.relationshipDAO()
           .insert(
               thread.getId().toString(),
-              owner.getId().toString(),
+              entityOwner.getId().toString(),
               Entity.THREAD,
-              owner.getType(),
+              entityOwner.getType(),
               Relationship.ADDRESSED_TO.ordinal());
     }
 
@@ -122,6 +116,20 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
 
     return thread;
+  }
+
+  @Transaction
+  public Thread create(Thread thread) throws IOException {
+    // Validate about data entity is valid
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+
+    // Get owner for the addressed to Entity
+    EntityReference owner = Entity.getOwner(aboutRef);
+
+    UUID entityId = aboutRef.getId();
+
+    return create(thread, entityId, owner, about);
   }
 
   public Thread get(String id) throws IOException {
@@ -209,7 +217,7 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerOfPost(Post post) throws IOException {
+  public EntityReference getOwnerOfPost(Post post) {
     User fromUser = dao.userDAO().findEntityByName(post.getFrom());
     return Entity.getEntityReference(fromUser);
   }

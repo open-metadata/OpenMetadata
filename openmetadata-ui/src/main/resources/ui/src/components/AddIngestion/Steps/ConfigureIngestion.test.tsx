@@ -14,6 +14,7 @@
 import { findAllByText, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 import ConfigureIngestion from './ConfigureIngestion';
 
@@ -49,7 +50,15 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
+  fqnFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   includeView: false,
+  pipelineType: PipelineType.Metadata,
+  queryLogDuration: 1,
+  resultLimit: 100,
+  stageFileLocation: '',
   enableDataProfiler: false,
   ingestSampleData: false,
   showDashboardFilter: false,
@@ -57,9 +66,14 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTableFilter: false,
   showTopicFilter: false,
   showChartFilter: false,
+  showFqnFilter: false,
   handleIncludeView: jest.fn(),
+  handleIngestionName: jest.fn(),
   handleEnableDataProfiler: jest.fn(),
   handleIngestSampleData: jest.fn(),
+  handleQueryLogDuration: jest.fn(),
+  handleResultLimit: jest.fn(),
+  handleStageFileLocation: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),

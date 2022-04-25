@@ -28,7 +28,7 @@ export interface Glossary {
   /**
    * Description of the glossary.
    */
-  description?: string;
+  description: string;
   /**
    * Display Name that identifies this glossary.
    */

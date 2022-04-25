@@ -61,6 +61,10 @@ export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/sandbox');
 };
 
+export const fetchAirflowConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/airflow');
+};
+
 export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string
@@ -119,17 +123,24 @@ export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
 export const deleteEntity: Function = (
   entityType: string,
   entityId: string,
-  isRecursive: boolean
+  isRecursive: boolean,
+  isSoftDelete = false
 ): Promise<AxiosResponse> => {
-  const searchParams = new URLSearchParams({ hardDelete: `true` });
-  if (!isUndefined(isRecursive)) {
-    searchParams.set('recursive', `${isRecursive}`);
+  let path = '';
+
+  if (isSoftDelete) {
+    path = getURLWithQueryFields(`/${entityType}/${entityId}`);
+  } else {
+    const searchParams = new URLSearchParams({ hardDelete: `true` });
+    if (!isUndefined(isRecursive)) {
+      searchParams.set('recursive', `${isRecursive}`);
+    }
+    path = getURLWithQueryFields(
+      `/${entityType}/${entityId}`,
+      '',
+      `${searchParams.toString()}`
+    );
   }
-  const path = getURLWithQueryFields(
-    `/${entityType}/${entityId}`,
-    '',
-    `${searchParams.toString()}`
-  );
 
   return APIClient.delete(path);
 };

@@ -61,9 +61,9 @@ const SelectServiceType = ({
       </Field>
 
       <Field className="tw-mt-7">
-        <div className="tw-flex tw-justify-center">
+        <div className="tw-flex">
           <div
-            className="tw-grid tw-grid-cols-5 tw-grid-flow-row tw-gap-5 tw-mt-4"
+            className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
             {serviceTypes[serviceCategory]?.map((type) => (
               <div
@@ -101,7 +101,7 @@ const SelectServiceType = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          <span>Discard</span>
+          <span>Cancel</span>
         </Button>
 
         <Button

@@ -58,7 +58,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -92,7 +92,7 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
@@ -182,7 +182,7 @@ const DatabaseDetails: FunctionComponent = () => {
       key: 'Owner',
       value:
         database?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               database?.owner?.displayName || database?.owner?.name || ''
             )
           : database?.owner?.displayName || database?.owner?.name || '',
@@ -469,9 +469,6 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['unexpected-server-response']
@@ -517,8 +514,6 @@ const DatabaseDetails: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
@@ -807,6 +802,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       database?.owner?.type || '',
                       database?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE}
                     onSave={handleUpdateOwner}
                   />
                 )}

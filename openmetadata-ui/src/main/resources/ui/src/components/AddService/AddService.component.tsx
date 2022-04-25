@@ -16,10 +16,6 @@ import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
-import {
-  addIngestionGuide,
-  addServiceGuide,
-} from '../../constants/service-guide.constant';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -33,7 +29,7 @@ import {
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
-  getFormattedGuideText,
+  getServiceIngestionStepGuide,
   isIngestionSupported,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
@@ -234,36 +230,14 @@ const AddService = ({
   };
 
   const fetchRightPanel = () => {
-    let guide;
-    if (addIngestion) {
-      guide = addIngestionGuide.find(
-        (item) => item.step === activeIngestionStep
-      );
-    } else {
-      guide = addServiceGuide.find((item) => item.step === activeServiceStep);
-    }
+    const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
 
-    return (
-      <>
-        {guide && (
-          <>
-            <h6 className="tw-heading tw-text-base">{guide.title}</h6>
-            <div className="tw-mb-5">
-              {addIngestion
-                ? getFormattedGuideText(
-                    guide.description,
-                    '<Ingestion Pipeline Name>',
-                    `${serviceName}_${PipelineType.Metadata}`
-                  )
-                : getFormattedGuideText(
-                    guide.description,
-                    '<Service Name>',
-                    serviceName
-                  )}
-            </div>
-          </>
-        )}
-      </>
+    return getServiceIngestionStepGuide(
+      stepData,
+      addIngestion,
+      `${serviceName}_${PipelineType.Metadata}`,
+      serviceName,
+      PipelineType.Metadata
     );
   };
 

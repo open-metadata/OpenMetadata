@@ -14,35 +14,18 @@ DAG builder registry.
 Add a function for each type from PipelineType
 """
 
-from collections import namedtuple
 
 from openmetadata.workflows.ingestion.metadata import build_metadata_dag
+from openmetadata.workflows.ingestion.profiler import build_profiler_dag
 from openmetadata.workflows.ingestion.usage import build_usage_dag
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
+from metadata.utils.dispatch import enum_register
 
-
-def register():
-    """
-    Helps us register custom functions for rendering
-    """
-    registry = dict()
-
-    def add(name: str = None):
-        def inner(fn):
-            _name = fn.__name__ if not name else name
-            registry[_name] = fn
-            return fn
-
-        return inner
-
-    Register = namedtuple("Register", ["add", "registry"])
-    return Register(add, registry)
-
-
-build_registry = register()
+build_registry = enum_register()
 
 build_registry.add(PipelineType.metadata.value)(build_metadata_dag)
 build_registry.add(PipelineType.usage.value)(build_usage_dag)
+build_registry.add(PipelineType.profiler.value)(build_profiler_dag)

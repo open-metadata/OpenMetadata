@@ -31,6 +31,7 @@ import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
@@ -250,7 +251,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
-    new PipelineServiceResourceTest().setupPipelineServices(test);
+    new PipelineServiceResourceTest().setupPipelineServices();
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
 
@@ -492,7 +493,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
-          container.getType() + " is not empty");
+          entityIsNotEmpty(container.getType()));
 
       // Now soft-delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
@@ -1017,7 +1018,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertListNull(entityInterface.getOwner());
+    // user will always have the same user assigned as the owner
+    if (!entityInterface.getEntityType().equals(Entity.USER)) {
+      assertListNull(entityInterface.getOwner());
+    }
 
     entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
@@ -1323,7 +1327,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
-    assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
+    assertEntityDeleted(id, hardDelete);
     return entity;
   }
 

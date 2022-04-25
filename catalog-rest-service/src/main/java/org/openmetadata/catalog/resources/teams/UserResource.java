@@ -372,6 +372,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (path.equals("/isAdmin") || path.equals("/isBot")) {
           SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
         }
+        // if path contains team, check if team is joinable by any user
+        if (patchOpObject.containsKey("op")
+            && patchOpObject.getString("op").equals("add")
+            && path.startsWith("/teams/")) {
+          JsonObject value = null;
+          try {
+            value = patchOpObject.getJsonObject("value");
+          } catch (Exception ex) {
+            // ignore exception if value is not an object
+          }
+          if (value != null) {
+            String teamId = value.getString("id");
+            dao.validateTeamAddition(id, teamId);
+            if (!dao.isTeamJoinable(teamId)) {
+              // Only admin can join closed teams
+              SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+            }
+          }
+        }
       }
     }
     return patchInternal(uriInfo, securityContext, id, patch);

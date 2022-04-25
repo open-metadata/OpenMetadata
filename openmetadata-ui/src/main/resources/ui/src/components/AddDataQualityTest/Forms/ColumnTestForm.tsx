@@ -693,7 +693,7 @@ const ColumnTestForm = ({
               theme="primary"
               variant="text"
               onClick={onFormCancel}>
-              Discard
+              Cancel
             </Button>
             <Button
               className="tw-w-16 tw-h-10"

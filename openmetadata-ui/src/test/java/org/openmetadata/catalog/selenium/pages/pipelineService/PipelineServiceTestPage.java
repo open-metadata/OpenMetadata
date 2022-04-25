@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -27,16 +28,20 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.PipelineServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
 
+@Slf4j
 @Order(10)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PipelineServiceTestPage {
+class PipelineServiceTestPage {
   static WebDriver webDriver;
   static Common common;
   static PipelineServicePage pipelineServicePage;
@@ -50,7 +55,7 @@ public class PipelineServiceTestPage {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -66,7 +71,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(1)
-  public void openPipelineServicePage() throws InterruptedException {
+  void openPipelineServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
@@ -76,7 +81,7 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(2)
-  public void addPipelineService() throws InterruptedException {
+  void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
     Thread.sleep(waitTime);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
@@ -98,12 +103,24 @@ public class PipelineServiceTestPage {
     Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "localhost:8080");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
+    Events.click(webDriver, common.selectServiceTab(4));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.getPageSource().contains(serviceName)) {
+        LOG.info("Success");
+      }
+    } catch (NoSuchElementException | TimeoutException r) {
+      Assert.fail("Service not added");
+    }
   }
 
   @Test
   @Order(3)
-  public void checkPipelineServiceDetails() throws InterruptedException {
+  void checkPipelineServiceDetails() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
@@ -114,24 +131,32 @@ public class PipelineServiceTestPage {
 
   @Test
   @Order(4)
-  public void checkConnectionConfig() throws InterruptedException {
+  void checkConnectionConfig() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "test");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.click(webDriver, common.saveServiceButton());
   }
 
   @Test
   @Order(5)
-  public void deletePipelineService() throws InterruptedException {
+  void deletePipelineService() throws InterruptedException {
     openPipelineServicePage();
     Events.click(webDriver, common.deleteServiceButton(serviceName));
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
+        Assert.fail("Service not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

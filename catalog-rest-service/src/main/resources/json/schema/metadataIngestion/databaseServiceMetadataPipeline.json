@@ -4,8 +4,14 @@
   "title": "DatabaseServiceMetadataPipeline",
   "description": "DatabaseService Metadata Pipeline Configuration.",
   "definitions": {
-    "localHttpDBTConfig": {
-      "description": "Local and HTTP DBT configs.",
+    "databaseMetadataConfigType": {
+      "description": "Database Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["DatabaseMetadata"],
+      "default": "DatabaseMetadata"
+    },
+    "dbtConfig": {
+      "description": "DBT Catalog and Manifest file path config.",
       "type": "object",
       "properties": {
         "dbtCatalogFilePath": {
@@ -22,6 +28,11 @@
     }
   },
   "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/databaseMetadataConfigType",
+      "default": "DatabaseMetadata"
+    },
     "markDeletedTables": {
       "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
       "type": "boolean",
@@ -66,16 +77,16 @@
       "enum": ["local", "http", "gcs", "gcs-path", "s3"]
     },
     "dbtConfig": {
+      "$ref": "#/definitions/dbtConfig"
+    },
+    "dbtSecurityConfig": {
       "description": "DBT configuration.",
       "oneOf": [
-        {
-          "$ref": "#/definitions/localHttpDBTConfig"
-        },
         {
           "$ref": "../security/credentials/gcsCredentials.json"
         },
         {
-          "$ref": "../security/credentials/s3Credentials.json"
+          "$ref": "../security/credentials/awsCredentials.json"
         }
       ]
     },

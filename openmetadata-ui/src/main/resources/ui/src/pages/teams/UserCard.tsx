@@ -43,6 +43,7 @@ interface Props {
   isDataset?: boolean;
   isCheckBoxes?: boolean;
   isOwner?: boolean;
+  onTitleClick?: (value: string) => void;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
 }
@@ -54,6 +55,7 @@ const UserCard = ({
   isDataset = false,
   isCheckBoxes = false,
   isOwner = false,
+  onTitleClick,
   onSelect,
   onRemove,
 }: Props) => {
@@ -172,9 +174,16 @@ const UserCard = ({
               <p
                 className={classNames(
                   'tw-font-normal',
-                  isActionVisible ? 'tw-truncate tw-w-32' : null
+                  isActionVisible ? 'tw-truncate tw-w-32' : null,
+                  {
+                    'tw-cursor-pointer hover:tw-underline':
+                      Boolean(onTitleClick),
+                  }
                 )}
-                title={item.displayName}>
+                title={item.displayName}
+                onClick={() => {
+                  onTitleClick?.(item.fqn);
+                }}>
                 {item.displayName}
               </p>
               {item.name && (
