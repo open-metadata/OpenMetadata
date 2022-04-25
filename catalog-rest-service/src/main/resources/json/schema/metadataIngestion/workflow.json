@@ -126,6 +126,11 @@
       "description": "Configuration for the entire Ingestion Workflow.",
       "type": "object",
       "properties": {
+        "loggerLevel": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARN"],
+          "default": "INFO"
+        },
         "openMetadataServerConfig": {
           "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"
         },
