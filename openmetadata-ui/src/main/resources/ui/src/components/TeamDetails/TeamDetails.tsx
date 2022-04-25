@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, orderBy } from 'lodash';
+import { cloneDeep, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo, TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -75,6 +75,7 @@ const TeamDetails = ({
   handleLeaveTeamClick,
   handleAddUser,
   removeUserFromTeam,
+  afterDeleteAction,
 }: TeamDetailsProp) => {
   const history = useHistory();
   const DELETE_USER_INITIAL_STATE = {
@@ -260,8 +261,11 @@ const TeamDetails = ({
     if (currentTeam) {
       setHeading(currentTeam.displayName);
     }
+  }, [currentTeam]);
+
+  useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
-  }, [currentTeam, currentTeam]);
+  }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -440,6 +444,32 @@ const TeamDetails = ({
     );
   };
 
+  const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
+    return alreadyJoined ? (
+      isJoinable || hasAccess ? (
+        <Button
+          className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
+          data-testid="join-teams"
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={joinTeam}>
+          Join Team
+        </Button>
+      ) : null
+    ) : (
+      <Button
+        className="tw-h-8 tw-rounded tw-ml-2"
+        data-testid="delete-team-button"
+        size="small"
+        theme="primary"
+        variant="outlined"
+        onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
+        Leave Team
+      </Button>
+    );
+  };
+
   /**
    * Check for team default role and return roles card
    * @returns - roles card
@@ -547,31 +577,11 @@ const TeamDetails = ({
             data-testid="header">
             {getTeamHeading()}
             <div className="tw-flex">
-              {!isAlreadyJoinedTeam(currentTeam.id) ? (
-                currentTeam.isJoinable || hasAccess ? (
-                  <Button
-                    className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
-                    data-testid="join-teams"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={joinTeam}>
-                    Join Team
-                  </Button>
-                ) : null
-              ) : (
-                <Button
-                  className="tw-h-8 tw-rounded tw-ml-2"
-                  data-testid="delete-team-button"
-                  size="small"
-                  theme="primary"
-                  variant="outlined"
-                  onClick={() =>
-                    currentUser && deleteUserHandler(currentUser.id, true)
-                  }>
-                  Leave Team
-                </Button>
-              )}
+              {!isUndefined(currentUser) &&
+                teamActionButton(
+                  !isAlreadyJoinedTeam(currentTeam.id),
+                  currentTeam.isJoinable || false
+                )}
             </div>
           </div>
           <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
@@ -614,6 +624,7 @@ const TeamDetails = ({
                     allowSoftDelete
                     hasEditAccess
                     hideTier
+                    afterDeleteAction={afterDeleteAction}
                     allowTeamOwner={false}
                     currentUser={currentTeam.owner?.id}
                     entityId={currentTeam.id}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ISubmitEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -39,7 +40,23 @@ const ServiceConfig = ({
   data,
   handleUpdate,
 }: ServiceConfigProps) => {
-  const [status] = useState<LoadingState>('initial');
+  const [status, setStatus] = useState<LoadingState>('initial');
+
+  const handleOnSaveClick = (e: ISubmitEvent<ConfigData>) => {
+    setStatus('waiting');
+
+    handleUpdate(e.formData, serviceCategory)
+      .then(() => {
+        setTimeout(() => {
+          setStatus('success');
+        }, 200);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setStatus('initial');
+        }, 500);
+      });
+  };
 
   const getDynamicFields = () => {
     return (
@@ -53,9 +70,7 @@ const ServiceConfig = ({
         }
         serviceCategory={serviceCategory}
         status={status}
-        onSave={(e) => {
-          handleUpdate(e.formData, serviceCategory);
-        }}
+        onSave={handleOnSaveClick}
       />
     );
   };

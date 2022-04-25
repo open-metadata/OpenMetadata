@@ -38,6 +38,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
   currentUser = '',
   hideTier = false,
+  hideOwner = false,
   onSave,
   hasEditAccess,
   allowTeamOwner = true,
@@ -49,8 +50,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   allowSoftDelete,
   isRecursiveDelete,
   deletEntityMessage,
-  manageSectionType,
   handleIsJoinable,
+  afterDeleteAction,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -98,7 +99,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     const newOwner: TableDetail['owner'] = prepareOwner(updatedOwner);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
-        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
           setInitialOwnerLoadingState();
         });
       } else {
@@ -106,7 +107,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       }
     } else {
       const newTier = prepareTier(updatedTier);
-      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
         setInitialOwnerLoadingState();
       });
     }
@@ -117,7 +118,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     const newOwner: TableDetail['owner'] = prepareOwner(currentUser);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
-        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
           setInitialTierLoadingState();
         });
       } else {
@@ -125,7 +126,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       }
     } else {
       const newTier = prepareTier(updatedTier);
-      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
         setInitialTierLoadingState();
       });
     }
@@ -153,6 +154,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return allowDelete && entityId && entityName && entityType ? (
       <div className="tw-mt-1" data-testid="danger-zone">
         <DeleteWidget
+          afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deletEntityMessage={deletEntityMessage}
           entityId={entityId}
@@ -302,30 +304,30 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <p className="tw-text-base tw-font-medium tw-mt-2">
-        Manage {manageSectionType ? manageSectionType : 'Section'}
-      </p>
       <div
         className={classNames('tw-mt-2 tw-pb-4', {
           'tw-mb-3': !hideTier,
         })}>
-        <OwnerWidget
-          allowTeamOwner={allowTeamOwner}
-          handleIsJoinable={handleIsJoinable}
-          handleOwnerSelection={handleOwnerSelection}
-          handleSelectOwnerDropdown={() =>
-            setListVisible((visible) => !visible)
-          }
-          hasEditAccess={hasEditAccess}
-          isAuthDisabled={isAuthDisabled}
-          isJoinableActionAllowed={isJoinableActionAllowed()}
-          listOwners={listOwners}
-          listVisible={listVisible}
-          owner={owner}
-          ownerName={ownerName}
-          statusOwner={statusOwner}
-          teamJoinable={teamJoinable}
-        />
+        {!hideOwner && (
+          <OwnerWidget
+            allowTeamOwner={allowTeamOwner}
+            entityType={entityType}
+            handleIsJoinable={handleIsJoinable}
+            handleOwnerSelection={handleOwnerSelection}
+            handleSelectOwnerDropdown={() =>
+              setListVisible((visible) => !visible)
+            }
+            hasEditAccess={hasEditAccess}
+            isAuthDisabled={isAuthDisabled}
+            isJoinableActionAllowed={isJoinableActionAllowed()}
+            listOwners={listOwners}
+            listVisible={listVisible}
+            owner={owner}
+            ownerName={ownerName}
+            statusOwner={statusOwner}
+            teamJoinable={teamJoinable}
+          />
+        )}
       </div>
       {getTierWidget()}
       {getDeleteEntityWidget()}

@@ -219,7 +219,7 @@ const DataQualityTable = ({
             deleteSelection.data?.testCase?.columnTestType ||
             deleteSelection.data?.testCase?.tableTestType
           } permanently? This action cannot be reverted.`}
-          cancelText="Discard"
+          cancelText="Cancel"
           confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
           confirmText={
             deleteSelection.state === 'waiting' ? (

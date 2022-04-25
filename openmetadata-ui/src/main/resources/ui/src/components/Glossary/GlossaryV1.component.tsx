@@ -69,6 +69,7 @@ type Props = {
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
+  afterDeleteAction?: () => void;
   isChildLoading: boolean;
 };
 
@@ -87,6 +88,7 @@ const GlossaryV1 = ({
   isGlossaryActive,
   isChildLoading,
   handleSelectedData,
+  afterDeleteAction,
   handleAddGlossaryClick,
   handleAddGlossaryTermClick,
   handleGlossaryTermUpdate,
@@ -279,12 +281,14 @@ const GlossaryV1 = ({
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
+            afterDeleteAction={afterDeleteAction}
             glossary={selectedData as Glossary}
             isHasAccess={isHasAccess}
             updateGlossary={updateGlossary}
           />
         ) : (
           <GlossaryTermsV1
+            afterDeleteAction={afterDeleteAction}
             assetData={assetData}
             currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
@@ -298,7 +302,7 @@ const GlossaryV1 = ({
       {selectedData && isDelete && (
         <ConfirmationModal
           bodyText={`You want to delete ${selectedData.name} permanently? This action cannot be reverted.`}
-          cancelText="Discard"
+          cancelText="Cancel"
           confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
           confirmText="Delete"
           header="Are you sure?"

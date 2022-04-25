@@ -666,6 +666,20 @@ const GlossaryPageV1 = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
   useEffect(() => {
     fetchGlossaryTermAssets(
       (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
@@ -686,6 +700,7 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
+          afterDeleteAction={afterDeleteAction}
           assetData={assetData}
           currentPage={assetData.currPage}
           deleteStatus={deleteStatus}

@@ -20,8 +20,16 @@ export interface Option {
   label: string;
   value: string;
 }
+export interface PatchObject {
+  id: string;
+  name: string;
+  type: string;
+}
 
-export type UserDetails = Record<string, string | Array<string> | boolean>;
+export type UserDetails = Record<
+  string,
+  string | Array<string> | boolean | Array<PatchObject>
+>;
 
 export interface Props {
   userData: User;
@@ -30,6 +38,7 @@ export interface Props {
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;
+  isLoggedinUser: boolean;
   updateUserDetails: (data: UserDetails) => void;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;

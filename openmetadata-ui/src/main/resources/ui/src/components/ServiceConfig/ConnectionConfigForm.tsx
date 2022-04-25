@@ -52,7 +52,7 @@ interface Props {
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   okText = 'Save',
-  cancelText = 'Discard',
+  cancelText = 'Cancel',
   serviceCategory,
   status,
   onCancel,
@@ -65,6 +65,28 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           .connection.config as ConfigData)
       : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
     : ({} as ConfigData);
+
+  const escapeBackwardSlashChar = (formData: ConfigData) => {
+    for (const key in formData) {
+      if (typeof formData[key as keyof ConfigData] === 'object') {
+        escapeBackwardSlashChar(
+          formData[key as keyof ConfigData] as ConfigData
+        );
+      } else {
+        const data = formData[key as keyof ConfigData];
+        if (typeof data === 'string') {
+          formData[key as keyof ConfigData] = data.replace(/\\n/g, '\n');
+        }
+      }
+    }
+
+    return formData;
+  };
+
+  const handleSave = (data: ISubmitEvent<ConfigData>) => {
+    const updatedFormData = escapeBackwardSlashChar(data.formData);
+    onSave({ ...data, formData: updatedFormData });
+  };
 
   const handleTestConnection = (formData: ConfigData) => {
     return new Promise<void>((resolve, reject) => {
@@ -140,7 +162,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         status={status}
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
-        onSubmit={onSave}
+        onSubmit={handleSave}
         onTestConnection={handleTestConnection}
       />
     );

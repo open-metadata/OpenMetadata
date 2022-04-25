@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { Button } from '../../buttons/Button/Button';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { Field } from '../../Field/Field';
+import Loader from '../../Loader/Loader';
 import { ScheduleIntervalProps } from '../addIngestion.interface';
 
 const ScheduleInterval = ({
+  status,
   repeatFrequency,
   handleRepeatFrequencyChange,
   startDate,
@@ -25,7 +28,7 @@ const ScheduleInterval = ({
   endDate,
   handleEndDateChange,
   onBack,
-  onDeloy,
+  onDeploy,
 }: ScheduleIntervalProps) => {
   return (
     <div data-testid="schedule-intervel-container">
@@ -75,14 +78,34 @@ const ScheduleInterval = ({
           <span>Back</span>
         </Button>
 
-        <Button
-          data-testid="deploy-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
-          onClick={onDeloy}>
-          <span>Deploy</span>
-        </Button>
+        {status === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : status === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <FontAwesomeIcon icon="check" />
+          </Button>
+        ) : (
+          <Button
+            data-testid="deploy-button"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={onDeploy}>
+            <span>Deploy</span>
+          </Button>
+        )}
       </Field>
     </div>
   );

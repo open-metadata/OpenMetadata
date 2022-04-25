@@ -57,7 +57,7 @@ const AddGlossary = ({
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
 
   const getDescription = () => {
-    return markdownRef.current?.getEditorContent() || undefined;
+    return markdownRef.current?.getEditorContent() || '';
   };
 
   const onReviewerModalCancel = () => {
@@ -265,7 +265,7 @@ const AddGlossary = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           {getSaveButton()}
         </div>

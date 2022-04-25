@@ -75,6 +75,7 @@ export interface TeamsAndUsersProps {
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
   handleAddNewUser: () => void;
+  afterDeleteAction: () => void;
 }
 
 export interface TeamDetailsProp {
@@ -106,6 +107,7 @@ export interface TeamDetailsProp {
     activePage?: number
   ) => void;
   handleAddUser: (data: boolean) => void;
+  afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;

@@ -113,7 +113,7 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **description** : <span class=\"diff-removed\">old</span>"
+        "Updated **description**: <span class=\"diff-removed\">old</span>"
             + "<span class=\"diff-added\">new</span> description",
         messages.values().iterator().next());
 
@@ -161,7 +161,7 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns.lo_orderpriority** : <br/> name: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> displayName: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.<span class=\"diff-removed\">lo_order\"</span><span class=\"diff-added\">lo_orderpriority\"</span>",
+        "Updated **columns.lo_orderpriority**: <br/> name: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> displayName: <span class=\"diff-removed\">\"lo_order\"</span><span class=\"diff-added\">\"lo_orderpriority\"</span> <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.<span class=\"diff-removed\">lo_order\"</span><span class=\"diff-added\">lo_orderpriority\"</span>",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -179,7 +179,7 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns.lo_orderpriority** : <br/> dataType: <span class=\"diff-removed\">\"BLOB\"</span><span class=\"diff-added\">\"INT\"</span> <br/> dataTypeDisplay: <span class=\"diff-removed\">\"blob\"</span><span class=\"diff-added\">\"int\"</span>",
+        "Updated **columns.lo_orderpriority**: <br/> dataType: <span class=\"diff-removed\">\"BLOB\"</span><span class=\"diff-added\">\"INT\"</span> <br/> dataTypeDisplay: <span class=\"diff-removed\">\"blob\"</span><span class=\"diff-added\">\"int\"</span>",
         messages.values().iterator().next());
 
     // Simulate multiple changes to columns
@@ -197,7 +197,7 @@ public class ChangeEventParserTest extends CatalogApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns** : lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns**: lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
   }
 }

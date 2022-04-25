@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useAuth } from '../../../hooks/authHooks';
+import { getTitleCase } from '../../../utils/EntityUtils';
 import { Button } from '../../buttons/Button/Button';
 import DropDownList from '../../dropdown/DropDownList';
 import Loader from '../../Loader/Loader';
@@ -32,6 +33,7 @@ interface OwnerWidgetProps {
   teamJoinable?: boolean;
   allowTeamOwner?: boolean;
   ownerName: string;
+  entityType?: string;
   statusOwner: Status;
   owner: string;
   listOwners: {
@@ -54,6 +56,7 @@ const OwnerWidget = ({
   isAuthDisabled,
   hasEditAccess,
   ownerName,
+  entityType,
   listVisible,
   owner,
   allowTeamOwner,
@@ -89,6 +92,11 @@ const OwnerWidget = ({
     }
   };
 
+  const ownerDescription =
+    entityType === 'team'
+      ? 'The owner of the team can manage the team by adding or removing users. Add or update Team ownership here'
+      : `Add or update ${getTitleCase(entityType)} ownership here`;
+
   return (
     <Fragment>
       <div className="tw-mt-1 tw-bg-white">
@@ -97,8 +105,7 @@ const OwnerWidget = ({
             <div className="tw-w-10/12">
               <p className="tw-text-sm tw-mb-1 tw-font-medium">Owner</p>
               <p className="tw-text-grey-muted tw-text-xs">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit.
-                Necessitatibus, sint.
+                {ownerDescription}
               </p>
             </div>
 
@@ -163,8 +170,8 @@ const OwnerWidget = ({
                   Open to join
                 </p>
                 <p className="tw-text-grey-muted tw-text-xs">
-                  Lorem ipsum dolor, sit amet consectetur adipisicing elit.
-                  Necessitatibus, sint.
+                  Turn on toggle to allow any user to join the team. To restrict
+                  access, keep the toggle off
                 </p>
               </div>
               <div className="tw-flex tw-items-center">

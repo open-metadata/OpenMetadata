@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-export enum FilterPatternEnum {
-  SCHEMA = 'schema',
-  TABLE = 'table',
-  CHART = 'chart',
-  DASHBOARD = 'dashboard',
-  TOPIC = 'topic',
-  FQN = 'fqn',
+.thread-author {
+  font-weight: 600;
+}
+
+.thread-author:hover {
+  text-decoration: underline;
 }

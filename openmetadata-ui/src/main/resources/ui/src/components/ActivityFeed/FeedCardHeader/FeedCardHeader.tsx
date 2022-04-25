@@ -36,6 +36,7 @@ import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
 import { FeedHeaderProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -62,8 +63,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   const getUserData = () => {
-    const displayName = userData.displayName ?? '';
     const name = userData.name ?? '';
+    const displayName = userData.displayName ?? name;
     const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
     const isAdmin = userData?.isAdmin;
@@ -88,7 +89,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                         {displayName}
                       </span>
                     </a>
-                    <span className="tw-text-grey-muted">{name}</span>
+                    {displayName !== name ? (
+                      <span className="tw-text-grey-muted">{name}</span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="tw-text-left">
@@ -195,7 +198,9 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           position="top"
           theme="light"
           trigger="click">
-          <span className="tw-cursor-pointer" onClick={onClickHandler}>
+          <span
+            className="thread-author tw-cursor-pointer"
+            onClick={onClickHandler}>
             {createdBy}
           </span>
         </PopOver>

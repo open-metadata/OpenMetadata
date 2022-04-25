@@ -604,10 +604,13 @@ class PipelineESIndex extends ElasticSearchIndex {
       pipeline.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
 
-    for (Task task : pipeline.getTasks()) {
-      taskNames.add(task.getDisplayName());
-      taskDescriptions.add(task.getDescription());
+    if (pipeline.getTasks() != null) {
+      for (Task task : pipeline.getTasks()) {
+        taskNames.add(task.getDisplayName());
+        taskDescriptions.add(task.getDescription());
+      }
     }
+
     Long updatedTimestamp = pipeline.getUpdatedAt();
     ParseTags parseTags = new ParseTags(tags);
     String description = pipeline.getDescription() != null ? pipeline.getDescription() : "";
@@ -817,7 +820,7 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
     String description = glossaryTerm.getDescription() != null ? glossaryTerm.getDescription() : "";
     String displayName = glossaryTerm.getDisplayName() != null ? glossaryTerm.getDisplayName() : "";
     return internalBuilder()
-        .glossaryId(glossaryTerm.getGlossary().getId().toString())
+        .glossaryTermId(glossaryTerm.getId().toString())
         .name(glossaryTerm.getName())
         .displayName(displayName)
         .description(description)

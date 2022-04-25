@@ -13,7 +13,7 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
+import { isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import Select, { MultiValue } from 'react-select';
@@ -93,6 +93,7 @@ const Users = ({
   paging,
   updateUserDetails,
   isAdminUser,
+  isLoggedinUser,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
@@ -156,19 +157,35 @@ const Users = ({
 
   const handleRolesChange = () => {
     // filter out the roles , and exclude the admin one
-    const updatedRoles = selectedRoles.filter((role) => role.value !== 'admin');
+    const updatedRoles = selectedRoles.filter(
+      (role) => role.value !== toLower(TERM_ADMIN)
+    );
 
-    // get the admin role and send it as boolean value `iaAdmin=Boolean(isAdmin)
-    const isAdmin = selectedRoles.find((role) => role.value === 'admin');
+    // get the admin role and send it as boolean value `isAdmin=Boolean(isAdmin)
+    const isAdmin = selectedRoles.find(
+      (role) => role.value === toLower(TERM_ADMIN)
+    );
     updateUserDetails({
-      roles: updatedRoles.map((role) => role.value),
+      roles: updatedRoles.map((item) => {
+        const roleId = item.value;
+        const role = roles.find((r) => r.id === roleId);
+
+        return { id: roleId, type: 'role', name: role?.name || '' };
+      }),
       isAdmin: Boolean(isAdmin),
     });
 
     setIsRolesEdit(false);
   };
   const handleTeamsChange = () => {
-    updateUserDetails({ teams: selectedTeams.map((team) => team.value) });
+    updateUserDetails({
+      teams: selectedTeams.map((item) => {
+        const teamId = item.value;
+        const team = teams.find((t) => t.id === teamId);
+
+        return { id: teamId, type: 'team', name: team?.name || '' };
+      }),
+    });
 
     setIsTeamsEdit(false);
   };
@@ -201,7 +218,7 @@ const Users = ({
   };
 
   const getDisplayNameComponent = () => {
-    if (isAdminUser) {
+    if (isAdminUser || isLoggedinUser) {
       return (
         <div className="tw-mt-4 tw-w-full tw-text-center">
           {isDisplayNameEdit ? (
@@ -267,7 +284,7 @@ const Users = ({
   };
 
   const getDescriptionComponent = () => {
-    if (isAdminUser) {
+    if (isAdminUser || isLoggedinUser) {
       return (
         <Description
           description={userData.description || ''}
@@ -390,6 +407,17 @@ const Users = ({
   };
 
   const getRolesComponent = () => {
+    const userRolesOption = roles?.map((role) => ({
+      label: getEntityName(role as unknown as EntityReference),
+      value: role.id,
+    }));
+    if (!userData.isAdmin) {
+      userRolesOption.push({
+        label: TERM_ADMIN,
+        value: toLower(TERM_ADMIN),
+      });
+    }
+
     const rolesElement = (
       <Fragment>
         {userData.isAdmin && (
@@ -444,10 +472,7 @@ const Users = ({
                   aria-label="Select roles"
                   className="tw-ml-1"
                   isSearchable={false}
-                  options={roles?.map((role) => ({
-                    label: getEntityName(role as unknown as EntityReference),
-                    value: role.id,
-                  }))}
+                  options={userRolesOption}
                   placeholder="Roles..."
                   styles={reactSingleSelectCustomStyle}
                   value={selectedRoles}
@@ -624,8 +649,8 @@ const Users = ({
     ];
     if (userData.isAdmin) {
       defaultRoles.push({
-        label: 'Admin',
-        value: 'admin',
+        label: TERM_ADMIN,
+        value: toLower(TERM_ADMIN),
       });
     }
     setSelectedRoles(defaultRoles);

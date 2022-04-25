@@ -121,7 +121,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     registerResources(catalogConfig, environment, jdbi);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
-    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -130,6 +129,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+    // start authorizer after event publishers
+    // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
+    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
   }
 
   @SneakyThrows

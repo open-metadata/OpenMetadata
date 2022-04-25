@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import {
+  faAngleRight,
+  faExclamationCircle,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -26,6 +29,7 @@ import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -112,6 +116,26 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
+  const fqnParts = fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
+  const separatorHtml = (
+    <span className="tw-px-2">
+      <FontAwesomeIcon
+        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
+        icon={faAngleRight}
+      />
+    </span>
+  );
+  const tableTitle = fqnParts.map((part, i) => {
+    const separator = i !== fqnParts.length - 1 ? separatorHtml : null;
+
+    return (
+      <span key={i}>
+        <span>{part}</span>
+        {separator}
+      </span>
+    );
+  });
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
@@ -130,7 +154,7 @@ const TableDataCard: FunctionComponent<Props> = ({
               data-testid="table-link"
               id={`${id}Title`}
               onClick={handleLinkClick}>
-              {fullyQualifiedName}
+              <span className="table-title">{tableTitle}</span>
             </button>
           </h6>
           {deleted && (

@@ -282,6 +282,7 @@ const TeamsAndUsersPage = () => {
         })
         .finally(() => {
           setIsLoading(false);
+          setIsRightPannelLoading(false);
         });
     }
   };
@@ -386,13 +387,15 @@ const TeamsAndUsersPage = () => {
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
+    setIsRightPannelLoading(true);
     updateUserDetail(id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {
           AppState.updateUserDetails(res.data);
-          fetchCurrentTeam(teamAndUser);
+          fetchCurrentTeam(currentTeam?.name || '', true);
           showSuccessToast(
-            jsonData['api-success-messages']['join-team-success']
+            jsonData['api-success-messages']['join-team-success'],
+            2000
           );
         } else {
           throw jsonData['api-error-messages']['join-team-error'];
@@ -404,14 +407,17 @@ const TeamsAndUsersPage = () => {
   };
 
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
+    setIsRightPannelLoading(true);
+
     return new Promise<void>((resolve, reject) => {
       updateUserDetail(id, data)
         .then((res: AxiosResponse) => {
           if (res.data) {
             AppState.updateUserDetails(res.data);
-            fetchCurrentTeam(teamAndUser);
+            fetchCurrentTeam(currentTeam?.name || '', true);
             showSuccessToast(
-              jsonData['api-success-messages']['leave-team-success']
+              jsonData['api-success-messages']['leave-team-success'],
+              2000
             );
             resolve();
           } else {
@@ -601,6 +607,12 @@ const TeamsAndUsersPage = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    setIsLoading(true);
+    history.push(getTeamAndUserDetailsPath());
+    fetchTeams();
+  };
+
   useEffect(() => {
     if (teamAndUser) {
       if (Object.values(UserType).includes(teamAndUser as UserType)) {
@@ -631,6 +643,7 @@ const TeamsAndUsersPage = () => {
           activeUserTabHandler={activeUserTabHandler}
           addUsersToTeam={addUsersToTeam}
           admins={admins}
+          afterDeleteAction={afterDeleteAction}
           bots={bots}
           changeCurrentTeam={changeCurrentTeam}
           createNewTeam={createNewTeam}

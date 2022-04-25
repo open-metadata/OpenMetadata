@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { LoadingState } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -47,12 +48,14 @@ export interface AddIngestionProps {
 
 export interface ConfigureIngestionProps {
   ingestionName: string;
+  description?: string;
   serviceCategory: ServiceCategory;
   dashboardFilterPattern: FilterPattern;
   schemaFilterPattern: FilterPattern;
   tableFilterPattern: FilterPattern;
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
+  fqnFilterPattern: FilterPattern;
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
@@ -62,9 +65,12 @@ export interface ConfigureIngestionProps {
   showTableFilter: boolean;
   showTopicFilter: boolean;
   showChartFilter: boolean;
+  showFqnFilter: boolean;
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
+  handleIngestionName: (value: string) => void;
+  handleDescription?: (value: string) => void;
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
@@ -79,6 +85,7 @@ export interface ConfigureIngestionProps {
 }
 
 export type ScheduleIntervalProps = {
+  status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
   startDate: string;
@@ -86,5 +93,5 @@ export type ScheduleIntervalProps = {
   endDate: string;
   handleEndDateChange: (value: string) => void;
   onBack: () => void;
-  onDeloy: () => void;
+  onDeploy: () => void;
 };

@@ -336,7 +336,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @Path("/{id}")
   @Operation(
       summary = "Delete a Policy",
-      tags = "policy",
+      tags = "policies",
       description = "Delete a policy by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
