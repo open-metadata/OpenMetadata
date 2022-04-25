@@ -34,6 +34,7 @@ import {
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -388,6 +389,14 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
+  const getDeleteEntityMessage = () => {
+    return `Deleting this ${EntityType.DASHBOARD} will also delete ${pluralize(
+      charts.length,
+      'chart',
+      's'
+    )}`;
+  };
+
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -666,6 +675,7 @@ const DashboardDetails = ({
                   allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  deletEntityMessage={getDeleteEntityMessage()}
                   entityId={dashboardDetails.id}
                   entityName={dashboardDetails.name}
                   entityType={EntityType.DASHBOARD}
