@@ -189,18 +189,14 @@ class DatabaseServicePageTest {
   void deleteDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, databaseServicePage.serviceName(serviceName));
-    Events.click(webDriver, databaseServicePage.clickDatabase());
-    Thread.sleep(waitTime);
-    wait.until(ExpectedConditions.urlContains("/database/" + serviceName + ".default"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, databaseServicePage.deleteDatabase());
     Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
     Thread.sleep(waitTime);
+    wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsServices());
-    Events.click(webDriver, common.deleteServiceButton(serviceName));
-    Events.click(webDriver, common.saveEditedService());
     Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
