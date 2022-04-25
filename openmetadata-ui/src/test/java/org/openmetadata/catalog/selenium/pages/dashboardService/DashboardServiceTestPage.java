@@ -36,6 +36,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -165,8 +166,16 @@ class DashboardServiceTestPage {
   @Order(5)
   void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();
-    Events.click(webDriver, common.deleteServiceButton(serviceName));
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, dashboardServicePage.deleteDashboard());
+    Events.sendKeys(webDriver, dashboardServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
+    Thread.sleep(waitTime);
+    wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsServices());
+    Events.click(webDriver, common.selectServiceTab(3));
     Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {

@@ -35,6 +35,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -144,15 +145,15 @@ class MessagingServicePageTest {
   void deleteMessagingService() throws InterruptedException {
     openMessagingServicePage();
     Events.click(webDriver, common.containsText(serviceName));
-    Events.click(webDriver, common.ingestion());
-    Events.click(webDriver, messagingServicePage.deleteIngestion());
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, messagingServicePage.deleteMessagingService());
     Events.sendKeys(webDriver, messagingServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
+    Thread.sleep(waitTime);
+    wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices());
     Events.click(webDriver, common.selectServiceTab(2));
-    Events.click(webDriver, common.deleteServiceButton(serviceName));
-    Events.click(webDriver, common.saveEditedService());
     Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {

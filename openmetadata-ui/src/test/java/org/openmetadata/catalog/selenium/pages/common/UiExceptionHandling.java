@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -26,6 +27,7 @@ class UiExceptionHandling {
 
   static ChromeDriver webDriver;
   static Common common;
+  static DatabaseServicePage databaseServicePage;
   static DevTools devTools;
   static String url = Property.getInstance().getURL();
   static Actions actions;
@@ -141,7 +143,11 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.deleteServiceButton("Glue"));
+    Events.click(webDriver, common.containsText("Glue"));
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, databaseServicePage.deleteDatabase());
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "Delete");
+    Events.click(webDriver, common.confirmButton());
     interceptor("services/databaseServices", "services/testing");
     //    Assert.assertEquals(500, 500);
   }

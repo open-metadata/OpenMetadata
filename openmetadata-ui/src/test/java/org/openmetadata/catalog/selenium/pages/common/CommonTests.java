@@ -30,10 +30,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -353,7 +350,12 @@ class CommonTests {
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Events.click(webDriver, common.editAssociatedTagButton());
+    try {
+      Events.click(webDriver, common.editAssociatedTagButton());
+    } catch (StaleElementReferenceException e) {
+      webDriver.findElement(common.editAssociatedTagButton()).click();
+    }
+
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
