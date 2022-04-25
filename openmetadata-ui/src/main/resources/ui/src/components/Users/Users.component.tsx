@@ -220,7 +220,7 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-text-center">
+        <div className="tw-mt-4 tw-w-full">
           {isDisplayNameEdit ? (
             <div className="tw-flex tw-items-center tw-gap-1">
               <input
@@ -519,7 +519,7 @@ const Users = ({
   const fetchLeftPanel = () => {
     return (
       <div className="tw-pt-4" data-testid="left-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col tw-items-center">
+        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
           {userData.profile?.images?.image ? (
             <div className="tw-h-28 tw-w-28">
               <img
@@ -537,7 +537,7 @@ const Users = ({
           )}
           {getDisplayNameComponent()}
           <p className="tw-mt-2">{userData.email}</p>
-          {getDescriptionComponent()}
+          <div className="tw--ml-5">{getDescriptionComponent()}</div>
         </div>
         {getTeamsComponent()}
         {getRolesComponent()}
