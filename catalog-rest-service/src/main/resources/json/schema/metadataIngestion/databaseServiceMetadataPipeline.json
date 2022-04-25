@@ -7,13 +7,11 @@
     "databaseMetadataConfigType": {
       "description": "Database Source Config Metadata Pipeline type",
       "type": "string",
-      "enum": [
-        "DatabaseMetadata"
-      ],
+      "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
     },
-    "localHttpDBTConfig": {
-      "description": "Local and HTTP DBT configs.",
+    "dbtConfig": {
+      "description": "DBT Catalog and Manifest file path config.",
       "type": "object",
       "properties": {
         "dbtCatalogFilePath": {
@@ -79,11 +77,11 @@
       "enum": ["local", "http", "gcs", "gcs-path", "s3"]
     },
     "dbtConfig": {
+      "$ref": "#/definitions/dbtConfig"
+    },
+    "dbtSecurityConfig": {
       "description": "DBT configuration.",
       "oneOf": [
-        {
-          "$ref": "#/definitions/localHttpDBTConfig"
-        },
         {
           "$ref": "../security/credentials/gcsCredentials.json"
         },
