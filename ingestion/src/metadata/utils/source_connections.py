@@ -239,7 +239,8 @@ def _(connection: SnowflakeConnection):
 
     url += connection.account
     url += f"/{connection.database}" if connection.database else ""
-    url += "?warehouse=" + connection.warehouse
+    if connection.warehouse:
+        url += "?warehouse=" + connection.warehouse
     options = (
         connection.connectionOptions.dict()
         if connection.connectionOptions
