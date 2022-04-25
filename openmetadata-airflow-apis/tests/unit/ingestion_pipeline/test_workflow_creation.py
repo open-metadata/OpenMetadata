@@ -66,7 +66,24 @@ class OMetaServiceTest(TestCase):
         "sourceConfig": {"config": {"enableDataProfiler": False}},
     }
 
+    # TODO update to "snowflake-usage" after https://github.com/open-metadata/OpenMetadata/issues/4469
+    usage_data = {
+        "type": "snowflake",
+        "serviceName": "local_snowflake",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "username": "openmetadata_user",
+                "password": "random",
+                "warehouse": "warehouse",
+                "account": "account",
+            }
+        },
+        "sourceConfig": {"config": {"queryLogDuration": 10}},
+    }
+
     workflow_source = WorkflowSource(**data)
+    usage_workflow_source = WorkflowSource(**usage_data)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -127,10 +144,10 @@ class OMetaServiceTest(TestCase):
 
         ingestion_pipeline = IngestionPipeline(
             id=uuid.uuid4(),
-            name="test_ingestion_workflow",
+            name="test_usage_workflow",
             pipelineType=PipelineType.usage,
-            fullyQualifiedName="local_mysql.test_usage_workflow",
-            source=self.workflow_source,
+            fullyQualifiedName="local_snowflake.test_usage_workflow",
+            source=self.usage_workflow_source,
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
                 startDate="2022-04-10",
@@ -142,6 +159,8 @@ class OMetaServiceTest(TestCase):
         )
 
         workflow_config = build_usage_workflow_config(ingestion_pipeline)
+        self.assertIn("usage", workflow_config.source.type)
+
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         Workflow.create(config)
