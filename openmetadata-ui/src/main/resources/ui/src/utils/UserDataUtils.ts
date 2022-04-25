@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isEqual } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
 import { getRoles } from '../axiosAPIs/rolesAPI';
@@ -57,18 +57,22 @@ export const fetchAllUsers = () => {
   getAllUsersList('profile,teams,roles');
   getAllTeams();
   getAllRoles();
-  // Uncomment below line to update users list in real time.
-  // setInterval(getAllUsersList, TIMEOUT.USER_LIST);
 };
 
 export const getUserDataFromOidc = (
   userData: User,
   oidcUser: OidcUser
 ): User => {
+  const images = oidcUser.profile.picture
+    ? getImages(oidcUser.profile.picture)
+    : undefined;
+
   return {
     ...userData,
     displayName: oidcUser.profile.name,
-    profile: { images: getImages(oidcUser.profile.picture ?? '') },
+    profile: !isEmpty(images)
+      ? { images: getImages(oidcUser.profile.picture) }
+      : userData.profile,
   };
 };
 

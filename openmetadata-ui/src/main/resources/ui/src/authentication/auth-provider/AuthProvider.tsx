@@ -62,7 +62,7 @@ import {
   fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
-} from '../../utils/UsedDataUtils';
+} from '../../utils/UserDataUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';

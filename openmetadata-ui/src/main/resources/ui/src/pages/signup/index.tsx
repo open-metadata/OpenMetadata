@@ -30,7 +30,7 @@ import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { fetchAllUsers } from '../../utils/UsedDataUtils';
+import { fetchAllUsers } from '../../utils/UserDataUtils';
 
 const Signup = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(

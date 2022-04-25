@@ -13,7 +13,7 @@
 
 import { ToastOptions } from 'react-toastify';
 
-export const defToastOptions: ToastOptions = {
+export const toastOptions: ToastOptions = {
   autoClose: false,
   hideProgressBar: true,
 };
