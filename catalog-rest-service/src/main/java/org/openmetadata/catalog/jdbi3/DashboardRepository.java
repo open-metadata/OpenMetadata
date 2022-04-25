@@ -87,8 +87,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId())
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+        .withService(original.getService());
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {

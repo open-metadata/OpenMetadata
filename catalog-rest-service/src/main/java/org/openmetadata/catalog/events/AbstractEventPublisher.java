@@ -57,7 +57,9 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       LOG.error("Failed to publish event {} due to {}, will try again in {} ms", changeEvent, ex, currentBackoffTime);
       Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
-      LOG.error("Failed to publish event {}", changeEvent);
+      LOG.error(
+          "Failed to publish event type {} for entity {}", changeEvent.getEventType(), changeEvent.getEntityType());
+      LOG.error(e.getMessage(), e);
     }
   }
 

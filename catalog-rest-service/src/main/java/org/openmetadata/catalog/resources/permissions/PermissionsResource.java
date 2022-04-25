@@ -45,7 +45,7 @@ public class PermissionsResource {
 
   @GET
   @Operation(
-      summary = "Retrieves permissions for logged in user",
+      summary = "Get permissions for logged in user",
       tags = "general",
       responses = {
         @ApiResponse(

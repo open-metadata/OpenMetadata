@@ -38,6 +38,7 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
+import { getAllTables } from '../../axiosAPIs/tableAPI';
 import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../../components/common/description/Description';
@@ -57,7 +58,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getExplorePathWithSearch,
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
@@ -71,7 +72,12 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import { getEntityName, hasEditAccess, isEven } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  hasEditAccess,
+  isEven,
+  pluralize,
+} from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
@@ -86,7 +92,7 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const [slashedDatabaseName, setSlashedDatabaseName] = useState<
@@ -109,6 +115,7 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<Paging>(pagingObject);
   const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
     useState<number>(0);
+  const [tableInstanceCount, setTableInstanceCount] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDatabaseDetailsTab(tab)
@@ -175,7 +182,7 @@ const DatabaseDetails: FunctionComponent = () => {
       key: 'Owner',
       value:
         database?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               database?.owner?.displayName || database?.owner?.name || ''
             )
           : database?.owner?.displayName || database?.owner?.name || '',
@@ -462,9 +469,6 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['unexpected-server-response']
@@ -510,14 +514,31 @@ const DatabaseDetails: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
           error,
           jsonData['api-error-messages']['delete-message-error']
         );
+      });
+  };
+
+  const fetchTablesCount = () => {
+    // limit=0 will fetch empty data list with total count
+    getAllTables('', 0)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTableInstanceCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTableInstanceCount(0);
       });
   };
 
@@ -535,8 +556,21 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
+  const getDeleteEntityMessage = () => {
+    if (!databaseSchemaInstanceCount && !tableInstanceCount) {
+      return;
+    }
+
+    return `Deleting this database will also delete ${pluralize(
+      databaseSchemaInstanceCount,
+      'schema',
+      's'
+    )} and ${pluralize(tableInstanceCount, 'table', 's')}.`;
+  };
+
   useEffect(() => {
     getEntityFeedCount();
+    fetchTablesCount();
   }, []);
 
   useEffect(() => {
@@ -758,7 +792,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   <ManageTabComponent
                     allowDelete
                     hideTier
+                    isRecursiveDelete
                     currentUser={database?.owner?.id}
+                    deletEntityMessage={getDeleteEntityMessage()}
                     entityId={database?.id}
                     entityName={database?.name}
                     entityType={EntityType.DATABASE}
@@ -766,6 +802,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       database?.owner?.type || '',
                       database?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE}
                     onSave={handleUpdateOwner}
                   />
                 )}

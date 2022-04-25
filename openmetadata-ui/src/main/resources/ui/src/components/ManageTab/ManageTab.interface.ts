@@ -16,19 +16,26 @@ import { TableDetail } from 'Models';
 export interface ManageProps {
   currentTier?: string;
   currentUser?: string;
+  manageSectionType?: string;
   hideTier?: boolean;
+  hideOwner?: boolean;
   isJoinable?: boolean;
-  onSave: (
+  allowSoftDelete?: boolean;
+  onSave?: (
     owner: TableDetail['owner'],
     tier: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
+  handleIsJoinable?: (bool: boolean) => void;
+  afterDeleteAction?: () => void;
   hasEditAccess: boolean;
   allowTeamOwner?: boolean;
   entityId?: string;
   entityName?: string;
   entityType?: string;
   allowDelete?: boolean;
+  isRecursiveDelete?: boolean;
+  deletEntityMessage?: string;
 }
 
 export type Status = 'initial' | 'waiting' | 'success';

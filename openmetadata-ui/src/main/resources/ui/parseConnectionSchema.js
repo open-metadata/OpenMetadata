@@ -2,10 +2,18 @@
 const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
+const fse = require('fs-extra');
 
+const cwd = process.cwd();
+
+const schemaDir =
+  '../../../../../catalog-rest-service/src/main/resources/json/schema';
+
+const rootDir = 'connTemp';
+const srcDir = 'schema/entity/services/connections';
 const destDir = 'src/jsons/connectionSchemas/connections';
-const srcDir =
-  '../../../../../catalog-rest-service/src/main/resources/json/schema/entity/services/connections';
+
+const playDir = `${rootDir}/${srcDir}/${rootDir}`;
 
 const globalParserOptions = {
   continueOnError: true,
@@ -19,7 +27,7 @@ async function parseSchema(filePath, destPath) {
     const parser = new $RefParser(globalParserOptions);
     const schema = await parser.parse(filePath);
     const api = await parser.bundle(schema);
-    const dirname = path.dirname(destPath);
+    const dirname = `${cwd}/${path.dirname(destPath)}`;
     if (!fs.existsSync(dirname)) {
       try {
         fs.mkdirSync(dirname, { recursive: true });
@@ -27,7 +35,7 @@ async function parseSchema(filePath, destPath) {
         console.log(err);
       }
     }
-    fs.writeFileSync(destPath, JSON.stringify(api, null, 2));
+    fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(api, null, 2));
   } catch (err) {
     console.log(err);
   }
@@ -45,15 +53,39 @@ function traverseDirectory(Directory) {
   });
 }
 
+function copySourceFiles() {
+  try {
+    fse.copySync(schemaDir, `${rootDir}/schema`);
+    fse.copySync(schemaDir, `${playDir}/schema`);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 function main() {
   try {
-    fs.rmdirSync(destDir, { recursive: true });
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true });
+    }
     fs.mkdirSync(destDir, { recursive: true });
+    copySourceFiles();
   } catch (err) {
     console.log(err);
   }
 
-  traverseDirectory(srcDir);
+  process.chdir(`${cwd}/${playDir}`);
+
+  fs.readdir(srcDir, (err, Files) => {
+    if (err) console.log(err);
+    else {
+      Files.forEach((File, index) => {
+        const Absolute = path.join(srcDir, File);
+        if (fs.statSync(Absolute).isDirectory()) {
+          traverseDirectory(Absolute);
+        }
+      });
+    }
+  });
 }
 
 main();

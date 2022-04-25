@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_DELETED;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -28,6 +29,7 @@ import static org.openmetadata.catalog.util.EntityUtil.nextVersion;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -401,7 +403,7 @@ public abstract class EntityRepository<T> {
 
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     EntityInterface<T> origInterface = getEntityInterface(original);
-    if (origInterface.isDeleted()) {
+    if (Boolean.TRUE.equals(origInterface.isDeleted())) {
       restoreEntity(updatedInterface.getUpdatedBy(), entityType, origInterface.getId());
     }
 
@@ -454,6 +456,7 @@ public abstract class EntityRepository<T> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType(entityType)
@@ -489,20 +492,7 @@ public abstract class EntityRepository<T> {
     T original = JsonUtils.readValue(json, entityClass);
     setFields(original, putFields); // TODO why this?
 
-    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
-    List<EntityReference> contains =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
-
-    if (!contains.isEmpty()) {
-      if (!recursive) {
-        throw new IllegalArgumentException(entityType + " is not empty");
-      }
-      // Soft delete all the contained entities
-      for (EntityReference entityReference : contains) {
-        LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-        Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
-      }
-    }
+    deleteChildren(id, recursive, hardDelete, updatedBy);
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
@@ -514,14 +504,51 @@ public abstract class EntityRepository<T> {
       updater.update();
       changeType = RestUtil.ENTITY_SOFT_DELETED;
     } else {
-      // Hard delete
-      daoCollection.relationshipDAO().deleteAll(id, entityType);
-      daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-      daoCollection.entityExtensionDAO().deleteAll(id);
-      dao.delete(id);
+      cleanup(entityInterface);
       changeType = RestUtil.ENTITY_DELETED;
     }
     return new DeleteResponse<>(updated, changeType);
+  }
+
+  private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
+    List<EntityReference> contains =
+        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+
+    if (contains.isEmpty()) {
+      return;
+    }
+    // Entity being deleted contains children entities
+    if (!recursive) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
+    }
+    // Delete all the contained entities
+    for (EntityReference entityReference : contains) {
+      LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
+      Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
+    }
+  }
+
+  protected void cleanup(EntityInterface<T> entityInterface) {
+    String id = entityInterface.getId().toString();
+
+    // Delete all the relationships to other entities
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
+
+    // Delete all the field relationships to other entities
+    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+
+    // Delete all the extensions of entity
+    daoCollection.entityExtensionDAO().deleteAll(id);
+
+    // Delete all the tag labels
+    daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+
+    // Delete all the usage data
+    daoCollection.usageDAO().delete(id);
+
+    // Finally, delete the entity
+    dao.delete(id);
   }
 
   @Transaction
@@ -544,6 +571,7 @@ public abstract class EntityRepository<T> {
 
     ChangeEvent changeEvent =
         new ChangeEvent()
+            .withEntity(entity)
             .withChangeDescription(change)
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityFullyQualifiedName(entityInterface.getFullyQualifiedName())
@@ -581,7 +609,7 @@ public abstract class EntityRepository<T> {
 
   /** Validate given list of tags and add derived tags to it */
   public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
-    if (tagLabels == null || tagLabels.isEmpty()) {
+    if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
 
@@ -953,7 +981,7 @@ public abstract class EntityRepository<T> {
         updated.setDisplayName(original.getDisplayName());
         return;
       }
-      recordChange("displayName", original.getDisplayName(), updated.getDisplayName());
+      recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
     private void updateOwner() throws JsonProcessingException {

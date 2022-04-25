@@ -13,7 +13,10 @@
 
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_ROUTE_INGESTION_FQN,
+  PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
+  PLACEHOLDER_ROUTE_SERVICE_FQN,
   ROUTES,
 } from '../constants/constants';
 
@@ -43,6 +46,36 @@ export const inPageSearchOptions = (pathname: string): Array<string> => {
 export const getAddServicePath = (serviceCategory: string) => {
   let path = ROUTES.ADD_SERVICE;
   path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
+
+  return path;
+};
+
+export const getAddIngestionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  ingestionType: string
+) => {
+  let path = ROUTES.ADD_INGESTION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
+
+  return path;
+};
+
+export const getEditIngestionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  ingestionFQN: string,
+  ingestionType: string
+) => {
+  let path = ROUTES.EDIT_INGESTION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
 };

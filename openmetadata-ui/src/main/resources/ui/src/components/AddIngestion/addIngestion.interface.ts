@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { LoadingState } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -33,7 +34,7 @@ export interface AddIngestionProps {
   showSuccessScreen?: boolean;
   setActiveIngestionStep: (step: number) => void;
   handleCancelClick: () => void;
-  onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,
@@ -47,31 +48,44 @@ export interface AddIngestionProps {
 
 export interface ConfigureIngestionProps {
   ingestionName: string;
+  description?: string;
   serviceCategory: ServiceCategory;
   dashboardFilterPattern: FilterPattern;
   schemaFilterPattern: FilterPattern;
   tableFilterPattern: FilterPattern;
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
+  fqnFilterPattern: FilterPattern;
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
+  pipelineType: PipelineType;
   showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;
   showTopicFilter: boolean;
   showChartFilter: boolean;
+  showFqnFilter: boolean;
+  queryLogDuration: number;
+  stageFileLocation: string;
+  resultLimit: number;
+  handleIngestionName: (value: string) => void;
+  handleDescription?: (value: string) => void;
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
+  handleQueryLogDuration: (value: number) => void;
+  handleStageFileLocation: (value: string) => void;
+  handleResultLimit: (value: number) => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
 export type ScheduleIntervalProps = {
+  status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
   startDate: string;
@@ -79,5 +93,5 @@ export type ScheduleIntervalProps = {
   endDate: string;
   handleEndDateChange: (value: string) => void;
   onBack: () => void;
-  onDeloy: () => void;
+  onDeploy: () => void;
 };

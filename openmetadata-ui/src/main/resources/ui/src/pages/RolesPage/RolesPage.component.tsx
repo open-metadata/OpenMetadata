@@ -18,6 +18,7 @@ import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
@@ -41,7 +42,10 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import AddRoleModal from '../../components/Modals/RoleModal/AddRoleModal';
 import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  getUserPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { DEFAULT_UPDATE_POLICY_STATE } from '../../constants/role.constants';
 import {
   Operation,
@@ -72,6 +76,7 @@ const getActiveTabClass = (tab: number, currentTab: number) => {
 
 const RolesPage = () => {
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const history = useHistory();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [currentRole, setCurrentRole] = useState<Role>();
@@ -491,6 +496,14 @@ const RolesPage = () => {
     }
   };
 
+  /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
   const getDefaultBadge = (className?: string) => {
     return (
       <span
@@ -746,6 +759,7 @@ const RolesPage = () => {
               name: user.name,
             }}
             key={user.id}
+            onTitleClick={handleUserRedirection}
           />
         ))}
       </div>

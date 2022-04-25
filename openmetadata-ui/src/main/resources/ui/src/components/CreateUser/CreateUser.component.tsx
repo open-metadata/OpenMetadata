@@ -265,12 +265,6 @@ const CreateUser = ({
           value={displayName}
           onChange={handleValidation}
         />
-
-        {showErrorMsg.email
-          ? errorMsg(jsonData['form-error-messages']['empty-email'])
-          : showErrorMsg.validEmail
-          ? errorMsg(jsonData['form-error-messages']['invalid-email'])
-          : null}
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="description">
@@ -344,7 +338,7 @@ const CreateUser = ({
           theme="primary"
           variant="text"
           onClick={onCancel}>
-          Discard
+          Cancel
         </Button>
         {getSaveButton()}
       </Field>

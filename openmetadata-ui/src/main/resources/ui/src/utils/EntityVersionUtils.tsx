@@ -22,7 +22,10 @@ import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DESCRIPTIONLENGTH, getTeamDetailsPath } from '../constants/constants';
+import {
+  DESCRIPTIONLENGTH,
+  getTeamAndUserDetailsPath,
+} from '../constants/constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -383,7 +386,7 @@ export const feedSummaryFromatter = (
             {newValue?.type === 'team' ? (
               <Link
                 className="tw-pl-1"
-                to={getTeamDetailsPath(newValue?.name || '')}>
+                to={getTeamAndUserDetailsPath(newValue?.name || '')}>
                 <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (
@@ -397,7 +400,7 @@ export const feedSummaryFromatter = (
             {value?.type === 'team' ? (
               <Link
                 className="tw-pl-1"
-                to={getTeamDetailsPath(value?.name || '')}>
+                to={getTeamAndUserDetailsPath(value?.name || '')}>
                 <span title={ownerName}>{ownerName}</span>
               </Link>
             ) : (

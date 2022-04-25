@@ -23,7 +23,6 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { searchData } from '../../axiosAPIs/miscAPI';
 import {
   createTeam,
-  deleteTeam,
   getTeamByName,
   getTeams,
   patchTeamDetail,
@@ -38,7 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
 import {
   getTeamAndUserDetailsPath,
-  PAGE_SIZE_12,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -50,7 +49,6 @@ import {
 } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { TeamDeleteType } from '../../interface/teamsAndUsers.interface';
 import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
@@ -63,7 +61,10 @@ const TeamsAndUsersPage = () => {
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
+  const [isRightPannelLoading, setIsRightPannelLoading] = useState(true);
+  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState(true);
   const [isTeamVisible, setIsTeamVisible] = useState(true);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
@@ -74,10 +75,6 @@ const TeamsAndUsersPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
-  const [deletingTeam, setDeletingTeam] = useState<TeamDeleteType>({
-    team: undefined,
-    state: false,
-  });
   const [activeUserTab, setactiveUserTab] = useState<UserType>();
   const [userList, setUserList] = useState<Array<User>>([]);
   const [users, setUsers] = useState<Array<User>>([]);
@@ -90,12 +87,12 @@ const TeamsAndUsersPage = () => {
     setIsDescriptionEditable(value);
   };
 
-  const handleAddTeam = (value: boolean) => {
-    setIsAddingTeam(value);
+  const handleRightPannelLoading = (value: boolean) => {
+    setIsRightPannelLoading(value);
   };
 
-  const handleDeleteTeam = (data: TeamDeleteType) => {
-    setDeletingTeam(data);
+  const handleAddTeam = (value: boolean) => {
+    setIsAddingTeam(value);
   };
 
   const handleAddUser = (data: boolean) => {
@@ -111,6 +108,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const setAllTabList = (users: User[], type = '') => {
+    setIsUsersLoading(true);
     const dBots = users.filter((user) => user.isBot);
     const dUsers = users.filter((user) => !user.isBot);
     const dAdmins = users.filter((user) => user.isAdmin);
@@ -136,9 +134,11 @@ const TeamsAndUsersPage = () => {
           break;
       }
     }
+    setIsUsersLoading(false);
   };
 
   const handleUserSearchTerm = (value: string) => {
+    setIsUsersLoading(true);
     setUserSearchTerm(value);
     if (value) {
       let updatedList: User[] = [];
@@ -170,42 +170,15 @@ const TeamsAndUsersPage = () => {
     } else {
       setAllTabList(userList, activeUserTab);
     }
+    setIsUsersLoading(false);
   };
 
   const handleAddNewUser = () => {
     history.push(ROUTES.CREATE_USER);
   };
 
-  const updateUser = (id: string, data: Operation[], updatedUser: User) => {
-    setIsLoading(true);
-    updateUserDetail(id, data)
-      .then((res) => {
-        if (res.data) {
-          const updatedData = (userList || []).map((user) => {
-            if (user.id === id) {
-              return updatedUser;
-            }
-
-            return user;
-          });
-          setAllTabList(updatedData, activeUserTab);
-          setUserList(updatedData);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-user-error']
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
   const handleDeleteUser = (id: string) => {
-    setIsLoading(true);
+    setIsUsersLoading(true);
     deleteUser(id)
       .then(() => {
         AppState.updateUsers((userList || []).filter((item) => item.id !== id));
@@ -218,6 +191,7 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsUsersLoading(false);
       });
   };
 
@@ -228,21 +202,25 @@ const TeamsAndUsersPage = () => {
     team: string,
     pagin = {} as { [key: string]: string }
   ) => {
-    getUsers('', PAGE_SIZE_12, { team, ...pagin }).then(
-      (res: AxiosResponse) => {
+    setIsTeamMemberLoading(true);
+    getUsers('', PAGE_SIZE_MEDIUM, { team, ...pagin })
+      .then((res: AxiosResponse) => {
         if (res.data) {
           setCurrentTeamUsers(res.data.data);
           setTeamUserPagin(res.data.paging);
         }
-      }
-    );
+      })
+      .catch(() => {
+        setCurrentTeamUsers([]);
+        setTeamUserPagin({ total: 0 });
+      })
+      .finally(() => setIsTeamMemberLoading(false));
   };
 
   /**
    * Make API call to fetch all the teams
    */
   const fetchTeams = () => {
-    setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -265,6 +243,7 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        handleRightPannelLoading(false);
       });
   };
 
@@ -273,7 +252,6 @@ const TeamsAndUsersPage = () => {
    */
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
-      setIsLoading(true);
       getTeamByName(name, ['users', 'owns', 'defaultRoles', 'owner'])
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -304,47 +282,17 @@ const TeamsAndUsersPage = () => {
         })
         .finally(() => {
           setIsLoading(false);
+          setIsRightPannelLoading(false);
         });
     }
   };
 
-  const goToTeams = () => {
-    if (teamAndUser) {
-      history.push(getTeamAndUserDetailsPath());
-    } else {
-      fetchTeams();
-    }
-  };
-
-  /**
-   * Take team id and delete the team
-   * @param id - Team id
-   */
-  const deleteTeamById = (id: string) => {
-    deleteTeam(id)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          goToTeams();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-team-error']
-        );
-      })
-      .finally(() => {
-        setDeletingTeam({ team: undefined, state: false });
-      });
-  };
-
   const searchUsers = (text: string, currentPage: number) => {
+    setIsTeamMemberLoading(true);
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_12,
+      PAGE_SIZE_MEDIUM,
       `(teams:${currentTeam?.id})`,
       '',
       '',
@@ -359,7 +307,8 @@ const TeamsAndUsersPage = () => {
       })
       .catch(() => {
         setCurrentTeamUsers([]);
-      });
+      })
+      .finally(() => setIsTeamMemberLoading(false));
   };
 
   const teamUserPaginHandler = (cursorValue: string | number) => {
@@ -438,13 +387,15 @@ const TeamsAndUsersPage = () => {
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
+    setIsRightPannelLoading(true);
     updateUserDetail(id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {
           AppState.updateUserDetails(res.data);
-          fetchCurrentTeam(teamAndUser);
+          fetchCurrentTeam(currentTeam?.name || '', true);
           showSuccessToast(
-            jsonData['api-success-messages']['join-team-success']
+            jsonData['api-success-messages']['join-team-success'],
+            2000
           );
         } else {
           throw jsonData['api-error-messages']['join-team-error'];
@@ -455,11 +406,40 @@ const TeamsAndUsersPage = () => {
       });
   };
 
+  const handleLeaveTeamClick = (id: string, data: Operation[]) => {
+    setIsRightPannelLoading(true);
+
+    return new Promise<void>((resolve, reject) => {
+      updateUserDetail(id, data)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            AppState.updateUserDetails(res.data);
+            fetchCurrentTeam(currentTeam?.name || '', true);
+            showSuccessToast(
+              jsonData['api-success-messages']['leave-team-success'],
+              2000
+            );
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['leave-team-error'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['leave-team-error']
+          );
+          reject();
+        });
+    });
+  };
+
   /**
    * Handle current team route
    * @param name - team name
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
+    handleRightPannelLoading(true);
     history.push(getTeamAndUserDetailsPath(name));
     if (isUsersCategory) {
       setIsTeamVisible(false);
@@ -472,20 +452,27 @@ const TeamsAndUsersPage = () => {
 
   const updateTeamHandler = (updatedData: Team) => {
     const jsonPatch = compare(currentTeam as Team, updatedData);
-    patchTeamDetail(currentTeam?.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['update-team-error']
-        );
-      });
+
+    return new Promise<void>((resolve, reject) => {
+      patchTeamDetail(currentTeam?.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+            resolve();
+          } else {
+            reject();
+
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-team-error']
+          );
+          reject();
+        });
+    });
   };
 
   /**
@@ -560,8 +547,7 @@ const TeamsAndUsersPage = () => {
    * @param id - user id
    */
   const removeUserFromTeam = (id: string) => {
-    const users = [...(currentTeam?.users as Array<UserTeams>)];
-    const newUsers = users.filter((user) => {
+    const newUsers = currentTeam?.users?.filter((user) => {
       return user.id !== id;
     });
     const updatedTeam = {
@@ -621,6 +607,12 @@ const TeamsAndUsersPage = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    setIsLoading(true);
+    history.push(getTeamAndUserDetailsPath());
+    fetchTeams();
+  };
+
   useEffect(() => {
     if (teamAndUser) {
       if (Object.values(UserType).includes(teamAndUser as UserType)) {
@@ -651,30 +643,32 @@ const TeamsAndUsersPage = () => {
           activeUserTabHandler={activeUserTabHandler}
           addUsersToTeam={addUsersToTeam}
           admins={admins}
+          afterDeleteAction={afterDeleteAction}
           bots={bots}
           changeCurrentTeam={changeCurrentTeam}
           createNewTeam={createNewTeam}
           currentTeam={currentTeam}
           currentTeamUserPage={currentTeamUserPage}
           currentTeamUsers={currentTeamUsers}
-          deleteTeamById={deleteTeamById}
-          deletingTeam={deletingTeam}
           descriptionHandler={descriptionHandler}
           errorNewTeamData={errorNewTeamData}
           getUniqueUserList={getUniqueUserList}
           handleAddNewUser={handleAddNewUser}
           handleAddTeam={handleAddTeam}
           handleAddUser={handleAddUser}
-          handleDeleteTeam={handleDeleteTeam}
           handleDeleteUser={handleDeleteUser}
           handleJoinTeamClick={handleJoinTeamClick}
+          handleLeaveTeamClick={handleLeaveTeamClick}
           handleTeamUsersSearchAction={handleTeamUsersSearchAction}
           handleUserSearchTerm={handleUserSearchTerm}
           hasAccess={isAuthDisabled || isAdminUser}
           isAddingTeam={isAddingTeam}
           isAddingUsers={isAddingUsers}
           isDescriptionEditable={isDescriptionEditable}
+          isRightPannelLoading={isRightPannelLoading}
+          isTeamMemberLoading={isTeamMemberLoading}
           isTeamVisible={isTeamVisible}
+          isUsersLoading={isUsersLoading}
           removeUserFromTeam={removeUserFromTeam}
           selectedUserList={selectedUserList}
           teamUserPagin={teamUserPagin}
@@ -682,7 +676,6 @@ const TeamsAndUsersPage = () => {
           teamUsersSearchText={teamUsersSearchText}
           teams={teams}
           updateTeamHandler={updateTeamHandler}
-          updateUser={updateUser}
           userSearchTerm={userSearchTerm}
           users={users}
           onDescriptionUpdate={onDescriptionUpdate}

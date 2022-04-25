@@ -14,14 +14,15 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, orderBy } from 'lodash';
-import { ExtraInfo } from 'Models';
+import { cloneDeep, isUndefined, orderBy } from 'lodash';
+import { ExtraInfo, TableDetail } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getTeamAndUserDetailsPath,
-  PAGE_SIZE_12,
+  getUserPath,
+  PAGE_SIZE_MEDIUM,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -33,11 +34,9 @@ import {
 } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
-import AddUsersModal from '../../pages/teams/AddUsersModal';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
-import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -46,8 +45,8 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import TabsPane from '../common/TabsPane/TabsPane';
-import ToggleSwitchV1 from '../common/toggle-switch/ToggleSwitchV1';
-import DropDownList from '../dropdown/DropDownList';
+import Loader from '../Loader/Loader';
+import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../Modals/FormModal';
 import Form from './Form';
@@ -63,9 +62,7 @@ const TeamDetails = ({
   isDescriptionEditable,
   errorNewTeamData,
   isAddingTeam,
-  deletingTeam,
-  deleteTeamById,
-  handleDeleteTeam,
+  isTeamMemberLoading,
   handleAddTeam,
   createNewTeam,
   onNewTeamDataChange,
@@ -74,15 +71,19 @@ const TeamDetails = ({
   descriptionHandler,
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
-  isAddingUsers,
   handleJoinTeamClick,
-  getUniqueUserList,
-  addUsersToTeam,
+  handleLeaveTeamClick,
   handleAddUser,
   removeUserFromTeam,
+  afterDeleteAction,
 }: TeamDetailsProp) => {
+  const history = useHistory();
+  const DELETE_USER_INITIAL_STATE = {
+    user: undefined,
+    state: false,
+    leave: false,
+  };
   const { userPermissions } = useAuth();
-  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
   const [currentTab, setCurrentTab] = useState(1);
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>();
@@ -92,7 +93,19 @@ const TeamDetails = ({
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
-  }>({ user: undefined, state: false });
+    leave: boolean;
+  }>(DELETE_USER_INITIAL_STATE);
+
+  /**
+   * Check if current team is the owner or not
+   * @returns - True true or false based on hasEditAccess response
+   */
+  const isOwner = () => {
+    return hasEditAccess(
+      currentTeam?.owner?.type || '',
+      currentTeam?.owner?.id || ''
+    );
+  };
 
   const tabs = [
     {
@@ -113,6 +126,16 @@ const TeamDetails = ({
       position: 3,
       count: currentTeam?.defaultRoles?.length,
     },
+    {
+      name: 'Manage',
+      isProtected: false,
+      isHidden: !(
+        hasAccess ||
+        isOwner() ||
+        userPermissions[Operation.UpdateOwner]
+      ),
+      position: 4,
+    },
   ];
 
   const extraInfo: ExtraInfo = {
@@ -129,53 +152,18 @@ const TeamDetails = ({
     openInNewTab: false,
   };
 
-  /**
-   * Check if current team is the owner or not
-   * @returns - True true or false based on hasEditAccess response
-   */
-  const isOwner = () => {
-    return hasEditAccess(
-      currentTeam?.owner?.type || '',
-      currentTeam?.owner?.id || ''
-    );
-  };
-
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
   };
 
-  const handleOwnerSelection = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    if (value && currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: {
-          id: value,
-          type: OwnerType.USER,
-        },
-      };
-
-      updateTeamHandler(updatedData);
-    }
-    setShowOwnerDropdown(false);
-  };
-
-  const handleOpenToJoinToggle = () => {
+  const handleOpenToJoinToggle = (value: boolean) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        isJoinable: !currentTeam.isJoinable,
+        isJoinable: value,
       };
       updateTeamHandler(updatedData);
     }
-  };
-
-  const handleRemoveUser = () => {
-    removeUserFromTeam(deletingUser.user?.id as string).then(() => {
-      setDeletingUser({ user: undefined, state: false });
-    });
   };
 
   const isAlreadyJoinedTeam = (teamId: string) => {
@@ -204,6 +192,7 @@ const TeamDetails = ({
       newTeams.push({
         id: currentTeam.id,
         type: OwnerType.TEAM,
+        name: currentTeam.name,
       });
 
       const updatedData: User = {
@@ -217,34 +206,85 @@ const TeamDetails = ({
     }
   };
 
+  const leaveTeam = (): Promise<void> => {
+    if (currentUser && currentTeam) {
+      let newTeams = cloneDeep(currentUser.teams ?? []);
+      newTeams = newTeams.filter((team) => team.id !== currentTeam.id);
+
+      const updatedData: User = {
+        ...currentUser,
+        teams: newTeams,
+      };
+
+      const options = compare(currentUser, updatedData);
+
+      return handleLeaveTeamClick(currentUser.id, options);
+    }
+
+    return Promise.reject();
+  };
+
+  const handleRemoveUser = () => {
+    if (deletingUser.leave) {
+      leaveTeam().then(() => {
+        setDeletingUser(DELETE_USER_INITIAL_STATE);
+      });
+    } else {
+      removeUserFromTeam(deletingUser.user?.id as string).then(() => {
+        setDeletingUser(DELETE_USER_INITIAL_STATE);
+      });
+    }
+  };
+
+  const handleManageSave = (owner: TableDetail['owner']) => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        owner: owner,
+      };
+
+      return updateTeamHandler(updatedData);
+    }
+
+    return Promise.reject();
+  };
+
+  /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
   useEffect(() => {
     if (currentTeam) {
       setHeading(currentTeam.displayName);
     }
+  }, [currentTeam]);
+
+  useEffect(() => {
     setCurrentUser(AppState.getCurrentUserDetails());
-  }, [currentTeam, currentTeam]);
+  }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
    * @param id - user id
+   * @param leave - if "Leave Team" action is in progress
    */
-  const deleteUserHandler = (id: string) => {
+  const deleteUserHandler = (id: string, leave = false) => {
     const user = [...(currentTeam?.users as Array<UserTeams>)].find(
       (u) => u.id === id
     );
-    setDeletingUser({ user, state: true });
+    setDeletingUser({ user, state: true, leave });
   };
 
-  const getJoinableWidget = () => {
-    return isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
-      <div className="tw-flex">
-        <label htmlFor="join-team">Open to join</label>
-        <ToggleSwitchV1
-          checked={(currentTeam?.isJoinable as boolean) || false}
-          handleCheck={handleOpenToJoinToggle}
-        />
-      </div>
-    ) : null;
+  const removeUserBodyText = (leave: boolean) => {
+    const text = leave
+      ? `leave the team ${currentTeam?.displayName ?? currentTeam?.name}?`
+      : `remove ${deletingUser.user?.displayName ?? deletingUser.user?.name}?`;
+
+    return `Are you sure you want to ${text}`;
   };
 
   /**
@@ -287,64 +327,71 @@ const TeamDetails = ({
             </div>
           )}
         </div>
-        {currentTeamUsers.length <= 0 ? (
-          <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-            <p>
-              There are no users{' '}
-              {teamUsersSearchText
-                ? `as ${teamUsersSearchText}.`
-                : `added yet.`}
-            </p>
-            {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
-              <>
-                <p>Would like to start adding some?</p>
-                <Button
-                  className="tw-h-8 tw-rounded tw-my-2"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => handleAddUser(true)}>
-                  Add new user
-                </Button>
-              </>
-            ) : null}
-          </div>
+        {isTeamMemberLoading ? (
+          <Loader />
         ) : (
-          <Fragment>
-            <div
-              className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-              data-testid="user-card-container">
-              {sortedUser.map((user, index) => {
-                const User = {
-                  displayName: user.displayName || user.name,
-                  fqn: user.name || '',
-                  type: 'user',
-                  id: user.id,
-                  name: user.name,
-                };
+          <div>
+            {currentTeamUsers.length <= 0 ? (
+              <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+                <p>
+                  There are no users{' '}
+                  {teamUsersSearchText
+                    ? `as ${teamUsersSearchText}.`
+                    : `added yet.`}
+                </p>
+                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                  <>
+                    <p>Would like to start adding some?</p>
+                    <Button
+                      className="tw-h-8 tw-rounded tw-my-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => handleAddUser(true)}>
+                      Add new user
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <Fragment>
+                <div
+                  className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+                  data-testid="user-card-container">
+                  {sortedUser.map((user, index) => {
+                    const User = {
+                      displayName: user.displayName || user.name,
+                      fqn: user.name || '',
+                      type: 'user',
+                      id: user.id,
+                      name: user.name,
+                    };
 
-                return (
-                  <UserCard
-                    isActionVisible
-                    isIconVisible
-                    item={User}
-                    key={index}
-                    onRemove={deleteUserHandler}
+                    return (
+                      <UserCard
+                        isActionVisible
+                        isIconVisible
+                        item={User}
+                        key={index}
+                        onRemove={deleteUserHandler}
+                        onTitleClick={handleUserRedirection}
+                      />
+                    );
+                  })}
+                </div>
+                {teamUserPagin.total > PAGE_SIZE_MEDIUM && (
+                  <NextPrevious
+                    currentPage={currentTeamUserPage}
+                    isNumberBased={Boolean(teamUsersSearchText)}
+                    pageSize={PAGE_SIZE_MEDIUM}
+                    paging={teamUserPagin}
+                    pagingHandler={teamUserPaginHandler}
+                    totalCount={teamUserPagin.total}
                   />
-                );
-              })}
-            </div>
-            {teamUserPagin.total > PAGE_SIZE_12 && (
-              <NextPrevious
-                currentPage={currentTeamUserPage}
-                isNumberBased={Boolean(teamUsersSearchText)}
-                pageSize={PAGE_SIZE_12}
-                paging={teamUserPagin}
-                pagingHandler={teamUserPaginHandler}
-                totalCount={teamUserPagin.total}
-              />
+                )}
+              </Fragment>
             )}
-          </Fragment>
+          </div>
         )}
       </div>
     );
@@ -394,6 +441,32 @@ const TeamDetails = ({
           })}
         </div>
       </>
+    );
+  };
+
+  const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
+    return alreadyJoined ? (
+      isJoinable || hasAccess ? (
+        <Button
+          className="tw-h-8 tw-px-2 tw-mb-4 tw-ml-2"
+          data-testid="join-teams"
+          size="small"
+          theme="primary"
+          variant="contained"
+          onClick={joinTeam}>
+          Join Team
+        </Button>
+      ) : null
+    ) : (
+      <Button
+        className="tw-h-8 tw-rounded tw-ml-2"
+        data-testid="delete-team-button"
+        size="small"
+        theme="primary"
+        variant="outlined"
+        onClick={() => currentUser && deleteUserHandler(currentUser.id, true)}>
+        Leave Team
+      </Button>
     );
   };
 
@@ -496,7 +569,7 @@ const TeamDetails = ({
   };
 
   return (
-    <div>
+    <div className="tw-h-full tw-flex tw-flex-col tw-flex-grow">
       {teams.length && currentTeam ? (
         <Fragment>
           <div
@@ -504,91 +577,16 @@ const TeamDetails = ({
             data-testid="header">
             {getTeamHeading()}
             <div className="tw-flex">
-              {isActionAllowed() ? (
-                <Fragment>
-                  <NonAdminAction
-                    position="bottom"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <Button
-                      className="tw-h-8 tw-px-2"
-                      data-testid="add-teams"
-                      size="small"
-                      theme="primary"
-                      variant="contained"
-                      onClick={() => {
-                        handleAddTeam(true);
-                      }}>
-                      Create New Team
-                    </Button>
-                  </NonAdminAction>
-                  <NonAdminAction
-                    html={
-                      <Fragment>
-                        You do not have permission to delete the team.
-                      </Fragment>
-                    }
-                    isOwner={isOwner()}
-                    position="bottom">
-                    <Button
-                      className="tw-h-8 tw-rounded tw-ml-2"
-                      data-testid="delete-team-button"
-                      size="small"
-                      theme="primary"
-                      variant="outlined"
-                      onClick={() =>
-                        handleDeleteTeam({ team: currentTeam, state: true })
-                      }>
-                      Delete Team
-                    </Button>
-                  </NonAdminAction>
-                </Fragment>
-              ) : !isAlreadyJoinedTeam(currentTeam.id) &&
-                currentTeam.isJoinable ? (
-                <Button
-                  className="tw-h-8 tw-px-2 tw-mb-4"
-                  data-testid="join-teams"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={joinTeam}>
-                  Join Team
-                </Button>
-              ) : null}
+              {!isUndefined(currentUser) &&
+                teamActionButton(
+                  !isAlreadyJoinedTeam(currentTeam.id),
+                  currentTeam.isJoinable || false
+                )}
             </div>
           </div>
           <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
             <span>{getInfoElements(extraInfo)}</span>
-            {isActionAllowed(userPermissions[Operation.UpdateOwner]) && (
-              <span className="tw-relative">
-                <Button
-                  className="tw-relative tw-pb-1"
-                  data-testid="owner-dropdown"
-                  size="custom"
-                  theme="primary"
-                  variant="link"
-                  onClick={() => setShowOwnerDropdown((visible) => !visible)}>
-                  <SVGIcons
-                    alt="edit"
-                    className="tw-ml-1"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="12px"
-                  />
-                </Button>
-
-                {showOwnerDropdown && (
-                  <DropDownList
-                    dropDownList={getOwnerList()}
-                    groupType="tab"
-                    listGroups={['Users']}
-                    value={currentTeam?.owner?.id}
-                    onSelect={handleOwnerSelection}
-                  />
-                )}
-              </span>
-            )}
           </div>
-          <div>{getJoinableWidget()}</div>
           <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
             <Description
               blurWithBodyBG
@@ -607,16 +605,38 @@ const TeamDetails = ({
           <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={currentTab}
+              className="tw-px-6"
               setActiveTab={(tab) => setCurrentTab(tab)}
               tabs={tabs}
             />
 
-            <div className="tw-flex-grow tw-pt-4">
+            <div className="tw-flex-grow tw-flex tw-flex-col tw-pt-4">
               {currentTab === 1 && getUserCards()}
 
               {currentTab === 2 && getDatasetCards()}
 
               {currentTab === 3 && getDefaultRoles()}
+
+              {currentTab === 4 && (
+                <div className="tw-bg-white tw-shadow-md tw-py-4 tw-flex-grow">
+                  <ManageTab
+                    allowDelete
+                    allowSoftDelete
+                    hasEditAccess
+                    hideTier
+                    afterDeleteAction={afterDeleteAction}
+                    allowTeamOwner={false}
+                    currentUser={currentTeam.owner?.id}
+                    entityId={currentTeam.id}
+                    entityName={currentTeam.displayName || currentTeam.name}
+                    entityType="team"
+                    handleIsJoinable={handleOpenToJoinToggle}
+                    isJoinable={currentTeam.isJoinable}
+                    manageSectionType="Team"
+                    onSave={handleManageSave}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </Fragment>
@@ -657,42 +677,14 @@ const TeamDetails = ({
         />
       )}
 
-      {deletingTeam.state && (
-        <ConfirmationModal
-          bodyText={`Are you sure you want to delete the team "${
-            deletingTeam.team?.displayName || deletingTeam.team?.name
-          }"?`}
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Delete Team"
-          onCancel={() => handleDeleteTeam({ team: undefined, state: false })}
-          onConfirm={() => {
-            deleteTeamById(deletingTeam.team?.id as string);
-          }}
-        />
-      )}
-
       {deletingUser.state && (
         <ConfirmationModal
-          bodyText={`Are you sure you want to remove ${
-            deletingUser.user?.displayName ?? deletingUser.user?.name
-          }?`}
+          bodyText={removeUserBodyText(deletingUser.leave)}
           cancelText="Cancel"
           confirmText="Confirm"
-          header="Removing user"
-          onCancel={() => setDeletingUser({ user: undefined, state: false })}
+          header={deletingUser.leave ? 'Leave team' : 'Removing user'}
+          onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onConfirm={handleRemoveUser}
-        />
-      )}
-
-      {isAddingUsers && (
-        <AddUsersModal
-          header={`Adding new users to ${
-            currentTeam?.displayName ?? currentTeam?.name
-          }`}
-          list={getUniqueUserList()}
-          onCancel={() => handleAddUser(false)}
-          onSave={(data) => addUsersToTeam(data)}
         />
       )}
     </div>

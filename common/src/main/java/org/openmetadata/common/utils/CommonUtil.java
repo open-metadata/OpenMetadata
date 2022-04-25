@@ -101,7 +101,7 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffsetSeconds(Date date, int seconds) throws ParseException {
+  public static Date getDateByOffsetSeconds(Date date, int seconds) {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(date);
     calendar.add(Calendar.SECOND, seconds);
@@ -165,5 +165,13 @@ public final class CommonUtil {
 
   public static <T> List<T> listOrEmpty(List<T> list) {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
+  }
+
+  public static boolean nullOrEmpty(String string) {
+    return string == null || string.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(List<?> list) {
+    return list == null || list.isEmpty();
   }
 }

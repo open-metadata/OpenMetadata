@@ -21,44 +21,58 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/salesforceType",
       "default": "Salesforce"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/salesforceScheme",
       "default": "salesforce"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect  to the Redshift. This user should have privileges to read all the metadata in Redshift.",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password to connect  to the Redshift.",
       "type": "string",
       "format": "password"
     },
     "securityToken": {
+      "title": "Security Token",
       "description": "Salesforce Security Token.",
       "type": "string"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Host and port of the Redshift.",
       "type": "string"
     },
     "sobjectName": {
+      "title": "Object Name",
       "description": "Salesforce Object Name.",
       "type": "string"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,

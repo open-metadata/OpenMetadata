@@ -228,7 +228,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void setDisplayName(String displayName) {
-      return;
+      /* No display name to set */
     }
 
     @Override
@@ -260,7 +260,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      return;
+      /* No tags to set */
     }
   }
 

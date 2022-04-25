@@ -11,27 +11,35 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { capitalize } from 'lodash';
 import React from 'react';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
 import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
+import AddUsersModal from '../../pages/teams/AddUsersModal';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
+import { Button } from '../buttons/Button/Button';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout from '../containers/PageLayout';
+import Loader from '../Loader/Loader';
 import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
 
 const TeamsAndUsers = ({
   users,
+  isUsersLoading,
   admins,
   bots,
   activeUserTab,
   userSearchTerm,
   selectedUserList,
-  updateUser,
   handleUserSearchTerm,
   handleDeleteUser,
   handleJoinTeamClick,
+  handleLeaveTeamClick,
+  isRightPannelLoading,
   hasAccess,
   isTeamVisible,
   teams,
@@ -45,9 +53,6 @@ const TeamsAndUsers = ({
   isAddingTeam,
   createNewTeam,
   handleAddNewUser,
-  deletingTeam,
-  deleteTeamById,
-  handleDeleteTeam,
   handleAddTeam,
   onNewTeamDataChange,
   updateTeamHandler,
@@ -57,10 +62,12 @@ const TeamsAndUsers = ({
   teamUserPaginHandler,
   changeCurrentTeam,
   isAddingUsers,
+  isTeamMemberLoading,
   getUniqueUserList,
   addUsersToTeam,
   handleAddUser,
   removeUserFromTeam,
+  afterDeleteAction,
 }: TeamsAndUsersProps) => {
   const usersData = [
     {
@@ -85,8 +92,25 @@ const TeamsAndUsers = ({
     return (
       <>
         <div className="tw-mb-8">
-          <div className="tw-mb-2 tw-border-b">
+          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
             <p className="tw-heading">Teams</p>
+            {hasAccess && (
+              <NonAdminAction
+                position="bottom"
+                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                <Button
+                  className="tw-h-7 tw-px-2 tw-mb-4"
+                  data-testid="add-teams"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={() => {
+                    handleAddTeam(true);
+                  }}>
+                  <FontAwesomeIcon icon="plus" />
+                </Button>
+              </NonAdminAction>
+            )}
           </div>
           {teams.map((team) => (
             <div
@@ -116,8 +140,23 @@ const TeamsAndUsers = ({
         </div>
         {hasAccess && (
           <div>
-            <div className="tw-mb-2 tw-border-b">
+            <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
               <p className="tw-heading">All Users</p>
+              {hasAccess && (
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <Button
+                    className="tw-h-7 tw-px-2 tw-mb-4"
+                    data-testid="add-teams"
+                    size="small"
+                    theme="primary"
+                    variant="contained"
+                    onClick={handleAddNewUser}>
+                    <FontAwesomeIcon icon="plus" />
+                  </Button>
+                </NonAdminAction>
+              )}
             </div>
             {usersData.map((d) => (
               <div
@@ -148,50 +187,61 @@ const TeamsAndUsers = ({
 
   return (
     <PageLayout classes="tw-h-full tw-p-4" leftPanel={fetchLeftPanel()}>
-      <div
-        className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
-        data-testid="team-and-user-container">
-        {!isTeamVisible ? (
-          <UserDetails
-            handleAddNewUser={handleAddNewUser}
-            handleDeleteUser={handleDeleteUser}
-            handleUserSearchTerm={handleUserSearchTerm}
-            selectedUserList={selectedUserList}
-            updateUser={updateUser}
-            userSearchTerm={userSearchTerm}
-          />
-        ) : (
-          <TeamDetails
-            addUsersToTeam={addUsersToTeam}
-            createNewTeam={createNewTeam}
-            currentTeam={currentTeam}
-            currentTeamUserPage={currentTeamUserPage}
-            currentTeamUsers={currentTeamUsers}
-            deleteTeamById={deleteTeamById}
-            deletingTeam={deletingTeam}
-            descriptionHandler={descriptionHandler}
-            errorNewTeamData={errorNewTeamData}
-            getUniqueUserList={getUniqueUserList}
-            handleAddTeam={handleAddTeam}
-            handleAddUser={handleAddUser}
-            handleDeleteTeam={handleDeleteTeam}
-            handleJoinTeamClick={handleJoinTeamClick}
-            handleTeamUsersSearchAction={handleTeamUsersSearchAction}
-            hasAccess={hasAccess}
-            isAddingTeam={isAddingTeam}
-            isAddingUsers={isAddingUsers}
-            isDescriptionEditable={isDescriptionEditable}
-            removeUserFromTeam={removeUserFromTeam}
-            teamUserPagin={teamUserPagin}
-            teamUserPaginHandler={teamUserPaginHandler}
-            teamUsersSearchText={teamUsersSearchText}
-            teams={teams}
-            updateTeamHandler={updateTeamHandler}
-            onDescriptionUpdate={onDescriptionUpdate}
-            onNewTeamDataChange={onNewTeamDataChange}
-          />
-        )}
-      </div>
+      {isRightPannelLoading ? (
+        <Loader />
+      ) : (
+        <div
+          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
+          data-testid="team-and-user-container">
+          {!isTeamVisible ? (
+            <UserDetails
+              handleDeleteUser={handleDeleteUser}
+              handleUserSearchTerm={handleUserSearchTerm}
+              isUsersLoading={isUsersLoading}
+              selectedUserList={selectedUserList}
+              userSearchTerm={userSearchTerm}
+            />
+          ) : (
+            <TeamDetails
+              afterDeleteAction={afterDeleteAction}
+              createNewTeam={createNewTeam}
+              currentTeam={currentTeam}
+              currentTeamUserPage={currentTeamUserPage}
+              currentTeamUsers={currentTeamUsers}
+              descriptionHandler={descriptionHandler}
+              errorNewTeamData={errorNewTeamData}
+              handleAddTeam={handleAddTeam}
+              handleAddUser={handleAddUser}
+              handleJoinTeamClick={handleJoinTeamClick}
+              handleLeaveTeamClick={handleLeaveTeamClick}
+              handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+              hasAccess={hasAccess}
+              isAddingTeam={isAddingTeam}
+              isDescriptionEditable={isDescriptionEditable}
+              isTeamMemberLoading={isTeamMemberLoading}
+              removeUserFromTeam={removeUserFromTeam}
+              teamUserPagin={teamUserPagin}
+              teamUserPaginHandler={teamUserPaginHandler}
+              teamUsersSearchText={teamUsersSearchText}
+              teams={teams}
+              updateTeamHandler={updateTeamHandler}
+              onDescriptionUpdate={onDescriptionUpdate}
+              onNewTeamDataChange={onNewTeamDataChange}
+            />
+          )}
+        </div>
+      )}
+
+      {isAddingUsers && (
+        <AddUsersModal
+          header={`Adding new users to ${
+            currentTeam?.displayName ?? currentTeam?.name
+          }`}
+          list={getUniqueUserList()}
+          onCancel={() => handleAddUser(false)}
+          onSave={(data) => addUsersToTeam(data)}
+        />
+      )}
     </PageLayout>
   );
 };

@@ -5,7 +5,12 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
@@ -21,7 +26,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DashboardDetailsUIErrorHandlingTest {
+class DashboardDetailsUIErrorHandlingTest {
   static ChromeDriver webDriver;
   static Common common;
   static TableDetails tableDetails;

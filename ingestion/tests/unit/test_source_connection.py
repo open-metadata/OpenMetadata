@@ -24,6 +24,10 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
     TrinoConnection,
     TrinoScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+    VerticaScheme,
+)
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
 
@@ -105,3 +109,16 @@ class SouceConnectionTest(TestCase):
             test_proxies
             == get_connection_args(trino_conn_obj).get("http_session").proxies
         )
+
+    def test_vertica_url(self):
+        expected_url = (
+            "vertica+vertica_python://username:password@localhost:5443/database"
+        )
+        vertica_conn_obj = VerticaConnection(
+            scheme=VerticaScheme.vertica_vertica_python,
+            hostPort="localhost:5443",
+            username="username",
+            password="password",
+            database="database",
+        )
+        assert expected_url == get_connection_url(vertica_conn_obj)

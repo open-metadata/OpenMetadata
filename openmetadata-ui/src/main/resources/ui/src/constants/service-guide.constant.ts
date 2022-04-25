@@ -28,7 +28,14 @@ export const addServiceGuide = [
   },
 ];
 
-export const addIngestionGuide = [
+const schedulingIngestionGuide = {
+  step: 2,
+  title: 'Schedule for Ingestion',
+  description:
+    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
+};
+
+export const addMetadataIngestionGuide = [
   {
     step: 1,
     title: 'Add Metadata Ingestion',
@@ -36,14 +43,45 @@ export const addIngestionGuide = [
       You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
   },
   {
-    step: 2,
-    title: 'Schedule for Ingestion',
-    description:
-      'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
+    ...schedulingIngestionGuide,
   },
   {
     step: 3,
     title: 'Metadata Ingestion Added Successfully',
+    description:
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
+  },
+];
+
+export const addUsageIngestionGuide = [
+  {
+    step: 1,
+    title: 'Add Usage Ingestion',
+    description: `Based on the service type selected, enter the filter pattern details for the schema or table (database), or topic (messaging), or dashboard. 
+      You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
+  },
+  {
+    ...schedulingIngestionGuide,
+  },
+  {
+    step: 3,
+    title: 'Usage Ingestion Added Successfully',
+    description:
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
+  },
+];
+
+export const addProfilerIngestionGuide = [
+  {
+    step: 1,
+    title: 'Add Profiler Ingestion',
+    description: `Based on the service type selected, enter the filter pattern details for the schema or table (database), or topic (messaging), or dashboard. 
+      You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
+  },
+  { ...schedulingIngestionGuide },
+  {
+    step: 3,
+    title: 'Profiler Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
   },

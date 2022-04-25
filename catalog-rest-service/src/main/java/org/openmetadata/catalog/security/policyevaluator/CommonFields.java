@@ -18,7 +18,9 @@ package org.openmetadata.catalog.security.policyevaluator;
  * PolicyEvaluator}
  */
 final class CommonFields {
-  private CommonFields() {};
+  private CommonFields() {
+    /* Utility class */
+  }
 
   static final String ALLOW = "allow";
   static final String ALLOWED_OPERATIONS = "allowedOperations";

@@ -18,7 +18,7 @@ import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -200,7 +200,7 @@ const DashboardDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -670,6 +670,7 @@ const DashboardDetails = ({
                   entityName={dashboardDetails.name}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.DASHBOARD}
                   onSave={onSettingsUpdate}
                 />
               </div>

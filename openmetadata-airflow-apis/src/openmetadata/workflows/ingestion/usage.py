@@ -14,7 +14,10 @@ Metadata DAG function builder
 
 
 from airflow import DAG
-from openmetadata.workflows.ingestion.common import build_ingestion_dag
+from openmetadata.workflows.ingestion.common import (
+    build_dag,
+    metadata_ingestion_workflow,
+)
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     BulkSink,
@@ -65,10 +68,11 @@ def build_usage_dag(airflow_pipeline: IngestionPipeline) -> DAG:
     Build a simple metadata workflow DAG
     """
     workflow_config = build_usage_workflow_config(airflow_pipeline)
-    dag = build_ingestion_dag(
+    dag = build_dag(
         task_name="usage_task",
         ingestion_pipeline=airflow_pipeline,
         workflow_config=workflow_config,
+        workflow_fn=metadata_ingestion_workflow,
     )
 
     return dag

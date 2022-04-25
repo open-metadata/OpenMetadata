@@ -59,7 +59,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
@@ -75,6 +75,7 @@ import {
   getPartialNameFromTableFQN,
   hasEditAccess,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
@@ -89,7 +90,7 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -173,7 +174,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: 'Owner',
       value:
         databaseSchema?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               databaseSchema?.owner?.displayName ||
                 databaseSchema?.owner?.name ||
                 ''
@@ -437,9 +438,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['unexpected-server-response']
@@ -485,8 +483,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -564,6 +560,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         </table>
       </Fragment>
     );
+  };
+
+  const getDeleteEntityMessage = () => {
+    if (!tableInstanceCount) {
+      return;
+    }
+
+    return `Deleting this databaseSchema will also delete ${pluralize(
+      tableInstanceCount,
+      'table',
+      's'
+    )}.`;
   };
 
   useEffect(() => {
@@ -675,7 +683,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <ManageTabComponent
                     allowDelete
                     hideTier
+                    isRecursiveDelete
                     currentUser={databaseSchema?.owner?.id}
+                    deletEntityMessage={getDeleteEntityMessage()}
                     entityId={databaseSchema?.id}
                     entityName={databaseSchema?.name}
                     entityType={EntityType.DATABASE_SCHEMA}
@@ -683,6 +693,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       databaseSchema?.owner?.type || '',
                       databaseSchema?.owner?.id || ''
                     )}
+                    manageSectionType={EntityType.DATABASE_SCHEMA}
                     onSave={handleUpdateOwner}
                   />
                 )}

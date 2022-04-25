@@ -29,6 +29,6 @@ I worked on the ..... because ...
 <!-- Please see the contributing guidelines and then add your reviewer(s) !-->
 <!--- OpenMetadata community thanks you for explaining your changes in detail !-->
 <!--- If you are unsure of people to review your work, you can add anyone of these developers :) !-->
-<!--- Frontend: @shahsank3t, @darth-coder00, @Sachin-chaurasiya, @vivekratnavel -->
-<!--- Backend: @sureshms @harshach, @vivekratnavel -->
-<!--- Ingestion: @harshach @ayush-shah @pmbrull -->
+<!--- Frontend: @open-metadata/ui -->
+<!--- Backend: @open-metadata/backend -->
+<!--- Ingestion: @open-metadata/ingestion -->

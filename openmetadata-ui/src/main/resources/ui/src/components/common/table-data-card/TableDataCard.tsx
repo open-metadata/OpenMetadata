@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import {
+  faAngleRight,
+  faExclamationCircle,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -26,7 +29,7 @@ import { TableType } from '../../../generated/entity/data/table';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
-import PopOver from '../popover/PopOver';
+import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -63,9 +66,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   indexType,
   matches,
   tableType,
-  service,
-  database,
-  databaseSchema,
   deleted = false,
 }: Props) => {
   const location = useLocation();
@@ -116,44 +116,25 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
-  const getPopOverContent = () => {
-    const entityDetails = [
-      {
-        key: 'Service Type',
-        value: serviceType,
-      },
-    ];
-    if (service) {
-      entityDetails.push({
-        key: 'Service',
-        value: service,
-      });
-    }
-
-    if (database) {
-      entityDetails.push({
-        key: 'Database',
-        value: database,
-      });
-    }
-    if (databaseSchema) {
-      entityDetails.push({
-        key: 'Schema',
-        value: databaseSchema,
-      });
-    }
+  const fqnParts = fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
+  const separatorHtml = (
+    <span className="tw-px-2">
+      <FontAwesomeIcon
+        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
+        icon={faAngleRight}
+      />
+    </span>
+  );
+  const tableTitle = fqnParts.map((part, i) => {
+    const separator = i !== fqnParts.length - 1 ? separatorHtml : null;
 
     return (
-      <div className="tw-text-left">
-        {entityDetails.map((detail) => (
-          <p key={detail.key}>
-            <span className="tw-text-grey-muted">{detail.key} : </span>
-            <span className="tw-ml-2">{detail.value}</span>
-          </p>
-        ))}
-      </div>
+      <span key={i}>
+        <span>{part}</span>
+        {separator}
+      </span>
     );
-  };
+  });
 
   return (
     <div
@@ -167,21 +148,15 @@ const TableDataCard: FunctionComponent<Props> = ({
             className="tw-inline tw-h-5 tw-w-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <PopOver
-            html={getPopOverContent()}
-            position="top"
-            theme="light"
-            trigger="mouseenter">
-            <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
-              <button
-                className="tw-text-grey-body tw-font-medium"
-                data-testid="table-link"
-                id={`${id}Title`}
-                onClick={handleLinkClick}>
-                {fullyQualifiedName}
-              </button>
-            </h6>
-          </PopOver>
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+            <button
+              className="tw-text-grey-body tw-font-medium"
+              data-testid="table-link"
+              id={`${id}Title`}
+              onClick={handleLinkClick}>
+              <span className="table-title">{tableTitle}</span>
+            </button>
+          </h6>
           {deleted && (
             <>
               <div

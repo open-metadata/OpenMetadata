@@ -29,7 +29,6 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
-import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -70,6 +69,7 @@ type Props = {
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
+  afterDeleteAction?: () => void;
   isChildLoading: boolean;
 };
 
@@ -88,6 +88,7 @@ const GlossaryV1 = ({
   isGlossaryActive,
   isChildLoading,
   handleSelectedData,
+  afterDeleteAction,
   handleAddGlossaryClick,
   handleAddGlossaryTermClick,
   handleGlossaryTermUpdate,
@@ -261,26 +262,8 @@ const GlossaryV1 = ({
               size="small"
               theme="primary"
               variant="contained"
-              onClick={() => {
-                setShowActions((show) => !show);
-              }}>
-              Actions{' '}
-              {showActions ? (
-                <DropdownIcon
-                  style={{
-                    transform: 'rotate(180deg)',
-                    marginTop: '2px',
-                    color: '#fff',
-                  }}
-                />
-              ) : (
-                <DropdownIcon
-                  style={{
-                    marginTop: '2px',
-                    color: '#fff',
-                  }}
-                />
-              )}
+              onClick={handleAddGlossaryTermClick}>
+              Add term
             </Button>
           </NonAdminAction>
           {showActions && (
@@ -298,12 +281,14 @@ const GlossaryV1 = ({
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
+            afterDeleteAction={afterDeleteAction}
             glossary={selectedData as Glossary}
             isHasAccess={isHasAccess}
             updateGlossary={updateGlossary}
           />
         ) : (
           <GlossaryTermsV1
+            afterDeleteAction={afterDeleteAction}
             assetData={assetData}
             currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
@@ -317,7 +302,7 @@ const GlossaryV1 = ({
       {selectedData && isDelete && (
         <ConfirmationModal
           bodyText={`You want to delete ${selectedData.name} permanently? This action cannot be reverted.`}
-          cancelText="Discard"
+          cancelText="Cancel"
           confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
           confirmText="Delete"
           header="Are you sure?"

@@ -42,7 +42,7 @@ class Dialects(Enum):
     Snowflake = "snowflake"
     MSSQL = "mssql"
     Oracle = "oracle"
-    Athena = "athena"
+    Athena = "awsathena"
     Presto = "presto"
     Trino = "Trino"
     Vertica = "vertica"

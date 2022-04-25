@@ -80,6 +80,7 @@ public class AirflowRESTClient {
   }
 
   public String deploy(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
     try {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
@@ -93,17 +94,18 @@ public class AirflowRESTClient {
               .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(pipelinePayload))
               .build();
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response.body();
       }
-      throw new AirflowException(
-          String.format(
-              "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
-              ingestionPipeline.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
+
+    throw new AirflowException(
+        String.format(
+            "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
+            ingestionPipeline.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
   }
 
   public String deletePipeline(String pipelineName) {
@@ -129,6 +131,7 @@ public class AirflowRESTClient {
   }
 
   public String runPipeline(String pipelineName) {
+    HttpResponse<String> response;
     try {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
@@ -142,19 +145,20 @@ public class AirflowRESTClient {
               .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response.body();
       }
-
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
+
+    throw IngestionPipelineDeploymentException.byMessage(
+        pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
   }
 
   public IngestionPipeline getStatus(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
     try {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
@@ -167,7 +171,7 @@ public class AirflowRESTClient {
               .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(requestPayload.toString()))
               .build();
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         List<PipelineStatus> statuses = JsonUtils.readObjects(response.body(), PipelineStatus.class);
         ingestionPipeline.setPipelineStatuses(statuses);
@@ -176,17 +180,17 @@ public class AirflowRESTClient {
       } else if (response.statusCode() == 404) {
         ingestionPipeline.setDeployed(false);
       }
-
-      throw AirflowException.byMessage(
-          ingestionPipeline.getName(),
-          "Failed to fetch ingestion pipeline runs",
-          Response.Status.fromStatusCode(response.statusCode()));
     } catch (Exception e) {
       throw AirflowException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
+    throw AirflowException.byMessage(
+        ingestionPipeline.getName(),
+        "Failed to fetch ingestion pipeline runs",
+        Response.Status.fromStatusCode(response.statusCode()));
   }
 
   public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+    HttpResponse<String> response;
     try {
       String token = authenticate();
       String authToken = String.format(AUTH_TOKEN, token);
@@ -199,14 +203,14 @@ public class AirflowRESTClient {
               .header(AUTH_HEADER, authToken)
               .POST(HttpRequest.BodyPublishers.ofString(connectionPayload))
               .build();
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response;
       }
-      throw AirflowException.byMessage(
-          "Failed to test connection.", String.valueOf(Response.Status.fromStatusCode(response.statusCode())));
+
     } catch (Exception e) {
       throw AirflowException.byMessage("Failed to test connection.", e.getMessage());
     }
+    throw AirflowException.byMessage("Failed to test connection.", response.toString());
   }
 }

@@ -86,7 +86,7 @@ public final class RestUtil {
     return DATE_FORMAT.parse(date1).compareTo(DATE_FORMAT.parse(date2));
   }
 
-  public static String today(int offsetDays) throws ParseException {
+  public static String today(int offsetDays) {
     Date date = CommonUtil.getDateByOffset(new Date(), offsetDays);
     return DATE_FORMAT.format(date);
   }

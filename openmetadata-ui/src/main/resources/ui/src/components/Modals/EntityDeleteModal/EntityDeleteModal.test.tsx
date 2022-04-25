@@ -96,7 +96,7 @@ describe('Test EntityDelete Modal Component', () => {
     const inputBox = await findByTestId(container, 'confirmation-text-input');
 
     fireEvent.change(inputBox, {
-      target: { value: `${mockProp.entityType}/${mockProp.entityName}` },
+      target: { value: 'DELETE' },
     });
 
     expect(confirmButton).not.toBeDisabled();

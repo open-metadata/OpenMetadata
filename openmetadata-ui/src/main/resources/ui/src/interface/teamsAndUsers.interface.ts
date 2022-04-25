@@ -28,6 +28,8 @@ export type TeamDeleteType = {
 
 export interface TeamsAndUsersProps {
   hasAccess: boolean;
+  isUsersLoading: boolean;
+  isTeamMemberLoading: boolean;
   isTeamVisible: boolean;
   activeUserTab: UserType | undefined;
   activeUserTabHandler: (value: UserType | undefined) => void;
@@ -42,21 +44,18 @@ export interface TeamsAndUsersProps {
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
+  isRightPannelLoading: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
-  updateUser: (id: string, data: Operation[], updatedUser: User) => void;
   createNewTeam: (data: Team) => void;
   handleAddTeam: (value: boolean) => void;
-  handleDeleteTeam: (data: TeamDeleteType) => void;
-  deleteTeamById: (id: string) => void;
-  deletingTeam: TeamDeleteType;
   onNewTeamDataChange: (
     data: Team,
     forceSet?: boolean
   ) => {
     [key: string]: string;
   };
-  updateTeamHandler: (data: Team) => void;
+  updateTeamHandler: (data: Team) => Promise<void>;
   handleDeleteUser: (id: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
@@ -67,6 +66,7 @@ export interface TeamsAndUsersProps {
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
+  handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   isAddingUsers: boolean;
   getUniqueUserList: () => Array<UserTeams>;
   addUsersToTeam: (data: Array<UserTeams>) => void;
@@ -75,6 +75,7 @@ export interface TeamsAndUsersProps {
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
   handleAddNewUser: () => void;
+  afterDeleteAction: () => void;
 }
 
 export interface TeamDetailsProp {
@@ -85,12 +86,10 @@ export interface TeamDetailsProp {
   currentTeamUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
+  isTeamMemberLoading: boolean;
   hasAccess: boolean;
   errorNewTeamData: FormErrorData | undefined;
   isAddingTeam: boolean;
-  handleDeleteTeam: (data: TeamDeleteType) => void;
-  deleteTeamById: (id: string) => void;
-  deletingTeam: TeamDeleteType;
   handleAddTeam: (value: boolean) => void;
   onNewTeamDataChange: (
     data: Team,
@@ -101,16 +100,15 @@ export interface TeamDetailsProp {
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
-  updateTeamHandler: (data: Team) => void;
+  updateTeamHandler: (data: Team) => Promise<void>;
   createNewTeam: (data: Team) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  isAddingUsers: boolean;
-  getUniqueUserList: () => Array<UserTeams>;
-  addUsersToTeam: (data: Array<UserTeams>) => void;
   handleAddUser: (data: boolean) => void;
+  afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
+  handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
 }

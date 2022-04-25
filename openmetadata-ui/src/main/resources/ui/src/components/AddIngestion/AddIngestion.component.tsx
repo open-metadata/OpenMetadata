@@ -12,7 +12,8 @@
  */
 
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useState } from 'react';
+import { LoadingState } from 'Models';
+import React, { useMemo, useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
@@ -23,12 +24,15 @@ import { FormSubmitType } from '../../enums/form.enum';
 import {
   ConfigClass,
   CreateIngestionPipeline,
+  PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
+  ConfigType,
   FilterPattern,
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddIngestionProps } from './addIngestion.interface';
@@ -51,9 +55,11 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
-  const [ingestionName] = useState(
-    data?.name ?? `${serviceData.name}_${pipelineType}`
+  const [saveState, setSaveState] = useState<LoadingState>('initial');
+  const [ingestionName, setIngestionName] = useState(
+    data?.name ?? getIngestionName(serviceData.name, pipelineType)
   );
+  const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
@@ -87,8 +93,13 @@ const AddIngestion = ({
       (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern
     )
   );
+  const [showFqnFilter, setShowFqnFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern
+    )
+  );
   const [includeView, setIncludeView] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.includeViews ?? false
+    Boolean((data?.source.sourceConfig.config as ConfigClass)?.includeViews)
   );
   const [enableDataProfiler, setEnableDataProfiler] = useState(
     (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
@@ -119,6 +130,33 @@ const AddIngestion = ({
     (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
+  const [fqnFilterPattern, setFqnFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
+      INITIAL_FILTER_PATTERN
+  );
+
+  const [queryLogDuration, setQueryLogDuration] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
+  );
+  const [stageFileLocation, setStageFileLocation] = useState<string>(
+    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ??
+      '/tmp/query_log'
+  );
+  const [resultLimit, setResultLimit] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+  );
+  const usageIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseUsage
+    );
+  }, [data]);
+  const profilerIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.Profiler
+    );
+  }, [data]);
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
@@ -143,6 +181,10 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.CHART:
         setChartFilterPattern({ ...topicFilterPattern, includes: value });
+
+        break;
+      case FilterPatternEnum.FQN:
+        setFqnFilterPattern({ ...fqnFilterPattern, includes: value });
 
         break;
     }
@@ -172,6 +214,10 @@ const AddIngestion = ({
         setChartFilterPattern({ ...topicFilterPattern, excludes: value });
 
         break;
+      case FilterPatternEnum.FQN:
+        setFqnFilterPattern({ ...fqnFilterPattern, excludes: value });
+
+        break;
     }
   };
 
@@ -195,6 +241,10 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.CHART:
         setShowChartFilter(value);
+
+        break;
+      case FilterPatternEnum.FQN:
+        setShowFqnFilter(value);
 
         break;
     }
@@ -227,6 +277,38 @@ const AddIngestion = ({
     return filterPattern;
   };
 
+  const getConfigData = (type: PipelineType): ConfigClass => {
+    switch (type) {
+      case PipelineType.Usage: {
+        return {
+          queryLogDuration,
+          resultLimit,
+          stageFileLocation,
+          type: usageIngestionType,
+        };
+      }
+      case PipelineType.Profiler: {
+        return {
+          fqnFilterPattern: getFilterPatternData(fqnFilterPattern),
+          type: profilerIngestionType,
+        };
+      }
+      case PipelineType.Metadata:
+      default: {
+        return {
+          enableDataProfiler: enableDataProfiler,
+          generateSampleData: ingestSampleData,
+          includeViews: includeView,
+          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
+          tableFilterPattern: getFilterPatternData(tableFilterPattern),
+          chartFilterPattern: getFilterPatternData(chartFilterPattern),
+          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
+          topicFilterPattern: getFilterPatternData(topicFilterPattern),
+        };
+      }
+    }
+  };
+
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
@@ -247,26 +329,23 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
-          includeViews: includeView,
-          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-          tableFilterPattern: getFilterPatternData(tableFilterPattern),
-          chartFilterPattern: getFilterPatternData(chartFilterPattern),
-          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
-          topicFilterPattern: getFilterPatternData(topicFilterPattern),
-        },
+        config: getConfigData(pipelineType),
       },
     };
 
-    onAddIngestionSave(ingestionDetails).then(() => {
-      if (showSuccessScreen) {
-        setActiveIngestionStep(3);
-      } else {
-        onSuccessSave?.();
-      }
-    });
+    if (onAddIngestionSave) {
+      setSaveState('waiting');
+      onAddIngestionSave(ingestionDetails)
+        .then(() => {
+          setSaveState('success');
+          if (showSuccessScreen) {
+            setActiveIngestionStep(3);
+          } else {
+            onSuccessSave?.();
+          }
+        })
+        .finally(() => setTimeout(() => setSaveState('initial'), 500));
+    }
   };
 
   const updateIngestion = () => {
@@ -276,7 +355,7 @@ const AddIngestion = ({
         airflowConfig: {
           ...data.airflowConfig,
           startDate: startDate as unknown as Date,
-          endDate: endDate as unknown as Date,
+          endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
         source: {
@@ -284,27 +363,25 @@ const AddIngestion = ({
           sourceConfig: {
             config: {
               ...(data.source.sourceConfig.config as ConfigClass),
-              enableDataProfiler: enableDataProfiler,
-              generateSampleData: ingestSampleData,
-              includeViews: includeView,
-              schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-              tableFilterPattern: getFilterPatternData(tableFilterPattern),
-              chartFilterPattern: getFilterPatternData(chartFilterPattern),
-              dashboardFilterPattern: getFilterPatternData(
-                dashboardFilterPattern
-              ),
-              topicFilterPattern: getFilterPatternData(topicFilterPattern),
+              ...getConfigData(pipelineType),
             },
           },
         },
       };
 
-      onUpdateIngestion &&
-        onUpdateIngestion(updatedData, data, data.id as string, data.name).then(
-          () => {
-            onSuccessSave?.();
-          }
-        );
+      if (onUpdateIngestion) {
+        setSaveState('waiting');
+        onUpdateIngestion(updatedData, data, data.id as string, data.name)
+          .then(() => {
+            setSaveState('success');
+            if (showSuccessScreen) {
+              setActiveIngestionStep(3);
+            } else {
+              onSuccessSave?.();
+            }
+          })
+          .finally(() => setTimeout(() => setSaveState('initial'), 500));
+      }
     }
   };
 
@@ -332,25 +409,37 @@ const AddIngestion = ({
           <ConfigureIngestion
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
+            description={description}
             enableDataProfiler={enableDataProfiler}
+            fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
+            handleDescription={(val) => setDescription(val)}
             handleEnableDataProfiler={() =>
               setEnableDataProfiler((pre) => !pre)
             }
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
+            handleIngestionName={(val) => setIngestionName(val)}
+            handleQueryLogDuration={(val) => setQueryLogDuration(val)}
+            handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
+            handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            pipelineType={pipelineType}
+            queryLogDuration={queryLogDuration}
+            resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
             serviceCategory={serviceCategory}
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
+            showFqnFilter={showFqnFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
             showTopicFilter={showTopicFilter}
+            stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
             topicFilterPattern={topicFilterPattern}
             onCancel={handleConfigureIngestionCancelClick}
@@ -368,8 +457,9 @@ const AddIngestion = ({
             handleStartDateChange={(value: string) => setStartDate(value)}
             repeatFrequency={repeatFrequency}
             startDate={startDate as string}
+            status={saveState}
             onBack={handleScheduleIntervalBackClick}
-            onDeloy={handleScheduleIntervalDeployClick}
+            onDeploy={handleScheduleIntervalDeployClick}
           />
         )}
 

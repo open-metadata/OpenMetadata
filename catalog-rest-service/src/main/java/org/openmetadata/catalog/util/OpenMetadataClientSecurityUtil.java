@@ -1,5 +1,7 @@
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -98,20 +100,20 @@ public final class OpenMetadataClientSecurityUtil {
   }
 
   public static void checkRequiredField(String fieldName, String fieldValue, AuthProvider authProvider) {
-    if (fieldValue == null || fieldValue.isEmpty()) {
+    if (nullOrEmpty(fieldValue)) {
       throw new OpenMetadataClientSecurityConfigException(
           String.format("%s SSO client config requires %s", authProvider, fieldName));
     }
   }
 
   public static void checkRequiredField(String fieldName, List<?> fieldValue, AuthProvider authProvider) {
-    if (fieldValue == null || fieldValue.isEmpty()) {
+    if (nullOrEmpty(fieldValue)) {
       throw new OpenMetadataClientSecurityConfigException(
           String.format("%s SSO client config requires %s", authProvider, fieldName));
     }
   }
 
   public static List<String> getSecurityScopes(String scopes) {
-    return scopes != null && !scopes.isEmpty() ? Arrays.asList(scopes.split("\\s*,\\s*")) : Collections.emptyList();
+    return nullOrEmpty(scopes) ? Arrays.asList(scopes.split("\\s*,\\s*")) : Collections.emptyList();
   }
 }

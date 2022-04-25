@@ -123,7 +123,7 @@ const AddUsersModal = ({
             theme="primary"
             variant="text"
             onClick={onCancel}>
-            Discard
+            Cancel
           </Button>
           <Button
             data-testid="AddUserSave"

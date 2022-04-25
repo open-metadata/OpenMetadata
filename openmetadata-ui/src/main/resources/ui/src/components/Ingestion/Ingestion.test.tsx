@@ -43,9 +43,11 @@ const mockPaging = {
   total: 1,
 };
 
-const mockFunction = jest.fn();
 const mockPaginghandler = jest.fn();
 const mockDeleteIngestion = jest.fn();
+const mockDeployIngestion = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve());
 const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
@@ -74,14 +76,6 @@ jest.mock('../common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
-jest.mock('../AddIngestion/AddIngestion.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ingestion-form">AddIngestion</div>
-    ));
-});
-
 jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
 });
@@ -91,9 +85,10 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
-        addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -102,8 +97,8 @@ describe('Test Ingestion page', () => {
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
+        serviceName=""
         triggerIngestion={mockTriggerIngestion}
-        updateIngestion={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
@@ -131,9 +126,10 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
-        addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -142,8 +138,8 @@ describe('Test Ingestion page', () => {
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
+        serviceName=""
         triggerIngestion={mockTriggerIngestion}
-        updateIngestion={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
@@ -185,9 +181,10 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
-        addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -196,8 +193,8 @@ describe('Test Ingestion page', () => {
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
+        serviceName=""
         triggerIngestion={mockTriggerIngestion}
-        updateIngestion={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
@@ -219,9 +216,10 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
-        addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -230,8 +228,8 @@ describe('Test Ingestion page', () => {
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
+        serviceName=""
         triggerIngestion={mockTriggerIngestion}
-        updateIngestion={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
@@ -242,9 +240,7 @@ describe('Test Ingestion page', () => {
     const editButton = await findByTestId(container, 'edit');
     fireEvent.click(editButton);
 
-    const ingestionModal = await findByTestId(container, 'ingestion-form');
-
-    expect(ingestionModal).toBeInTheDocument();
+    expect(editButton).toBeInTheDocument();
   });
 
   it('CTA should work', async () => {
@@ -257,9 +253,10 @@ describe('Test Ingestion page', () => {
     const { container } = render(
       <Ingestion
         isRequiredDetailsAvailable
-        addIngestion={mockFunction}
+        airflowEndpoint=""
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -268,8 +265,8 @@ describe('Test Ingestion page', () => {
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
         serviceList={[]}
+        serviceName=""
         triggerIngestion={mockTriggerIngestion}
-        updateIngestion={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
@@ -300,9 +297,34 @@ describe('Test Ingestion page', () => {
       'add-new-ingestion-button'
     );
     fireEvent.click(addIngestionButton);
+  });
 
-    const ingestionModal = await findByTestId(container, 'ingestion-form');
+  it('Airflow DAG view button should be present if endpoint is available', async () => {
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint="http://localhost"
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
-    expect(ingestionModal).toBeInTheDocument();
+    const viewButton = await findByTestId(container, 'airflow-tree-view');
+
+    expect(viewButton).toBeInTheDocument();
   });
 });

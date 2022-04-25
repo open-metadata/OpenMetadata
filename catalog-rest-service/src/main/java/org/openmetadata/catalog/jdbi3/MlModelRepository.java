@@ -21,6 +21,7 @@ import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -114,7 +115,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
   private void validateReferences(List<MlFeature> mlFeatures) throws IOException {
     for (MlFeature feature : mlFeatures) {
-      if (feature.getFeatureSources() != null && !feature.getFeatureSources().isEmpty()) {
+      if (!nullOrEmpty(feature.getFeatureSources())) {
         for (MlFeatureSource source : feature.getFeatureSources()) {
           validateMlDataSource(source);
         }
@@ -132,7 +133,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void prepare(MlModel mlModel) throws IOException {
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
-    if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
+    if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }

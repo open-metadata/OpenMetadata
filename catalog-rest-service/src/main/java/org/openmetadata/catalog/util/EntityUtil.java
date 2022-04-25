@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -214,7 +215,7 @@ public final class EntityUtil {
 
   /** Merge derivedTags into tags, if it already does not exist in tags */
   public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (derivedTags == null || derivedTags.isEmpty()) {
+    if (nullOrEmpty(derivedTags)) {
       return;
     }
     for (TagLabel derivedTag : derivedTags) {
@@ -235,7 +236,7 @@ public final class EntityUtil {
     private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
-      if (fieldsParam == null || fieldsParam.isEmpty()) {
+      if (nullOrEmpty(fieldsParam)) {
         fieldList = new ArrayList<>();
         return;
       }

@@ -599,11 +599,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         request.withDescription("newDescription").withOwner(USER_OWNER1), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyPipeline_4xx() {
-    // TODO
-  }
-
   private IngestionPipeline updateIngestionPipeline(
       CreateIngestionPipeline create, Status status, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.put(getCollection(), create, IngestionPipeline.class, status, authHeaders);

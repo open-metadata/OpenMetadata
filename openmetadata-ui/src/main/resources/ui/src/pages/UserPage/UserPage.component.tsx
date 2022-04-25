@@ -12,39 +12,44 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { getUserByName } from '../../axiosAPIs/userAPI';
+import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
+import { UserDetails } from '../../components/Users/Users.interface';
 import {
-  onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
+  const { isAdminUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>();
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const fetchUserData = () => {
+    setUserData({} as User);
     getUserByName(username, 'profile,roles,teams,follows,owns')
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -69,11 +74,10 @@ const UserPage = () => {
         className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
-          No user available with{' '}
+          No user available with name{' '}
           <span className="tw-font-medium" data-testid="username">
             {username}
           </span>{' '}
-          username.
         </p>
       </div>
     );
@@ -85,8 +89,7 @@ const UserPage = () => {
 
   const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
-    const currentUserId = AppState.getCurrentUserDetails()?.id;
-    getFeedsWithFilter(currentUserId, filterType, after)
+    getFeedsWithFilter(userData.id, filterType, after)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -154,7 +157,6 @@ const UserPage = () => {
             const message = error?.message;
             showErrorToast(message ?? onUpdatedConversastionError);
           });
-        showSuccessToast(onConfirmText);
       })
       .catch((error) => {
         const message = error?.message;
@@ -162,34 +164,72 @@ const UserPage = () => {
       });
   };
 
+  const updateUserDetails = (data: UserDetails) => {
+    const updatedDetails = { ...userData, ...data };
+    const jsonPatch = compare(userData, updatedDetails);
+    updateUserDetail(userData.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setUserData((prevData) => ({ ...prevData, ...data }));
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
+  const isLoggedinUser = (userName: string) => {
+    return userName === AppState.getCurrentUserDetails()?.name;
+  };
+
+  const getUserComponent = () => {
+    if (!isError && !isEmpty(userData)) {
+      return (
+        <Users
+          deletePostHandler={deletePostHandler}
+          feedData={entityThread || []}
+          feedFilter={feedFilter as FeedFilter}
+          feedFilterHandler={feedFilterHandler}
+          fetchFeedHandler={getFeedData}
+          isAdminUser={Boolean(isAdminUser)}
+          isFeedLoading={isFeedLoading}
+          isLoggedinUser={isLoggedinUser(username)}
+          paging={paging}
+          postFeedHandler={postFeedHandler}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+        />
+      );
+    } else {
+      return <ErrorPlaceholder />;
+    }
+  };
+
   useEffect(() => {
     fetchUserData();
   }, [username]);
 
   useEffect(() => {
-    getFeedData(feedFilter);
     setEntityThread([]);
-  }, [feedFilter]);
+  }, [feedFilter, username]);
+
+  useEffect(() => {
+    setFeedFilter(
+      isLoggedinUser(username) ? FeedFilter.MENTIONS : FeedFilter.OWNER
+    );
+  }, [username, AppState.userDetails, AppState.nonSecureUserDetails]);
+
+  useEffect(() => {
+    if (!isUndefined(feedFilter) && userData.id) {
+      getFeedData(feedFilter);
+    }
+  }, [feedFilter, userData]);
 
   return (
     <PageContainerV1 className="tw-pt-4">
-      {isLoading ? (
-        <Loader />
-      ) : !isError ? (
-        <Users
-          deletePostHandler={deletePostHandler}
-          feedData={entityThread || []}
-          feedFilter={feedFilter}
-          feedFilterHandler={feedFilterHandler}
-          fetchFeedHandler={getFeedData}
-          isFeedLoading={isFeedLoading}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          userData={userData}
-        />
-      ) : (
-        <ErrorPlaceholder />
-      )}
+      {isLoading ? <Loader /> : getUserComponent()}
     </PageContainerV1>
   );
 };

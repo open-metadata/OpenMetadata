@@ -29,7 +29,6 @@ import GithubStarButton from '../../components/GithubStarButton/GithubStarButton
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import {
-  onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
@@ -42,7 +41,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -288,7 +287,6 @@ const MyDataPage = () => {
             const message = error?.message;
             showErrorToast(message ?? onUpdatedConversastionError);
           });
-        showSuccessToast(onConfirmText);
       })
       .catch((error) => {
         const message = error?.message;

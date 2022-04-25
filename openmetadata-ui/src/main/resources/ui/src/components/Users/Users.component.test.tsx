@@ -107,6 +107,10 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
+jest.mock('../common/description/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
 
@@ -119,6 +123,7 @@ const mockFetchFeedHandler = jest.fn();
 const feedFilterHandler = jest.fn();
 const fetchData = jest.fn();
 const postFeed = jest.fn();
+const updateUserDetails = jest.fn();
 const mockPaging = {
   after: 'MTY0OTIzNTQ3MzExMg==',
   total: 202,
@@ -133,6 +138,9 @@ const mockProp = {
   isFeedLoading: false,
   paging: mockPaging,
   postFeedHandler: postFeed,
+  isAdminUser: false,
+  isLoggedinUser: false,
+  updateUserDetails,
 };
 
 describe('Test User Component', () => {
