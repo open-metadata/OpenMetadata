@@ -67,7 +67,7 @@ class RedashSource(Source[Entity]):
         self.connection_config = self.config.serviceConnection.__root__.config
         self.status = RedashSourceStatus()
         self.client = Redash(
-            self.connection_config.redashURL, self.connection_config.apiKey
+            self.connection_config.hostPort, self.connection_config.apiKey
         )
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
@@ -99,7 +99,7 @@ class RedashSource(Source[Entity]):
             query_id = query_info["id"]
             query_name = query_info["name"]
             query_data = requests.get(
-                f"{self.connection_config.redashURL}/api/queries/{query_id}"
+                f"{self.connection_config.hostPort}/api/queries/{query_id}"
             ).json()
             for visualization in query_data.get("Visualizations", []):
                 chart_type = visualization.get("type", "")
@@ -136,7 +136,7 @@ class RedashSource(Source[Entity]):
                             id=self.service.id, type="dashboardService"
                         ),
                         url=(
-                            f"{self.connection_config.redashURL}/dashboard/{dashboard_data.get('slug', '')}"
+                            f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
                         ),
                         description=visualization["description"],
                     )
@@ -147,7 +147,7 @@ class RedashSource(Source[Entity]):
             if dashboard_id is not None:
                 self.status.item_scanned_status()
                 dashboard_data = self.client.get_dashboard(dashboard_id)
-                dashboard_url = f"{self.connection_config.redashURL}/dashboard/{dashboard_data.get('slug', '')}"
+                dashboard_url = f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
                 dashboard_description = ""
                 for widgets in dashboard_data.get("widgets", []):
                     dashboard_description = widgets.get("text")

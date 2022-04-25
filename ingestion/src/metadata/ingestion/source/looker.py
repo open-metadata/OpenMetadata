@@ -100,7 +100,7 @@ class LookerSource(Source[Entity]):
             chart_filter_pattern=self.source_config.chartFilterPattern,
             chart_name=dashboard_elements.id,
         ):
-            self.status.failures(dashboard_elements.id)
+            self.status.failure(dashboard_elements.id, "Chart filtered out")
             return None
         om_dashboard_elements = Chart(
             name=dashboard_elements.id,
@@ -125,7 +125,7 @@ class LookerSource(Source[Entity]):
                     dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
                     dashboard_name=child_dashboard.id,
                 ):
-                    self.status.failures(child_dashboard.id)
+                    self.status.failure(child_dashboard.id, "Dashboard Filtered out")
                     continue
                 fields = [
                     "id",
@@ -155,9 +155,9 @@ class LookerSource(Source[Entity]):
                         id=self.service.id, type="dashboardService"
                     ),
                 )
-                self.status.failures(child_dashboard.id)
             except Exception as err:
                 logger.error(repr(err))
+                self.status.failure(child_dashboard.id, repr(err))
 
     def get_status(self) -> SourceStatus:
         return self.status
