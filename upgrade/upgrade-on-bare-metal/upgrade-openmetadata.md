@@ -54,27 +54,30 @@ Most OpenMetadata releases will require you to migrate your data to updated sche
 ./bin/openmetadata.sh stop
 ```
 
-### 5. Migrate database schemas and Elasticsearch indexes
+### 5. Drop and create the database schemas and Elasticsearch indexes
 
 The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of operations on the OpenMetadata database (in MySQL) and index (in Elasticsearch).
 
-Migrate your data using this script by running the following command.
+Since the OpenMetadata **0.10** is a **backward incompatible release**, run the command  `drop-create-all` to:
+
+* Drop and recreate all the databases in the table
+* Drop and create all the indexes in Elasticsearch
 
 ```
-./bootstrap/bootstrap_storage.sh migrate-all
+./bootstrap/bootstrap_storage.sh drop-create-all
 ```
 
-This will migrate the OpenMetadata database schema to the new version you are upgrading to. It will also migrate the Elasticsearch index to this version.
+The OpenMetadata database schema and Elasticsearch index from the previous versions will be dropped. A new database scheme and Elasticsearch index will be created.
 
 ### 6. Restart the OpenMetadata server
 
-Once you've migrated your data to the new version, restart the OpenMetadata server using the new release binaries. You may restart the server by running the following command.
+Once you've dropped and recreated your data in the new version, restart the OpenMetadata server using the new release binaries. You may restart the server by running the following command.
 
 ```
 ./bin/openmetadata.sh start
 ```
 
-### 7. Re-index data in Elasticsearch&#x20;
+### 7. Re-index data in Elasticsearch
 
 Copy the following template to a configuration file named `metadata_to_es.json` or use an existing `metadata_to_es.json` file from the last time you installed or updated OpenMetadata.
 

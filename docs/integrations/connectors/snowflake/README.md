@@ -17,7 +17,7 @@ Configure and schedule Snowflake metadata ingestion workflows from the OpenMetad
 5. [Name and describe your service](./#5.-name-and-describe-your-service)
 6. [Configure service connection](./#6.-configure-service-connection)
 7. [Configure metadata ingestion](./#7.-configure-metadata-ingestion)
-8. [Schedule for ingestion and Deploy](./#8.-schedule-for-ingestion-and-deploy)
+8. [Schedule for ingestion and deploy](./#8.-schedule-for-ingestion-and-deploy)
 
 ## **1. Requirements**
 
@@ -157,7 +157,7 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-## 8. Schedule for ingestion and Deploy
+## 8. Schedule for ingestion and deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
