@@ -306,9 +306,9 @@ class CommonTests {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
-    Thread.sleep(2000);
-    Object tagCount = webDriver.findElements(common.tagCountSearch()).size() - 1;
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
+    Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
+    Thread.sleep(waitTime);
     String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
   }

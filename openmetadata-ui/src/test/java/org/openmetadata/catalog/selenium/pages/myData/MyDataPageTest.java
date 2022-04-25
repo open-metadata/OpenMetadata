@@ -128,11 +128,11 @@ class MyDataPageTest {
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.users());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/user-list");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users/users");
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.teams());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/teams");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users");
   }
 
   @Test

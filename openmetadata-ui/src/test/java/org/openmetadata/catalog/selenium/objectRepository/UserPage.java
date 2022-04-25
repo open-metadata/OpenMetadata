@@ -14,8 +14,8 @@ public class UserPage {
 
   By rolesList = By.cssSelector("[data-testid='menu-button'][id='menu-button-User']");
   By selectUser = By.xpath("//div[@data-testid='data-container']//p");
-  By userFilterCount = By.xpath("(//span[@data-testid=\"filter-count\"])[9]");
-  By adminFilterCount = By.xpath("(//span[@data-testid='filter-count'])[10]");
+  By userFilterCount = By.xpath("//span[@data-testid='filter-count'][text()[contains(.,'101')]]");
+  By adminFilterCount = By.xpath("//span[@data-testid='filter-count'][text()='1']");
   By userListSearchBar = By.cssSelector("[data-testid='searchbar']");
   By userListSearchResult =
       By.xpath("//div[@data-testid='user-card-container']/div/div[@data-testid='user-card-container']");
