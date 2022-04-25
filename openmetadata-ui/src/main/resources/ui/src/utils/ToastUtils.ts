@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { toast } from 'react-toastify';
+import { defToastOptions } from '../constants/toast.constants';
 import jsonData from '../jsons/en';
 import { getErrorText } from './StringsUtils';
 
@@ -44,6 +45,7 @@ export const showErrorToast = (
     }
   }
   toast.error(errorMessage, {
+    ...defToastOptions,
     autoClose: autoCloseTimer,
   });
 };
@@ -55,6 +57,7 @@ export const showErrorToast = (
  */
 export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
   toast.success(message, {
+    ...defToastOptions,
     autoClose: autoCloseTimer,
   });
 };
@@ -66,6 +69,7 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
   toast.info(message, {
+    ...defToastOptions,
     autoClose: autoCloseTimer,
   });
 };
