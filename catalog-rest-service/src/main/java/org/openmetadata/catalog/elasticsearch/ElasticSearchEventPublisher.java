@@ -135,10 +135,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       } catch (ElasticsearchException e) {
         LOG.error("failed to update ES doc");
         LOG.debug(e.getMessage());
-        if (e.status() == RestStatus.NOT_FOUND
-            || e.status() == RestStatus.GATEWAY_TIMEOUT
-            || e.status() == RestStatus.INTERNAL_SERVER_ERROR
-            || e.status() == RestStatus.REQUEST_TIMEOUT) {
+        if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
           LOG.error("Error in publishing to ElasticSearch");
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
