@@ -70,6 +70,7 @@ type Props = {
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
   afterDeleteAction?: () => void;
+  handleUserRedirection?: (name: string) => void;
   isChildLoading: boolean;
 };
 
@@ -83,6 +84,7 @@ const GlossaryV1 = ({
   expandedKey,
   loadingKey,
   handleExpandedKey,
+  handleUserRedirection,
   searchText,
   selectedData,
   isGlossaryActive,
@@ -283,6 +285,7 @@ const GlossaryV1 = ({
           <GlossaryDetails
             afterDeleteAction={afterDeleteAction}
             glossary={selectedData as Glossary}
+            handleUserRedirection={handleUserRedirection}
             isHasAccess={isHasAccess}
             updateGlossary={updateGlossary}
           />
@@ -293,6 +296,7 @@ const GlossaryV1 = ({
             currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            handleUserRedirection={handleUserRedirection}
             isHasAccess={isHasAccess}
             onAssetPaginate={onAssetPaginate}
             onRelatedTermClick={onRelatedTermClick}

@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,8 @@ def ingest(config: str) -> None:
     workflow_config = OpenMetadataWorkflowConfig.parse_obj(
         load_config_file(config_file)
     )
+    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
+    logger.setLevel(workflow_config.workflowConfig.loggerLevel.value)
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)
@@ -92,7 +95,6 @@ def ingest(config: str) -> None:
         click.echo(e, err=True)
         logger.debug(traceback.print_exc())
         sys.exit(1)
-
     workflow.execute()
     workflow.stop()
     ret = workflow.print_status()

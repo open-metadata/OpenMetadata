@@ -193,15 +193,6 @@ class Explore {
   void checkBasics() throws Exception {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    // Doing add tags first to get Tags checkbox in the left panel
-    Events.click(webDriver, explorePage.selectTable());
-    Events.click(webDriver, explorePage.addTag());
-    Events.click(webDriver, tableDetails.addTagTextBox());
-    Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
-    Events.click(webDriver, tableDetails.selectTag());
-    Events.click(webDriver, tableDetails.saveTag());
-    webDriver.navigate().back();
-    Events.click(webDriver, explorePage.explore());
     try {
       webDriver.findElement(explorePage.serviceText());
     } catch (NoSuchElementException noSuchElementException) {
@@ -228,7 +219,7 @@ class Explore {
     // Adding description to check last updated sort
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);

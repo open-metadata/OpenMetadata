@@ -25,7 +25,6 @@ export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
-export const isAdminUpdated = 'isAdminUpdated';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const imageTypes = {

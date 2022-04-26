@@ -110,7 +110,7 @@ class PowerbiSource(Source[Entity]):
                 if not filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
-                    self.status.failures(
+                    self.status.failure(
                         chart["title"], "Filtered out using Chart filter pattern"
                     )
                     continue
@@ -130,7 +130,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.print_exc())
                 logger.error(repr(err))
-                self.status.failures(chart["title"], err)
+                self.status.failure(chart["title"], err)
 
     def get_dashboards(self):
         """Get dashboard method"""
@@ -144,7 +144,7 @@ class PowerbiSource(Source[Entity]):
                     self.source_config.dashboardFilterPattern,
                     dashboard_details["displayName"],
                 ):
-                    self.status.failures(
+                    self.status.failure(
                         dashboard_details["displayName"],
                         "Filtered out using Chart filter pattern",
                     )
@@ -167,7 +167,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
-                self.status.failures(dashboard_details["displayName"], err)
+                self.status.failure(dashboard_details["displayName"], err)
 
     def get_status(self) -> SourceStatus:
         return self.status

@@ -14,14 +14,18 @@ public class UserPage {
 
   By rolesList = By.cssSelector("[data-testid='menu-button'][id='menu-button-User']");
   By selectUser = By.xpath("//div[@data-testid='data-container']//p");
-  By userFilterCount = By.xpath("(//span[@data-testid=\"filter-count\"])[9]");
-  By adminFilterCount = By.xpath("(//span[@data-testid='filter-count'])[10]");
+  By userFilterCount = By.xpath("//span[@data-testid='filter-count'][text()='101']");
+  By adminFilterCount = By.xpath("//span[@data-testid='filter-count'][text()='1']");
+  By adminFilterCountAfterDelete = By.xpath("//span[@data-testid='filter-count'][text()='0']");
   By userListSearchBar = By.cssSelector("[data-testid='searchbar']");
   By userListSearchResult =
       By.xpath("//div[@data-testid='user-card-container']/div/div[@data-testid='user-card-container']");
   By closeCheckBoxDropDown = By.cssSelector("[data-testid='close-dropdown']");
   By admin = By.cssSelector("[title='Admins']");
   By users = By.cssSelector("[title='Users']");
+  By editRole = By.cssSelector("[data-testid='edit-roles']");
+  By saveRole = By.cssSelector("[data-testid='save-roles']");
+  By removeRole = By.xpath("(//div[@class='css-xb97g8'])[2]");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");

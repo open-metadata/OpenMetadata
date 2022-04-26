@@ -187,11 +187,6 @@ class GlossaryPageTest {
     Events.sendKeys(webDriver, common.urlLink(), faker.address().toString());
     Events.sendKeys(webDriver, common.linkText(), faker.address().firstName());
     Events.click(webDriver, common.okButton());
-    Events.click(webDriver, glossary.addReviewerButton());
-    for (int i = 1; i <= 2; i++) {
-      Events.click(webDriver, glossary.checkboxAddUser(i));
-    }
-    Events.click(webDriver, common.descriptionSaveButton());
     Events.click(webDriver, glossary.saveGlossaryTerm());
   }
 
@@ -221,9 +216,15 @@ class GlossaryPageTest {
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
+    Events.click(webDriver, common.manage());
     Events.click(webDriver, common.addGlossaryReviewer());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, glossary.checkboxAddUser(1));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, glossary.checkboxAddUser(2));
+    Thread.sleep(waitTime);
     Events.click(webDriver, glossary.checkboxAddUser(3));
+    Thread.sleep(waitTime);
     Events.click(webDriver, glossary.saveTermReviewer());
     Thread.sleep(waitTime);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
@@ -237,7 +238,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
+    Events.click(webDriver, common.manage());
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
     Events.click(webDriver, common.removeAssociatedTag());
@@ -253,13 +254,12 @@ class GlossaryPageTest {
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
-    Events.click(webDriver, common.addGlossaryReviewer());
+    Events.click(webDriver, common.manage());
+    actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
     for (int i = 1; i <= 2; i++) {
-      Events.click(webDriver, glossary.checkboxAddUser(i));
+      Events.click(webDriver, common.removeAssociatedTag());
+      Thread.sleep(waitTime);
     }
-    Events.click(webDriver, glossary.saveTermReviewer());
-    Thread.sleep(waitTime);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }

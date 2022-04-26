@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -26,6 +27,7 @@ class UiExceptionHandling {
 
   static ChromeDriver webDriver;
   static Common common;
+  static DatabaseServicePage databaseServicePage;
   static DevTools devTools;
   static String url = Property.getInstance().getURL();
   static Actions actions;
@@ -84,7 +86,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     interceptor("/api/v1/teams", "/api/v1/testing");
-    Events.click(webDriver, common.headerSettingsMenu("Users"));
+    Events.click(webDriver, common.headerSettingsMenu("Teams & Users"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(400, 400);
   }
@@ -118,7 +120,7 @@ class UiExceptionHandling {
     Events.sendKeys(webDriver, common.servicePort(), "3306");
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
     interceptor("services/databaseServices", "services/testing");
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, common.saveServiceButton());
     //    Assert.assertEquals(500, 500);
   }
 
@@ -141,7 +143,11 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.deleteServiceButton("Glue"));
+    Events.click(webDriver, common.containsText("Glue"));
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, databaseServicePage.deleteDatabase());
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "Delete");
+    Events.click(webDriver, common.confirmButton());
     interceptor("services/databaseServices", "services/testing");
     //    Assert.assertEquals(500, 500);
   }

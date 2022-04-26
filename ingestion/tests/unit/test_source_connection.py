@@ -16,6 +16,10 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
     DatabricksScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidConnection,
+    DruidScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
     HiveScheme,
@@ -122,3 +126,10 @@ class SouceConnectionTest(TestCase):
             database="database",
         )
         assert expected_url == get_connection_url(vertica_conn_obj)
+
+    def test_druid_url(self):
+        expected_url = "druid://localhost:8082/druid/v2/sql"
+        druid_conn_obj = DruidConnection(
+            scheme=DruidScheme.druid, hostPort="localhost:8082"
+        )
+        assert expected_url == get_connection_url(druid_conn_obj)

@@ -40,6 +40,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
+  getUserPath,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -619,6 +620,14 @@ const GlossaryPageV1 = () => {
   };
 
   /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
+  /**
    * To redirct to add glossary term page
    */
   const handleAddGlossaryTermClick = () => {
@@ -713,6 +722,7 @@ const GlossaryPageV1 = () => {
           handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           handleSearchText={handleSearchText}
           handleSelectedData={handleSelectedData}
+          handleUserRedirection={handleUserRedirection}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
           isHasAccess={!isAdminUser && !isAuthDisabled}

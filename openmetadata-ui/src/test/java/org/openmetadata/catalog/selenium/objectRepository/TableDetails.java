@@ -40,7 +40,7 @@ public class TableDetails {
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionDetailsGrid = By.xpath("//div[@class=\"tw-grid tw-gap-0.5\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
-  By descriptionBox = By.xpath("(//div[@data-testid='description']/div/span)[1]");
+  By descriptionBox = By.xpath("(//div[@data-testid='viewer-container']/p)[1]");
   By breadCrumb = By.xpath("//li[@data-testid=\"breadcrumb-link\"]");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
   By breadCrumbTier = By.xpath("//div[@class=\"tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap\"]");

@@ -20,7 +20,6 @@ import { Link, useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
-  deleteService,
   getServiceDetails,
   getServices,
   postService,
@@ -35,7 +34,6 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServiceModal';
-import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
   PAGE_SIZE,
@@ -73,7 +71,6 @@ import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 type ServiceRecord = {
@@ -106,11 +103,6 @@ const ServicesPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState({
-    id: '',
-    name: '',
-  });
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
   const [paging, setPaging] = useState<ServicePagingRecord>({
@@ -363,47 +355,6 @@ const ServicesPage = () => {
       });
   };
 
-  const handleCancelConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    deleteService(serviceName, id)
-      .then((res: AxiosResponse) => {
-        if (res.statusText === 'OK') {
-          const updatedServiceList = serviceList.filter((s) => s.id !== id);
-          setServices({ ...services, [serviceName]: updatedServiceList });
-          setServicesCount((pre) => ({
-            ...servicesCount,
-            [serviceName]: pre[serviceName] - 1,
-          }));
-          setServiceList(updatedServiceList);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-service-error']
-        );
-      });
-
-    handleCancelConfirmationModal();
-  };
-
-  const ConfirmDelete = (id: string, name: string) => {
-    setDeleteSelection({
-      id,
-      name,
-    });
-    setIsConfirmationModalOpen(true);
-  };
-
   const getServiceTabs = (): Array<{
     name: ServiceTypes;
     displayName: string;
@@ -554,20 +505,6 @@ const ServicesPage = () => {
       });
   };
 
-  const getConfirmationModal = () => {
-    return isConfirmationModalOpen ? (
-      <ConfirmationModal
-        bodyText={`You want to delete service ${deleteSelection.name} permanently? This action cannot be reverted.`}
-        cancelText="Cancel"
-        confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-        confirmText="Delete"
-        header="Are you sure?"
-        onCancel={handleCancelConfirmationModal}
-        onConfirm={() => handleDelete(deleteSelection.id)}
-      />
-    ) : null;
-  };
-
   const getAddServiceModal = () => {
     return isModalOpen ? (
       <AddServiceModal
@@ -672,27 +609,6 @@ const ServicesPage = () => {
               <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                 <div
                   className="tw-flex tw-justify-end"
-                  data-testid="delete-icon-container">
-                  <NonAdminAction
-                    position="top"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <button
-                      className="focus:tw-outline-none"
-                      data-testid={`delete-service-${service.name}`}
-                      onClick={() =>
-                        ConfirmDelete(service.id || '', service.name)
-                      }>
-                      <SVGIcons
-                        alt="delete"
-                        icon="icon-delete"
-                        title="Delete"
-                        width="12px"
-                      />
-                    </button>
-                  </NonAdminAction>
-                </div>
-                <div
-                  className="tw-flex tw-justify-end"
                   data-testid="service-icon">
                   {getServiceLogo(service.serviceType || '', 'tw-h-8 tw-w-8')}
                 </div>
@@ -741,8 +657,6 @@ const ServicesPage = () => {
           {getPagination()}
 
           {getAddServiceModal()}
-
-          {getConfirmationModal()}
         </div>
       </PageLayout>
     );
