@@ -107,9 +107,9 @@ const AddIngestionPage = () => {
                   err,
                   jsonData['api-error-messages']['create-ingestion-error']
                 );
-                reject();
               });
           }
+          reject();
         });
     });
   };

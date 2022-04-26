@@ -109,6 +109,9 @@ const AddIngestion = ({
     (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
       true
   );
+  const [markDeletedTables, setMarkDeletedTables] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.markDeletedTables ?? true
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.source.sourceConfig.config as ConfigClass)
@@ -299,6 +302,7 @@ const AddIngestion = ({
           enableDataProfiler: enableDataProfiler,
           generateSampleData: ingestSampleData,
           includeViews: includeView,
+          markDeletedTables: markDeletedTables,
           schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
           tableFilterPattern: getFilterPatternData(tableFilterPattern),
           chartFilterPattern: getFilterPatternData(chartFilterPattern),
@@ -344,7 +348,12 @@ const AddIngestion = ({
             onSuccessSave?.();
           }
         })
-        .finally(() => setTimeout(() => setSaveState('initial'), 500));
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise
+        })
+        .finally(() => {
+          setTimeout(() => setSaveState('initial'), 500);
+        });
     }
   };
 
@@ -421,6 +430,7 @@ const AddIngestion = ({
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
+            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
@@ -428,6 +438,7 @@ const AddIngestion = ({
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            markDeletedTables={markDeletedTables}
             pipelineType={pipelineType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
