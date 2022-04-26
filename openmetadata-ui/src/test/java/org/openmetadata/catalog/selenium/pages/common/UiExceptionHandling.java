@@ -75,6 +75,7 @@ class UiExceptionHandling {
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     actions = new Actions(webDriver);
+    databaseServicePage = new DatabaseServicePage(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);

@@ -219,7 +219,7 @@ class Explore {
     // Adding description to check last updated sort
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
