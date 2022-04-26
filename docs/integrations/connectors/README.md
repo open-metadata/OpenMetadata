@@ -30,7 +30,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Salesforce](salesforce.md)
 * [SingleStore](singlestore.md)
 * [Snowflake](snowflake/)
-* [Snowflake Usage](snowflake/snowflake-usage.md)
+* [Snowflake Usage](broken-reference)
 * [Trino](trino/)
 * [Vertica](vertica.md)
 

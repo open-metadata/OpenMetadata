@@ -36,7 +36,7 @@ Another Azure Application must be registered for Service ingestion.
 * Create a **public client redirect URI**.&#x20;
 * Click on Register.
 
-![](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (1) (1) (1).png>)
 
 ## Step 5: **API Permissions**
 
@@ -44,11 +44,11 @@ Another Azure Application must be registered for Service ingestion.
 * Navigate to the section on API Permissions.
 * Click on Add a Permission.
 
-![](<../../../.gitbook/assets/image (17) (2) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1).png>)
 
 * Search for the OpenMetadata Application
 
-![](<../../../.gitbook/assets/image (3) (1) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
 * Select the custom scope created in Step 3.
 * Click on Add Permissions.

@@ -52,7 +52,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select BigQuery as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (15).png>)
+![](<../../../.gitbook/assets/image (15).png>)
 
 ### 4. Name and Describe your Service
 
@@ -220,11 +220,7 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-
-
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
-
-![Metadata Ingestion Pipeline has been deployed](<../../../.gitbook/assets/image (7).png>)
 
 ### 8. View the Ingestion Pipeline
 
@@ -288,9 +284,9 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1).png>)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 

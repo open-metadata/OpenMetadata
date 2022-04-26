@@ -507,7 +507,7 @@ OpenMetadata uniquely identifies services by their _Name_. Provide a name that d
 
 Provide a description for your Postgres service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (6) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (6) (1) (1) (1) (1).png>)
 
 #### 5. Configure service connection
 

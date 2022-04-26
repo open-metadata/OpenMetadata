@@ -23,7 +23,7 @@ Admin permissions are required to register the application on the Azure portal.
 * Provide a redirect URL as a **Single Page Application**.
 * Click on **** Register.
 
-![](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![](<../../../.gitbook/assets/image (6) (1) (1) (1).png>)
 
 ## Step 3: Where to Find the Credentials
 

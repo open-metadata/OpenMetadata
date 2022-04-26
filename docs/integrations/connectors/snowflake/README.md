@@ -1,51 +1,60 @@
 ---
 description: >-
-  This guide will help you configure metadata ingestion workflows using the
-  Snowflake connector.
+  In this section, we provide guides and references to use the Snowflake
+  connector.
 ---
 
 # Snowflake
 
-## Snowflake Metadata Ingestion via OpenMetadata UI
+Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
-Configure and schedule Snowflake metadata ingestion workflows from the OpenMetadata UI:
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
 
-1. [Requirements](./#1.-ensure-your-system-meets-the-requirements)
-2. [Visit the _Services_ page](./#2.-visit-the-services-page)
-3. [Initiate new service creation](./#3.-initiate-a-new-service-creation)
-4. [Select service type](./#4.-select-service-type)
-5. [Name and describe your service](./#5.-name-and-describe-your-service)
-6. [Configure service connection](./#6.-configure-service-connection)
-7. [Configure metadata ingestion](./#7.-configure-metadata-ingestion)
-8. [Schedule for ingestion and deploy](./#8.-schedule-for-ingestion-and-deploy)
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-## **1. Requirements**
+{% content-ref url="run-snowflake-connector-using-airflow-sdk.md" %}
+[run-snowflake-connector-using-airflow-sdk.md](run-snowflake-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
 
-Please ensure that your host system meets the requirements listed below.
+{% content-ref url="run-snowflake-connector-with-the-cli.md" %}
+[run-snowflake-connector-with-the-cli.md](run-snowflake-connector-with-the-cli.md)
+{% endcontent-ref %}
 
-### **OpenMetadata (version 0.10 or later)**
+## Requirements
+
+#### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
 
-## 2. Visit the _Services_ page
+To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-You may configure scheduled ingestion workflows from the _Services_ page in the OpenMetadata UI. To visit the _Services_ page, select _Services_ from the _Settings_ menu.
+## Metadata Ingestion
 
-![](<../../../.gitbook/assets/image (39) (2) (1).png>)
+### 1. Visit the _Services_ Page
 
-## 3. Initiate a new service creation
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-Click on the _Add New Service_ button to add your Snowflake service to OpenMetadata for metadata ingestion.
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![](<../../../.gitbook/assets/image (34) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
 
-## 4. Select service type
+### 2. Create a New Service
+
+Click on the _Add New Service_ button to start the Service creation.
+
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
+
+### 3. Select the Service Type
 
 Select Snowflake as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (12) (1).png>)
+![Select your Service type](<../../../.gitbook/assets/image (3).png>)
 
-## 5. Name and describe your service
+### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
@@ -57,17 +66,17 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (2) (1).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6).png>)
 
-## 6. Configure service connection
+### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired. Once the credentials have been added, click on **Test Connection** and Save the changes.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (54) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (29).png>)
 
 #### Username
 
-Enter username of your Snowflake user in the _Username_ field. The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your Snowflake user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
@@ -75,7 +84,7 @@ Enter the password for your Snowflake user in the _Password_ field.
 
 #### Host and Port
 
-Enter fully qualified host name and port number for your Snowflake deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Snowflake deployment in the _Host and Port_ field.
 
 #### Account
 
@@ -93,31 +102,37 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 Enter the details of the Snowflake warehouse. This is an optional requirement.
 
+#### Private Key (Optional)
+
+Connection to Snowflake instance via Private Key. Read about how to create a Private Key [here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#step-1-generate-the-private-key).
+
+#### Snowflake Passphrase Key (Optional)
+
+Snowflake Passphrase Key used with Private Key.
+
 #### Connection Options (Optional)
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
 #### Connection Arguments (Optional)
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
-In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key Value pair as follows.
+In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
 `"authenticator" : "sso_login_url"`
 
-In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key Value pair as follows.
+In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
 `"authenticator" : "externalbrowser"`
 
-#### Supports Profiler
+![Service has been saved](<../../../.gitbook/assets/image (17).png>)
 
-Choose to support the data profiler.
+### 6. Configure the Metadata Ingestion
 
-## 7. Configure metadata ingestion
+Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-In this step we will configure the metadata ingestion settings for your Snowflake deployment. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
-
-![](<../../../.gitbook/assets/image (1) (2).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -149,7 +164,7 @@ Explicitly include views by adding the following key-value pair in the `source.c
 
 The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
 
 Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
 
@@ -157,7 +172,7 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-## 8. Schedule for ingestion and deploy
+### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
@@ -165,7 +180,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (2) (1) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
 
 **Every**
 
@@ -195,4 +210,116 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-![](<../../../.gitbook/assets/image (36) (2) (1).png>)
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
+
+### 8. View the Ingestion Pipeline
+
+Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
+
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
+
+### 9. Workflow Deployment Error
+
+If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
+
+You can then edit the Ingestion Pipeline and _Deploy_ it again.
+
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
+
+From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+## Query Usage and Lineage Ingestion
+
+Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage and Entity Lineage information.
+
+This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
+
+![Table Entity Page](<../../../.gitbook/assets/image (1).png>)
+
+We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
+
+### 1. Add a Usage Ingestion
+
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Usage Ingestion_.
+
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
+
+### 2. Configure the Usage Ingestion
+
+Here you can enter the Usage Ingestion details:
+
+![Configure the Usage Ingestion](<../../../.gitbook/assets/image (36).png>)
+
+#### Query Log Duration
+
+Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture usage information for 48 hours prior to when the ingestion workflow is run.
+
+#### Stage File Location
+
+Mention the absolute file path of the temporary file name to store the query logs before processing.
+
+#### &#x20;Result Limit
+
+Set the limit for the query log results to be run at a time.
+
+### 3. Schedule and Deploy
+
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+
+![View Service Ingestion pipelines](<../../../.gitbook/assets/image (37).png>)
+
+## Data Profiler and Quality Tests
+
+After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
+
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
+
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
+
+You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
+
+### 1. Add a Profiler Ingestion
+
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
+
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
+
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
+
+### 2. Configure the Profiler Ingestion
+
+Here you can enter the Profiler Ingestion details.
+
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19).png>)
+
+#### Name
+
+Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
+
+As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
+
+#### FQN Filter Pattern
+
+Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
+
+#### Description
+
+Give the Ingestion Pipeline a description to show what type of data we are profiling.
+
+### 3. Schedule and Deploy
+
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
+
+## Run using Airflow SDK
+
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-snowflake-connector-using-airflow-sdk.md).
+
+## One-time ingestion with the CLI
+
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-snowflake-connector-with-the-cli.md).

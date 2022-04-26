@@ -46,7 +46,7 @@ Ensure that the Service Account ID is **ingestion-bot** and click on **CREATE AN
 
 * Click on the service account in the list.
 
-![](<../../../.gitbook/assets/image (29).png>)
+![](<../../../.gitbook/assets/image (29) (2).png>)
 
 * On the details page, click on **SHOW DOMAIN-WIDE DELEGATION**
 
