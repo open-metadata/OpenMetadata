@@ -1,6 +1,9 @@
 package org.openmetadata.catalog.jdbi3;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.Include;
@@ -80,6 +83,15 @@ public class ListFilter {
   }
 
   private String getStatusPrefixCondition(String statusPrefix) {
+    if (!statusPrefix.isEmpty()) {
+      List<String> statusList = new ArrayList<>(Arrays.asList(statusPrefix.split(",")));
+      List<String> condition = new ArrayList<>();
+      for (String s : statusList) {
+        String format = "\"" + s + "\"";
+        condition.add(format);
+      }
+      return "status in (" + String.join(",", condition) + ")";
+    }
     return String.format("status LIKE \"%s%s%%\"", statusPrefix, "");
   }
 
