@@ -90,13 +90,19 @@ public class LineageResource {
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
           String id,
-      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)") @QueryParam("upstreamDepth")
+      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1")
+          @Min(0)
+          @Max(3)
+          @QueryParam("upstreamDepth")
           int upstreamDepth,
-      @Parameter(description = "Downstream depth of lineage (default=1, min=0, max=3)") @QueryParam("downstreamDepth")
+      @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1")
+          @Min(0)
+          @Max(3)
+          @QueryParam("downstreamDepth")
           int downStreamDepth)
       throws IOException {
-    upstreamDepth = Math.min(Math.max(upstreamDepth, 0), 3);
-    downStreamDepth = Math.min(Math.max(downStreamDepth, 0), 3);
     return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
   }
 
