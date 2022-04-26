@@ -13,13 +13,6 @@ from typing import Iterable, Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from snowflake.sqlalchemy.custom_types import VARIANT
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
-from sqlalchemy.sql import text
-
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -33,6 +26,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
+from snowflake.sqlalchemy.custom_types import VARIANT
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql import text
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -95,9 +94,6 @@ class SnowflakeSource(SQLSource):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
-
-    def test_connection(self) -> None:
-        pass
 
 
 @reflection.cache
