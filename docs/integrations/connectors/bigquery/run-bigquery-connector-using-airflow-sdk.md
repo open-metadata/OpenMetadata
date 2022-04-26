@@ -370,6 +370,7 @@ This is a sample config for a BigQuery profiler:
         },
         "sourceConfig": {
             "config": {
+                "type": "Profiler",
                 "fqnFilterPattern": "<table FQN filtering regex>"
             }
         }
@@ -394,7 +395,7 @@ This is a sample config for a BigQuery profiler:
 #### Source Configuration
 
 * You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
-* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
 Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
 

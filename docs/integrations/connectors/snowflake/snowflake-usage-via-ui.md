@@ -57,7 +57,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake Usage service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 ## 6. Configure service connection
 
@@ -161,7 +161,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-![](<../../../.gitbook/assets/image (2) (1).png>)
+![](<../../../.gitbook/assets/image (2) (1) (1).png>)
 
 **Every**
 

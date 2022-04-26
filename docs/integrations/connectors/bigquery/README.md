@@ -40,7 +40,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
 
 ### 2. Create a New Service
 
@@ -248,7 +248,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-![Table Entity Page](../../../.gitbook/assets/image.png)
+![Table Entity Page](<../../../.gitbook/assets/image (1).png>)
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 

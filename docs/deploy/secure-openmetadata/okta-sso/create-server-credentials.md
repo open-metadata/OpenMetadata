@@ -25,7 +25,7 @@ description: >-
 
 * Click on the **Create App Integration** button.
 
-![](<../../../.gitbook/assets/image (42).png>)
+![](<../../../.gitbook/assets/image (42) (1).png>)
 
 ## Step 3: Configuring the App
 
@@ -101,7 +101,7 @@ This will generate the Issuer URL.
 * To create a policy, add a Name and Description.
 * Assign the policy to the required clients.
 
-![](<../../../.gitbook/assets/image (2) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (2) (1) (1) (1) (1).png>)
 
 * Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 * Click on **Create Rule** to save the changes.
@@ -121,12 +121,12 @@ This will generate the Issuer URL.
 * The **Client authentication** is enabled by default.
 * By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
-![](<../../../.gitbook/assets/image (1) (1).png>)
+![](<../../../.gitbook/assets/image (1) (1) (1).png>)
 
 * Click on the **Sign On** tab from the top navigation bar.
 * Click on Edit for **OpenID Connect ID Token**.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1).png>)
 

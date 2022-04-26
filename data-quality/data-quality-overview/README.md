@@ -8,7 +8,7 @@ description: >-
 
 ## Requirements
 
-### OpenMetadata (version 0.9.0 or later)
+### OpenMetadata (version 0.10 or later)
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -41,11 +41,12 @@ This section will show you how to configure and run Data Profiling and Quality p
 
 The **Ingestion Framework** currently supports two types of workflows:
 
-* **Profiling:** Extracts metrics from SQL sources and configures and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline.
-* **Ingestion:** Captures metadata from the sources and updates the Entities' instances. This is a lightweight process that can be scheduled to have fast feedback on metadata changes in our sources.
+* **Ingestion:** Captures metadata from the sources and updates the Entities' instances. This is a lightweight process that can be scheduled to have fast feedback on metadata changes in our sources. This workflow handles both the metadata ingestion as well as the usage and lineage information from the sources, when available.
 * **Profiling:** Extracts metrics from SQL sources and sets up and runs Data Quality tests. It requires previous executions of the Ingestion Pipeline. This is a more time-consuming workflow that will run metrics and compare their result to the configured tests of both Tables and Columns.
 
-> Note that you can configure Ingestion pipelines with `source.config.data_profiler_enabled` as `"true"` or `"false"` to run the profiler as well during the metadata ingestion. This, however, **does not support** Quality Tests.
+{% hint style="info" %}
+Note that you can configure the ingestion pipelines with `source.config.data_profiler_enabled` as `"true"` or `"false"` to run the profiler as well during the metadata ingestion. This, however, **does not support** Quality Tests.
+{% endhint %}
 
 ### Profiling Overview
 
@@ -58,11 +59,13 @@ The source layer of the Profiling workflow is the OpenMetadata API. Based on the
 The steps of the **Profiling** pipeline are the following:
 
 1. First, use the source configuration to create a connection.
-2. Next, iterate over the selected tables and schemas that the Ingestion has previously recorded to OpenMetadata.
-3. Run a default set of metrics to all the table's columns. (We will add more customization in further releases).
+2. Next, iterate over the selected tables and schemas that the Ingestion has previously recorded in OpenMetadata.
+3. Run a default set of metrics to all the table's columns. (We will add more customization in the future releases).
 4. Finally, compare the metrics' results against the configured Data Quality tests.
 
+{% hint style="info" %}
 Note that all the results are published to the OpenMetadata API, both the Profiling and the tests executions. This will allow users to visit the evolution of the data and its reliability directly in the UI.
+{% endhint %}
 
 You can take a look at the supported metrics and tests here:
 
@@ -74,131 +77,69 @@ You can take a look at the supported metrics and tests here:
 [tests.md](tests.md)
 {% endcontent-ref %}
 
-## Configuration
+## How to Add Tests
 
-{% tabs %}
-{% tab title="Deploy on Airflow" %}
-#### Requirements
+Tests are part of the Table Entity. We can add new tests to a Table from the UI or directly use the JSON configuration of the workflows.
 
-Note that the Profiling Pipeline needs to run at least after one Ingestion Pipeline. Then, the easiest way to configure the Profiling and Testing is by updating an existing JSON configuration from existing ingestions.
+{% hint style="info" %}
+Note that in order to add tests and run the Profiler workflow, the metadata should have already been ingested.
+{% endhint %}
 
-While we can configure the tests in the UI, the only supported method for running the profiling pipelines as a separated Workflow that includes testing is by deploying the workflows in **Airflow** or manually using the CLI.
+### Add Tests in the UI
 
-**Python Packages**
+To create a new test, we can go to the _Table_ page under the _Data Quality_ tab:
 
-You might want to run the Workflow as a `PythonOperator` as shown in the example below. If so, you need to install the OpenMetadata ingestion package in your Airflow host. You can do so via:
+![Data Quality Tab in the Table Page](<../../docs/.gitbook/assets/image (5).png>)
 
-```
-pip install openmetadata-ingestion
-```
+Clicking on _Add Test_ will allow us two options: **Table Test** or **Column Test**. A Table Test will be run on metrics from the whole table, such as the number of rows or columns, while Column Tests are specific to each column's values.
 
-Note that our base requirements use `sqlalchemy>=1.4.0`, which might interfere with your Airflow host dependencies. If so, you can run:
+#### Add Table Tests
 
-```
-pip install 'openmetadata-ingestion[airflow-container]'
-```
+Adding a Table Test will show us the following view:
 
-Which updates some of the Airflow dependencies to match `sqlalchemy>=1.4.0`.
+![Add a Table Test](../../docs/.gitbook/assets/image.png)
 
-#### Procedure
+* **Test Type**: It allows us to specify the test we want to configure.
+* **Description**: To explain why the test is necessary and what scenarios we want to validate.
+* **Value**: Different tests will show different values here. For example, the `tableColumnCountToEqual` requires us to specify the number of columns we expect. Other tests will have other forms when we need to add values such as `min` and `max`, while other tests require no value at all, such as tests validating that there are no nulls in a column.
 
-Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
+#### Add Column Tests
 
-1. Pick up an existing Ingestion configuration
-2. Update the data filters (optional)
-3. Configure the `processor` to specify our profiler
-4. Add the tests you'd like to run
+Adding a Column Test will have a similar view:
 
-**1. Use an existing Ingestion JSON configuration**
+![Add Column Test](<../../docs/.gitbook/assets/image (52).png>)
 
-We have taken a sample from MySQL, but feel free to adapt it.
+The Column Test form will be similar to the Table Test one. The only difference is the **Column Name** field, where we need to select the column we will be targeting for the test.
 
-```json
-{
-  "source": {
-    "type": "mysql",
-    "config": {
-      "host_port": "hostname.domain.com:5439",
-      "username": "username",
-      "password": "strong_password",
-      "database": "mysql_db",
-      "service_name": "local_mysql",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}  
-```
+{% hint style="info" %}
+You can review the supported tests [here](tests.md). We will keep expanding the support for new tests in the upcoming releases.
+{% endhint %}
 
-**2. Update the data filters (optional)**
+Once tests are added, we will be able to see them in the _Data Quality_ tab:
 
-Consider that Profiling pipelines can take longer to execute than Ingestion ones. You might want to run the Profiling in different processes and for specific tables/schemas for more significant data volumes.
+![Freshly created tests](<../../docs/.gitbook/assets/image (42).png>)
 
-This would also allow running each process in a different frequency, depending on the data needs.
+Note how the tests are grouped in Table and Column tests. All tests from the same column will also be grouped together. From this view, we can both edit and delete the tests if needed.
 
-**3. Configure the processor**
+In the global Table information at the top, we will also be able to see how many Table Tests have been configured.
 
-Let's start by adding a minimal configuration for the Profiler processor.
+### Add Tests with the JSON Config
 
-Leaving only the defaults shown below will just execute the profiler on the source without creating any new tests.
+In the [connectors](../../docs/integrations/connectors/) documentation for each source, we showcase how to run the Profiler Workflow using the Airflow SDK or the `metadata` CLI. When configuring the JSON configuration for the workflow, we can add tests as well.
+
+Any tests added to the JSON configuration will also be reflected in the Data Quality tab. This JSON configuration can be used for both the Airflow SDK and to run the workflow with the CLI.
+
+You can find further information on how to prepare the JSON configuration for each of the sources. However, adding any number of tests is a matter of updating the `processor` configuration as follows:
 
 ```json
-{
-  "source": {
-    ...
-  },
-  "processor": {
-    "type": "orm-profiler",
-    "config": {}
-  },
-  "sink": {
-    ...
-  },
-  "metadata_server": {
-    ...
-}  
-```
-
-**4. Adding new tests**
-
-Let's configure our example further to add a couple of tests:
-
-1. **Table Test:** This is applied to table metrics, such as the row count or the number of columns.
-2. **Column Test:** This goes at column level and helps us check null values or ranges, among many others.
-
-> Make sure to review the available [Tests](tests.md)! If there's something you'd like to test that is not currently supported, you can reach us out oppening an [Issue](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in Github or dropping a line in [Slack](https://slack.open-metadata.org).
-
-We are going to now configure both Table and Column tests.
-
-```json
-{
-  "source": {
-    ...
-  },
-  "processor": {
+ "processor": {
     "type": "orm-profiler",
     "config": {
         "test_suite": {
             "name": "<Test Suite name>",
             "tests": [
                 {
-                    "table": "<Table FQDN>",
+                    "table": "<Table FQN>",
                     "table_tests": [
                         {
                             "testCase": {
@@ -225,263 +166,22 @@ We are going to now configure both Table and Column tests.
             ]
         }
      }
-  },
-  "sink": {
-    ...
-  },
-  "metadata_server": {
-    ...
-}
+  },son
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQDN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](tests.md).
+`tests` is a list of test definitions that will be applied to the `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](tests.md).
 
-#### How to run
+## How to Run Tests
 
-You can run this pipeline in two ways:
+Both the Profiler and Tests are executed in the Profiler Workflow. All the results will be available through the UI in the _Profiler_ and _Data Quality_ tabs.
 
-1. From the command line, using the metadata CLI: `metadata profile -c <path-to-config.json>`.
-2. Calling the `Workflow` from any scheduler:
+![Tests results in the Data Quality tab](<../../docs/.gitbook/assets/image (11).png>)
 
-```python
-import json
-from datetime import timedelta
+To learn how to prepare and run the Profiler Workflow for a given source, you can take a look at the documentation for that specific [connector](../../docs/integrations/connectors/).
 
-from airflow import DAG
+## Where are the Tests stored?
 
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
-
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-
-default_args = {
-    "owner": "user_name",
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(seconds=10),
-    "execution_timeout": timedelta(minutes=60),
-}
-
-config = """
-  ## REPLACE THIS LINE WITH YOUR CONFIGURATION JSON
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = ProfilerWorkflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-with DAG(
-    "profiler_example",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="profile_and_test_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
-```
-
-Note how it is exactly the same approach as with the Ingestion Pipeline. We are only changing the type of Workflow with `ProfilerWorkflow`.
-
-#### Outcome
-
-This Pipeline will finish as a failure if any of the tests fail.
-
-After running this process, the Table Entities you configured tests for will have the configuration stored in OpenMetadata. This means that you could rerun the tests just by executing the simple JSON we had at step 3.
-
-The workflow is then in charge of picking up the stored Entity information and running all the tests that it finds already configured.
-{% endtab %}
-
-{% tab title="Metadata CLI" %}
-#### Requirements
-
-Note that the Profiling Pipeline needs to run at least after one Ingestion Pipeline. Then, the easiest way to configure the Profiling and Testing is by updating an existing JSON configuration from existing ingestions.
-
-While we can configure the tests in the UI, the only supported method for running the profiling pipelines as a separated Workflow that includes testing is by deploying the workflows in **Airflow** or manually using the CLI.
-
-You just need to install the Python package for the OpenMetadata ingestion in your virtual environment:
-
-```
-pip install openmetadata-ingestion
-```
-
-#### Procedure
-
-Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case. The process is the same as if we were going to configure the JSON to be run in Airflow.
-
-1. Pick up an existing Ingestion configuration
-2. Update the data filters (optional)
-3. Configure the `processor` to specify our profiler
-4. Add the tests you'd like to run
-
-**1. Use an existing Ingestion JSON configuration**
-
-We have taken a sample from MySQL, but feel free to adapt it.
-
-```json
-{
-  "source": {
-    "type": "mysql",
-    "config": {
-      "host_port": "hostname.domain.com:5439",
-      "username": "username",
-      "password": "strong_password",
-      "database": "mysql_db",
-      "service_name": "local_mysql",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}  
-```
-
-**2. Update the data filters (optional)**
-
-Consider that Profiling pipelines can take longer to execute than Ingestion ones. You might want to run the Profiling in different processes and for specific tables/schemas for more significant data volumes.
-
-This would also allow running each process in a different frequency, depending on the data needs.
-
-**3. Configure the processor**
-
-Let's start by adding a minimal configuration for the Profiler processor.
-
-Leaving only the defaults shown below will just execute the profiler on the source without creating any new tests.
-
-```json
-{
-  "source": {
-    ...
-  },
-  "processor": {
-    "type": "orm-profiler",
-    "config": {}
-  },
-  "sink": {
-    ...
-  },
-  "metadata_server": {
-    ...
-}  
-```
-
-**4. Adding new tests**
-
-Let's configure our example further to add a couple of tests:
-
-1. **Table Test:** This is applied to table metrics, such as the row count or the number of columns.
-2. **Column Test:** This goes at column level and helps us check null values or ranges, among many others.
-
-> Make sure to review the available [Tests](tests.md)! If there's something you'd like to test that is not currently supported, you can reach us out oppening an [Issue](https://github.com/open-metadata/OpenMetadata/issues/new/choose) in Github or dropping a line in [Slack](https://slack.open-metadata.org).
-
-We are going to now configure both Table and Column tests.
-
-```json
-{
-  "source": {
-    ...
-  },
-  "processor": {
-    "type": "orm-profiler",
-    "config": {
-        "test_suite": {
-            "name": "<Test Suite name>",
-            "tests": [
-                {
-                    "table": "<Table FQDN>",
-                    "table_tests": [
-                        {
-                            "testCase": {
-                                "config": {
-                                    "value": 100
-                                },
-                                "tableTestType": "tableRowCountToEqual"
-                            }
-                        }
-                    ],
-                    "column_tests": [
-                        {
-                            "columnName": "<Column Name>",
-                            "testCase": {
-                                "config": {
-                                    "minValue": 0,
-                                    "maxValue": 99
-                                },
-                                "columnTestType": "columnValuesToBeBetween"
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-     }
-  },
-  "sink": {
-    ...
-  },
-  "metadata_server": {
-    ...
-}
-```
-
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQDN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](tests.md).
-
-#### How to run
-
-Then, you can call the `metadata` CLI as:
-
-```
-metadata profile -c <path-to-config.json>
-```
-
-#### Outcome
-
-This process will finish as a failure if any of the tests fail.
-
-After running it, the Table Entities you configured tests for will have the configuration stored in OpenMetadata. This means that you could rerun the tests just by executing the simple JSON we had at step 3.
-
-The workflow is then in charge of picking up the stored Entity information and running all the tests that it finds already configured.
-{% endtab %}
-
-{% tab title="OpenMetadata UI" %}
-The UI supports creating test definitions for Tables and Columns. You can find further information on the supported tests [here](tests.md).
-
-However, running the profiler and testing workflows is only supported (at the moment!) with Airflow, or manually using the CLI.
-
-You can find how to configure tests in the UI [here](tests.md).
-{% endtab %}
-{% endtabs %}
-
-## Where are tests stored?
-
-Once you create a Test definition for a Table or any of its Columns, that Test becomes part of the Table Entity. This means that it does not matter from where you create tests (JSON Configuration vs. UI), as once the test gets registered to OpenMetadata, it will always be executed as part of the Profiler Workflow.
+Once you create a Test definition for a Table or any of its Columns, that Test becomes a part of the Table Entity. This means that it does not matter from where you create tests (JSON Configuration vs. UI). As once the test gets registered to OpenMetadata, it will always be executed as part of the Profiler Workflow.
 
 You can check what tests an Entity has configured in the **Data Quality** tab of the UI, or by using the API:
 
@@ -498,4 +198,4 @@ metadata = OpenMetadata(server_config)
 table = metadata.get_by_name(entity=Table, fqdn="FQDN", fields=["tests"])
 ```
 
-You can then check `table.tableTests` or for each Column, `column.columnTests` to get the test information.
+You can then check `table.tableTests`, or for each Column `column.columnTests` to get the test information.

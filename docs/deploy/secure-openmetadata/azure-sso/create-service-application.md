@@ -53,7 +53,7 @@ Another Azure Application must be registered for Service ingestion.
 * Select the custom scope created in Step 3.
 * Click on Add Permissions.
 
-![](<../../../.gitbook/assets/image (2) (1) (1).png>)
+![](<../../../.gitbook/assets/image (2) (1) (1) (1).png>)
 
 ## Step 6: Grant Admin Consent for Default Directory
 

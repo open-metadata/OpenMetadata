@@ -33,7 +33,7 @@ description: >-
   * Chose **External** if you are testing,
   * Otherwise chose **Internal**
 
-![](<../../../.gitbook/assets/image (52).png>)
+![](<../../../.gitbook/assets/image (52) (2).png>)
 
 * Once the user type is selected, provide the **App Information** and other details.
 * Click **Save and Continue**.

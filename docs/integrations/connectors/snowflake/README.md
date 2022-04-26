@@ -57,7 +57,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![](<../../../.gitbook/assets/image (2).png>)
+![](<../../../.gitbook/assets/image (2) (1).png>)
 
 ## 6. Configure service connection
 
@@ -165,7 +165,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (2) (1).png>)
+![](<../../../.gitbook/assets/image (2) (1) (1).png>)
 
 **Every**
 
