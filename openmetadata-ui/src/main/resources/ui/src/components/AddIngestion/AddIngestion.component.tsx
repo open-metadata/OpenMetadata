@@ -32,10 +32,11 @@ import {
   FilterPattern,
   IngestionPipeline,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { DatabaseServiceMetadataPipelineClass } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import {
+  DatabaseServiceMetadataPipelineClass,
+  DbtConfigSource,
+} from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
-import { getDBTConfig } from '../../utils/DatabaseServiceUtils';
-import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
 import DBTConfigFormBuilder from '../common/DBTConfigFormBuilder/DBTConfigFormBuilder';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -110,31 +111,14 @@ const AddIngestion = ({
       (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern
     )
   );
-  const [dbtFormData, setDbtFormData] = useState<
-    DatabaseServiceMetadataPipelineClass | undefined
+  const [dbtConfigSource, setDbtConfigSource] = useState<
+    DbtConfigSource | undefined
   >(() => {
-    const configData = data?.source.sourceConfig.config as ConfigClass;
-    let dbtData = {};
-    if (configData) {
-      const {
-        dbtCatalogFileName,
-        dbtManifestFileName,
-        dbtConfig,
-        dbtProvider,
-        dbtSecurityConfig,
-      } = configData;
-      dbtData = {
-        dbtCatalogFileName,
-        dbtManifestFileName,
-        dbtConfig,
-        dbtProvider,
-        dbtSecurityConfig,
-      };
-    }
+    const configData = (
+      data?.source.sourceConfig.config as DatabaseServiceMetadataPipelineClass
+    )?.dbtConfigSource;
 
-    return showDBTConfig
-      ? (dbtData as DatabaseServiceMetadataPipelineClass)
-      : undefined;
+    return showDBTConfig ? (configData as DbtConfigSource) : undefined;
   });
   const [markDeletedTables, setMarkDeletedTables] = useState(
     isDatabaseService
@@ -351,9 +335,7 @@ const AddIngestion = ({
       default: {
         const DatabaseConfigData = {
           markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
-          ...(showDBTConfig
-            ? (escapeBackwardSlashChar(dbtFormData) as ConfigClass)
-            : undefined),
+          ...(showDBTConfig ? ({ dbtConfigSource } as ConfigClass) : undefined),
         };
 
         return {
@@ -520,12 +502,10 @@ const AddIngestion = ({
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
             cancelText="Back"
-            formData={dbtFormData}
             okText="Next"
-            schema={getDBTConfig().schema}
             onCancel={handlePrev}
-            onSubmit={(e) => {
-              setDbtFormData(e.formData);
+            onSubmit={(dbtConfigData) => {
+              setDbtConfigSource(dbtConfigData);
               handleNext();
             }}
           />

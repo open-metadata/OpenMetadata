@@ -14,25 +14,9 @@
 
 export interface DatabaseServiceMetadataPipelineClass {
   /**
-   * DBT Catalog file name
+   * Available sources to fetch DBT catalog and manifest files.
    */
-  dbtCatalogFileName?: string;
-  dbtConfig?: DbtConfig;
-  /**
-   * DBT Manifest file name
-   */
-  dbtManifestFileName?: string;
-  /**
-   * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
-   * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
-   * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
-   * local system), 'http'(url path of dbt files).
-   */
-  dbtProvider?: DbtProvider;
-  /**
-   * DBT configuration.
-   */
-  dbtSecurityConfig?: SCredentials;
+  dbtConfigSource?: any[] | boolean | number | null | DbtConfigSource | string;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -74,44 +58,35 @@ export interface DatabaseServiceMetadataPipelineClass {
 
 /**
  * DBT Catalog and Manifest file path config.
+ *
+ * DBT Catalog and Manifest HTTP path configuration.
  */
-export interface DbtConfig {
+export interface DbtConfigSource {
   /**
-   * DBT catalog file to extract dbt models with their column schemas.
+   * DBT catalog file path to extract dbt models with their column schemas.
    */
-  dbtCatalogFilePath: string;
+  dbtCatalogFilePath?: string;
   /**
    * DBT manifest file path to extract dbt models and associate with tables.
    */
-  dbtManifestFilePath: string;
+  dbtManifestFilePath?: string;
+  /**
+   * DBT catalog http file path to extract dbt models with their column schemas.
+   */
+  dbtCatalogHttpPath?: string;
+  /**
+   * DBT manifest http file path to extract dbt models and associate with tables.
+   */
+  dbtManifestHttpPath?: string;
+  dbtSecurityConfig?: SCredentials;
 }
 
 /**
- * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
- * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
- * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
- * local system), 'http'(url path of dbt files).
- */
-export enum DbtProvider {
-  Gcs = 'gcs',
-  GcsPath = 'gcs-path',
-  HTTP = 'http',
-  Local = 'local',
-  S3 = 's3',
-}
-
-/**
- * DBT configuration.
+ * AWS credentials configs.
  *
  * GCS credentials configs.
- *
- * AWS credentials configs.
  */
 export interface SCredentials {
-  /**
-   * GCS configs.
-   */
-  gcsConfig?: GCSCredentialsValues | string;
   /**
    * AWS Access key ID.
    */
@@ -132,6 +107,10 @@ export interface SCredentials {
    * EndPoint URL for the AWS
    */
   endPointURL?: string;
+  /**
+   * GCS configs.
+   */
+  gcsConfig?: GCSCredentialsValues | string;
 }
 
 /**
