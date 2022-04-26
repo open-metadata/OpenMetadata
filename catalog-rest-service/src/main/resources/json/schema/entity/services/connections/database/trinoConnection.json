@@ -39,7 +39,7 @@
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Trino.",
+      "description": "password to connect to the Trino.",
       "type": "string",
       "format": "password"
     },
@@ -58,6 +58,22 @@
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases in the selected catalog.",
       "type": "string"
     },
+    "proxies": {
+      "title": "Proxies",
+      "description": "Proxies for the connection to Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "params": {
+      "title": "URL Parameters",
+      "description": "URL parameters for connection to the Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -65,16 +81,6 @@
     "connectionArguments": {
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
-    },
-    "proxies": {
-      "title": "Proxies",
-      "description": "Proxies for the connection to Trino data source",
-      "type": "object"
-    },
-    "params": {
-      "title": "URL Parameters",
-      "description": "URL parameters for connection to the Trino data source",
-      "type": "object"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

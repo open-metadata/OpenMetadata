@@ -109,14 +109,16 @@ def _(connection: DatabricksConnection, verbose: bool = False):
 @get_connection.register
 def _(connection: SnowflakeConnection, verbose: bool = False):
     if connection.privateKey:
-        import os
 
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import serialization
 
-        snowflake_private_key_passphrase = os.environ.get(
-            "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", ""
+        snowflake_private_key_passphrase = (
+            connection.snowflakePrivatekeyPassphrase.get_secret_value()
+            if connection.snowflakePrivatekeyPassphrase
+            else ""
         )
+
         if not snowflake_private_key_passphrase:
             logger.warning(
                 "Snowflake Private Key Passphrase not found, replacing it with empty string"
@@ -131,9 +133,11 @@ def _(connection: SnowflakeConnection, verbose: bool = False):
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        if not connection.connectionArguments:
+
+        if connection.privateKey:
             connection.connectionArguments = dict()
             connection.connectionArguments["private_key"] = pkb
+
     return create_generic_connection(connection, verbose)
 
 

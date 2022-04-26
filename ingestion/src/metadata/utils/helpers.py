@@ -9,10 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 import logging
-import os
-import tempfile
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
@@ -214,34 +211,3 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
-
-
-def create_credential_temp_file(credentials: dict) -> str:
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
-        cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-        fp.write(cred_json.encode())
-        return fp.name
-
-
-def store_gcs_credentials(options) -> bool:
-    """
-    Method to store GCS credentials from the config file or from a file whose path is provided
-    into the environment variable as required by GCS
-    """
-    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        if options.get("credentials_path"):
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = options["credentials_path"]
-            del options["credentials_path"]
-        elif options.get("credentials"):
-            temp_credentials = create_credential_temp_file(
-                credentials=options.get("credentials")
-            )
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_credentials
-            del options["credentials"]
-        else:
-            logger.warning(
-                "Please refer to the Google Cloud Storage documentation, especially the credentials part"
-                "https://cloud.google.com/storage/docs/authentication"
-            )
-            return False
-    return True
