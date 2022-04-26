@@ -810,7 +810,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           />
         </Field>
 
-        {/* optional filed for snowflik */}
+        {/* optional field for snowflake */}
         {selectService === DatabaseServiceType.Snowflake && (
           <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2">
             <div>
@@ -1526,13 +1526,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const previousStepHandler = () => {
-    let increamentCount = 1;
+    let incrementCount = 1;
 
     if (activeStepperStep === 5 && !isIngestionEnable) {
-      increamentCount = 2;
+      incrementCount = 2;
     }
 
-    setActiveStepperStep((pre) => (pre > 1 ? pre - increamentCount : pre));
+    setActiveStepperStep((pre) => (pre > 1 ? pre - incrementCount : pre));
   };
 
   const forwardStepHandler = (activeStep: number) => {
@@ -1598,13 +1598,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     }
 
     setActiveStepperStep((pre) => {
-      let increamentCount = 1;
+      let incrementCount = 1;
 
       if (activeStepperStep === 3 && !isIngestionEnable) {
-        increamentCount = 2;
+        incrementCount = 2;
       }
 
-      return pre < steps.length && isValid ? pre + increamentCount : pre;
+      return pre < steps.length && isValid ? pre + incrementCount : pre;
     });
   };
 
