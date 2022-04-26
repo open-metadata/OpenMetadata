@@ -89,8 +89,10 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   };
 
   const handleTestConnection = (formData: ConfigData) => {
+    const updatedFormData = escapeBackwardSlashChar(formData);
+
     return new Promise<void>((resolve, reject) => {
-      TestConnection(formData, 'Database')
+      TestConnection(updatedFormData, 'Database')
         .then((res) => {
           // This api only responds with status 200 on success
           // No data sent on api success

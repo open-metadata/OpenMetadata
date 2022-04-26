@@ -142,7 +142,7 @@ def get_dbt_http(config) -> Optional[Tuple[str, str]]:
 
 def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
     try:
-        dbt_options = config.dbtConfig.gcsConfig
+        dbt_options = config.dbtSecurityConfig.gcsConfig
         if config.dbtProvider.value == "gcs":
             options = {
                 "credentials": {
@@ -183,7 +183,7 @@ def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
     try:
         from metadata.utils.aws_client import AWSClient
 
-        aws_client = AWSClient(config.dbtConfig).get_resource("s3")
+        aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
         buckets = aws_client.buckets.all()
         for bucket in buckets:
             for bucket_object in bucket.objects.all():
@@ -348,7 +348,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 

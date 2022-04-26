@@ -187,7 +187,7 @@ class TagsPageTest {
     } catch (TimeoutException e) {
       Assert.fail("Table is not present for the selected tag filter");
     }
-    Events.click(webDriver, common.editAssociatedTagButton());
+    Events.click(webDriver, tagsPage.editBreadcrumbTag());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
   }
@@ -219,7 +219,17 @@ class TagsPageTest {
   @Test
   @Order(11)
   void TagUsageCheck() throws InterruptedException {
-    openTagsPage();
+    Events.click(webDriver, common.closeWhatsNew());
+    Events.click(webDriver, common.headerItem("explore"));
+    Events.click(webDriver, tagsPage.lastTableLink());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, tagsPage.editTags());
+    Events.click(webDriver, common.enterAssociatedTagName());
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+    Events.click(webDriver, common.tagListItem());
+    Events.click(webDriver, common.saveAssociatedTag());
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(1));
     Thread.sleep(2000);

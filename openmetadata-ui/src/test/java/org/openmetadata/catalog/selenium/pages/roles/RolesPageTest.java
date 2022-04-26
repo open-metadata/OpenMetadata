@@ -102,7 +102,7 @@ class RolesPageTest {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();

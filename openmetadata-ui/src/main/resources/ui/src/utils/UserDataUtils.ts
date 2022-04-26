@@ -12,11 +12,15 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isEmpty, isEqual } from 'lodash';
 import AppState from '../AppState';
+import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
 import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUsers } from '../axiosAPIs/userAPI';
 import { API_RES_MAX_SIZE } from '../constants/constants';
+import { User } from '../generated/entity/teams/user';
+import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
 const getAllUsersList = (arrQueryFields = ''): void => {
@@ -53,6 +57,36 @@ export const fetchAllUsers = () => {
   getAllUsersList('profile,teams,roles');
   getAllTeams();
   getAllRoles();
-  // TODO: uncomment below line to update users list in real time.
-  // setInterval(getAllUsersList, TIMEOUT.USER_LIST);
+};
+
+export const getUserDataFromOidc = (
+  userData: User,
+  oidcUser: OidcUser
+): User => {
+  const images = oidcUser.profile.picture
+    ? getImages(oidcUser.profile.picture)
+    : undefined;
+
+  return {
+    ...userData,
+    displayName: oidcUser.profile.name,
+    profile: !isEmpty(images) ? { images } : userData.profile,
+  };
+};
+
+export const matchUserDetails = (
+  userData: User,
+  newUser: User,
+  mapFields: Array<keyof User>
+) => {
+  let isMatch = true;
+  for (const field of mapFields) {
+    if (!isEqual(userData[field], newUser[field])) {
+      isMatch = false;
+
+      break;
+    }
+  }
+
+  return isMatch;
 };

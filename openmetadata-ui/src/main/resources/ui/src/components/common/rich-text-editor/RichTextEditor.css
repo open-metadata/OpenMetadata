@@ -229,6 +229,7 @@ li.ProseMirror-selectednode:after {
 /* default UI Styles */
 .toastui-editor-defaultUI .ProseMirror {
   padding: 18px 25px;
+  font-size: 14px;
 }
 
 .toastui-editor-defaultUI {

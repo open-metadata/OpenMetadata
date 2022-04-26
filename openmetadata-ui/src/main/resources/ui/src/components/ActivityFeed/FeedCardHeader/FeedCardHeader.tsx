@@ -13,10 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import {
   EntityType,
@@ -24,7 +26,9 @@ import {
   TabSpecificField,
 } from '../../../enums/entity.enum';
 import { User } from '../../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/type/entityReference';
 import {
+  getEntityName,
   getNonDeletedTeams,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -32,6 +36,7 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
+import { Button } from '../../buttons/Button/Button';
 import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
 import Loader from '../../Loader/Loader';
@@ -47,6 +52,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityField,
   isEntityFeed,
 }) => {
+  const history = useHistory();
   const [userData, setUserData] = useState<User>({} as User);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -62,9 +68,13 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       .finally(() => setIsLoading(false));
   };
 
+  const onTitleClickHandler = (path: string) => {
+    history.push(path);
+  };
+
   const getUserData = () => {
     const name = userData.name ?? '';
-    const displayName = userData.displayName ?? name;
+    const displayName = getEntityName(userData as unknown as EntityReference);
     const teams = getNonDeletedTeams(userData.teams ?? []);
     const roles = userData.roles;
     const isAdmin = userData?.isAdmin;
@@ -84,11 +94,15 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                     <Avatar name={createdBy} type="square" width="30" />
                   </div>
                   <div className="tw-self-center">
-                    <a href={getUserPath(name)}>
+                    <Button
+                      style={{ padding: '0px' }}
+                      theme="primary"
+                      variant="link"
+                      onClick={() => onTitleClickHandler(getUserPath(name))}>
                       <span className="tw-font-medium tw-mr-2">
                         {displayName}
                       </span>
-                    </a>
+                    </Button>
                     {displayName !== name ? (
                       <span className="tw-text-grey-muted">{name}</span>
                     ) : null}
@@ -169,11 +183,59 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       ].includes(entityType as EntityType)
     ) {
       displayName = getPartialNameFromFQN(entityFQN, ['service']);
+    } else if (
+      [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+        entityType as EntityType
+      )
+    ) {
+      displayName = entityFQN.split(FQN_SEPARATOR_CHAR).pop();
     } else {
       displayName = getPartialNameFromFQN(entityFQN, ['database']);
     }
 
     return displayName;
+  };
+
+  const prepareFeedLink = () => {
+    const withoutFeedEntities = [
+      EntityType.WEBHOOK,
+      EntityType.GLOSSARY,
+      EntityType.GLOSSARY_TERM,
+    ];
+
+    const entityLink = getEntityLink(entityType, entityFQN);
+
+    if (!withoutFeedEntities.includes(entityType as EntityType)) {
+      return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+    } else {
+      return entityLink;
+    }
+  };
+
+  const getFeedLinkElement = () => {
+    if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
+      return (
+        <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
+          posted on{' '}
+          {isEntityFeed ? (
+            <span className="tw-heading" data-testid="headerText-entityField">
+              {entityField}
+            </span>
+          ) : (
+            <Fragment>
+              <span data-testid="entityType">{entityType} </span>
+              <Link data-testid="entitylink" to={prepareFeedLink()}>
+                <button className="link-text" disabled={AppState.isTourOpen}>
+                  {entityDisplayName()}
+                </button>
+              </Link>
+            </Fragment>
+          )}
+        </span>
+      );
+    } else {
+      return null;
+    }
   };
 
   return (
@@ -204,34 +266,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
             {createdBy}
           </span>
         </PopOver>
-        {entityFQN && entityType ? (
-          <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
-            posted on{' '}
-            {isEntityFeed ? (
-              <span className="tw-heading" data-testid="headerText-entityField">
-                {entityField}
-              </span>
-            ) : (
-              <Fragment>
-                <span data-testid="entityType">{entityType} </span>
-                <Link
-                  data-testid="entitylink"
-                  to={`${getEntityLink(
-                    entityType as string,
-                    entityFQN as string
-                  )}${
-                    entityType !== EntityType.WEBHOOK
-                      ? `/${TabSpecificField.ACTIVITY_FEED}`
-                      : ''
-                  }`}>
-                  <button className="link-text" disabled={AppState.isTourOpen}>
-                    {entityDisplayName()}
-                  </button>
-                </Link>
-              </Fragment>
-            )}
-          </span>
-        ) : null}
+        {getFeedLinkElement()}
         <span
           className="tw-text-grey-muted tw-pl-2 tw-text-xs"
           data-testid="timestamp">

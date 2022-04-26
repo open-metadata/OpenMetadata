@@ -124,7 +124,7 @@ class DashboardDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, common.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, common.addTag());
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
