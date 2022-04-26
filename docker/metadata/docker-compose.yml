@@ -13,7 +13,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.9.1
+    image: openmetadata/db:0.10.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -40,17 +40,17 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.9.1
+    image: openmetadata/server:0.10.0
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
-      AUTHORIZER_ADMIN_PRINCIPALS: ${AUTHORIZER_ADMIN_PRINCIPALS:-admin}
-      AUTHORIZER_INGESTION_PRINCIPAL: ${AUTHORIZER_INGESTION_PRINCIPAL:-ingestion-bot}
+      AUTHORIZER_ADMIN_PRINCIPALS: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+      AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPAL:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-no-auth}
-      AUTHENTICATION_PUBLIC_KEY: ${AUTHENTICATION_PUBLIC_KEY:-https://www.googleapis.com/oauth2/v3/certs}
+      AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEY:-[https://www.googleapis.com/oauth2/v3/certs]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
       AUTHENTICATION_CLIENT_ID: ${AUTHENTICATION_CLIENT_ID:-""}
       AUTHENTICATION_CALLBACK_URL: ${AUTHENTICATION_CALLBACK_URL:-""}
@@ -98,7 +98,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.9.1
+    image: openmetadata/ingestion:0.10.0
     depends_on:
       - mysql
     expose:
