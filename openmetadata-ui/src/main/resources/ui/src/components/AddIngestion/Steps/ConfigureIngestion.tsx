@@ -190,8 +190,8 @@ const ConfigureIngestion = ({
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
-              Slowdown metadata extraction by calculate the metrics and
-              distribution of data in the table
+              Enable Data Profiler to collect metrics and distribution of data
+              in the table. This will however slowdown the metadata extraction.
             </p>
             {getSeparator('')}
           </Field>

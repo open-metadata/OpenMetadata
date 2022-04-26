@@ -39,6 +39,7 @@ export interface Props {
   isFeedLoading: boolean;
   isAdminUser: boolean;
   isLoggedinUser: boolean;
+  isAuthDisabled: boolean;
   updateUserDetails: (data: UserDetails) => void;
   feedFilterHandler: (v: FeedFilter) => void;
   fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;

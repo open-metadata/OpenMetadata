@@ -94,6 +94,7 @@ const Users = ({
   updateUserDetails,
   isAdminUser,
   isLoggedinUser,
+  isAuthDisabled,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
@@ -322,7 +323,7 @@ const Users = ({
       </Fragment>
     );
 
-    if (!isAdminUser) {
+    if (!isAdminUser && !isAuthDisabled) {
       return (
         <Fragment>
           <div className="tw-flex">
@@ -435,7 +436,7 @@ const Users = ({
       </Fragment>
     );
 
-    if (!isAdminUser) {
+    if (!isAdminUser && !isAuthDisabled) {
       return (
         <Fragment>
           <div className="tw-flex">

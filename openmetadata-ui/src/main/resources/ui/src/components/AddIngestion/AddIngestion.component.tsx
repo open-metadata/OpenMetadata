@@ -139,7 +139,8 @@ const AddIngestion = ({
   const [markDeletedTables, setMarkDeletedTables] = useState(
     isDatabaseService
       ? Boolean(
-          (data?.source.sourceConfig.config as ConfigClass)?.markDeletedTables
+          (data?.source.sourceConfig.config as ConfigClass)
+            ?.markDeletedTables ?? true
         )
       : undefined
   );
@@ -405,7 +406,12 @@ const AddIngestion = ({
             onSuccessSave?.();
           }
         })
-        .finally(() => setTimeout(() => setSaveState('initial'), 500));
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise
+        })
+        .finally(() => {
+          setTimeout(() => setSaveState('initial'), 500);
+        });
     }
   };
 
