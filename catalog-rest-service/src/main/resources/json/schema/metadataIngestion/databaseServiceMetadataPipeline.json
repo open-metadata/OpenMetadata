@@ -10,7 +10,8 @@
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
     },
-    "dbtConfig": {
+    "dbtLocalConfig": {
+      "title": "DBT Local Config Source",
       "description": "DBT Catalog and Manifest file path config.",
       "type": "object",
       "properties": {
@@ -25,6 +26,43 @@
       },
       "additionalProperties": false,
       "required": ["dbtCatalogFilePath", "dbtManifestFilePath"]
+    },
+    "dbtHttpConfig": {
+      "title": "DBT HTTP Config Source",
+      "description": "DBT Catalog and Manifest HTTP path configuration.",
+      "type": "object",
+      "properties": {
+        "dbtCatalogHttpPath": {
+          "description": "DBT catalog file to extract dbt models with their column schemas.",
+          "type": "string"
+        },
+        "dbtManifestHttpPath": {
+          "description": "DBT manifest file path to extract dbt models and associate with tables.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["dbtCatalogHttpPath", "dbtManifestHttpPath"]
+    },
+    "dbtS3Config": {
+      "title": "DBT S3 Config Source",
+      "description": "DBT Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "dbtSecurityConfig": {
+          "title": "DBT S3 Security Config",
+          "$ref": "../security/credentials/awsCredentials.json"
+        }
+      }
+    },
+    "dbtGCSConfig": {
+      "title": "DBT GCS Config Source",
+      "description": "DBT Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "dbtSecurityConfig": {
+          "title": "DBT GCS Security Config",
+          "$ref": "../security/credentials/gcsCredentials.json"
+        }
+      }
     }
   },
   "properties": {
@@ -71,34 +109,23 @@
       "description": "Regex exclude tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
-    "dbtProvider": {
-      "description": "Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided), 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on local system), 'http'(url path of dbt files).",
-      "type": "string",
-      "enum": ["local", "http", "gcs", "gcs-path", "s3"]
-    },
-    "dbtConfig": {
-      "$ref": "#/definitions/dbtConfig"
-    },
-    "dbtSecurityConfig": {
-      "description": "DBT configuration.",
+    "dbtConfigSource": {
+      "title": "DBT Configuration Source",
+      "description": "Available sources to fetch DBT catalog and manifest files.",
       "oneOf": [
         {
-          "$ref": "../security/credentials/gcsCredentials.json"
+          "$ref": "#/definitions/dbtLocalConfig"
         },
         {
-          "$ref": "../security/credentials/awsCredentials.json"
+          "$ref": "#/definitions/dbtHttpConfig"
+        },
+        {
+          "$ref": "#/definitions/dbtS3Config"
+        },
+        {
+          "$ref": "#/definitions/dbtGCSConfig"
         }
       ]
-    },
-    "dbtCatalogFileName": {
-      "description": "DBT Catalog file name",
-      "type": "string",
-      "default": "catalog.json"
-    },
-    "dbtManifestFileName": {
-      "description": "DBT Manifest file name",
-      "type": "string",
-      "default": "manifest.json"
     }
   },
   "additionalProperties": false
