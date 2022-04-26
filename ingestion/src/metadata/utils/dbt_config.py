@@ -33,14 +33,9 @@ DBT_MANIFEST_FILE_NAME = "manifest.json"
 
 @singledispatch
 def get_dbt_details(config):
-    try:
-        raise NotImplemented(
-            f"Config not implemented for type {type(config)}: {config}"
-        )
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from gcs {repr(exc)}")
-    return None
+    raise NotImplementedError(
+        f"Config not implemented for type {type(config)}: {config}"
+    )
 
 
 @get_dbt_details.register
@@ -54,8 +49,8 @@ def _(config: DbtLocalConfig):
                 dbt_manifest = manifest.read()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from local {repr(exc)}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Error fetching dbt files from local {repr(exc)}")
     return None
 
 
@@ -68,8 +63,8 @@ def _(config: DbtHttpConfig):
         dbt_manifest = manifest_file.read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from file server {repr(exc)}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Error fetching dbt files from file server {repr(exc)}")
     return None
 
 
@@ -88,8 +83,8 @@ def _(config: DbtS3Config):
                     dbt_catalog = bucket_object.get()["Body"].read().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from s3 {repr(exc)}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Error fetching dbt files from s3 {repr(exc)}")
     return None
 
 
@@ -108,6 +103,6 @@ def _(config: DbtGCSConfig):
                     dbt_catalog = blob.download_as_string().decode()
         return json.loads(dbt_catalog), json.loads(dbt_manifest)
     except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from gcs {repr(exc)}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Error fetching dbt files from gcs {repr(exc)}")
     return None
