@@ -57,8 +57,8 @@ export const addUsageIngestionGuide = [
   {
     step: 1,
     title: 'Add Usage Ingestion',
-    description: `Based on the service type selected, enter the filter pattern details for the schema or table (database), or topic (messaging), or dashboard. 
-      You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
+    description: `We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. 
+    The Usage Ingestion will be in charge of obtaining this data.`,
   },
   {
     ...schedulingIngestionGuide,
@@ -67,7 +67,7 @@ export const addUsageIngestionGuide = [
     step: 3,
     title: 'Usage Ingestion Added Successfully',
     description:
-      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The usage will be ingested at a regular interval as per the schedule.',
   },
 ];
 
@@ -75,14 +75,14 @@ export const addProfilerIngestionGuide = [
   {
     step: 1,
     title: 'Add Profiler Ingestion',
-    description: `Based on the service type selected, enter the filter pattern details for the schema or table (database), or topic (messaging), or dashboard. 
-      You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
+    description: `After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+    This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.`,
   },
   { ...schedulingIngestionGuide },
   {
     step: 3,
     title: 'Profiler Ingestion Added Successfully',
     description:
-      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
+      'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
   },
 ];
