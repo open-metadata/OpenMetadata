@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, Histogram
+from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
