@@ -75,8 +75,7 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.checkbox());
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
-    actions.click();
-    actions.perform();
+    Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     Thread.sleep(waitTime);
     WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook(name)));
@@ -100,8 +99,7 @@ class WebhooksPageTest {
       Events.click(webDriver, webhooks.checkbox());
       Events.click(webDriver, webhooks.entityCreatedMenu());
       Events.click(webDriver, webhooks.allEntities());
-      actions.click();
-      actions.perform();
+      Events.click(webDriver, webhooks.clickToCloseDropdown());
       Events.click(webDriver, common.saveWebhook());
       Thread.sleep(waitTime);
     }
@@ -124,8 +122,7 @@ class WebhooksPageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
-    actions.click();
-    actions.perform();
+    Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
@@ -145,8 +142,7 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.checkbox());
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
-    actions.click();
-    actions.perform();
+    Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
