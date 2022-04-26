@@ -54,18 +54,19 @@ class WebhooksPageTest {
 
   @Test
   @Order(1)
-  void openWebHookPage() {
+  void openWebHookPage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, webhooks.webhookLink());
+    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
   void addWebHook() throws InterruptedException {
     String name = faker.name().name();
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
+    Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
@@ -91,7 +92,6 @@ class WebhooksPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     for (int i = 0; i < 2; i++) {
-      Thread.sleep(waitTime);
       Events.click(webDriver, webhooks.addWebhook());
       Events.sendKeys(webDriver, webhooks.name(), name);
       Events.click(webDriver, webhooks.descriptionBox());
@@ -134,7 +134,7 @@ class WebhooksPageTest {
 
   @Test
   @Order(5)
-  void checkBlankEndpoint() {
+  void checkBlankEndpoint() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
@@ -155,7 +155,7 @@ class WebhooksPageTest {
 
   @Test
   @Order(6)
-  void checkBlankEntityCheckbox() {
+  void checkBlankEntityCheckbox() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
