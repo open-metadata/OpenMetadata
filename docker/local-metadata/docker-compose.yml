@@ -103,7 +103,13 @@ services:
       - "localhost:172.16.239.13"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-
+      - ingestion-volme-dag-airflow:/airflow/dag_generated_configs
+      - ingestion-volme-dags:/airflow/dags
+      - ingestion-volme-tmp:/tmp
+volumes:
+  ingestion-dag-airflow:
+  ingestion-volme-dags:
+  ingestion-volume-tmp:
 networks:
   local_app_net:
     name: ometa_network
