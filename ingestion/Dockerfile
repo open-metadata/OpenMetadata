@@ -23,5 +23,8 @@ RUN cp -r /om-airflow/plugins/dag_templates /airflow/
 RUN mkdir -p /airflow/dag_generated_configs
 RUN cp -r /om-airflow/plugins/dag_managed_operators /airflow/
 RUN chmod 755 ingestion_dependency.sh
+VOLUME ingestion-volme-dag-airflow:/airflow/dag_generated_configs
+VOLUME ingestion-volme-dags:/airflow/dags
+VOLUME ingestion-volme-tmp:/tmp
 EXPOSE 8080
 CMD [ "./ingestion_dependency.sh" ]
