@@ -159,24 +159,54 @@ public class LineageResourceTest extends CatalogApplicationTest {
       getEdge(TABLES.get(6), TABLES.get(7))
     };
 
-    // GET lineage by id
-    EntityLineage lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 3, 3, ADMIN_AUTH_HEADERS);
-    assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
-
-    // GET lineage by fqn
-    lineage = getLineageByName(Entity.TABLE, TABLES.get(4).getFullyQualifiedName(), 3, 3, ADMIN_AUTH_HEADERS);
-    assertEdges(lineage, expectedUpstreamEdges, expectedDownstreamEdges);
+    // GET lineage by id and fqn and ensure it is correct
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        3,
+        3,
+        expectedUpstreamEdges,
+        expectedDownstreamEdges);
 
     // Test table4 partial lineage with various upstream and downstream depths
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 0, 0, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 0), Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 1, 1, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 3), Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
-    assertEdges(
-        lineage, Arrays.copyOfRange(expectedUpstreamEdges, 0, 4), Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+    // First upstream and downstream depth of 0
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        0,
+        0,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
+    // Upstream and downstream depth of 1
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        1,
+        1,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+    // Upstream and downstream depth of 2
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        2,
+        2,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+
+    // Upstream and downstream depth as null to test for default value of 1
+    assertLineage(
+        Entity.TABLE,
+        TABLES.get(4).getId(),
+        TABLES.get(4).getFullyQualifiedName(),
+        null,
+        null,
+        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
 
     //
     // Delete all the lineage edges
@@ -192,9 +222,10 @@ public class LineageResourceTest extends CatalogApplicationTest {
     deleteEdge(TABLES.get(4), TABLES.get(8));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
-    lineage = getLineage(Entity.TABLE, TABLES.get(4).getId(), 2, 2, ADMIN_AUTH_HEADERS);
-    assertTrue(lineage.getUpstreamEdges().isEmpty());
-    assertTrue(lineage.getDownstreamEdges().isEmpty());
+
+    // Ensure upstream and downstream lineage is empty
+    assertLineage(
+        Entity.TABLE, TABLES.get(4).getId(), TABLES.get(4).getFullyQualifiedName(), 2, 2, new Edge[0], new Edge[0]);
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -311,6 +342,25 @@ public class LineageResourceTest extends CatalogApplicationTest {
     if (lineage.getNodes().size() != 0) {
       assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }
+  }
+
+  public static void assertLineage(
+      String entityType,
+      UUID id,
+      String fqn,
+      Integer upstreamDepth,
+      Integer downstreamDepth,
+      Edge[] expectedUpstreamEdges,
+      Edge[] expectedDownstreamEdges)
+      throws HttpResponseException {
+    EntityLineage lineageById = getLineage(entityType, id, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
+    assertEdges(lineageById, expectedUpstreamEdges, expectedDownstreamEdges);
+
+    EntityLineage lineageByName = getLineageByName(entityType, fqn, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
+    assertEdges(lineageByName, expectedUpstreamEdges, expectedDownstreamEdges);
+
+    // Finally ensure lineage by Id matches lineage by name
+    assertEquals(lineageById, lineageByName);
   }
 
   public static EntityLineage getLineage(
