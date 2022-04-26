@@ -31,7 +31,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [SingleStore](singlestore.md)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake/snowflake-usage.md)
-* [Trino](trino.md)
+* [Trino](trino/)
 * [Vertica](vertica.md)
 
 #### Dashboard Services

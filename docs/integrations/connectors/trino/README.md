@@ -1,27 +1,24 @@
 ---
-description: >-
-  In this section, we provide guides and references to use the BigQuery
-  connector.
+description: In this section, we provide guides and references to use the Trino connector.
 ---
 
-# BigQuery
+# Trino
 
-Configure and schedule BigQuery **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Trino **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
 * [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
 * [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-bigquery-connector-using-airflow-sdk.md" %}
-[run-bigquery-connector-using-airflow-sdk.md](run-bigquery-connector-using-airflow-sdk.md)
+{% content-ref url="run-trino-connector-using-airflow-sdk.md" %}
+[run-trino-connector-using-airflow-sdk.md](run-trino-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-bigquery-connector-with-the-cli.md" %}
-[run-bigquery-connector-with-the-cli.md](run-bigquery-connector-with-the-cli.md)
+{% content-ref url="run-trino-connector-with-the-cli.md" %}
+[run-trino-connector-with-the-cli.md](run-trino-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -50,9 +47,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select BigQuery as the service type and click _Next_.
+Select Trino as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (15).png>)
+![Select your Service type](<../../../.gitbook/assets/image (20).png>)
 
 ### 4. Name and Describe your Service
 
@@ -60,19 +57,19 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Trino services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your BigQuery service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your Trino service that enables other users to determine whether it might provide data of interest to them.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (14) (1).png>)
+![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (22) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -80,53 +77,39 @@ Once the credentials have been added, click on **Test Connection** and _Save_ th
 
 #### Host and Port
 
-This is the BigQuery APIs URL.
+Host and Port of the data source.
 
-#### Username (Optional)
+#### Username
 
-Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
+Username to connect to Trino. This user should have privileges to read all the metadata in Trino.
 
-#### Project ID (Optional)
+#### Password (Optional)
 
-The BigQuery Project ID is required only if the credentials path is being used instead of values.
+Password to connect to Trino.
 
-#### GCS Credentials
+#### Catalog (Optional)
 
-We support two ways of authenticating to BigQuery:
-
-1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
-   1. Credentials type, e.g. `service_account`.
-   2. Project ID
-   3. Private Key ID
-   4. Private Key
-   5. Client Email
-   6. Client ID
-   7. Auth URI, [https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth) by default
-   8. Token URI, [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
-   9. Authentication Provider X509 Certificate URL, [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
-   10. Client X509 Certificate URL
-2. Passing a local file path that contains the credentials:
-   1. GCS Credentials Path
-
-#### Enable Policy Tag Import (Optional)
-
-Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
-
-#### Tag Category Name (Optional)
-
-If the Tag import is enabled, the name of the Tag Category will be created at OpenMetadata.
+A Trino [catalog](https://trino.io/docs/current/overview/concepts.html#catalog) contains schemas and references a data source via a connector.
 
 #### Database (Optional)
 
-The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+Database of the data source. This is an optional parameter if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases in the selected catalog.
+
+#### Proxies (Optional)
+
+Proxies for the connection to Trino data source added as Key-Value pairs.
+
+#### URL Params (Optional)
+
+URL parameters for connection to the Trino data source added as Key-Value pairs.
 
 #### Connection Options (Optional)
 
-Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to the source system during the connection. These details must be added as Key-Value pairs.
 
 #### Connection Arguments (Optional)
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to the source system during the connection. These details must be added as Key-Value pairs.
 
 In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
@@ -136,7 +119,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (13) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -332,8 +315,8 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-bigquery-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-trino-connector-using-airflow-sdk.md).
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-bigquery-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-trino-connector-with-the-cli.md).

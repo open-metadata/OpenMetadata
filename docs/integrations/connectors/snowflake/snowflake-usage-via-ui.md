@@ -229,4 +229,4 @@ Click on View Service to check the ingestion details.
 
 ![](<../../../.gitbook/assets/image (6) (1).png>)
 
-![](<../../../.gitbook/assets/image (20) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1).png>)

@@ -13,7 +13,7 @@
 
 * Navigate to the section **Expose an API**
 
-![](<../../../.gitbook/assets/image (14) (1).png>)
+![](<../../../.gitbook/assets/image (14) (1) (1).png>)
 
 * Set the **App ID URI.** If it has not been set, the default value is api://\<client\_id>.
 * Click Save.
@@ -36,7 +36,7 @@ Another Azure Application must be registered for Service ingestion.
 * Create a **public client redirect URI**.&#x20;
 * Click on Register.
 
-![](<../../../.gitbook/assets/image (3) (1) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
 ## Step 5: **API Permissions**
 
@@ -48,7 +48,7 @@ Another Azure Application must be registered for Service ingestion.
 
 * Search for the OpenMetadata Application
 
-![](<../../../.gitbook/assets/image (3) (1).png>)
+![](<../../../.gitbook/assets/image (3) (1) (1).png>)
 
 * Select the custom scope created in Step 3.
 * Click on Add Permissions.
@@ -86,6 +86,6 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 
 * Enter a description and an expiry period.
 
-![](<../../../.gitbook/assets/image (20) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1).png>)
 
 * The `secret_key` is required for ingestion.
