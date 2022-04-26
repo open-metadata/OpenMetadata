@@ -130,7 +130,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.containsText("Glue"));
+    Events.click(webDriver, databaseServicePage.serviceName("sample_data"));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");

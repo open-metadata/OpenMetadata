@@ -91,6 +91,7 @@ class WebhooksPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     for (int i = 0; i < 2; i++) {
+      Thread.sleep(waitTime);
       Events.click(webDriver, webhooks.addWebhook());
       Events.sendKeys(webDriver, webhooks.name(), name);
       Events.click(webDriver, webhooks.descriptionBox());

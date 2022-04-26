@@ -121,8 +121,9 @@ class RolesPageTest {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
+    Select se = new Select(webDriver.findElement(rolesPage.listOperation()));
     Events.click(webDriver, rolesPage.listOperation());
-    Events.click(webDriver, rolesPage.selectOperation("UpdateTeams"));
+    se.selectByVisibleText("Update Teams");
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
     Events.click(webDriver, common.descriptionSaveButton());
