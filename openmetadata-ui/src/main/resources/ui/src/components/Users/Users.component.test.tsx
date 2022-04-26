@@ -140,6 +140,7 @@ const mockProp = {
   postFeedHandler: postFeed,
   isAdminUser: false,
   isLoggedinUser: false,
+  isAuthDisabled: true,
   updateUserDetails,
 };
 

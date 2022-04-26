@@ -19,6 +19,7 @@ import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -40,6 +41,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
@@ -194,6 +196,7 @@ const UserPage = () => {
           feedFilterHandler={feedFilterHandler}
           fetchFeedHandler={getFeedData}
           isAdminUser={Boolean(isAdminUser)}
+          isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
