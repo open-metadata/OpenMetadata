@@ -33,9 +33,10 @@ DBT_MANIFEST_FILE_NAME = "manifest.json"
 
 @singledispatch
 def get_dbt_details(config):
-    raise NotImplementedError(
-        f"Config not implemented for type {type(config)}: {config}"
-    )
+    if config:
+        raise NotImplementedError(
+            f"Config not implemented for type {type(config)}: {config}"
+        )
 
 
 @get_dbt_details.register
