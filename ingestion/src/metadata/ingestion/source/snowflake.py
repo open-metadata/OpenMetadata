@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import logging
-import os
 from typing import Iterable, Optional
 
 from cryptography.hazmat.backends import default_backend
@@ -51,26 +50,6 @@ SnowflakeDialect.normalize_name = normalize_names
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config):
-        connection_arguments = (
-            config.serviceConnection.__root__.config.connectionArguments
-        )
-        if connection_arguments:
-            if hasattr(connection_arguments, "private_key"):
-                private_key = connection_arguments.private_key
-                p_key = serialization.load_pem_private_key(
-                    bytes(private_key, "utf-8"),
-                    password=os.environ["SNOWFLAKE_PRIVATE_KEY_PASSPHRASE"].encode(),
-                    backend=default_backend(),
-                )
-                pkb = p_key.private_bytes(
-                    encoding=serialization.Encoding.DER,
-                    format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
-                config.serviceConnection.__root__.config.connectionArguments.private_key = (
-                    pkb
-                )
-
         super().__init__(config, metadata_config)
 
     def get_databases(self) -> Iterable[Inspector]:
@@ -116,6 +95,9 @@ class SnowflakeSource(SQLSource):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def test_connection(self) -> None:
+        pass
 
 
 @reflection.cache

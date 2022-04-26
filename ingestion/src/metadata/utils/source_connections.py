@@ -233,11 +233,10 @@ def _(connection: SnowflakeConnection):
 
     if connection.username:
         url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+
         url += "@"
 
     url += connection.account
