@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.pages.roles;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -23,9 +24,11 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(19)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RolesPageTest {
@@ -119,7 +122,7 @@ class RolesPageTest {
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listOperation());
-    Events.click(webDriver, rolesPage.selectOperation("UpdateDescription"));
+    Events.click(webDriver, rolesPage.selectOperation("UpdateTeams"));
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
     Events.click(webDriver, common.descriptionSaveButton());
@@ -136,11 +139,12 @@ class RolesPageTest {
   @Order(5)
   void editRule() throws InterruptedException {
     openRolesPage();
-    Events.click(webDriver, common.containsText("Data Steward"));
+    Events.click(webDriver, common.containsText("Data Consumer"));
     Events.click(webDriver, rolesPage.editRuleButton());
-    Events.click(webDriver, rolesPage.listAccess());
-    Events.click(webDriver, rolesPage.selectAccess("deny"));
+    Select se = new Select(webDriver.findElement(rolesPage.listAccess()));
+    se.selectByVisibleText("DENY");
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     String access = webDriver.findElement(rolesPage.accessValue()).getAttribute("innerHTML");
     Assert.assertEquals(access, "DENY");
   }
@@ -150,8 +154,18 @@ class RolesPageTest {
   void deleteRule() throws InterruptedException {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
+    String ruleName = webDriver.findElement(rolesPage.ruleName()).getText();
     Events.click(webDriver, rolesPage.deleteRuleButton());
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    webDriver.navigate().refresh();
+    try {
+      if (webDriver.findElement(common.containsText(ruleName)).isDisplayed()) {
+        Assert.fail("Rule not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @Test
@@ -235,7 +249,7 @@ class RolesPageTest {
   @Test
   @Order(10)
   void addRuleWithoutOperation() throws InterruptedException {
-    addRole();
+    openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listAccess());

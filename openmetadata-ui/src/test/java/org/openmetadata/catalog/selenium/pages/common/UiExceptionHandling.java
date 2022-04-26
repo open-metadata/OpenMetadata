@@ -147,7 +147,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.containsText("Glue"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, databaseServicePage.deleteDatabase());
-    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "Delete");
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
     interceptor("services/databaseServices", "services/testing");
     //    Assert.assertEquals(500, 500);
