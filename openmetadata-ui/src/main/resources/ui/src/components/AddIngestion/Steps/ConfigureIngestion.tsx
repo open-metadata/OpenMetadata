@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -207,20 +208,26 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Mark Deleted Tables</label>
-              <ToggleSwitchV1
-                checked={markDeletedTables}
-                handleCheck={handleMarkDeletedTables}
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Any deleted tables in the data source will be soft deleted in
-              OpenMetadata
-            </p>
-            {getSeparator('')}
-          </Field>
+          {!isNil(markDeletedTables) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTables}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTables) {
+                      handleMarkDeletedTables();
+                    }
+                  }}
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Any deleted tables in the data source will be soft deleted in
+                OpenMetadata
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
         </div>
       </>
     );

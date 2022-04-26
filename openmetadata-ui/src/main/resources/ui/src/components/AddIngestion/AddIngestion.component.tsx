@@ -21,6 +21,7 @@ import {
 } from '../../constants/ingestion.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
   ConfigClass,
   CreateIngestionPipeline,
@@ -55,6 +56,10 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
+  const isDatabaseService = useMemo(() => {
+    return serviceCategory === ServiceCategory.DATABASE_SERVICES;
+  }, [serviceCategory]);
+
   const [saveState, setSaveState] = useState<LoadingState>('initial');
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
@@ -110,7 +115,12 @@ const AddIngestion = ({
       true
   );
   const [markDeletedTables, setMarkDeletedTables] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.markDeletedTables ?? true
+    isDatabaseService
+      ? Boolean(
+          (data?.source.sourceConfig.config as ConfigClass)
+            ?.markDeletedTables ?? true
+        )
+      : undefined
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -302,7 +312,7 @@ const AddIngestion = ({
           enableDataProfiler: enableDataProfiler,
           generateSampleData: ingestSampleData,
           includeViews: includeView,
-          markDeletedTables: markDeletedTables,
+          markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
           schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
           tableFilterPattern: getFilterPatternData(tableFilterPattern),
           chartFilterPattern: getFilterPatternData(chartFilterPattern),
