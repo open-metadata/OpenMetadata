@@ -19,16 +19,22 @@ from typing import Iterable
 
 from google.cloud import logging
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+    Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.bigquery import BigQueryConfig, BigquerySource
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
@@ -38,40 +44,35 @@ class BigqueryUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.BigQuery.value
     scheme = "bigquery"
 
-    def __init__(self, config, metadata_config):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.temp_credentials = None
         self.metadata_config = metadata_config
         self.config = config
-        self.project_id = self.config.project_id
+        self.service_connection = config.serviceConnection.__root__.config
+
+        # Used as db
+        self.project_id = (
+            self.service_connection.projectId
+            or self.service_connection.credentials.gcsConfig.projectId
+        )
+
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
 
-        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            if config.options.get("credentials_path"):
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
-                    "credentials_path"
-                ]
-            elif config.options.get("credentials"):
-                self.temp_credentials = BigquerySource.create_credential_temp_file(
-                    credentials=config.options.get("credentials")
-                )
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.temp_credentials
-                del config.options["credentials"]
-            else:
-                logger.warning(
-                    "Please refer to the BigQuery connector documentation, especially the credentials part "
-                    "https://docs.open-metadata.org/connectors/bigquery-usage"
-                )
-
-    def get_connection_url(self):
-        if self.project_id:
-            return f"{self.scheme}://{self.project_id}"
-        return f"{self.scheme}://"
-
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config = BigQueryConfig.parse_obj(config_dict)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, BigQueryConnection):
+            raise InvalidSourceException(
+                f"Expected BigQueryConnection, but got {connection}"
+            )
+
+        set_google_credentials(
+            gcs_credentials=config.serviceConnection.__root__.config.credentials
+        )
+
         return cls(config, metadata_config)
 
     def prepare(self):
@@ -81,7 +82,7 @@ class BigqueryUsageSource(Source[TableQuery]):
         logging_client = logging.Client()
         usage_logger = logging_client.logger(self.logger_name)
         logger.debug("Listing entries for logger {}:".format(usage_logger.name))
-        start, end = get_start_and_end(self.config.duration)
+        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
         try:
             entries = usage_logger.list_entries()
             for entry in entries:
@@ -107,9 +108,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                             statementType = ""
                             if hasattr(queryConfig, "statementType"):
                                 statementType = queryConfig["statementType"]
-                            database = ""
-                            if hasattr(queryConfig, "destinationTable"):
-                                database = queryConfig["destinationTable"]
+                            database = self.project_id
                             analysis_date = str(
                                 datetime.strptime(
                                     jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
@@ -127,7 +126,7 @@ class BigqueryUsageSource(Source[TableQuery]):
                                 aborted=0,
                                 database=str(database),
                                 sql=queryConfig["query"],
-                                service_name=self.config.service_name,
+                                service_name=self.config.serviceName,
                             )
                             yield tq
 
@@ -136,6 +135,9 @@ class BigqueryUsageSource(Source[TableQuery]):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def test_connection(self) -> SourceStatus:
+        pass
 
     def close(self):
         super().close()

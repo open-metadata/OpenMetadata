@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -189,6 +190,18 @@ public class ElasticSearchIndexDefinition {
   }
 }
 
+@Getter
+@Setter
+@Builder
+class ESEntityReference {
+  String id;
+  String name;
+  String fullyQualifiedName;
+  String description;
+  Boolean deleted;
+  String href;
+}
+
 @SuperBuilder
 @Data
 class ElasticSearchIndex {
@@ -214,7 +227,7 @@ class ElasticSearchIndex {
   String description;
   String tier;
   List<String> tags;
-  String owner;
+  EntityReference owner;
   List<String> followers;
 
   @JsonProperty("last_updated_timestamp")
@@ -380,7 +393,7 @@ class TableESIndex extends ElasticSearchIndex {
     }
 
     if (table.getOwner() != null) {
-      tableESIndexBuilder.owner(table.getOwner().getId().toString());
+      tableESIndexBuilder.owner(table.getOwner());
     }
 
     return tableESIndexBuilder;
@@ -445,13 +458,15 @@ class TopicESIndex extends ElasticSearchIndex {
             .fqdn(topic.getFullyQualifiedName())
             .lastUpdatedTimestamp(updatedTimestamp)
             .suggest(suggest)
-            .service(topic.getService().getName())
-            .serviceType(topic.getServiceType().toString())
             .serviceCategory("messagingService")
             .entityType("topic")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (topic.getService() != null) {
+      topicESIndexBuilder.service(topic.getService().getName());
+      topicESIndexBuilder.serviceType(topic.getServiceType().toString());
+    }
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
           topic.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
@@ -460,7 +475,7 @@ class TopicESIndex extends ElasticSearchIndex {
     }
 
     if (topic.getOwner() != null) {
-      topicESIndexBuilder.owner(topic.getOwner().getId().toString());
+      topicESIndexBuilder.owner(topic.getOwner());
     }
     return topicESIndexBuilder;
   }
@@ -531,12 +546,14 @@ class DashboardESIndex extends ElasticSearchIndex {
             .chartDescriptions(chartDescriptions)
             .entityType("dashboard")
             .suggest(suggest)
-            .service(dashboard.getService().getName())
-            .serviceType(dashboard.getServiceType().toString())
             .serviceCategory("dashboardService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (dashboard.getService() != null) {
+      dashboardESIndexBuilder.service(dashboard.getService().getName());
+      dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
+    }
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder
           .weeklyStats(dashboard.getUsageSummary().getWeeklyStats().getCount())
@@ -554,7 +571,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       dashboardESIndexBuilder.followers(Collections.emptyList());
     }
     if (dashboard.getOwner() != null) {
-      dashboardESIndexBuilder.owner(dashboard.getOwner().getId().toString());
+      dashboardESIndexBuilder.owner(dashboard.getOwner());
     }
     return dashboardESIndexBuilder;
   }
@@ -587,10 +604,13 @@ class PipelineESIndex extends ElasticSearchIndex {
       pipeline.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
 
-    for (Task task : pipeline.getTasks()) {
-      taskNames.add(task.getDisplayName());
-      taskDescriptions.add(task.getDescription());
+    if (pipeline.getTasks() != null) {
+      for (Task task : pipeline.getTasks()) {
+        taskNames.add(task.getDisplayName());
+        taskDescriptions.add(task.getDescription());
+      }
     }
+
     Long updatedTimestamp = pipeline.getUpdatedAt();
     ParseTags parseTags = new ParseTags(tags);
     String description = pipeline.getDescription() != null ? pipeline.getDescription() : "";
@@ -609,12 +629,14 @@ class PipelineESIndex extends ElasticSearchIndex {
             .taskDescriptions(taskDescriptions)
             .entityType("pipeline")
             .suggest(suggest)
-            .service(pipeline.getService().getName())
-            .serviceType(pipeline.getServiceType().toString())
             .serviceCategory("pipelineService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
 
+    if (pipeline.getService() != null) {
+      pipelineESIndexBuilder.service(pipeline.getService().getName());
+      pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
+    }
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(
           pipeline.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
@@ -623,7 +645,7 @@ class PipelineESIndex extends ElasticSearchIndex {
     }
 
     if (pipeline.getOwner() != null) {
-      pipelineESIndexBuilder.owner(pipeline.getOwner().getId().toString());
+      pipelineESIndexBuilder.owner(pipeline.getOwner());
     }
     return pipelineESIndexBuilder;
   }
@@ -798,7 +820,7 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
     String description = glossaryTerm.getDescription() != null ? glossaryTerm.getDescription() : "";
     String displayName = glossaryTerm.getDisplayName() != null ? glossaryTerm.getDisplayName() : "";
     return internalBuilder()
-        .glossaryId(glossaryTerm.getGlossary().getId().toString())
+        .glossaryTermId(glossaryTerm.getId().toString())
         .name(glossaryTerm.getName())
         .displayName(displayName)
         .description(description)

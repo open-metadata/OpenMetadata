@@ -9,27 +9,20 @@
     "pulsarType": {
       "description": "Pulsar service type",
       "type": "string",
-      "enum": [
-        "Pulsar"
-      ],
+      "enum": ["Pulsar"],
       "default": "Pulsar"
     }
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/pulsarType",
       "default": "Pulsar"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

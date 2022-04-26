@@ -15,34 +15,37 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/redashType",
       "default": "Redash"
     },
     "username": {
+      "title": "Username",
       "description": "username for the Redash",
       "type": "string"
     },
-    "redashURL": {
+    "hostPort": {
+      "title": "Host and Port",
       "description": "URL for the redash instance",
       "type": "string",
       "format": "uri",
       "default": "http://localhost:5000"
     },
     "apiKey": {
+      "title": "API Key",
       "description": "API key of the redash instance to access.",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "apiKey"
+  ]
 }

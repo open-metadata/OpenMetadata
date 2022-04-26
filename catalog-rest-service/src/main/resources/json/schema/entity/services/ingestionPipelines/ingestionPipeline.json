@@ -9,7 +9,31 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage"]
+      "enum": ["metadata", "usage", "profiler"]
+    },
+    "pipelineStatus": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus",
+      "description": "This defines runtime status of Pipeline.",
+      "properties": {
+        "runId": {
+          "description": "Pipeline unique run ID.",
+          "type": "string"
+        },
+        "state": {
+          "description": "Pipeline status denotes if its failed or succeeded.",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "startDate of the pipeline run for this particular execution.",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "endDate of the pipeline run for this particular execution.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "airflowConfig": {
       "description": "Properties to configure the Airflow pipeline that will run the workflow.",
@@ -39,10 +63,6 @@
           "description": "End Date of the pipeline.",
           "$ref": "../../../type/basic.json#/definitions/date"
         },
-        "nextExecutionDate": {
-          "description": "Next execution date from the underlying pipeline platform once the pipeline scheduled.",
-          "$ref": "../../../type/basic.json#/definitions/date"
-        },
         "pipelineTimezone": {
           "description": "Timezone in which pipeline going to be scheduled.",
           "type": "string",
@@ -67,11 +87,6 @@
           "description": "Scheduler Interval for the pipeline in cron format.",
           "type": "string"
         },
-        "pipelineTimeout": {
-          "description": "Timeout for the pipeline in seconds.",
-          "type": "integer",
-          "default": 60
-        },
         "maxActiveRuns": {
           "description": "Maximum Number of active runs.",
           "type": "integer",
@@ -80,7 +95,7 @@
         "workflowTimeout": {
           "description": "Timeout for the workflow in seconds.",
           "type": "integer",
-          "default": 60
+          "default": null
         },
         "workflowDefaultView": {
           "description": "Default view in Airflow.",
@@ -91,14 +106,6 @@
           "description": "Default view Orientation in Airflow.",
           "type": "string",
           "default": "LR"
-        },
-        "pythonOperatorLocation": {
-          "description": "File system directory path where managed python operator files are stored.",
-          "type": "string"
-        },
-        "slaMissCallback": {
-          "description": "python method call back on SLA miss.",
-          "type": "string"
         },
         "email": {
           "description": "Email to notify workflow status.",
@@ -142,7 +149,7 @@
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/source"
     },
     "openMetadataServerConnection": {
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/openMetadataServerConfig"
+      "$ref": "../connections/metadata/openMetadataConnection.json"
     },
     "airflowConfig": {
       "$ref": "#/definitions/airflowConfig"
@@ -150,6 +157,18 @@
     "service": {
       "description": "Link to the database service where this database is hosted in.",
       "$ref": "../../../type/entityReference.json"
+    },
+    "pipelineStatuses": {
+      "description": "List of executions and status for the Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pipelineStatus"
+      },
+      "default": null
+    },
+    "deployed": {
+      "description": "Indicates if the workflow has been successfully deployed to Airflow.",
+      "type": "boolean"
     },
     "href": {
       "description": "Link to this ingestion pipeline resource.",

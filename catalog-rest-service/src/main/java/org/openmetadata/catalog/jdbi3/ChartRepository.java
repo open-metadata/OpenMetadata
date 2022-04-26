@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -97,8 +99,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setService(getService(chart));
     chart.setOwner(fields.contains(FIELD_OWNER) ? getOwner(chart) : null);
-    chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
-    chart.setTags(fields.contains("tags") ? getTags(chart.getFullyQualifiedName()) : null);
+    chart.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(chart) : null);
+    chart.setTags(fields.contains(FIELD_TAGS) ? getTags(chart.getFullyQualifiedName()) : null);
     return chart;
   }
 

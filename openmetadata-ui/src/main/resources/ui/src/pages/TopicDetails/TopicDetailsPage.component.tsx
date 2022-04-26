@@ -14,12 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  EntityThread,
-  TableDetail,
-} from 'Models';
+import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -48,7 +43,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
-import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
@@ -56,12 +51,13 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
   topicDetailsTabs,
@@ -76,8 +72,8 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [topicId, setTopicId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
+  const [owner, setOwner] = useState<EntityReference>();
   const [tier, setTier] = useState<TagLabel>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
@@ -224,13 +220,14 @@ const TopicDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TOPIC,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -414,9 +411,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
@@ -464,8 +458,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
@@ -517,7 +509,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           followers={followers}
           isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
-          owner={owner}
+          owner={owner as EntityReference}
           paging={paging}
           partitions={partitions}
           postFeedHandler={postFeedHandler}

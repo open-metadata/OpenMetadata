@@ -13,12 +13,15 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.MLMODEL;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -59,15 +62,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   public static String getFQN(MlModel model) {
-    return model.getName();
+    return FullyQualifiedName.build(model.getName());
   }
 
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
-    mlModel.setFollowers(fields.contains("followers") ? getFollowers(mlModel) : null);
-    mlModel.setTags(fields.contains("tags") ? getTags(mlModel.getFullyQualifiedName()) : null);
+    mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
+    mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
     mlModel.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
     return mlModel;
@@ -112,7 +115,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
   private void validateReferences(List<MlFeature> mlFeatures) throws IOException {
     for (MlFeature feature : mlFeatures) {
-      if (feature.getFeatureSources() != null && !feature.getFeatureSources().isEmpty()) {
+      if (!nullOrEmpty(feature.getFeatureSources())) {
         for (MlFeatureSource source : feature.getFeatureSources()) {
           validateMlDataSource(source);
         }
@@ -130,7 +133,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void prepare(MlModel mlModel) throws IOException {
     mlModel.setFullyQualifiedName(getFQN(mlModel));
 
-    if (mlModel.getMlFeatures() != null && !mlModel.getMlFeatures().isEmpty()) {
+    if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }

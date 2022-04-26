@@ -34,7 +34,7 @@ class Dialects(Enum):
     and profiling data.
     """
 
-    Hive = b"hive"
+    Hive = b"hive"  # Hive requires bytes
     Postgres = "postgresql"
     BigQuery = "bigquery"
     MySQL = "mysql"
@@ -42,7 +42,7 @@ class Dialects(Enum):
     Snowflake = "snowflake"
     MSSQL = "mssql"
     Oracle = "oracle"
-    Athena = "athena"
+    Athena = "awsathena"
     Presto = "presto"
     Trino = "Trino"
     Vertica = "vertica"

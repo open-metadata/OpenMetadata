@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.pages.roles;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -13,17 +14,24 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.RolesPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
+@Slf4j
 @Order(19)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RolesPageTest {
+class RolesPageTest {
   static WebDriver webDriver;
   static Common common;
   static RolesPage rolesPage;
@@ -38,7 +46,7 @@ public class RolesPageTest {
   String xpath = "//p[@title = '" + roleDisplayName + "']";
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -54,7 +62,7 @@ public class RolesPageTest {
 
   @Test
   @Order(1)
-  public void openRolesPage() throws InterruptedException {
+  void openRolesPage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Roles"));
@@ -63,25 +71,24 @@ public class RolesPageTest {
 
   @Test
   @Order(2)
-  public void addRole() throws InterruptedException {
+  void addRole() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(1000);
     try {
       wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
     } catch (NoSuchElementException | TimeoutException e) {
@@ -91,33 +98,34 @@ public class RolesPageTest {
 
   @Test
   @Order(3)
-  public void editDescription() throws InterruptedException {
+  void editDescription() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String description = faker.address().toString();
     String roleName = "Data Consumer";
     openRolesPage();
     Events.click(webDriver, common.containsText(roleName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.sendKeys(webDriver, common.addDescriptionString(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.addDescriptionString(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(roleName));
-    String updatedDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    Thread.sleep(waitTime);
+    String updatedDescription = webDriver.findElement(rolesPage.descriptionContainer()).getText();
     Assert.assertEquals(updatedDescription, description);
   }
 
   @Test
   @Order(4)
-  public void addRules() throws InterruptedException {
+  void addRules() throws InterruptedException {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
+    Select se = new Select(webDriver.findElement(rolesPage.listOperation()));
     Events.click(webDriver, rolesPage.listOperation());
-    Events.click(webDriver, rolesPage.selectOperation("UpdateDescription"));
+    se.selectByVisibleText("Update Teams");
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
-    Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(1000);
     try {
@@ -130,36 +138,50 @@ public class RolesPageTest {
 
   @Test
   @Order(5)
-  public void editRule() throws InterruptedException {
+  void editRule() throws InterruptedException {
     openRolesPage();
-    Events.click(webDriver, common.containsText(roleDisplayName));
+    Events.click(webDriver, common.containsText("Data Consumer"));
     Events.click(webDriver, rolesPage.editRuleButton());
-    Events.click(webDriver, rolesPage.listAccess());
-    Events.click(webDriver, rolesPage.selectAccess("deny"));
+    Select se = new Select(webDriver.findElement(rolesPage.listAccess()));
+    se.selectByVisibleText("DENY");
     Events.click(webDriver, common.descriptionSaveButton());
+    Thread.sleep(waitTime);
     String access = webDriver.findElement(rolesPage.accessValue()).getAttribute("innerHTML");
     Assert.assertEquals(access, "DENY");
   }
 
   @Test
   @Order(6)
-  public void deleteRule() throws InterruptedException {
+  void deleteRule() throws InterruptedException {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
+    String ruleName = webDriver.findElement(rolesPage.ruleName()).getText();
     Events.click(webDriver, rolesPage.deleteRuleButton());
     Events.click(webDriver, common.saveEditedService());
+    Thread.sleep(waitTime);
+    webDriver.navigate().refresh();
+    try {
+      if (webDriver.findElement(common.containsText(ruleName)).isDisplayed()) {
+        Assert.fail("Rule not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @Test
   @Order(7)
-  public void checkBlankName() throws InterruptedException {
+  void checkBlankName() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), "");
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -171,14 +193,17 @@ public class RolesPageTest {
 
   @Test
   @Order(8)
-  public void checkBlankDisplayName() throws InterruptedException {
+  void checkBlankDisplayName() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), faker.name().firstName());
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), "");
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -190,21 +215,29 @@ public class RolesPageTest {
 
   @Test
   @Order(9)
-  public void checkDuplicateRoleName() throws InterruptedException {
+  void checkDuplicateRoleName() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String firstName = faker.name().firstName();
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, rolesPage.addRoleButton());
+    actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
+    Events.click(webDriver, rolesPage.policiesDropdown());
+    Events.click(webDriver, rolesPage.listItem());
     Events.sendKeys(webDriver, common.displayName(), firstName);
     Events.sendKeys(webDriver, rolesPage.rolesDisplayName(), roleDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -216,13 +249,12 @@ public class RolesPageTest {
 
   @Test
   @Order(10)
-  public void addRuleWithoutOperation() throws InterruptedException {
-    addRole();
+  void addRuleWithoutOperation() throws InterruptedException {
+    openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
-    Events.click(webDriver, rolesPage.ruleToggleButton());
     Events.click(webDriver, common.descriptionSaveButton());
     try {
       WebElement errorMessage = webDriver.findElement(rolesPage.errorMessage());
@@ -233,7 +265,7 @@ public class RolesPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

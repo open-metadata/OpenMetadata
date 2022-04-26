@@ -33,8 +33,11 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
-@compiles(LenFn, Dialects.Hive)  # For some reason hive's dialect is in bytes...
+@compiles(LenFn, Dialects.Hive)
 @compiles(LenFn, Dialects.Postgres)
 @compiles(LenFn, Dialects.Databricks)
+@compiles(LenFn, Dialects.MySQL)
+@compiles(LenFn, Dialects.MariaDB)
+@compiles(LenFn, Dialects.Athena)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

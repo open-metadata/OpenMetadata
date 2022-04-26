@@ -18,20 +18,23 @@ import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityName,
+  getEntityPlaceHolder,
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -137,7 +140,7 @@ const DashboardDetails = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -198,9 +201,12 @@ const DashboardDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
-          : owner?.displayName || owner?.name || '',
-      placeholderText: owner?.displayName || owner?.name || '',
+          ? getTeamAndUserDetailsPath(owner?.name || '')
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -381,6 +387,14 @@ const DashboardDetails = ({
 
   const onThreadPanelClose = () => {
     setThreadLink('');
+  };
+
+  const getDeleteEntityMessage = () => {
+    return `Deleting this ${EntityType.DASHBOARD} will also delete ${pluralize(
+      charts.length,
+      'chart',
+      's'
+    )}`;
   };
 
   const getLoader = () => {
@@ -658,9 +672,15 @@ const DashboardDetails = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  deletEntityMessage={getDeleteEntityMessage()}
+                  entityId={dashboardDetails.id}
+                  entityName={dashboardDetails.name}
+                  entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.DASHBOARD}
                   onSave={onSettingsUpdate}
                 />
               </div>

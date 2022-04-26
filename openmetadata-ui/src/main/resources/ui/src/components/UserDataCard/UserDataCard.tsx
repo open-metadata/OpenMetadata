@@ -23,18 +23,19 @@ type Item = {
   name: string;
   id?: string;
   email: string;
-  isActiveUser: boolean;
-  profilePhoto: string;
-  teamCount: string;
+  isActiveUser?: boolean;
+  profilePhoto?: string;
+  teamCount?: string;
 };
 
 type Props = {
   item: Item;
-  onClick: (value: string) => void;
+  showTeams?: boolean;
+  onClick?: (value: string) => void;
   onDelete?: (id: string, name: string) => void;
 };
 
-const UserDataCard = ({ item, onClick, onDelete }: Props) => {
+const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
   return (
     <div
       className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group"
@@ -58,21 +59,21 @@ const UserDataCard = ({ item, onClick, onDelete }: Props) => {
           <div className="tw-flex tw-justify-between">
             <p
               className={classNames('tw-font-normal', {
-                'tw-cursor-pointer': Boolean(onClick),
+                'tw-cursor-pointer hover:tw-underline': Boolean(onClick),
               })}
               onClick={() => {
-                onClick(item.id as string);
+                onClick?.(item.name);
               }}>
               {item.description}
             </p>
-            {!item.isActiveUser && (
+            {!item?.isActiveUser && (
               <span className="tw-text-xs tw-bg-badge tw-border tw-px-2 tw-py-0.5 tw-rounded">
                 Inactive
               </span>
             )}
           </div>
           <p className="tw-truncate">{item.email}</p>
-          <p>Teams: {item.teamCount}</p>
+          {showTeams && <p>Teams: {item.teamCount}</p>}
         </div>
       </div>
       {!isNil(onDelete) && (

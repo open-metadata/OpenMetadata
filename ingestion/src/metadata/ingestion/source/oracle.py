@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from typing import Optional
 
 import cx_Oracle  # noqa: F401
 import pydantic
@@ -18,8 +19,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -34,7 +35,7 @@ class OracleSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
         connection: OracleConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, OracleConnection):
@@ -47,7 +48,7 @@ class OracleSource(SQLSource):
             )
         return cls(config, metadata_config)
 
-    def _get_database(self, database: str) -> Database:
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = self.service_connection.oracleServiceName
         return Database(

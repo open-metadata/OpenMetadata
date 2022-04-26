@@ -29,6 +29,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
   private static final String UPDATE_FIELDS = "owner, connection";
@@ -133,7 +134,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override

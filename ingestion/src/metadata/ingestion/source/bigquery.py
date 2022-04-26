@@ -8,10 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import logging
 import os
-import tempfile
 from typing import Optional, Tuple
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -25,15 +23,20 @@ from sqlalchemy_bigquery._types import (
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.ingestion.source.sql_source_common import SQLConnectionConfig
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.helpers import get_start_and_end
 
@@ -76,29 +79,21 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigQueryConfig(BigQueryConnection, SQLConnectionConfig):
-    duration: int = 1
-    partition_query: str = 'select * from {}.{} WHERE {} = "{}" LIMIT 1000'
-    partition_field: Optional[str] = "_PARTITIONTIME"
-
-    def get_connection_url(self):
-        if self.projectID:
-            return f"{self.scheme}://{self.projectID}"
-        return f"{self.scheme}://"
-
-
-class BigquerySource(SQLSource, BigQueryConfig):
+class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
+        self.connection_config: BigQueryConnection = (
+            self.config.serviceConnection.__root__.config
+        )
         self.temp_credentials = None
 
     #  and "policy_tags" in column and column["policy_tags"]
     def prepare(self):
         try:
-            if self.enablePolicyTagImport:
+            if self.connection_config.enablePolicyTagImport:
                 self.metadata.create_tag_category(
                     CreateTagCategoryRequest(
-                        name=self.tagCategoryName,
+                        name=self.connection_config.tagCategoryName,
                         description="",
                         categoryType="Classification",
                     )
@@ -107,32 +102,15 @@ class BigquerySource(SQLSource, BigQueryConfig):
             logger.error(err)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
-        config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
-        if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-            if config.options.get("credentials_path"):
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
-                    "credentials_path"
-                ]
-            elif config.options.get("credentials"):
-                cls.temp_credentials = cls.create_credential_temp_file(
-                    credentials=config.options.get("credentials")
-                )
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cls.temp_credentials
-                del config.options["credentials"]
-            else:
-                logger.warning(
-                    "Please refer to the BigQuery connector documentation, especially the credentials part "
-                    "https://docs.open-metadata.org/connectors/bigquery"
-                )
-        return cls(config, metadata_config)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, BigQueryConnection):
+            raise InvalidSourceException(
+                f"Expected BigQueryConnection, but got {connection}"
+            )
 
-    @staticmethod
-    def create_credential_temp_file(credentials: dict) -> str:
-        with tempfile.NamedTemporaryFile(delete=False) as fp:
-            cred_json = json.dumps(credentials, indent=4, separators=(",", ": "))
-            fp.write(cred_json.encode())
-            return fp.name
+        return cls(config, metadata_config)
 
     def standardize_schema_table_names(
         self, schema: str, table: str
@@ -150,12 +128,15 @@ class BigquerySource(SQLSource, BigQueryConfig):
             try:
                 logger.info("Using Query for Partitioned Tables")
                 partition_details = self.inspector.get_indexes(table, schema)
-                start, end = get_start_and_end(self.config.duration)
+                start, end = get_start_and_end(
+                    self.connection_config.partitionQueryDuration
+                )
 
-                query = self.partition_query.format(
+                query = self.connection_config.partitionQuery.format(
                     schema,
                     table,
-                    partition_details[0]["column_names"][0] or self.partition_field,
+                    partition_details[0]["column_names"][0]
+                    or self.connection_config.partitionField,
                     start.strftime("%Y-%m-%d"),
                 )
                 logger.info(query)
@@ -173,6 +154,19 @@ class BigquerySource(SQLSource, BigQueryConfig):
                 return []
 
         super().fetch_sample_data(schema, table)
+
+    def _get_database(self, database: Optional[str]) -> Database:
+        if not database:
+            database = (
+                self.connection_config.projectId
+                or self.connection_config.credentials.gcsConfig.projectId
+            )
+        return Database(
+            name=database,
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
+        )
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

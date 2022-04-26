@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -68,9 +70,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
-    dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
+    dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
-    dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);
+    dashboard.setTags(fields.contains(FIELD_TAGS) ? getTags(dashboard.getFullyQualifiedName()) : null);
     dashboard.setUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
@@ -85,8 +87,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withId(original.getId())
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+        .withService(original.getService());
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {

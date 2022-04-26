@@ -1,10 +1,20 @@
 {
-  "name": "glue",
-  "serviceType": "Glue",
-  "description": "Glue service used for table with location",
-  "connection": {
+  "type": "glue",
+  "serviceName": "Glue",
+  "serviceConnection": {
     "config": {
-      "hostPort": "localhost:8000"
+      "type": "Glue",
+      "awsConfig": {
+        "awsAccessKeyId": "aws accessKey id",
+        "awsSecretAccessKey": "aws secret access key",
+        "awsRegion": "aws region",
+        "endPointURL": "https://glue.<region_name>.amazonaws.com/"
+      }
+    }
+  },
+  "sourceConfig": {
+    "config": {
+      "enableDataProfiler": false
     }
   }
 }

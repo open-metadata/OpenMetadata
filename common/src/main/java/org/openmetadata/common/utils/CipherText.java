@@ -13,7 +13,6 @@
 
 package org.openmetadata.common.utils;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
@@ -43,7 +42,7 @@ public final class CipherText {
     secretKey = new SecretKeySpec(Arrays.copyOf(bytes, 16), "AES");
   }
 
-  public static CipherText instance() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException {
+  public static CipherText instance() throws NoSuchAlgorithmException {
     if (instance == null) {
       instance = new CipherText();
     }
@@ -51,8 +50,8 @@ public final class CipherText {
   }
 
   public String encrypt(String strToEncrypt)
-      throws UnsupportedEncodingException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException,
-          IllegalBlockSizeException, BadPaddingException {
+      throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException,
+          BadPaddingException {
     if (strToEncrypt == null) {
       return null;
     }

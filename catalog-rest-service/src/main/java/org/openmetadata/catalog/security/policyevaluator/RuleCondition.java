@@ -32,7 +32,6 @@ class RuleCondition implements Condition {
   @Override
   public boolean evaluate(Facts facts) {
     // Check against operation and each of the entity and user attributes.
-
     if (facts.get(CommonFields.CHECK_OPERATION)) {
       MetadataOperation operation = facts.get(CommonFields.OPERATION);
       if (!operation.equals(rule.getOperation())) {
@@ -46,11 +45,6 @@ class RuleCondition implements Condition {
     }
 
     String entityType = facts.get(CommonFields.ENTITY_TYPE);
-    if (rule.getEntityTypeAttr() != null && !entityType.equals(rule.getEntityTypeAttr())) {
-      return false;
-    }
-
-    List<String> userRoles = facts.get(CommonFields.USER_ROLES);
-    return rule.getUserRoleAttr() == null || userRoles.contains(rule.getUserRoleAttr());
+    return rule.getEntityTypeAttr() == null || entityType.equals(rule.getEntityTypeAttr());
   }
 }

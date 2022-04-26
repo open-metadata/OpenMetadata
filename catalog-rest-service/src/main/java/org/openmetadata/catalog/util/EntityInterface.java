@@ -25,9 +25,13 @@ public abstract class EntityInterface<T> {
   protected final String entityType;
   protected final T entity;
 
-  public EntityInterface(String entityType, T entity) {
+  protected EntityInterface(String entityType, T entity) {
     this.entity = entity;
     this.entityType = entityType;
+  }
+
+  public final String getEntityType() {
+    return entityType;
   }
 
   public abstract UUID getId();
@@ -87,8 +91,8 @@ public abstract class EntityInterface<T> {
   public abstract void setDescription(String description);
 
   public void setTags(List<TagLabel> tags) {
-    return;
-  };
+    /* no-op implementation to be overridden */
+  }
 
   public abstract void setDisplayName(String displayName);
 
@@ -99,8 +103,8 @@ public abstract class EntityInterface<T> {
   public abstract void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
 
   public void setOwner(EntityReference owner) {
-    return;
-  };
+    /* no-op implementation to be overridden */
+  }
 
   public abstract void setDeleted(boolean flag);
 

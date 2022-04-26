@@ -12,37 +12,25 @@
 
 import logging
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
-from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+    Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = logging.getLogger(__name__)
-
-
-class MetadataTablesRestSourceConfig(ConfigModel):
-    """Metadata Table Rest pydantic config model"""
-
-    include_tables: Optional[bool] = True
-    include_topics: Optional[bool] = True
-    include_dashboards: Optional[bool] = True
-    include_pipelines: Optional[bool] = True
-    include_users: Optional[bool] = True
-    include_teams: Optional[bool] = True
-    include_glossary_terms: Optional[bool] = True
-    limit_records: int = 1000
 
 
 @dataclass
@@ -145,20 +133,21 @@ class MetadataSource(Source[Entity]):
         topics:
     """
 
-    config: MetadataTablesRestSourceConfig
+    config: WorkflowSource
     report: SourceStatus
 
     def __init__(
         self,
-        config: MetadataTablesRestSourceConfig,
-        metadata_config: OpenMetadataServerConfig,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.service_connection = config.serviceConnection.__root__.config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = None
         self.tables = None
         self.topics = None
 
@@ -166,9 +155,8 @@ class MetadataSource(Source[Entity]):
         pass
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
-        config = MetadataTablesRestSourceConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        raise NotImplementedError("Create Method not implemented")
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.fetch_table()
@@ -185,7 +173,7 @@ class MetadataSource(Source[Entity]):
         Returns:
             Table
         """
-        if self.config.include_tables:
+        if self.service_connection.includeTables:
             after = None
             while True:
                 table_entities = self.metadata.list_entities(
@@ -199,7 +187,7 @@ class MetadataSource(Source[Entity]):
                         "followers",
                     ],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for table in table_entities.entities:
                     self.status.scanned_table(table.name.__root__)
@@ -214,14 +202,14 @@ class MetadataSource(Source[Entity]):
         Returns:
             Topic
         """
-        if self.config.include_topics:
+        if self.service_connection.includeTopics:
             after = None
             while True:
                 topic_entities = self.metadata.list_entities(
                     entity=Topic,
                     fields=["owner", "tags", "followers"],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for topic in topic_entities.entities:
                     self.status.scanned_topic(topic.name.__root__)
@@ -236,7 +224,7 @@ class MetadataSource(Source[Entity]):
         Returns:
             Dashboard:
         """
-        if self.config.include_dashboards:
+        if self.service_connection.includeDashboards:
             after = None
             while True:
                 dashboard_entities = self.metadata.list_entities(
@@ -249,7 +237,7 @@ class MetadataSource(Source[Entity]):
                         "usageSummary",
                     ],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for dashboard in dashboard_entities.entities:
                     self.status.scanned_dashboard(dashboard.name)
@@ -264,14 +252,14 @@ class MetadataSource(Source[Entity]):
         Returns:
             Pipeline:
         """
-        if self.config.include_pipelines:
+        if self.service_connection.includePipelines:
             after = None
             while True:
                 pipeline_entities = self.metadata.list_entities(
                     entity=Pipeline,
                     fields=["owner", "tags", "followers", "tasks"],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for pipeline in pipeline_entities.entities:
                     self.status.scanned_dashboard(pipeline.name)
@@ -286,14 +274,14 @@ class MetadataSource(Source[Entity]):
         Returns:
             User:
         """
-        if self.config.include_users:
+        if self.service_connection.includeUsers:
             after = None
             while True:
                 user_entities = self.metadata.list_entities(
                     entity=User,
                     fields=["teams", "roles"],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for user in user_entities.entities:
                     self.status.scanned_user(user.name)
@@ -308,14 +296,14 @@ class MetadataSource(Source[Entity]):
         Returns:
             Team:
         """
-        if self.config.include_teams:
+        if self.service_connection.includeTeams:
             after = None
             while True:
                 team_entities = self.metadata.list_entities(
                     entity=Team,
                     fields=["users", "owns"],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for team in team_entities.entities:
                     self.status.scanned_team(team.name)
@@ -330,14 +318,14 @@ class MetadataSource(Source[Entity]):
         Returns:
             GlossaryTerm:
         """
-        if self.config.include_glossary_terms:
+        if self.service_connection.includeGlossaryTerms:
             after = None
             while True:
                 glossary_term_entities = self.metadata.list_entities(
                     entity=GlossaryTerm,
                     fields=[],
                     after=after,
-                    limit=self.config.limit_records,
+                    limit=self.service_connection.limitRecords,
                 )
                 for glossary_term in glossary_term_entities.entities:
                     self.status.scanned_team(glossary_term.name)
@@ -350,4 +338,7 @@ class MetadataSource(Source[Entity]):
         return self.status
 
     def close(self):
+        pass
+
+    def test_connection(self) -> None:
         pass

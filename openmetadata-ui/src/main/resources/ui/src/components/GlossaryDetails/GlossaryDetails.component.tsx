@@ -20,11 +20,13 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
+import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -37,6 +39,7 @@ import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
+import ManageTabComponent from '../ManageTab/ManageTab.component';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
@@ -46,9 +49,17 @@ type props = {
   isHasAccess: boolean;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => void;
+  afterDeleteAction?: () => void;
+  handleUserRedirection?: (name: string) => void;
 };
 
-const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
+const GlossaryDetails = ({
+  isHasAccess,
+  glossary,
+  updateGlossary,
+  afterDeleteAction,
+  handleUserRedirection,
+}: props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -60,12 +71,12 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const tabs = [
     {
-      name: 'Reviewers',
+      name: 'Manage',
       icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Schema',
-        selectedName: 'icon-schemacolor',
+        alt: 'manage',
+        name: 'icon-manage',
+        title: 'Manage',
+        selectedName: 'icon-managecolor',
       },
       isProtected: false,
       position: 1,
@@ -177,6 +188,20 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     setActiveTab(value);
   };
 
+  const handleUpdateOwner = (owner: Glossary['owner']) => {
+    const updatedData = {
+      ...glossary,
+      owner,
+    };
+
+    return new Promise<void>((_, reject) => {
+      updateGlossary(updatedData);
+      setTimeout(() => {
+        reject();
+      }, 500);
+    });
+  };
+
   useEffect(() => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
@@ -194,13 +219,13 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
-          className={classNames('tw-h-8 tw-rounded tw-mr-1', {
+          className={classNames('tw-h-8 tw-mr-1 tw-rounded', {
             'tw-opacity-40': isHasAccess,
           })}
           data-testid="add-new-reviewer"
           size="small"
           theme="primary"
-          variant="contained"
+          variant="outlined"
           onClick={() => setShowRevieweModal(true)}>
           Add Reviewer
         </Button>
@@ -209,26 +234,38 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   };
 
   const getReviewerTabData = () => {
-    return glossary.reviewers && glossary.reviewers.length > 0 ? (
-      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-        {glossary.reviewers?.map((term) => (
-          <UserCard
-            isActionVisible
-            isIconVisible
-            item={{
-              name: term.name || '',
-              description: term.displayName || '',
-              id: term.id,
-            }}
-            key={term.name}
-            onRemove={handleRemoveReviewer}
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
-        <p className="tw-mb-3">No reviewers assigned</p>
-        <p>{AddReviewerButton()}</p>
+    return (
+      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
+        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
+          <div className="tw-w-10/12">
+            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Add users as reviewer
+            </p>
+          </div>
+
+          {AddReviewerButton()}
+        </div>
+        {glossary.reviewers && glossary.reviewers.length > 0 && (
+          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
+            {glossary.reviewers?.map((term) => (
+              <UserCard
+                isActionVisible
+                isIconVisible
+                item={{
+                  fqn: term.fullyQualifiedName || '',
+                  displayName: term.displayName || term.name || '',
+                  id: term.id,
+                  type: term.type,
+                  name: term.name,
+                }}
+                key={term.name}
+                onRemove={handleRemoveReviewer}
+                onTitleClick={handleUserRedirection}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -238,17 +275,17 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
       <div className="tw-mb-3 tw-flex tw-items-center">
-        {(glossary.owner?.displayName || glossary.owner?.name) && (
+        {glossary.owner && getEntityName(glossary.owner) && (
           <div className="tw-inline-block tw-mr-2">
             <Avatar
-              name={glossary.owner?.displayName || glossary.owner?.name || ''}
+              name={getEntityName(glossary.owner)}
               textClass="tw-text-xs"
               width="20"
             />
           </div>
         )}
-        {glossary.owner?.displayName ? (
-          <span>{glossary.owner?.displayName}</span>
+        {glossary.owner && getEntityName(glossary.owner) ? (
+          <span>{getEntityName(glossary.owner)}</span>
         ) : (
           <span className="tw-text-grey-muted">No owner</span>
         )}
@@ -325,7 +362,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         <Description
           blurWithBodyBG
           removeBlur
-          description={glossary?.description || ''}
+          description={glossary?.description}
           entityName={glossary?.displayName ?? glossary?.name}
           isEdit={isDescriptionEditable}
           onCancel={onCancel}
@@ -338,19 +375,37 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"
-          rightPosButton={
-            glossary.reviewers &&
-            glossary.reviewers.length > 0 &&
-            activeTab === 1
-              ? AddReviewerButton()
-              : undefined
-          }
           setActiveTab={setActiveTabHandler}
           tabs={tabs}
         />
 
         <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-          {activeTab === 1 && getReviewerTabData()}
+          {activeTab === 1 && (
+            <div
+              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
+              data-testid="manage-glossary">
+              <div className="tw-max-w-3xl tw-mx-auto">
+                {getReviewerTabData()}
+              </div>
+              <div className="tw-mt-7">
+                <ManageTabComponent
+                  allowDelete
+                  hideTier
+                  isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
+                  currentUser={glossary?.owner?.id}
+                  entityId={glossary.id}
+                  entityName={glossary?.name}
+                  entityType={EntityType.GLOSSARY}
+                  hasEditAccess={hasEditAccess(
+                    glossary?.owner?.type || '',
+                    glossary?.owner?.id || ''
+                  )}
+                  onSave={handleUpdateOwner}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {showRevieweModal && (

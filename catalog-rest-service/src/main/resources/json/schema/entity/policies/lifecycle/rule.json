@@ -33,11 +33,6 @@
           }
         ]
       }
-    },
-    "enabled": {
-      "description": "Is the rule enabled.",
-      "type": "boolean",
-      "default": true
     }
   },
   "required": ["actions"],

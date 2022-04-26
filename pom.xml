@@ -19,7 +19,7 @@
 
   <groupId>org.openmetadata</groupId>
   <artifactId>catalog</artifactId>
-  <version>0.9.1-SNAPSHOT</version>
+  <version>0.10.0-SNAPSHOT</version>
   <modules>
     <module>common</module>
     <module>catalog-rest-service</module>
@@ -35,7 +35,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.3.1</mockito.version>
+    <mockito.version>4.4.0</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.2</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -53,12 +53,12 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.27.1</jdbi3.version>
+    <jdbi3.version>3.28.0</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <flyway.version>8.1.0</flyway.version>
-    <redshift-jdbc.version>2.1.0.4</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.6</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.28</mysql.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
@@ -70,15 +70,18 @@
      -->
     <elasticsearch.version>7.13.4</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.1.13</openapiswagger.version>
+    <openapiswagger.version>2.2.0</openapiswagger.version>
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.16</spring.version>
+    <spring.version>5.3.19</spring.version>
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.1</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
+    <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
+    <!--  upgrade only when we find how to import esnext modules in nodejs  -->
+    <antlr.version>4.10.1</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -94,6 +97,11 @@
   </properties>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-runtime</artifactId>
+        <version>${antlr.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
         <artifactId>jersey-bom</artifactId>
@@ -152,6 +160,12 @@
             <artifactId>junit</artifactId>
           </exclusion>
         </exclusions>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.awaitility</groupId>
+        <artifactId>awaitility</artifactId>
+        <version>4.2.0</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -371,17 +385,17 @@
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-core</artifactId>
-          <version>2.17.1</version>
+          <version>2.17.2</version>
       </dependency>
       <dependency>
           <groupId>org.apache.logging.log4j</groupId>
           <artifactId>log4j-api</artifactId>
-          <version>2.17.1</version>
+          <version>2.17.2</version>
       </dependency>
       <dependency>
         <groupId>com.wix</groupId>
         <artifactId>wix-embedded-mysql</artifactId>
-        <version>4.6.1</version>
+        <version>4.6.2</version>
         <scope>test</scope>
       </dependency>
       <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
@@ -491,7 +505,6 @@
     </profile>
 
   </profiles>
-
   <reporting>
     <plugins>
       <plugin>
@@ -500,7 +513,7 @@
         <version>3.1.1</version>
       </plugin>
     </plugins>
-</reporting>
+  </reporting>
   <build>
     <pluginManagement>
       <plugins>
@@ -540,7 +553,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>9.3</version>
+              <version>10.1</version>
             </dependency>
           </dependencies>
         </plugin>

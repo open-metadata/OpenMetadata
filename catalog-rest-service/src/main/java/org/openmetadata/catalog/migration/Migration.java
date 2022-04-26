@@ -23,9 +23,6 @@ public final class Migration {
   /**
    * Run a query to MySQL to retrieve the last migrated Flyway version. If the Flyway table DATABASE_CHANGE_LOG does not
    * exist, we will stop the Catalog App and inform users how to run Flyway.
-   *
-   * @param jdbi JDBI connection
-   * @return Last migrated version, e.g., "003"
    */
   public static Optional<String> lastMigrated(Jdbi jdbi) {
     try {
@@ -44,13 +41,7 @@ public final class Migration {
     return Collections.max(migrationFiles);
   }
 
-  /**
-   * Read the migrations path from the Catalog YAML config and return a list of all the files' versions.
-   *
-   * @param conf Catalog migration config
-   * @return List of migration files' versions
-   * @throws IOException If we cannot read the files
-   */
+  /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
     try (Stream<String> names =
         Files.walk(Paths.get(conf.getPath()))
@@ -63,12 +54,7 @@ public final class Migration {
     }
   }
 
-  /**
-   * Given a Flyway migration filename, e.g., v001__my_file.sql, return the version information "001".
-   *
-   * @param name Flyway migration filename
-   * @return File version
-   */
+  /** Given a Flyway migration filename, e.g., v001__my_file.sql, return the version information "001". */
   private static String cleanName(String name) {
     return Arrays.asList(name.split("_")).get(0).replace("v", "");
   }

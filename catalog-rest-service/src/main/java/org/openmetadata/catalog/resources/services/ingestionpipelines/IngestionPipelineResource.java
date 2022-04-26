@@ -14,9 +14,11 @@
 package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_PIPELINE_STATUSES;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -28,7 +30,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -53,13 +57,14 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
@@ -67,9 +72,11 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -81,7 +88,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private AirflowRESTClient airflowRESTClient;
-  private OpenMetadataServerConfig serverConfig;
+  private AirflowConfiguration airflowConfiguration;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -95,12 +102,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   public void initialize(CatalogApplicationConfig config) {
-    this.airflowRESTClient = new AirflowRESTClient(config);
-    this.serverConfig =
-        new OpenMetadataServerConfig()
-            .withHostPort(config.getAirflowConfiguration().getApiEndpoint())
-            .withAuthProvider(
-                OpenMetadataServerConfig.AuthProvider.valueOf(config.getAirflowConfiguration().getAuthProvider()));
+    this.airflowConfiguration = config.getAirflowConfiguration();
+    this.airflowRESTClient = new AirflowRESTClient(config.getAirflowConfiguration());
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -165,7 +168,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<IngestionPipeline> ingestionPipelines =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
+      addStatus(ingestionPipelines.getData());
+    }
+    return ingestionPipelines;
   }
 
   @GET
@@ -218,7 +226,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
+      ingestionPipeline = addStatus(ingestionPipeline);
+    }
+    return ingestionPipeline;
   }
 
   @GET
@@ -280,7 +292,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUSES)) {
+      ingestionPipeline = addStatus(ingestionPipeline);
+    }
+    return ingestionPipeline;
   }
 
   @POST
@@ -377,6 +393,28 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
+  @POST
+  @Path("/testConnection")
+  @Operation(
+      summary = "Test Connection of a Service",
+      tags = "IngestionPipelines",
+      description = "Test Connection of a Service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+      })
+  public Response testIngestion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid TestServiceConnection testServiceConnection) {
+    HttpResponse<String> response = airflowRESTClient.testConnection(testServiceConnection);
+    return Response.status(200, response.body()).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -405,7 +443,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
       throws IOException {
     Source source = buildIngestionSource(create);
-
+    OpenMetadataServerConnection openMetadataServerConnection =
+        OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     return new IngestionPipeline()
         .withId(UUID.randomUUID())
         .withName(create.getName())
@@ -413,7 +452,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withDescription(create.getDescription())
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
-        .withOpenMetadataServerConnection(serverConfig)
+        .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSource(source)
         .withOwner(create.getOwner())
         .withService(create.getService())
@@ -438,7 +477,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceConnection(databaseService.getConnection())
                 .withServiceName(databaseService.getName())
-                .withType(databaseService.getServiceType().value());
+                .withType(databaseService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.DASHBOARD_SERVICE:
         DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -446,7 +485,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(dashboardService.getName())
                 .withServiceConnection(dashboardService.getConnection())
-                .withType(dashboardService.getServiceType().value());
+                .withType(dashboardService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       case Entity.MESSAGING_SERVICE:
         MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
@@ -454,7 +493,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             new Source()
                 .withServiceName(messagingService.getName())
                 .withServiceConnection(messagingService.getConnection())
-                .withType(messagingService.getServiceType().value());
+                .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       default:
         throw new IllegalArgumentException(
@@ -462,5 +501,18 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     }
     source.setSourceConfig(create.getSourceConfig());
     return source;
+  }
+
+  public void addStatus(List<IngestionPipeline> ingestionPipelines) {
+    listOrEmpty(ingestionPipelines).forEach(this::addStatus);
+  }
+
+  private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) {
+    try {
+      ingestionPipeline = airflowRESTClient.getStatus(ingestionPipeline);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
+    }
+    return ingestionPipeline;
   }
 }

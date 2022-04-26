@@ -23,6 +23,9 @@ on:
       - "catalog-rest-service/**"
       - "openmetadata-ui/**"
 
+concurrency: 
+  group: maven-build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ${{matrix.os}}
@@ -32,7 +35,7 @@ jobs:
         os:
           - ubuntu-latest
         node-version:
-          - 12.x
+          - 16.x
 
     steps:
       - name: install libssl

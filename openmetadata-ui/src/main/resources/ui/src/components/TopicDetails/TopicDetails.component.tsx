@@ -15,15 +15,20 @@ import { EntityTags } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
-import { EntityReference, User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getEntityName,
+  getEntityPlaceHolder,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
@@ -101,7 +106,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
-  const setFollowersData = (followers: Array<User>) => {
+  const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
       followers.some(({ id }: { id: string }) => id === getCurrentUserId())
     );
@@ -193,9 +198,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
+          ? getTeamAndUserDetailsPath(owner?.name || '')
+          : getEntityName(owner),
+      placeholderText: getEntityPlaceHolder(
+        getEntityName(owner),
+        owner?.deleted
+      ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
     },
@@ -425,9 +433,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={topicDetails.id}
+                  entityName={topicDetails.name}
+                  entityType={EntityType.TOPIC}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.TOPIC}
                   onSave={onSettingsUpdate}
                 />
               </div>

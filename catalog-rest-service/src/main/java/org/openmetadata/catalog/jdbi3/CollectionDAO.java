@@ -89,6 +89,7 @@ import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.common.utils.CommonUtil;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -503,7 +504,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
-            + "(fromId = :id AND toEntity = :entity)")
+            + "(fromId = :id AND fromEntity = :entity)")
     int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
   }
 
@@ -1275,9 +1276,13 @@ public interface CollectionDAO {
         @Bind("state") int state);
 
     @SqlQuery(
-        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, t.json ->> '$.description' "
-            + "AS description FROM tag_usage tu "
-            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
+        "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
+            + "t.json ->> '$.description' AS description1, "
+            + "g.json ->> '$.description' AS description2 "
+            + "FROM tag_usage tu "
+            + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
+            + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
+            + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN")
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
@@ -1292,15 +1297,20 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQN LIKE CONCAT(:tagFQN, '.%') AND source = :source")
     void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
+    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:targetFQN, '%')")
+    void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
+
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
+        String description1 = r.getString("description1");
+        String description2 = r.getString("description2");
         return new TagLabel()
             .withSource(TagLabel.Source.values()[r.getInt("source")])
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
-            .withDescription(r.getString("description"));
+            .withDescription(description1 == null ? description2 : description1);
       }
     }
   }
@@ -1500,7 +1510,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
       return listBefore(
-          getTableName(), getNameColumn(), filter.getCondition(), team, limit, before, Relationship.HAS.ordinal());
+          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
@@ -1535,8 +1545,8 @@ public interface CollectionDAO {
             + "FROM user_entity ue "
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + "WHERE te.name = :team "
-            + "AND <cond> "
+            + " <cond> "
+            + "AND te.name = :team "
             + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
@@ -1577,7 +1587,7 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {
-      if (entityTypes == null || entityTypes.isEmpty()) {
+      if (CommonUtil.nullOrEmpty(entityTypes)) {
         return Collections.emptyList();
       }
       if (entityTypes.get(0).equals("*")) {

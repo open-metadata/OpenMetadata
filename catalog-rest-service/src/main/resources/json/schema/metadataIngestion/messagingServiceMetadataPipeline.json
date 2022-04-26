@@ -3,8 +3,22 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MessagingServiceMetadataPipeline",
   "description": "MessagingService Metadata Pipeline Configuration.",
-  "definitions": {},
+  "definitions": {
+    "messagingMetadataConfigType": {
+      "description": "Messaging Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": [
+        "MessagingMetadata"
+      ],
+      "default": "MessagingMetadata"
+    }
+  },
   "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/messagingMetadataConfigType",
+      "default": "MessagingMetadata"
+    },
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"

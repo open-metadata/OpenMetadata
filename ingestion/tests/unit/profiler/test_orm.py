@@ -17,11 +17,11 @@ import uuid
 import pytest
 import sqlalchemy
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.orm_profiler.orm.converter import get_db_name, ometa_to_orm
+from metadata.orm_profiler.orm.converter import get_schema_name, ometa_to_orm
 
 
 def test_simple_conversion():
@@ -29,19 +29,24 @@ def test_simple_conversion():
     Check that we can convert simple tables
     """
 
-    database = Database(
+    schema = DatabaseSchema(
         id=uuid.uuid4(),
-        name="one_db",
+        name="one_schema",
         service=EntityReference(
             id=uuid.uuid4(), name="one_service", type="databaseService"
         ),
+        database=EntityReference(id=uuid.uuid4(), name="one_db", type="database"),
     )
 
     table = Table(
         id=uuid.uuid4(),
         name="table1",
-        database=EntityReference(id=uuid.uuid4(), name="one_db", type="database"),
-        fullyQualifiedName=FullyQualifiedEntityName(__root__=f"service.one_db.table1"),
+        databaseSchema=EntityReference(
+            id=uuid.uuid4(), name="one_schema", type="databaseSchema"
+        ),
+        fullyQualifiedName=FullyQualifiedEntityName(
+            __root__=f"service.one_db.one_schema.table1"
+        ),
         columns=[
             Column(name="id", dataType=DataType.BIGINT),
             Column(name="name", dataType=DataType.STRING),
@@ -53,10 +58,10 @@ def test_simple_conversion():
         ],
     )
 
-    orm_table = ometa_to_orm(table=table, database=database)
+    orm_table = ometa_to_orm(table=table, schema=schema)
 
     assert orm_table.__tablename__ == "table1"
-    assert orm_table.__table_args__.get("schema") == "one_db"
+    assert orm_table.__table_args__.get("schema") == "one_schema"
 
     assert isinstance(orm_table.id.type, sqlalchemy.BIGINT)
     assert isinstance(orm_table.name.type, sqlalchemy.String)
@@ -67,21 +72,22 @@ def test_simple_conversion():
     assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)
 
 
-def test_db_name():
+def test_schema_name():
     """
     Check that the singledispatch handles correctly the db name
     """
 
-    database = Database(
+    schema = DatabaseSchema(
         id=uuid.uuid4(),
-        name="one_db",
+        name="one_schema",
         service=EntityReference(
             id=uuid.uuid4(), name="one_service", type="databaseService"
         ),
+        database=EntityReference(id=uuid.uuid4(), name="one_db", type="database"),
     )
 
-    assert get_db_name("hola") == "hola"
-    assert get_db_name(database) == "one_db"
+    assert get_schema_name("hola") == "hola"
+    assert get_schema_name(schema) == "one_schema"
 
     with pytest.raises(NotImplementedError):
-        get_db_name(3)
+        get_schema_name(3)

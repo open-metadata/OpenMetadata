@@ -18,7 +18,11 @@ import SuccessScreen from './SuccessScreen';
 describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
     const { container } = render(
-      <SuccessScreen showIngestionButton name="NewService" />
+      <SuccessScreen
+        showIngestionButton
+        handleViewServiceClick={jest.fn()}
+        name="NewService"
+      />
     );
 
     const succsessScreenContainer = await findByTestId(

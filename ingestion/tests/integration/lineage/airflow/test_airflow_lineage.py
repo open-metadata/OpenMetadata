@@ -40,13 +40,13 @@ from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -57,14 +57,14 @@ class AirflowLineageTest(TestCase):
     Run this test installing the necessary airflow version
     """
 
-    server_config = OpenMetadataServerConfig(hostPort="http://localhost:8585/api")
+    server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
 
     service = CreateDatabaseServiceRequest(
         name="test-service-table-lineage",
-        serviceType=DatabaseServiceType.MySQL,
+        serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
@@ -204,7 +204,6 @@ class AirflowLineageTest(TestCase):
                     execution_date=datetime.strptime(
                         "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                     ),
-                    run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                     state="running",
                 ),
             },
@@ -217,8 +216,6 @@ class AirflowLineageTest(TestCase):
         lineage = self.metadata.get_lineage_by_name(
             entity=Pipeline, fqdn="local_airflow_3.lineage"
         )
-
-        print(lineage)
 
         nodes = {node["id"] for node in lineage["nodes"]}
         self.assertIn(str(self.table.id.__root__), nodes)
@@ -262,7 +259,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },
@@ -278,7 +274,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },
@@ -294,7 +289,6 @@ class AirflowLineageTest(TestCase):
                         execution_date=datetime.strptime(
                             "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
                         ),
-                        run_id="scheduled__2022-03-15T08:13:45.967068+00:00",
                         state="running",
                     ),
                 },

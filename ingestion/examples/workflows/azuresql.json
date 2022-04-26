@@ -1,15 +1,27 @@
 {
-    "source": {
-      "type": "azuresql",
+  "source": {
+    "type": "azuresql",
+    "serviceName": "azuresql",
+    "serviceConnection": {
       "config": {
-        "host_port": "host",
-        "service_name": "local_azure_sql",
+        "type": "AzureSQL",
+        "hostPort": "hostPort",
         "database": "database_name",
         "username": "username",
-        "password": "password",
-        "query": "select top 50 * from {}.{}",
-        "table_filter_pattern": {
-          "excludes": []
+        "password": " password",
+        "driver":"ODBC Driver 17 for SQL Server"
+      }
+      },
+      "sourceConfig": {
+        "config": {
+          "schemaFilterPattern": {
+            "excludes": [
+              "mysql.*",
+              "information_schema.*",
+              "performance_schema.*",
+              "sys.*"
+            ]
+          }
         }
       }
     },
@@ -17,11 +29,10 @@
       "type": "metadata-rest",
       "config": {}
     },
-    "metadata_server": {
-        "type": "metadata-server",
-        "config": {
-          "api_endpoint": "http://localhost:8585/api",
-          "auth_provider_type": "no-auth"
-        }
+    "workflowConfig": {
+      "openMetadataServerConfig": {
+        "hostPort": "http://localhost:8585/api",
+        "authProvider": "no-auth"
       }
-  } 
+    }
+  }

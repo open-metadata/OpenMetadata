@@ -21,6 +21,10 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
+from airflow_provider_openmetadata.lineage.callback import (
+    failure_callback,
+    success_callback,
+)
 from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
@@ -30,16 +34,19 @@ default_args = {
     "retries": 3,
     "retry_delay": timedelta(seconds=10),
     "execution_timeout": timedelta(minutes=60),
+    "on_failure_callback": failure_callback,
+    "on_success_callback": success_callback,
 }
 
 config = """
 {
   "source": {
-    "type": "sample-data",
-    "serviceName": "bigquery_gcp",
+    "type": "sample_data",
+    "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "BigQuery"
+        "type": "SampleData",
+        "sampleDataFolder": "./examples/sample_data"
       }
     },
     "sourceConfig": {}
@@ -55,8 +62,6 @@ config = """
     }
   }
 }
-
-
 """
 
 

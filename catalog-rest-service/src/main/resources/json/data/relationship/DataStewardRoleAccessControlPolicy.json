@@ -1,7 +1,0 @@
-{
-  "fromFQN": "DataSteward",
-  "fromEntity": "role",
-  "toFQN": "DataStewardRoleAccessControlPolicy",
-  "toEntity": "policy",
-  "relationshipType": "contains"
-}

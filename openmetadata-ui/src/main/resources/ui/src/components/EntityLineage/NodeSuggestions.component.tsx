@@ -17,7 +17,7 @@ import { FormatedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
@@ -41,8 +41,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const getSuggestionLabel = (fqn: string, type: string, name: string) => {
     if (type === EntityType.TABLE) {
-      const database = getPartialNameFromTableFQN(fqn, ['database']);
-      const schema = getPartialNameFromTableFQN(fqn, ['schema']);
+      const database = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
+      const schema = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
 
       return database && schema
         ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
@@ -105,10 +105,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   setIsOpen(false);
                   onSelectHandler?.({
                     description: entity.description,
-                    displayName: entity.name,
+                    displayName: entity.displayName,
                     id: entity.id,
                     type: entity.entityType as string,
-                    name: entity.fullyQualifiedName,
+                    name: entity.name,
+                    fullyQualifiedName: entity.fullyQualifiedName,
                   });
                 }}>
                 <img

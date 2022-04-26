@@ -20,8 +20,8 @@ from sqlalchemy_databricks._dialect import DatabricksDialect
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -70,6 +70,12 @@ def _get_column_rows(self, connection, table_name, schema):
 def get_columns(self, connection, table_name, schema=None, **kw):
     # This function overrides the sqlalchemy_databricks._dialect.DatabricksDialect.get_columns
     # to add support for struct, array & map datatype
+
+    # Extract the Database Name from the keyword arguments parameter if it is present. This
+    # value should match what is provided in the 'source.config.database' field in the
+    # Databricks ingest config file.
+    db_name = kw["db_name"] if "db_name" in kw else None
+
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []
     for (col_name, col_type, _comment) in rows:
@@ -96,11 +102,17 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "comment": _comment,
         }
         if col_type in {"array", "struct", "map"}:
-            rows = dict(
-                connection.execute(
-                    "DESCRIBE {} {}".format(table_name, col_name)
-                ).fetchall()
-            )
+            if db_name is not None:
+                rows = dict(
+                    connection.execute(
+                        f"DESCRIBE {db_name}.{table_name} {col_name}"
+                    ).fetchall()
+                )
+            else:
+                rows = dict(
+                    connection.execute(f"DESCRIBE {table_name} {col_name}").fetchall()
+                )
+
             col_info["raw_data_type"] = rows["data_type"]
         result.append(col_info)
     return result
@@ -111,7 +123,7 @@ DatabricksDialect.get_columns = get_columns
 
 class DatabricksSource(SQLSource):
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):

@@ -23,25 +23,30 @@ import click
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.config.workflow import get_ingestion_source, get_processor, get_sink
+from metadata.config.workflow import get_processor, get_sink
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source import SQLSource, SQLSourceStatus
+from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.orm_profiler.utils import logger
-from metadata.utils.engines import create_and_bind_session
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
+from metadata.utils.filters import filter_by_fqn
 
 logger = logger()
 
@@ -52,31 +57,23 @@ class ProfilerWorkflow:
     """
 
     config: OpenMetadataWorkflowConfig
-    source: Source
     processor: Processor
     sink: Sink
     metadata: OpenMetadata
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        self.metadata_config: OpenMetadataServerConfig = (
+        self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
 
-        # We will use the existing sources to build the Engine
-        self.source: Source = get_ingestion_source(
-            source_type=self.config.source.type,
-            source_config=self.config.source,
-            metadata_config=self.metadata_config,
-        )
-
-        if not isinstance(self.source, SQLSource):
-            raise ValueError(
-                f"Invalid source type for {self.source}. We only support SQLSource in the Profiler"
-            )
+        # Prepare the connection to the source service
+        # We don't need the whole Source class, as it is the OM Server
+        engine = get_connection(self.config.source.serviceConnection.__root__.config)
+        test_connection(engine)
 
         # Init and type the source config
-        self.source_config: DatabaseServiceMetadataPipeline = (
+        self.source_config: DatabaseServiceProfilerPipeline = (
             self.config.source.sourceConfig.config
         )
         self.source_status = SQLSourceStatus()
@@ -87,7 +84,7 @@ class ProfilerWorkflow:
             metadata_config=self.metadata_config,
             _from="orm_profiler",
             # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(self.source.engine),
+            session=create_and_bind_session(engine),
         )
 
         if self.config.sink:
@@ -122,23 +119,12 @@ class ProfilerWorkflow:
         """
         for table in tables:
 
-            # Validate schema
-            if filter_by_schema(
-                schema_filter_pattern=self.source_config.schemaFilterPattern,
-                schema_name=table.databaseSchema.name,
+            if filter_by_fqn(
+                fqn_filter_pattern=self.source_config.fqnFilterPattern,
+                fqn=table.fullyQualifiedName.__root__,
             ):
                 self.source_status.filter(
-                    table.databaseSchema.name, "Schema pattern not allowed"
-                )
-                continue
-
-            # Validate database
-            if filter_by_table(
-                table_filter_pattern=self.source_config.tableFilterPattern,
-                table_name=str(table.name.__root__),
-            ):
-                self.source_status.filter(
-                    table.name.__root__, "Table name pattern not allowed"
+                    table.fullyQualifiedName.__root__, "Schema pattern not allowed"
                 )
                 continue
 

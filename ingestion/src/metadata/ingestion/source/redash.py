@@ -20,12 +20,10 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -34,7 +32,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 @dataclass
@@ -51,7 +49,7 @@ class RedashSourceStatus(SourceStatus):
 
 class RedashSource(Source[Entity]):
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
     status: RedashSourceStatus
     platform = "redash"
     dashboards_to_charts: Dict[str, List[str]]
@@ -59,26 +57,25 @@ class RedashSource(Source[Entity]):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.connection_config = self.config.serviceConnection.__root__.config
         self.status = RedashSourceStatus()
         self.client = Redash(
-            self.connection_config.redashURL, self.connection_config.apiKey
+            self.connection_config.hostPort, self.connection_config.apiKey
         )
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Redash.name,
-            config=self.config.serviceConnection.__root__.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
         self.dashboards_to_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedashConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedashConnection):
@@ -102,7 +99,7 @@ class RedashSource(Source[Entity]):
             query_id = query_info["id"]
             query_name = query_info["name"]
             query_data = requests.get(
-                f"{self.connection_config.redashURL}/api/queries/{query_id}"
+                f"{self.connection_config.hostPort}/api/queries/{query_id}"
             ).json()
             for visualization in query_data.get("Visualizations", []):
                 chart_type = visualization.get("type", "")
@@ -139,7 +136,7 @@ class RedashSource(Source[Entity]):
                             id=self.service.id, type="dashboardService"
                         ),
                         url=(
-                            f"{self.connection_config.redashURL}/dashboard/{dashboard_data.get('slug', '')}"
+                            f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
                         ),
                         description=visualization["description"],
                     )
@@ -150,7 +147,7 @@ class RedashSource(Source[Entity]):
             if dashboard_id is not None:
                 self.status.item_scanned_status()
                 dashboard_data = self.client.get_dashboard(dashboard_id)
-                dashboard_url = f"{self.connection_config.redashURL}/dashboard/{dashboard_data.get('slug', '')}"
+                dashboard_url = f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
                 dashboard_description = ""
                 for widgets in dashboard_data.get("widgets", []):
                     dashboard_description = widgets.get("text")
@@ -172,3 +169,6 @@ class RedashSource(Source[Entity]):
 
     def close(self):
         self.client.session.close()
+
+    def test_connection(self) -> None:
+        pass

@@ -19,8 +19,8 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -152,7 +152,7 @@ class ClickhouseSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ClickhouseConnection):

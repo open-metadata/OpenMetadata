@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { IngestionType } from '../../enums/service.enum';
+import { IngestionType, ServiceCategory } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
-import { AirflowPipeline } from '../../generated/operations/pipelines/airflowPipeline';
+import {
+  Connection,
+  IngestionPipeline,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
+import { DataObj } from '../../interface/service.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -48,23 +52,23 @@ export interface IngestionData {
   endDate?: string;
 }
 
-export interface Props {
-  serviceType?: string;
-  serviceName?: string;
+export interface IngestionProps {
+  airflowEndpoint: string;
+  serviceDetails: DataObj;
+  serviceName: string;
+  serviceCategory: ServiceCategory;
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
-  ingestionList: Array<AirflowPipeline>;
+  ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
   currrentPage: number;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
+  deployIngestion: (data: IngestionPipeline) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  addIngestion: (data: AirflowPipeline, triggerIngestion?: boolean) => void;
-  updateIngestion: (
-    data: AirflowPipeline,
-    oldData: AirflowPipeline,
-    id: string,
-    displayName: string,
-    triggerIngestion?: boolean
-  ) => Promise<void>;
+}
+
+export interface ModifiedConfig extends Connection {
+  supportsMetadataExtraction: boolean;
+  supportsUsageExtraction: boolean;
 }

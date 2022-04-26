@@ -10,11 +10,11 @@
       "type": "string",
       "enum": [
         "BigQuery",
-        "MySQL",
+        "Mysql",
         "Redshift",
         "Snowflake",
         "Postgres",
-        "MSSQL",
+        "Mssql",
         "Hive",
         "Oracle",
         "Athena",
@@ -25,21 +25,22 @@
         "MariaDB",
         "Druid",
         "Db2",
-        "ClickHouse",
+        "Clickhouse",
         "Databricks",
         "DynamoDB",
         "AzureSQL",
         "SingleStore",
         "SQLite",
         "DeltaLake",
-        "Salesforce"
+        "Salesforce",
+        "SampleData"
       ],
       "javaEnums": [
         {
           "name": "BigQuery"
         },
         {
-          "name": "MySQL"
+          "name": "Mysql"
         },
         {
           "name": "Redshift"
@@ -51,7 +52,7 @@
           "name": "Postgres"
         },
         {
-          "name": "MSSQL"
+          "name": "Mssql"
         },
         {
           "name": "Oracle"
@@ -84,7 +85,7 @@
           "name": "Db2"
         },
         {
-          "name": "ClickHouse"
+          "name": "Clickhouse"
         },
         {
           "name": "Databricks"
@@ -106,6 +107,9 @@
         },
         {
           "name": "Salesforce"
+        },
+        {
+          "name": "SampleData"
         }
       ]
     },
@@ -186,6 +190,9 @@
             },
             {
               "$ref": "./connections/database/verticaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sampleDataConnection.json"
             }
           ]
         }

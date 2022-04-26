@@ -29,7 +29,6 @@ import GithubStarButton from '../../components/GithubStarButton/GithubStarButton
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import {
-  onConfirmText,
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
@@ -42,7 +41,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -176,7 +175,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.OWNER, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.OWNER,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex
@@ -186,7 +189,11 @@ const MyDataPage = () => {
       '',
       1,
       8,
-      getMyDataFilters(Ownership.FOLLOWERS, AppState.userDetails),
+      getMyDataFilters(
+        Ownership.FOLLOWERS,
+        AppState.userDetails,
+        AppState.nonSecureUserDetails
+      ),
       '',
       '',
       myDataSearchIndex
@@ -280,7 +287,6 @@ const MyDataPage = () => {
             const message = error?.message;
             showErrorToast(message ?? onUpdatedConversastionError);
           });
-        showSuccessToast(onConfirmText);
       })
       .catch((error) => {
         const message = error?.message;

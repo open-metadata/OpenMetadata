@@ -15,13 +15,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
-import { EntityTags, FormErrorData } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { FormErrorData, LoadingState } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   createTag,
   createTagCategory,
+  deleteTag,
+  deleteTagCategory,
   getCategory,
   updateTag,
   updateTagCategory,
@@ -34,10 +36,9 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
+import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../components/tags-container/tags-container';
-import Tags from '../../components/tags/tags';
 import {
   getExplorePathWithSearch,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -58,13 +59,22 @@ import {
 } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import {
-  getTagCategories,
-  getTaglist,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
+import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
+
+type DeleteTagDetailsType = {
+  id: string;
+  name: string;
+  categoryName?: string;
+  isCategory: boolean;
+  status?: LoadingState;
+};
+
+type DeleteTagsType = {
+  data: DeleteTagDetailsType | undefined;
+  state: boolean;
+};
 
 const TagsPage = () => {
   const { isAdminUser } = useAuth();
@@ -80,14 +90,10 @@ const TagsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorDataCategory, setErrorDataCategory] = useState<FormErrorData>();
   const [errorDataTag, setErrorDataTag] = useState<FormErrorData>();
-
-  const getTags = useCallback(() => {
-    const filteredTags = getTaglist(categories).filter(
-      (tag) => editTag?.fullyQualifiedName !== tag
-    );
-
-    return getTagOptionsFromFQN(filteredTags);
-  }, [currentCategory, editTag]);
+  const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
+    data: undefined,
+    state: false,
+  });
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -184,6 +190,91 @@ const TagsPage = () => {
         .finally(() => {
           setIsAddingCategory(false);
         });
+    }
+  };
+
+  /**
+   * It will set current tag category for delete
+   */
+  const deleteTagHandler = () => {
+    if (currentCategory) {
+      setDeleteTags({
+        data: {
+          id: currentCategory.id as string,
+          name: currentCategory.displayName || currentCategory.name,
+          isCategory: true,
+        },
+        state: true,
+      });
+    }
+  };
+
+  /**
+   * Take tag category id and delete.
+   * @param categoryId - tag category id
+   */
+  const deleteTagCategoryById = (categoryId: string) => {
+    deleteTagCategory(categoryId)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setIsLoading(true);
+          const updatedCategory = categories.filter(
+            (data) => data.id !== categoryId
+          );
+          setCurrentCategory(updatedCategory[0]);
+          setCategoreis(updatedCategory);
+          setIsLoading(false);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['delete-tag-category-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['delete-tag-category-error']
+        );
+      })
+      .finally(() => setDeleteTags({ data: undefined, state: false }));
+  };
+
+  /**
+   * Takes category name and tag id and delete the tag
+   * @param categoryName - tag category name
+   * @param tagId -  tag id
+   */
+  const handleDeleteTag = (categoryName: string, tagId: string) => {
+    deleteTag(categoryName, tagId)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          if (currentCategory) {
+            const updatedTags = (currentCategory.children as TagClass[]).filter(
+              (data) => data.id !== tagId
+            );
+            setCurrentCategory({ ...currentCategory, children: updatedTags });
+          }
+        } else {
+          showErrorToast(jsonData['api-error-messages']['delete-tag-error']);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['delete-tag-error']);
+      })
+      .finally(() => setDeleteTags({ data: undefined, state: false }));
+  };
+
+  /**
+   * It redirects to respective function call based on tag/tagCategory
+   */
+  const handleConfirmClick = () => {
+    if (deleteTags.data?.isCategory) {
+      deleteTagCategoryById(deleteTags.data.id as string);
+    } else {
+      handleDeleteTag(
+        deleteTags.data?.categoryName as string,
+        deleteTags.data?.id as string
+      );
     }
   };
 
@@ -288,32 +379,6 @@ const TagsPage = () => {
       });
   };
 
-  const handleTagSelection = (tags?: Array<EntityTags>) => {
-    const newTags = tags?.map((tag) => tag.tagFQN);
-    if (newTags && editTag) {
-      updateTag(currentCategory?.name, editTag?.name, {
-        description: editTag?.description,
-        name: editTag?.name,
-        associatedTags: newTags,
-      })
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentCategory(currentCategory?.name as string, true);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-tags-error']
-          );
-        });
-    }
-
-    setEditTag(undefined);
-  };
-
   const getUsageCountLink = (tagFQN: string) => {
     if (tagFQN.startsWith('Tier')) {
       return `${getExplorePathWithSearch()}?tier=${tagFQN}`;
@@ -399,24 +464,46 @@ const TagsPage = () => {
                       data-testid="category-name">
                       {currentCategory.displayName ?? currentCategory.name}
                     </div>
-                    <NonAdminAction
-                      position="bottom"
-                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <Button
-                        className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                        })}
-                        data-testid="add-new-tag-button"
-                        size="small"
-                        theme="primary"
-                        variant="contained"
-                        onClick={() => {
-                          setIsAddingTag((prevState) => !prevState);
-                          setErrorDataTag(undefined);
-                        }}>
-                        Add new tag
-                      </Button>
-                    </NonAdminAction>
+                    <div>
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <Button
+                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          })}
+                          data-testid="add-new-tag-button"
+                          size="small"
+                          theme="primary"
+                          variant="contained"
+                          onClick={() => {
+                            setIsAddingTag((prevState) => !prevState);
+                            setErrorDataTag(undefined);
+                          }}>
+                          Add new tag
+                        </Button>
+                      </NonAdminAction>
+                      <NonAdminAction
+                        position="bottom"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <Button
+                          className={classNames(
+                            'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
+                            {
+                              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                            }
+                          )}
+                          data-testid="delete-tag-category-button"
+                          size="small"
+                          theme="primary"
+                          variant="contained"
+                          onClick={() => {
+                            deleteTagHandler();
+                          }}>
+                          Delete category
+                        </Button>
+                      </NonAdminAction>
+                    </div>
                   </div>
                 )}
                 <div
@@ -449,9 +536,9 @@ const TagsPage = () => {
                           Description
                         </th>
                         <th
-                          className="tableHead-cell tw-w-60"
-                          data-testid="heading-associated-tags">
-                          Associated tags
+                          className="tableHead-cell tw-w-10"
+                          data-testid="heading-actions">
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -523,52 +610,48 @@ const TagsPage = () => {
                                     )}
                                   </div>
                                 </td>
-                                <td
-                                  className="tw-group tableBody-cell"
-                                  onClick={() => {
-                                    setEditTag(tag);
-                                  }}>
-                                  <NonAdminAction
-                                    permission={Operation.UpdateTags}
-                                    position="left"
-                                    title={TITLE_FOR_NON_ADMIN_ACTION}
-                                    trigger="click">
-                                    <TagsContainer
-                                      editable={
-                                        editTag?.name === tag.name && !isEditTag
-                                      }
-                                      selectedTags={
-                                        tag.associatedTags?.map((tag) => ({
-                                          tagFQN: tag,
-                                        })) || []
-                                      }
-                                      tagList={getTags()}
-                                      onCancel={() => {
-                                        handleTagSelection();
-                                      }}
-                                      onSelectionChange={(tags) => {
-                                        handleTagSelection(tags);
-                                      }}>
-                                      {tag.associatedTags?.length ? (
-                                        <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                <td className="tableBody-cell">
+                                  <div className="tw-text-center">
+                                    <NonAdminAction
+                                      position="bottom"
+                                      title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                      <button
+                                        className="link-text"
+                                        data-testid="delete-tag"
+                                        onClick={() =>
+                                          setDeleteTags({
+                                            data: {
+                                              id: tag.id as string,
+                                              name: tag.name,
+                                              categoryName:
+                                                currentCategory.name,
+                                              isCategory: false,
+                                              status: 'waiting',
+                                            },
+                                            state: true,
+                                          })
+                                        }>
+                                        {deleteTags.data?.id === tag.id ? (
+                                          deleteTags.data?.status ===
+                                          'success' ? (
+                                            <FontAwesomeIcon icon="check" />
+                                          ) : (
+                                            <Loader
+                                              size="small"
+                                              type="default"
+                                            />
+                                          )
+                                        ) : (
                                           <SVGIcons
-                                            alt="edit"
-                                            icon="icon-edit"
-                                            title="Edit"
-                                            width="10px"
+                                            alt="delete"
+                                            icon="icon-delete"
+                                            title="Delete"
+                                            width="12px"
                                           />
-                                        </button>
-                                      ) : (
-                                        <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                          <Tags
-                                            startWith="+ "
-                                            tag="Add tag"
-                                            type="outlined"
-                                          />
-                                        </span>
-                                      )}
-                                    </TagsContainer>
-                                  </NonAdminAction>
+                                        )}
+                                      </button>
+                                    </NonAdminAction>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -630,6 +713,22 @@ const TagsPage = () => {
                     onCancel={() => setIsAddingTag(false)}
                     onChange={(data) => onNewTagChange(data as TagCategory)}
                     onSave={(data) => createPrimaryTag(data as TagCategory)}
+                  />
+                )}
+                {deleteTags.state && (
+                  <ConfirmationModal
+                    bodyText={`Are you sure you want to delete the tag ${
+                      deleteTags.data?.isCategory ? 'category' : ''
+                    } "${deleteTags.data?.name}"?`}
+                    cancelText="Cancel"
+                    confirmText="Confirm"
+                    header={`Delete Tag ${
+                      deleteTags.data?.isCategory ? 'Category' : ''
+                    }`}
+                    onCancel={() =>
+                      setDeleteTags({ data: undefined, state: false })
+                    }
+                    onConfirm={handleConfirmClick}
                   />
                 )}
               </div>

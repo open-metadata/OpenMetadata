@@ -46,6 +46,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
+    "MarkupSafe==2.0.1",
 }
 
 report_requirements = {
@@ -81,7 +82,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
-    "dbt": {},
+    "dbt": {"google-cloud", "boto3"},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch==7.13.1"},
     "glue": {"boto3~=1.19.12"},
@@ -111,14 +112,13 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         "GeoAlchemy2",
     },
-    "snowflake": {"snowflake-sqlalchemy<=1.3.2", "cryptography"},
+    "snowflake": {"snowflake-sqlalchemy<=1.3.2"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.3.2"},
     "sample-entity": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2"},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
@@ -156,7 +156,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.9.2.dev1",
+    version="0.10.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

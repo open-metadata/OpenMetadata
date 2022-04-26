@@ -69,6 +69,40 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     this.supportsAuthorizedMetadataOperations = false;
   }
 
+  public void setupDatabaseServices(TestInfo test) throws HttpResponseException {
+    // Create snowflake database service
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createDatabaseService =
+        databaseServiceResourceTest
+            .createRequest(test, 1)
+            .withServiceType(DatabaseServiceType.Snowflake)
+            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
+    DatabaseService databaseService =
+        new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("redshiftDB")
+        .withServiceType(DatabaseServiceType.Redshift)
+        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("bigQueryDB")
+        .withServiceType(DatabaseServiceType.BigQuery)
+        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService
+        .withName("mysqlDB")
+        .withServiceType(DatabaseServiceType.Mysql)
+        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+  }
+
   @Test
   void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create database service with different optional fields
@@ -78,7 +112,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Test
-  void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
+  void post_invalidDatabaseServiceNoConnection_4xx(TestInfo test) {
     // No jdbc connection set
     CreateDatabaseService create = createRequest(test).withConnection(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
@@ -113,6 +147,31 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
     assertEquals("description1", service.getDescription());
+  }
+
+  @Test
+  void post_put_invalidConnection_as_admin_4xx(TestInfo test) throws IOException {
+    RedshiftConnection redshiftConnection =
+        new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+    assertResponseContains(
+        () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
+    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+    // Update database description and ingestion service that are null
+    CreateDatabaseService update = createRequest(test).withDescription("description1");
+
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    MysqlConnection mysqlConnection = new MysqlConnection().withHostPort("localhost:3300").withUsername("test");
+    DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
+    update.withConnection(databaseConnection);
+    assertResponseContains(
+        () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to construct connection instance of Snowflake]");
   }
 
   @Test
@@ -172,6 +231,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
     assertEquals(ingestionPipeline.getName(), expectedPipeline.getName());
     assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getFullyQualifiedName());
+    DatabaseConnection expectedDatabaseConnection =
+        JsonUtils.convertValue(ingestionPipeline.getSource().getServiceConnection(), DatabaseConnection.class);
+    SnowflakeConnection expectedSnowflake =
+        JsonUtils.convertValue(expectedDatabaseConnection.getConfig(), SnowflakeConnection.class);
+    assertEquals(expectedSnowflake, snowflakeConnection);
   }
 
   @Override
@@ -244,7 +308,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
       DatabaseServiceType databaseServiceType) {
     // Validate Database Connection if available. We nullify when not admin or bot
     if (expectedDatabaseConnection != null) {
-      if (databaseServiceType == DatabaseServiceType.MySQL) {
+      if (databaseServiceType == DatabaseServiceType.Mysql) {
         MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
         MysqlConnection actualMysqlConnection;
         if (actualDatabaseConnection.getConfig() instanceof MysqlConnection) {
@@ -300,7 +364,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   public static void validateBigQueryConnection(
       BigQueryConnection expectedBigQueryConnection, BigQueryConnection actualBigQueryConnection) {
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
-    assertEquals(expectedBigQueryConnection.getProjectID(), actualBigQueryConnection.getProjectID());
+    assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     assertEquals(expectedBigQueryConnection.getUsername(), actualBigQueryConnection.getUsername());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
     assertEquals(expectedBigQueryConnection.getDatabase(), actualBigQueryConnection.getDatabase());

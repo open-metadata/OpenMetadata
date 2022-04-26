@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.openmetadata</groupId>
-    <version>0.9.1-SNAPSHOT</version>
+    <version>0.10.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -110,8 +110,8 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v12.22.1</nodeVersion>
-              <yarnVersion>v1.22.17</yarnVersion>
+              <nodeVersion>v16.14.2</nodeVersion>
+              <yarnVersion>v1.22.18</yarnVersion>
             </configuration>
           </execution>
           <execution>

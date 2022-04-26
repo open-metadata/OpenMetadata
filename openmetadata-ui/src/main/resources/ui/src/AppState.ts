@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty, isNil } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser, UserPermissions } from 'Models';
 import { CurrentTourPageType } from './enums/tour.enum';
@@ -30,6 +31,7 @@ class AppState {
     client_id: '',
     signingIn: false,
   };
+  nonSecureUserDetails: User = {} as User;
   userDetails: User = {} as User;
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
@@ -53,6 +55,11 @@ class AppState {
       updateUsers: action,
       updateUserPermissions: action,
       updateExplorePageTab: action,
+      getCurrentUserDetails: action,
+      getAllUsers: action,
+      getAllTeams: action,
+      getAllRoles: action,
+      getAllPermissions: action,
     });
   }
 
@@ -61,6 +68,7 @@ class AppState {
   }
   updateUsers(data: Array<User>) {
     this.users = data;
+    this.nonSecureUserDetails = data[0];
   }
   updateUserTeam(data: Array<UserTeams>) {
     this.userTeams = data;
@@ -85,6 +93,35 @@ class AppState {
   }
   updateExplorePageTab(tab: string) {
     this.explorePageTab = tab;
+  }
+
+  getCurrentUserDetails() {
+    if (!isEmpty(this.userDetails) && !isNil(this.userDetails)) {
+      return this.userDetails;
+    } else if (
+      !isEmpty(this.nonSecureUserDetails) &&
+      !isNil(this.nonSecureUserDetails)
+    ) {
+      return this.nonSecureUserDetails;
+    } else {
+      return;
+    }
+  }
+
+  getAllUsers() {
+    return this.users;
+  }
+
+  getAllTeams() {
+    return this.userTeams;
+  }
+
+  getAllRoles() {
+    return this.userRoles;
+  }
+
+  getAllPermissions() {
+    return this.userPermissions;
   }
 }
 

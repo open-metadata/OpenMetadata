@@ -104,12 +104,9 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
           createRequest(test).withService(new EntityReference().withId(service.getId()).withType(service.getType())),
           ADMIN_AUTH_HEADERS);
       // List Dashboards by filtering on service name and ensure right Dashboards in the response
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Dashboard> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
@@ -154,11 +151,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     CHART_REFERENCES.remove(0);
     change = getChangeDescription(dashboard.getVersion()).withFieldsDeleted(singletonList(charts));
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_nonEmptyDashboard_4xx() {
-    // TODO
   }
 
   @Override

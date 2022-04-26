@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
@@ -66,7 +67,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
     entity.setReviewers(fields.contains("reviewers") ? getReviewers(entity) : null);
-    entity.setTags(fields.contains("tags") ? getTags(entity.getFullyQualifiedName()) : null);
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : null);
     return entity;
   }
@@ -76,12 +77,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
-    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM);
+    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
     return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0)), ALL) : null;
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<String> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.PARENT_OF, GLOSSARY_TERM);
+    List<String> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
     return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
@@ -117,7 +118,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate reviewers
     EntityUtil.populateEntityReferences(entity.getReviewers());
 
-    // Set tags
+    // Validate table tags and add derived tags to the list
     entity.setTags(addDerivedTags(entity.getTags()));
   }
 
@@ -156,7 +157,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     addRelationship(
         entity.getGlossary().getId(), entity.getId(), Entity.GLOSSARY, GLOSSARY_TERM, Relationship.CONTAINS);
     if (entity.getParent() != null) {
-      addRelationship(entity.getParent().getId(), entity.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.PARENT_OF);
+      addRelationship(entity.getParent().getId(), entity.getId(), GLOSSARY_TERM, GLOSSARY_TERM, Relationship.CONTAINS);
     }
     for (EntityReference relTerm : listOrEmpty(entity.getRelatedTerms())) {
       // Make this bidirectional relationship
@@ -272,7 +273,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public EntityReference getContainer() {
-      return null;
+      return entity.getParent() == null ? entity.getGlossary() : entity.getParent();
     }
 
     @Override

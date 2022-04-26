@@ -14,12 +14,12 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import { AssetsType } from '../../enums/entity.enum';
+import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
@@ -30,15 +30,23 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
-type Props = {
-  item: { description: string; name: string; id?: string };
+interface Props {
+  item: {
+    fqn: string;
+    type: string;
+    displayName: string;
+    id?: string;
+    name?: string;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
   isCheckBoxes?: boolean;
+  isOwner?: boolean;
+  onTitleClick?: (value: string) => void;
   onSelect?: (value: string) => void;
   onRemove?: (value: string) => void;
-};
+}
 
 const UserCard = ({
   item,
@@ -46,6 +54,8 @@ const UserCard = ({
   isIconVisible = false,
   isDataset = false,
   isCheckBoxes = false,
+  isOwner = false,
+  onTitleClick,
   onSelect,
   onRemove,
 }: Props) => {
@@ -61,7 +71,10 @@ const UserCard = ({
   const getAssetDisplayName = (type: string, fqn: string) => {
     switch (type) {
       case AssetsType.TABLE:
-        return getPartialNameFromTableFQN(fqn, ['database', 'table']);
+        return getPartialNameFromTableFQN(fqn, [
+          FqnPart.Database,
+          FqnPart.Table,
+        ]);
 
       case AssetsType.DASHBOARD:
       case AssetsType.PIPELINE:
@@ -144,9 +157,9 @@ const UserCard = ({
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.description} />
+          <Avatar name={item.displayName} />
         ) : (
-          <>{getDatasetIcon(item.name)}</>
+          <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
@@ -155,16 +168,23 @@ const UserCard = ({
           })}
           data-testid="data-container">
           {isDataset ? (
-            <>{getDatasetTitle(item.name, item.description)}</>
+            <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
-            <>
+            <Fragment>
               <p
                 className={classNames(
                   'tw-font-normal',
-                  isActionVisible ? 'tw-truncate tw-w-32' : null
+                  isActionVisible ? 'tw-truncate tw-w-32' : null,
+                  {
+                    'tw-cursor-pointer hover:tw-underline':
+                      Boolean(onTitleClick),
+                  }
                 )}
-                title={item.description}>
-                {item.description}
+                title={item.displayName}
+                onClick={() => {
+                  onTitleClick?.(item.fqn);
+                }}>
+                {item.displayName}
               </p>
               {item.name && (
                 <p
@@ -175,7 +195,7 @@ const UserCard = ({
                   {isIconVisible ? item.name : capitalize(item.name)}
                 </p>
               )}
-            </>
+            </Fragment>
           )}
         </div>
       </div>
@@ -193,6 +213,7 @@ const UserCard = ({
           ) : (
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
+              isOwner={isOwner}
               permission={Operation.UpdateTeam}
               position="bottom">
               <span
@@ -200,6 +221,7 @@ const UserCard = ({
                   'tw-opacity-40':
                     !isAdminUser &&
                     !isAuthDisabled &&
+                    !isOwner &&
                     !userPermissions[Operation.UpdateTeam],
                 })}
                 data-testid="remove"

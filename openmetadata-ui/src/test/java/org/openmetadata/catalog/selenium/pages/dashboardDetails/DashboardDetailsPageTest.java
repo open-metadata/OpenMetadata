@@ -18,13 +18,23 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DashboardDetails;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -34,7 +44,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(5)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DashboardDetailsPageTest {
+class DashboardDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -90,15 +100,15 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
@@ -110,11 +120,11 @@ public class DashboardDetailsPageTest {
 
   @Test
   @Order(4)
-  public void addTags() throws InterruptedException {
+  void addTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, common.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, common.addTag());
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
@@ -162,14 +172,14 @@ public class DashboardDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
@@ -185,7 +195,7 @@ public class DashboardDetailsPageTest {
 
   @Test
   @Order(6)
-  public void addChartTags() throws InterruptedException {
+  void addChartTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -207,7 +217,7 @@ public class DashboardDetailsPageTest {
 
   @Test
   @Order(7)
-  public void removeChartTag() throws InterruptedException {
+  void removeChartTag() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -230,18 +240,17 @@ public class DashboardDetailsPageTest {
 
   @Test
   @Order(8)
-  public void checkManage() throws InterruptedException {
+  void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, dashboardDetails.selectTier());
   }
 
   @Test
@@ -254,9 +263,9 @@ public class DashboardDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {
@@ -268,7 +277,7 @@ public class DashboardDetailsPageTest {
 
   @Test
   @Order(10)
-  public void checkVersion() throws InterruptedException {
+  void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;

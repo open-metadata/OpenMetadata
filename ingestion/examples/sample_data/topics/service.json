@@ -1,13 +1,12 @@
 {
-  "id": "a6fb4f54-ba3d-4a16-97f0-766713199189",
-  "name": "sample_kafka",
-  "serviceType": "Kafka",
-  "description": "Kafka messaging queue service",
-  "href": "null",
-  "config": {
-    "connection": {
-      "bootstrapServers": "localhost:9092",
-      "schemaRegistry": "http://localhost:8081"
+  "type": "kafka",
+  "serviceName": "sample_kafka",
+  "serviceConnection": {
+    "config": {
+      "type": "Kafka"
     }
+  },
+  "sourceConfig": {
+    "config": {}
   }
 }

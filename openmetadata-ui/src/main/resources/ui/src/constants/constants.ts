@@ -17,14 +17,16 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
+export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
-export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
-export const isAdminUpdated = 'isAdminUpdated';
+export const TERM_ADMIN = 'Admin';
+export const TERM_USER = 'User';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -44,11 +46,14 @@ const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
-const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
-const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
+
+export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
+export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
+export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
+export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
-const PLACEHOLDER_ROUTE_TEAM = ':team';
+const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 const PLAEHOLDER_ROUTE_VERSION = ':version';
 const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
@@ -78,7 +83,14 @@ export const versionTypes = [
 
 export const DESCRIPTIONLENGTH = 100;
 
-export const visibleFilters = ['service', 'tier', 'tags', 'database'];
+export const visibleFilters = [
+  'service',
+  'tier',
+  'tags',
+  'database',
+  'databaseschema',
+  'servicename',
+];
 
 export const tableSortingFields = [
   {
@@ -119,6 +131,14 @@ export const facetFilterPlaceholder = [
     name: 'Database',
     value: 'Database',
   },
+  {
+    name: 'DatabaseSchema',
+    value: 'Schema',
+  },
+  {
+    name: 'ServiceName',
+    value: 'Service Name',
+  },
 ];
 
 export const ROUTES = {
@@ -133,8 +153,8 @@ export const ROUTES = {
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
-  TEAMS: '/teams',
-  TEAM_DETAILS: `/teams/${PLACEHOLDER_ROUTE_TEAM}`,
+  TEAMS_AND_USERS: '/teams-and-users',
+  TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -143,6 +163,8 @@ export const ROUTES = {
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
+  ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
+  EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   USERS: '/users',
   SCORECARD: '/scorecard',
   SWAGGER: '/docs',
@@ -228,13 +250,6 @@ export const getServiceDetailsPath = (
   return path;
 };
 
-export const getAddServicePath = (serviceCategory: string) => {
-  let path = ROUTES.ADD_SERVICE;
-  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
-
-  return path;
-};
-
 export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
   let path = ROUTES.EXPLORE_WITH_SEARCH;
   path = path
@@ -302,11 +317,11 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   return path;
 };
 
-export const getTeamDetailsPath = (teamName?: string) => {
-  let path = ROUTES.TEAMS;
-  if (teamName) {
-    path = ROUTES.TEAM_DETAILS;
-    path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
+export const getTeamAndUserDetailsPath = (name?: string) => {
+  let path = ROUTES.TEAMS_AND_USERS;
+  if (name) {
+    path = ROUTES.TEAMS_AND_USERS_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_TEAM_AND_USER, name);
   }
 
   return path;
@@ -334,6 +349,18 @@ export const getGlossaryPath = (fqn?: string) => {
   }
 
   return path;
+};
+
+export const getParentGlossaryPath = (fqn?: string) => {
+  if (fqn) {
+    const parts = fqn.split(FQN_SEPARATOR_CHAR);
+    if (parts.length > 1) {
+      // remove the last part to get parent FQN
+      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
+    }
+  }
+
+  return getGlossaryPath(fqn);
 };
 
 export const getGlossaryTermsPath = (
@@ -382,13 +409,8 @@ export const navLinkSettings = [
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Tags', to: '/tags', disabled: false },
-  { name: 'Teams', to: '/teams', disabled: false },
-  { name: 'Users', to: '/user-list', disabled: false, isAdminOnly: true },
-  // { name: 'Store', to: '/store', disabled: false },
+  { name: 'Teams & Users', to: ROUTES.TEAMS_AND_USERS, disabled: false },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
-  // { name: 'Ingestions', to: '/ingestion', disabled: false },
-  // { name: 'Marketplace', to: '/marketplace', disabled: true },
-  // { name: 'Preferences', to: '/preference', disabled: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =

@@ -15,53 +15,63 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/tableauType",
       "default": "Tableau"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Tableau Server",
-      "type": "string"
+      "type": "string",
+      "format": "uri"
     },
     "username": {
+      "title": "Username",
       "description": "username for the Tableau",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password for the Tableau",
       "type": "string",
       "format": "password"
     },
     "apiVersion": {
+      "title": "API Version",
       "description": "Tableau API version",
       "type": "string"
     },
     "siteName": {
+      "title": "Site Name",
       "description": "Tableau Site Name",
       "type": "string"
     },
     "personalAccessTokenName": {
+      "title": "Personal Access Token",
       "description": "Personal Access Token Name",
       "type": "string"
     },
     "personalAccessTokenSecret": {
+      "title": "Personal Access Token Secret",
       "description": "Personal Access Token Secret",
       "type": "string"
     },
     "env": {
+      "title": "Tableau Environment",
       "description": "Tableau Environment Name",
+      "type": "string",
+      "default": "tableau_prod"
+    },
+    "dbServiceName": {
+      "description": "Database Service Name in order to create a lineage",
       "type": "string"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort", "apiVersion", "siteName", "env"]
 }

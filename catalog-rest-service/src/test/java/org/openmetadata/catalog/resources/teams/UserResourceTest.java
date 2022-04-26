@@ -23,6 +23,8 @@ import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
@@ -33,11 +35,14 @@ import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertDeleted;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrdering;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -94,6 +99,37 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
+  }
+
+  public void setupUsers(TestInfo test) throws HttpResponseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER1 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
+    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
+
+    USER2 =
+        userResourceTest.createEntity(
+            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
+    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
+
+    USER_WITH_DATA_STEWARD_ROLE =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-steward", "", "", null)
+                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    USER_WITH_DATA_CONSUMER_ROLE =
+        userResourceTest.createEntity(
+            userResourceTest
+                .createRequest("user-data-consumer", "", "", null)
+                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
   }
 
   @Test
@@ -354,23 +390,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Predicate<User> isUser1 = u -> u.getId().equals(user1.getId());
     Predicate<User> isUser2 = u -> u.getId().equals(user2.getId());
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("team", team1.getName());
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("team", team1.getName());
+
     ResultList<User> users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(2, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
 
-    queryParams =
-        new HashMap<>() {
-          {
-            put("team", team2.getName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("team", team2.getName());
+
     users = listEntities(queryParams, 100_000, null, null, ADMIN_AUTH_HEADERS);
     assertEquals(1, users.getData().size());
     assertTrue(users.getData().stream().anyMatch(isUser2));
@@ -379,6 +409,68 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertTrue(users.getData().stream().anyMatch(isUser0));
     assertTrue(users.getData().stream().anyMatch(isUser1));
     assertTrue(users.getData().stream().anyMatch(isUser2));
+  }
+
+  @Test
+  void get_listUsersWithTeamsPagination(TestInfo test) throws IOException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    List<UUID> team = of(team1.getId());
+
+    // create 15 users and add them to team1
+    for (int i = 0; i < 15; i++) {
+      CreateUser create = createRequest(test, i).withTeams(team);
+      createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("team", team1.getName());
+
+    ResultList<User> users = listEntities(queryParams, 5, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // First page must contain "after" and should not have "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    User user1 = users.getData().get(0);
+
+    String after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Second page must contain both "after" and "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user2 = users.getData().get(0);
+
+    after = users.getPaging().getAfter();
+    users = listEntities(queryParams, 5, null, after, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Third page must contain only "before" since it is the last page
+    assertNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    User user3 = users.getData().get(0);
+    assertNotEquals(user2, user3);
+
+    // Now fetch previous pages using before pointer
+    String before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // Second page must contain both "after" and "before"
+    assertNotNull(users.getPaging().getAfter());
+    assertNotNull(users.getPaging().getBefore());
+    assertEquals(user2, users.getData().get(0));
+
+    before = users.getPaging().getBefore();
+    users = listEntities(queryParams, 5, before, null, ADMIN_AUTH_HEADERS);
+    assertEquals(5, users.getData().size());
+    assertEquals(15, users.getPaging().getTotal());
+    // First page must contain only "after"
+    assertNotNull(users.getPaging().getAfter());
+    assertNull(users.getPaging().getBefore());
+    assertEquals(user1, users.getData().get(0));
   }
 
   @Test
@@ -612,8 +704,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
-
-    // TODO deactivated user can't be made owner
   }
 
   private User createUserAndCheckRoles(CreateUser create, List<UUID> expectedRolesIds) throws HttpResponseException {
@@ -657,13 +747,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             ? getEntityByName(user.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
+    validateAlphabeticalOrdering(user.getTeams(), EntityUtil.compareEntityReference);
     return getEntityInterface(user);
   }
 
   @Override
   public CreateUser createRequest(String name, String description, String displayName, EntityReference owner) {
     // user part of the email should be less than 64 in length
-    String emailUser = name == null || name.isEmpty() ? UUID.randomUUID().toString() : name;
+    String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser()
         .withName(name)
@@ -701,7 +792,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(user), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(user),
+        createRequest.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        Entity.getEntityReference(user));
 
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
@@ -725,6 +819,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
     TestUtils.assertEntityReferenceList(expectedTeams, user.getTeams());
+
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }
@@ -733,7 +828,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(expected), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        getEntityInterface(expected),
+        expected.getDescription(),
+        TestUtils.getPrincipal(authHeaders),
+        Entity.getEntityReference(expected));
 
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());
@@ -741,22 +839,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getIsBot(), expected.getIsBot());
     assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
 
-    compareEntityReferenceLists(expected.getRoles(), updated.getRoles());
-    compareEntityReferenceLists(expected.getTeams(), updated.getTeams());
+    assertEntityReferenceList(expected.getRoles(), updated.getRoles());
+    assertEntityReferenceList(expected.getTeams(), updated.getTeams());
 
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
-  }
-
-  private void compareEntityReferenceLists(List<EntityReference> expected, List<EntityReference> updated) {
-    List<EntityReference> expectedList = listOrEmpty(expected);
-    List<EntityReference> updatedList = new ArrayList<>(listOrEmpty(updated));
-
-    updatedList.forEach(TestUtils::validateEntityReference);
-    expectedList.sort(EntityUtil.compareEntityReference);
-    updatedList.sort(EntityUtil.compareEntityReference);
-    assertEquals(expectedList, updatedList);
   }
 
   @Override

@@ -16,7 +16,6 @@ import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError, AxiosResponse } from 'axios';
-import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
@@ -44,11 +43,7 @@ import {
 } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
 import { NO_AUTH } from '../../constants/auth.constants';
-import {
-  isAdminUpdated,
-  oidcTokenKey,
-  ROUTES,
-} from '../../constants/constants';
+import { oidcTokenKey, ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -62,9 +57,12 @@ import {
   msalInstance,
   setMsalInstance,
 } from '../../utils/AuthProvider.util';
-import { getImages } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { fetchAllUsers } from '../../utils/UsedDataUtils';
+import {
+  fetchAllUsers,
+  getUserDataFromOidc,
+  matchUserDetails,
+} from '../../utils/UserDataUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
@@ -78,7 +76,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const cookieStorage = new CookieStorage();
 const userAPIQueryFields = 'profile,teams,roles';
 
 export const AuthProvider = ({
@@ -93,7 +90,7 @@ export const AuthProvider = ({
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
 
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
-    Boolean(oidcUserToken || localStorage.getItem('okta-token-storage'))
+    Boolean(oidcUserToken)
   );
   const [isAuthDisabled, setIsAuthDisabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -127,6 +124,7 @@ export const AuthProvider = ({
     appState.updateUserDetails({} as User);
     appState.updateUserPermissions({} as UserPermissions);
     localStorage.removeItem(oidcTokenKey);
+    setIsUserAuthenticated(false);
     setLoadingIndicator(false);
     if (forceLogout) {
       onLogoutHandler();
@@ -164,45 +162,33 @@ export const AuthProvider = ({
         }
       })
       .catch((err: AxiosError) => {
-        if (err.response?.data.code === 404) {
-          resetUserDetails();
+        resetUserDetails();
+        if (err.response?.data.code !== 404) {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-logged-in-user-error']
+          );
         }
       });
   };
 
-  const getUpdatedUser = (data: User, user: OidcUser) => {
-    let getAdminCookie = localStorage.getItem(isAdminUpdated);
-
-    // TODO: Remove when using cookie no more
-    if (!getAdminCookie) {
-      getAdminCookie = cookieStorage.getItem(isAdminUpdated);
-      if (getAdminCookie) {
-        localStorage.setItem(isAdminUpdated, getAdminCookie);
-      }
-    }
-
-    if (getAdminCookie) {
-      appState.updateUserDetails(data);
-    } else {
-      const updatedData = {
-        isAdmin: data.isAdmin,
-        email: data.email,
-        name: data.name,
-        displayName: user.profile.name,
-        profile: { images: getImages(user.profile.picture ?? '') },
-      };
-      updateUser(updatedData)
-        .then((res: AxiosResponse) => {
+  const getUpdatedUser = (updatedData: User, existingData: User) => {
+    const { isAdmin, name, displayName, profile, email } = updatedData;
+    updateUser({ isAdmin, name, displayName, profile, email })
+      .then((res: AxiosResponse) => {
+        if (res.data) {
           appState.updateUserDetails(res.data);
-          localStorage.setItem(isAdminUpdated, 'true');
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['update-admin-profile-error']
-          );
-        });
-    }
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((error: AxiosError) => {
+        appState.updateUserDetails(existingData);
+        showErrorToast(
+          error,
+          jsonData['api-error-messages']['update-admin-profile-error']
+        );
+      });
   };
 
   const handleSuccessfulLogin = (user: OidcUser) => {
@@ -210,11 +196,13 @@ export const AuthProvider = ({
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          if (res.data?.isAdmin) {
-            getUpdatedUser(res.data, user);
+          const updatedUserData = getUserDataFromOidc(res.data, user);
+          if (!matchUserDetails(res.data, updatedUserData, ['profile'])) {
+            getUpdatedUser(updatedUserData, res.data);
+          } else {
+            appState.updateUserDetails(res.data);
           }
           getUserPermissions();
-          appState.updateUserDetails(res.data);
           fetchAllUsers();
           handledVerifiedUser();
         }

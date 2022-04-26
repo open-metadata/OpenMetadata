@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
@@ -141,8 +142,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     let database;
     let schema;
     if (index === SearchIndex.TABLE) {
-      database = getPartialNameFromTableFQN(fqdn, ['database']);
-      schema = getPartialNameFromTableFQN(fqdn, ['schema']);
+      database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
+      schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
     }
 
     return (

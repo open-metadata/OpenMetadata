@@ -15,8 +15,8 @@ OpenMetadata REST Sink implementation for the ORM Profiler results
 import traceback
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -40,7 +40,7 @@ class MetadataRestSink(Sink[Entity]):
     def __init__(
         self,
         config: MetadataRestSinkConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
@@ -50,7 +50,7 @@ class MetadataRestSink(Sink[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

@@ -4,13 +4,19 @@
     "serviceName": "local_mysql",
     "serviceConnection": {
       "config": {
-        "type": "MySQL",
+        "type": "Mysql",
         "username": "openmetadata_user",
         "password": "openmetadata_password",
-        "hostPort": "localhost:3306"
+        "hostPort": "localhost:3306",
+        "connectionOptions": {},
+        "connectionArguments": {}
       }
     },
-    "sourceConfig": {"config": {"enableDataProfiler": false}}
+    "sourceConfig": {
+      "config": {
+        "enableDataProfiler": false
+      }
+    }
   },
   "sink": {
     "type": "metadata-rest",

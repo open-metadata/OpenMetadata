@@ -19,12 +19,10 @@ import looker_sdk
 from metadata.generated.schema.entity.services.connections.dashboard import (
     lookerConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -32,33 +30,32 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
 
 logger = logging.getLogger(__name__)
 
 
 class LookerSource(Source[Entity]):
     config: WorkflowSource
-    metadata_config: OpenMetadataServerConfig
+    metadata_config: OpenMetadataConnection
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
         self.source_config = config.sourceConfig.config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.client = self.looker_client()
         self.status = SourceStatus()
-        self.service = get_dashboard_service_or_create(
-            service_name=config.serviceName,
-            dashboard_service_type=DashboardServiceType.Looker.name,
-            config=self.service_connection.dict(),
-            metadata_config=metadata_config,
+        self.service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
 
     def check_env(self, env_key):
@@ -83,7 +80,7 @@ class LookerSource(Source[Entity]):
             logger.error(f"ERROR: {repr(err)}")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
         connection: lookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, lookerConnection):
@@ -103,7 +100,7 @@ class LookerSource(Source[Entity]):
             chart_filter_pattern=self.source_config.chartFilterPattern,
             chart_name=dashboard_elements.id,
         ):
-            self.status.failures(dashboard_elements.id)
+            self.status.failure(dashboard_elements.id, "Chart filtered out")
             return None
         om_dashboard_elements = Chart(
             name=dashboard_elements.id,
@@ -128,7 +125,7 @@ class LookerSource(Source[Entity]):
                     dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
                     dashboard_name=child_dashboard.id,
                 ):
-                    self.status.failures(child_dashboard.id)
+                    self.status.failure(child_dashboard.id, "Dashboard Filtered out")
                     continue
                 fields = [
                     "id",
@@ -158,12 +155,15 @@ class LookerSource(Source[Entity]):
                         id=self.service.id, type="dashboardService"
                     ),
                 )
-                self.status.failures(child_dashboard.id)
             except Exception as err:
                 logger.error(repr(err))
+                self.status.failure(child_dashboard.id, repr(err))
 
     def get_status(self) -> SourceStatus:
         return self.status
 
     def close(self):
+        pass
+
+    def test_connection(self) -> None:
         pass

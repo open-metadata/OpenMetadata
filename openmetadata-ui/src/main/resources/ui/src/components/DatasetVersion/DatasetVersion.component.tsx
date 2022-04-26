@@ -16,6 +16,7 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { FqnPart } from '../../enums/entity.enum';
 import {
   ChangeDescription,
   Column,
@@ -409,7 +410,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       isReadOnly
                       columnName={getPartialNameFromTableFQN(
                         datasetFQN,
-                        ['column'],
+                        [FqnPart.Column],
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={updatedColumns()}

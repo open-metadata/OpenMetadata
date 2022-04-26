@@ -15,36 +15,41 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/deltaLakeType",
       "default": "DeltaLake"
     },
     "metastoreHostPort": {
+      "title": "Metastore Host and Port",
       "description": "Host and port of remote Hive Metastore.",
       "type": "string"
     },
     "metastoreFilePath": {
+      "title": "Metastore Local File Path",
       "description": "File path of local Hive Metastore.",
       "type": "string"
     },
     "appName": {
+      "title": "Application Name",
       "description": "pySpark App Name",
       "type": "string"
     },
     "connectionOptions": {
-      "$ref": "connectionBasicType.json#/definitions/connectionOptions"
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
-      "$ref": "connectionBasicType.json#/definitions/connectionArguments"
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "items": {
-        "type": "string",
-        "enum": ["Metadata"]
-      },
-      "default": ["Metadata"]
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false

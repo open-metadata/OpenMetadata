@@ -28,10 +28,7 @@ export interface MetabaseConnection {
    * password to connect  to the Metabase.
    */
   password?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -41,13 +38,6 @@ export interface MetabaseConnection {
    * metadata in Metabase.
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

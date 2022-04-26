@@ -42,6 +42,20 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     this.supportsAuthorizedMetadataOperations = false;
   }
 
+  public void setupStorageServices() throws HttpResponseException {
+    // Create AWS storage service, S3
+    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
+    CreateStorageService createService =
+        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
+    StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    AWS_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
+
+    // Create GCP storage service, GCS
+    createService.withName("gs").withServiceType(StorageServiceType.GCS);
+    service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
+  }
+
   @Test
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
     // Create storage service with different optional fields

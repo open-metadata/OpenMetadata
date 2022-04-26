@@ -13,7 +13,6 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
-import logging
 from typing import Any, Dict, Optional
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
@@ -26,9 +25,9 @@ from metadata.generated.schema.entity.data.mlmodel import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
-from metadata.ingestion.ometa.utils import format_name
+from metadata.ingestion.ometa.utils import format_name, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class OMetaMlModelMixin(OMetaLineageMixin):

@@ -180,7 +180,7 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
 
     # Check if the pipeline already exists
     operator.log.info(
-        f"Checking if the pipeline {airflow_service_entity.name}.{dag.dag_id} exists. If not, we will create it."
+        f"Checking if the pipeline {airflow_service_entity.name.__root__}.{dag.dag_id} exists. If not, we will create it."
     )
     current_pipeline: Pipeline = metadata.get_by_name(
         entity=Pipeline,

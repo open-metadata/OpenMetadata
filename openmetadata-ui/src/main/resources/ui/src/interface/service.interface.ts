@@ -12,6 +12,7 @@
  */
 
 import { DynamicObj, Paging } from 'Models';
+import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
@@ -19,24 +20,6 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 export interface IngestionSchedule {
   repeatFrequency: string;
   startDate: string;
-}
-
-export interface DashboardService {
-  description: string;
-  href: string;
-  id: string;
-  name: string;
-  serviceType: string;
-  ingestionSchedule?: IngestionSchedule;
-  dashboardUrl?: string;
-  username?: string;
-  password?: string;
-  url?: string;
-  api_key?: string;
-  site_name?: string;
-  api_version?: string;
-  server?: string;
-  env?: string;
 }
 
 export interface DatabaseConnection {
@@ -79,7 +62,19 @@ export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<DashboardService> &
   Partial<PipelineService>;
 
+export type DataService =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService;
+
 export interface ServiceResponse {
   data: Array<ServiceDataObj>;
   paging: Paging;
 }
+
+export type ConfigData = Partial<DatabaseService['connection']> &
+  Partial<MessagingService['connection']> &
+  Partial<DashboardService['connection']> & {
+    pipelineUrl: string;
+  };

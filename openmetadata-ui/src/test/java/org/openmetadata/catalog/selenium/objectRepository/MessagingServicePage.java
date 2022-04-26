@@ -11,6 +11,9 @@ import org.openqa.selenium.WebDriver;
 public class MessagingServicePage {
   @Nonnull WebDriver webDriver;
 
-  By messagingServiceBrokerUrl = By.cssSelector("[data-testid='broker-url']");
-  By messagingServiceSchemaRegistry = By.cssSelector("[data-testid='schema-registry']");
+  By messagingServiceBootstrapServers = By.cssSelector("[id='root_bootstrapServers']");
+  By messagingServiceSchemaRegistry = By.cssSelector("[id='root_schemaRegistryURL']");
+  By deleteMessagingService = By.cssSelector("[data-testid='delete-button']");
+  By confirmationDeleteText = By.cssSelector("[data-testid='confirmation-text-input']");
+  By deleteIngestion = By.cssSelector("[data-testid='delete']");
 }

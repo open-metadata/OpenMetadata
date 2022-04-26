@@ -7,7 +7,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this Policy.",
-      "$ref": "../../entity/policies/policy.json#/definitions/policyName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Title for this Policy.",

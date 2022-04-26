@@ -14,8 +14,8 @@ import logging
 import pathlib
 
 from metadata.generated.schema.entity.data.table import SqlQuery
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.models.table_queries import (
@@ -69,7 +69,7 @@ class TableUsageStage(Stage[QueryParserData]):
     def __init__(
         self,
         config: FileStageConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ):
 
         self.config = config
@@ -82,7 +82,7 @@ class TableUsageStage(Stage[QueryParserData]):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = FileStageConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 

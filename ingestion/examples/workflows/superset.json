@@ -4,7 +4,7 @@
     "serviceName": "local_superset",
     "serviceConnection": {
       "config": {
-        "supersetURL": "http://localhost:8080",
+        "hostPort": "http://localhost:8080",
         "username": "admin",
         "password": "admin",
         "type": "Superset"

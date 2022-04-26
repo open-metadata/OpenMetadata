@@ -37,6 +37,6 @@
       "default": null
     }
   },
-  "required": ["name"],
+  "required": ["name", "description"],
   "additionalProperties": false
 }

@@ -26,7 +26,7 @@ import ServicePage from './index';
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
+      isAuthDisabled: true,
       isAuthenticated: true,
       isProtectedRoute: jest.fn().mockReturnValue(true),
       isTourRoute: jest.fn().mockReturnValue(false),
@@ -77,8 +77,8 @@ const mockDatabase = {
   },
 };
 
-jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
-  getAirflowPipelines: jest.fn().mockImplementation(() =>
+jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
         data: [],
@@ -86,10 +86,10 @@ jest.mock('../../axiosAPIs/airflowPipelineAPI', () => ({
       },
     })
   ),
-  deleteAirflowPipelineById: jest.fn(),
-  addAirflowPipeline: jest.fn(),
-  triggerAirflowPipelineById: jest.fn(),
-  updateAirflowPipeline: jest.fn(),
+  deleteIngestionPipelineById: jest.fn(),
+  addIngestionPipeline: jest.fn(),
+  triggerIngestionPipelineById: jest.fn(),
+  updateIngestionPipeline: jest.fn(),
 }));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
@@ -112,10 +112,6 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
   }
 );
-
-jest.mock('../../components/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
-});
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -145,9 +141,9 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getIsIngestionEnable: jest.fn().mockReturnValue(true),
   servicePageTabs: jest.fn().mockReturnValue([
     {
-      name: 'Activity Feed',
-      path: 'activity_feed',
-      field: 'activity_feed',
+      name: 'Databases',
+      path: 'databases',
+      field: 'databases',
     },
   ]),
   getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
@@ -178,6 +174,10 @@ jest.mock(
       .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
   })
 );
+
+jest.mock('../../components/ServiceConfig/ServiceConfig', () => {
+  return jest.fn().mockReturnValue(<p>ServiceConfig</p>);
+});
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {

@@ -13,7 +13,6 @@ Interface definition for an Auth provider
 """
 import http.client
 import json
-import logging
 import sys
 import traceback
 from abc import ABCMeta, abstractmethod
@@ -23,23 +22,40 @@ from typing import Tuple
 import requests
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Auth0SSOConfig,
-    AzureSSOConfig,
-    CustomOidcSSOConfig,
-    GoogleSSOConfig,
-    OktaSSOConfig,
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.auth0SSOClientConfig import (
+    Auth0SSOClientConfig,
+)
+from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
+    CustomOIDCSSOClientConfig,
+)
+from metadata.generated.schema.security.client.googleSSOClientConfig import (
+    GoogleSSOClientConfig,
+)
+from metadata.generated.schema.security.client.oktaSSOClientConfig import (
+    OktaSSOClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
+
+ACCESS_TOKEN = "access_token"
+EXPIRY = "expires_in"
+
+
+class AuthenticationException(Exception):
+    """
+    Error trying to get the token from the provider
+    """
 
 
 @dataclass(init=False)  # type: ignore[misc]
 class AuthenticationProvider(metaclass=ABCMeta):
     """
-    Interface definition for an Authentification provider
+    Interface definition for an Authentication provider
     """
 
     @classmethod
@@ -84,11 +100,11 @@ class NoOpAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self):
@@ -109,15 +125,15 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: GoogleSSOConfig = self.config.securityConfig
+        self.security_config: GoogleSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -144,15 +160,15 @@ class OktaAuthenticationProvider(AuthenticationProvider):
     Prepare the Json Web Token for Okta auth
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: OktaSSOConfig = self.config.securityConfig
+        self.security_config: OktaSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     async def auth_token(self) -> None:
@@ -177,7 +193,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "aud": self.security_config.orgURL,
                 "jti": generated_jwt_id,
             }
-            token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
+            jwt_token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
             config = {
                 "client": {
                     "orgUrl": self.security_config.orgURL,
@@ -185,7 +201,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                     "rateLimit": {},
                     "privateKey": self.security_config.privateKey,
                     "clientId": self.security_config.clientId,
-                    "token": token,
+                    "token": jwt_token,
                     "scopes": self.security_config.scopes,
                 }
             }
@@ -196,7 +212,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 "grant_type": "client_credentials",
                 "scope": " ".join(config["client"]["scopes"]),
                 "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-                "client_assertion": token,
+                "client_assertion": jwt_token,
             }
             encoded_parameters = urlencode(parameters, quote_via=quote)
             url = f"{self.security_config.orgURL}?" + encoded_parameters
@@ -216,8 +232,16 @@ class OktaAuthenticationProvider(AuthenticationProvider):
             if err:
                 raise APIError(f"{err}")
             response_dict = json.loads(res_json)
-            self.generated_auth_token = response_dict.get("access_token")
-            self.expiry = response_dict.get("expires_in")
+
+            token = response_dict.get(ACCESS_TOKEN)
+            if not token:
+                raise AuthenticationException(
+                    f"Error getting access token: {response_dict}"
+                )
+
+            self.generated_auth_token = token
+            self.expiry = response_dict.get(EXPIRY)
+
         except Exception as err:
             logger.debug(traceback.print_exc())
             logger.error(err)
@@ -239,15 +263,15 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: Auth0SSOConfig = self.config.securityConfig
+        self.security_config: Auth0SSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -261,10 +285,14 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
             "POST", f"/{self.security_config.domain}/oauth/token", payload, headers
         )
         res = conn.getresponse()
-        data = res.read()
-        token = json.loads(data.decode("utf-8"))
-        self.generated_auth_token = token["access_token"]
-        self.expiry = token["expires_in"]
+        data = json.loads(res.read().decode("utf-8"))
+
+        token = data.get(ACCESS_TOKEN)
+        if not token:
+            raise AuthenticationException(f"Error getting access token: {data}")
+
+        self.generated_auth_token = token
+        self.expiry = data[EXPIRY]
 
     def get_access_token(self):
         self.auth_token()
@@ -277,14 +305,14 @@ class AzureAuthenticationProvider(AuthenticationProvider):
     """
 
     # TODO: Prepare JSON for Azure Auth
-    def __init__(self, config: OpenMetadataServerConfig):
+    def __init__(self, config: OpenMetadataConnection):
         self.config = config
         self.security_config: AzureSSOConfig = self.config.securityConfig
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
-    def create(cls, config: OpenMetadataServerConfig):
+    def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -297,16 +325,14 @@ class AzureAuthenticationProvider(AuthenticationProvider):
             client_credential=self.security_config.clientSecret,
             authority=self.security_config.authority,
         )
-        token = app.acquire_token_for_client(scopes=self.security_config.scopes)
-        try:
-            self.generated_auth_token = token["access_token"]
-            self.expiry = token["expires_in"]
+        data = app.acquire_token_for_client(scopes=self.security_config.scopes)
 
-        except KeyError as err:
-            logger.error(f"Invalid Credentials - {err}")
-            logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
-            sys.exit(1)
+        token = data.get(ACCESS_TOKEN)
+        if not token:
+            raise AuthenticationException(f"Error getting access token: {data}")
+
+        self.generated_auth_token = token
+        self.expiry = data.get(EXPIRY)
 
     def get_access_token(self):
         self.auth_token()
@@ -324,16 +350,16 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         config (MetadataServerConfig)
     """
 
-    def __init__(self, config: OpenMetadataServerConfig) -> None:
+    def __init__(self, config: OpenMetadataConnection) -> None:
         self.config = config
-        self.security_config: CustomOidcSSOConfig = self.config.securityConfig
+        self.security_config: CustomOIDCSSOClientConfig = self.config.securityConfig
 
         self.generated_auth_token = None
         self.expiry = None
 
     @classmethod
     def create(
-        cls, config: OpenMetadataServerConfig
+        cls, config: OpenMetadataConnection
     ) -> "CustomOIDCAuthenticationProvider":
         return cls(config)
 
@@ -349,8 +375,15 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
         )
         if response.ok:
             response_json = response.json()
-            self.generated_auth_token = response_json["access_token"]
-            self.expiry = response_json["expires_in"]
+
+            token = response_json.get(ACCESS_TOKEN)
+            if not token:
+                raise AuthenticationException(
+                    f"Error getting access token: {response_json}"
+                )
+
+            self.generated_auth_token = token
+            self.expiry = response_json.get(EXPIRY)
         else:
             raise APIError(
                 error={"message": response.text}, http_error=response.status_code

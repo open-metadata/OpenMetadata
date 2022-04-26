@@ -7,7 +7,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import { isEven } from '../../../utils/CommonUtils';
-import { getEntityLink, getOwnerFromId } from '../../../utils/TableUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
@@ -75,7 +75,11 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
                     )}
                   </td>
                   <td className="tableBody-cell">
-                    <p>{getOwnerFromId(dataObj.owner)?.name || '--'}</p>
+                    <p>
+                      {dataObj.owner?.displayName ||
+                        dataObj.owner?.name ||
+                        '--'}
+                    </p>
                   </td>
                 </tr>
               ))

@@ -25,6 +25,10 @@ export interface SupersetConnection {
    */
   dbServiceConnection?: string;
   /**
+   * URL for the superset instance
+   */
+  hostPort?: string;
+  /**
    * password for the Superset
    */
   password?: string;
@@ -32,14 +36,7 @@ export interface SupersetConnection {
    * authenticaiton provider for the Superset
    */
   provider?: string;
-  /**
-   * URL for the superset instance
-   */
-  supersetURL?: string;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: SupportedPipelineTypes;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -48,13 +45,6 @@ export interface SupersetConnection {
    * username for the Superset
    */
   username?: string;
-}
-
-/**
- * Supported Metadata Extraction Pipelines.
- */
-export enum SupportedPipelineTypes {
-  Metadata = 'Metadata',
 }
 
 /**

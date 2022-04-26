@@ -13,10 +13,13 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.catalog.util.EntityUtil.taskMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -75,12 +78,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(pipeline) : null);
-    pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
+    pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
     pipeline.setPipelineStatus(fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : null);
-    pipeline.setTags(fields.contains("tags") ? getTags(pipeline.getFullyQualifiedName()) : null);
+    pipeline.setTags(fields.contains(FIELD_TAGS) ? getTags(pipeline.getFullyQualifiedName()) : null);
     return pipeline;
   }
 
@@ -364,7 +367,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("pipelineUrl", origPipeline.getPipelineUrl(), updatedPipeline.getPipelineUrl());
       recordChange("concurrency", origPipeline.getConcurrency(), updatedPipeline.getConcurrency());
       recordChange("pipelineLocation", origPipeline.getPipelineLocation(), updatedPipeline.getPipelineLocation());
-      recordChange("startDate", origPipeline.getStartDate(), updatedPipeline.getStartDate());
     }
 
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
@@ -382,23 +384,26 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       List<Task> updatedTasks = listOrEmpty(updatedPipeline.getTasks());
       List<Task> origTasks = listOrEmpty(origPipeline.getTasks());
 
-      List<Task> added = new ArrayList<>();
-      List<Task> deleted = new ArrayList<>();
-      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
-
+      boolean newTasks = false;
       // Update the task descriptions
       for (Task updated : updatedTasks) {
         Task stored = origTasks.stream().filter(c -> taskMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null || updated == null) { // New task added
+          newTasks = true;
           continue;
         }
-
         updateTaskDescription(stored, updated);
+      }
+
+      if (newTasks) {
+        List<Task> added = new ArrayList<>();
+        List<Task> deleted = new ArrayList<>();
+        recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) throws JsonProcessingException {
-      if (operation.isPut() && origTask.getDescription() != null && !origTask.getDescription().isEmpty()) {
+      if (operation.isPut() && !nullOrEmpty(origTask.getDescription())) {
         // Update description only when stored is empty to retain user authored descriptions
         updatedTask.setDescription(origTask.getDescription());
         return;

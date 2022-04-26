@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Redshift usage module
+"""
 
 # This import verifies that the dependencies are available.
 import logging
@@ -21,18 +24,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_alchemy_helper import (
-    SQLAlchemyHelper,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
@@ -51,9 +50,7 @@ class RedshiftUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Redshift.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -64,15 +61,13 @@ class RedshiftUsageSource(Source[TableQuery]):
             start_time=start, end_time=end
         )
         self.analysis_date = start
-        self.alchemy_helper = SQLAlchemyHelper(
-            self.service_connection, metadata_config, "Redshift", self.sql_stmt
-        )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "redshift"
         self.status = SQLSourceStatus()
+        self.engine = get_connection(self.service_connection)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: WorkflowConfig):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: RedshiftConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, RedshiftConnection):
@@ -85,11 +80,8 @@ class RedshiftUsageSource(Source[TableQuery]):
         pass
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-        """
-        Provides iterator of result row from SQLAlchemy helper
-        :return:
-        """
-        rows = self.alchemy_helper.execute_query()
+
+        rows = self.engine.execute(self.sql_stmt)
         for row in rows:
             yield row
 
@@ -113,7 +105,10 @@ class RedshiftUsageSource(Source[TableQuery]):
             yield tq
 
     def close(self):
-        self.alchemy_helper.close()
+        pass
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def test_connection(self) -> None:
+        test_connection(self.engine)

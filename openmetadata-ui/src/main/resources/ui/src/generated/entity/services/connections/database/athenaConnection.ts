@@ -20,8 +20,8 @@ export interface AthenaConnection {
    * AWS Athena AWS Region.
    */
   awsRegion?: string;
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -44,14 +44,11 @@ export interface AthenaConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: AthenaScheme;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
-  serviceType?: AthenaType;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  type?: AthenaType;
   /**
    * username to connect  to the Athena. This user should have privileges to read all the
    * metadata in Athena.
@@ -61,17 +58,6 @@ export interface AthenaConnection {
    * Athena workgroup.
    */
   workgroup?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**

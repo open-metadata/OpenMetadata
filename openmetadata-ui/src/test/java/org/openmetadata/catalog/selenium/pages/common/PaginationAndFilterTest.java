@@ -40,7 +40,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(14)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PaginationAndFilterTest {
+class PaginationAndFilterTest {
   static WebDriver webDriver;
   static Common common;
   static String url = Property.getInstance().getURL();
@@ -51,7 +51,7 @@ public class PaginationAndFilterTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -64,9 +64,10 @@ public class PaginationAndFilterTest {
     webDriver.get(url);
   }
 
+  /* DO NOT DELETE
   @Test
   @Order(1)
-  public void checkFlikerInFilter() throws Exception {
+  void checkFlikerInFilter() throws Exception {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.selectOverview("tables"));
@@ -83,11 +84,11 @@ public class PaginationAndFilterTest {
     } catch (TimeoutException exception) {
       LOG.info("Success");
     }
-  }
+  }*/
 
   @Test
   @Order(2)
-  public void noDataPresentWithFilter() throws Exception {
+  void noDataPresentWithFilter() throws Exception {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.selectOverview("tables"));
@@ -105,11 +106,11 @@ public class PaginationAndFilterTest {
 
   @Test
   @Order(3)
-  public void dataPresentWithFilter() throws Exception {
+  void dataPresentWithFilter() throws Exception {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.selectOverview("tables"));
-    Events.click(webDriver, common.selectFilterExplore("Tier:Tier3"));
+    Events.click(webDriver, common.selectFilterExplore("Tier.Tier3"));
     try {
       WebElement dataFound = wait.until(ExpectedConditions.presenceOfElementLocated(common.searchResults()));
       if (dataFound.isDisplayed()) {
@@ -122,7 +123,7 @@ public class PaginationAndFilterTest {
 
   @Test
   @Order(4)
-  public void leftPanelDisappearsCheck() throws InterruptedException {
+  void leftPanelDisappearsCheck() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.searchBar(), "zzzz");
@@ -138,7 +139,7 @@ public class PaginationAndFilterTest {
 
   @Test
   @Order(5)
-  public void filterDisappearsAfterSearchCheck() throws Exception {
+  void filterDisappearsAfterSearchCheck() throws Exception {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.headerItem("explore"));
@@ -160,7 +161,7 @@ public class PaginationAndFilterTest {
 
   @Test
   @Order(6)
-  public void databaseFilterCountCheck() throws InterruptedException {
+  void databaseFilterCountCheck() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.headerItem("explore"));
@@ -170,7 +171,7 @@ public class PaginationAndFilterTest {
     actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 6; i++) {
+    for (int i = 0; i < 5; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
     }
@@ -184,9 +185,9 @@ public class PaginationAndFilterTest {
       if (viewMore.isDisplayed()) {
         Events.click(webDriver, common.viewMore());
       }
-      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
+      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
     } catch (TimeoutException | NoSuchElementException e) {
-      Events.click(webDriver, common.selectFilterExplore("PersonalData:Personal"));
+      Events.click(webDriver, common.selectFilterExplore("PersonalData.Personal"));
     }
     Events.click(webDriver, common.selectFilterExplore("shopify"));
     Thread.sleep(2000);
@@ -196,7 +197,7 @@ public class PaginationAndFilterTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

@@ -25,6 +25,7 @@ import org.openmetadata.catalog.resources.services.storage.StorageServiceResourc
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
   private static final String UPDATE_FIELDS = "owner";
@@ -110,7 +111,7 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override

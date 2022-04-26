@@ -14,8 +14,18 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from pydantic import SecretStr
 from requests import Session
 
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -23,10 +33,13 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
-    DB2Connection,
+    Db2Connection,
+)
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
-    HiveSQLConnection,
+    HiveConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
@@ -67,6 +80,7 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
 
 
 def get_connection_url_common(connection):
@@ -74,6 +88,8 @@ def get_connection_url_common(connection):
 
     if connection.username:
         url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
         url += (
             f":{quote_plus(connection.password.get_secret_value())}"
             if connection
@@ -84,7 +100,11 @@ def get_connection_url_common(connection):
     url += connection.hostPort
     url += f"/{connection.database}" if connection.database else ""
 
-    options = connection.connectionOptions
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
     if options:
         if not connection.database:
             url += "/"
@@ -109,8 +129,8 @@ def get_connection_url(connection):
 @get_connection_url.register(SalesforceConnection)
 @get_connection_url.register(ClickhouseConnection)
 @get_connection_url.register(SingleStoreConnection)
+@get_connection_url.register(Db2Connection)
 @get_connection_url.register(VerticaConnection)
-@get_connection_url.register(DB2Connection)
 def _(connection):
     return get_connection_url_common(connection)
 
@@ -164,7 +184,7 @@ def _(connection: TrinoConnection):
 
 @get_connection_url.register
 def _(connection: DatabricksConnection):
-    url = f"{connection.scheme.value}://token:{connection.token}@{connection.hostPort}"
+    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
     if connection.database:
         url += f"/{connection.database}"
     return url
@@ -213,16 +233,16 @@ def _(connection: SnowflakeConnection):
 
     if connection.username:
         url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+
         url += "@"
 
     url += connection.account
     url += f"/{connection.database}" if connection.database else ""
-    url += "?warehouse=" + connection.warehouse
+    if connection.warehouse:
+        url += "?warehouse=" + connection.warehouse
     options = (
         connection.connectionOptions.dict()
         if connection.connectionOptions
@@ -239,8 +259,72 @@ def _(connection: SnowflakeConnection):
 
 
 @get_connection_url.register
-def _(connection: HiveSQLConnection):
+def _(connection: HiveConnection):
     url = get_connection_url_common(connection)
     if connection.authOptions:
         return f"{url};{connection.authOptions}"
     return url
+
+
+@get_connection_url.register
+def _(connection: BigQueryConnection):
+    project_id = connection.projectId
+    if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
+        project_id = connection.credentials.gcsConfig.projectId
+    if project_id:
+        return (
+            f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId}"
+        )
+    return f"{connection.scheme.value}://"
+
+
+@get_connection_url.register
+def _(connection: AzureSQLConnection):
+
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        url += f":{connection.password.get_secret_value()}" if connection else ""
+        url += "@"
+
+    url += f"{connection.hostPort}"
+    url += f"/{quote_plus(connection.database)}" if connection.database else ""
+    url += f"?driver={quote_plus(connection.driver)}"
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
+
+    return url
+
+
+@get_connection_url.register
+def _(connection: AthenaConnection):
+    url = f"{connection.scheme.value}://"
+    if connection.awsConfig.awsAccessKeyId:
+        url += connection.awsConfig.awsAccessKeyId
+        if connection.awsConfig.awsSecretAccessKey:
+            url += f":{connection.awsConfig.awsSecretAccessKey.get_secret_value()}"
+    else:
+        url += ":"
+    url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
+    if connection.database:
+        url += f"/{connection.database}"
+    url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
+    url += f"&work_group={connection.workgroup}"
+    return url
+
+
+@get_connection_url.register
+def _(connection: DruidConnection):
+    url = get_connection_url_common(connection)
+    return f"{url}/druid/v2/sql"

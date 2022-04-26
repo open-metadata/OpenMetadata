@@ -19,12 +19,14 @@ type SuccessScreenProps = {
   name: string;
   showIngestionButton: boolean;
   handleIngestionClick?: () => void;
+  handleViewServiceClick: () => void;
 };
 
 const SuccessScreen = ({
   name,
   showIngestionButton,
   handleIngestionClick,
+  handleViewServiceClick,
 }: SuccessScreenProps) => {
   return (
     <div
@@ -40,7 +42,7 @@ const SuccessScreen = ({
       </div>
       <p className="tw-mb-7" data-testid="success-line">
         <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-        <span>has been successfuly created</span>
+        <span>has been created successfully</span>
       </p>
 
       <div>
@@ -49,9 +51,7 @@ const SuccessScreen = ({
           size="regular"
           theme="primary"
           variant="outlined"
-          // this will be implementd once api integration is done, as we need FQN to re-direct
-          // onClick={handleViewServiceClick}
-        >
+          onClick={handleViewServiceClick}>
           <span>View Service</span>
         </Button>
 

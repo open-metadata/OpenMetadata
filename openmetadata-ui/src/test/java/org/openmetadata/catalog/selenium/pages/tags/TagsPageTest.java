@@ -41,7 +41,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(3)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TagsPageTest {
+class TagsPageTest {
   static WebDriver webDriver;
   static Common common;
   static TagsPage tagsPage;
@@ -56,7 +56,7 @@ public class TagsPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -72,7 +72,7 @@ public class TagsPageTest {
 
   @Test
   @Order(1)
-  public void openTagsPage() throws InterruptedException {
+  void openTagsPage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
@@ -81,104 +81,69 @@ public class TagsPageTest {
 
   @Test
   @Order(2)
-  public void addTagCategory() throws InterruptedException {
+  void addTagCategory() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.addTagCategory());
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionSaveButton());
   }
 
   @Test
   @Order(3)
-  public void editTagCategoryDescription() throws InterruptedException {
+  void editTagCategoryDescription() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
   @Test
   @Order(4)
-  public void addTag() throws InterruptedException {
+  void addTag() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, common.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), tagDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
-    Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionSaveButton());
   }
 
   @Test
   @Order(5)
-  public void changeTagDescription() throws InterruptedException {
+  void changeTagDescription() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
   @Test
-  @Order(6)
-  public void addAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
-      Events.click(webDriver, common.tagListItem());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-  }
-
-  @Test
-  @Order(7)
-  public void removeAssociatedTag() throws InterruptedException {
-    openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
-    for (int i = 0; i <= 1; i++) {
-      Events.click(webDriver, tagsPage.removeAssociatedTag());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-  }
-
-  @Test
   @Order(8)
-  public void addTagToTableColumn() throws InterruptedException {
+  void addTagToTableColumn() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, tagsPage.sortBy());
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, tagsPage.lastTableLink());
     Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(tagsPage.addAssociatedTagButton())).perform();
-    Thread.sleep(waitTime);
-    Events.click(webDriver, tagsPage.addAssociatedTagButton());
+    Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), tagCategoryDisplayName + "." + tagDisplayName);
     Events.click(webDriver, common.tagListItem());
@@ -191,7 +156,7 @@ public class TagsPageTest {
 
   @Test
   @Order(9)
-  public void checkAddedTagToTableColumn() {
+  void checkAddedTagToTableColumn() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, tagsPage.tables());
     try {
@@ -213,7 +178,7 @@ public class TagsPageTest {
 
   @Test
   @Order(10)
-  public void removeTagFromTableColumn() throws InterruptedException {
+  void removeTagFromTableColumn() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
@@ -222,7 +187,7 @@ public class TagsPageTest {
     } catch (TimeoutException e) {
       Assert.fail("Table is not present for the selected tag filter");
     }
-    Events.click(webDriver, common.editAssociatedTagButton());
+    Events.click(webDriver, tagsPage.editBreadcrumbTag());
     Events.click(webDriver, tagsPage.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
   }
@@ -230,7 +195,7 @@ public class TagsPageTest {
   // DO NOT DELETE
   /*@Test
   @Order(10)
-  public void addTagWithExistingName() throws InterruptedException {
+  void addTagWithExistingName() throws InterruptedException {
     openTagsPage();
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, common.addTagButton());
@@ -253,8 +218,18 @@ public class TagsPageTest {
 
   @Test
   @Order(11)
-  public void TagUsageCheck() throws InterruptedException {
-    openTagsPage();
+  void TagUsageCheck() throws InterruptedException {
+    Events.click(webDriver, common.closeWhatsNew());
+    Events.click(webDriver, common.headerItem("explore"));
+    Events.click(webDriver, tagsPage.lastTableLink());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, tagsPage.editTags());
+    Events.click(webDriver, common.enterAssociatedTagName());
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+    Events.click(webDriver, common.tagListItem());
+    Events.click(webDriver, common.saveAssociatedTag());
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.containsText("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(1));
     Thread.sleep(2000);
@@ -268,7 +243,7 @@ public class TagsPageTest {
   // DO NOT DELETE
   /*@Test
   @Order(12)
-  public void removeTagWithExistingName() throws InterruptedException {
+  void removeTagWithExistingName() throws InterruptedException {
     openTagsPage();
 
     Events.click(webDriver, common.containsText("PersonalData"));
@@ -289,26 +264,8 @@ public class TagsPageTest {
     Assert.assertEquals(usageCount, "Not used");
   }*/
 
-  @Test
-  @Order(13)
-  public void addSelfAssociatedTag() throws Exception {
-    openTagsPage();
-    Events.click(webDriver, common.containsText("PersonalData"));
-    Events.click(webDriver, tagsPage.addAssociatedTagIndex(2));
-    Events.click(webDriver, common.enterAssociatedTagName());
-    try {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.SpecialCategory");
-      WebElement sameTag = webDriver.findElement(common.tagListItem());
-      if (sameTag.isDisplayed()) {
-        Assert.fail("Same name tag displayed");
-      }
-    } catch (NoSuchElementException exception) {
-      LOG.info("Success");
-    }
-  }
-
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

@@ -186,6 +186,8 @@ const ExplorePage: FunctionComponent = () => {
           resAggTier,
           resAggTag,
           resAggDatabase,
+          resAggDatabaseSchema,
+          resAggServiceName,
         ]: Array<SearchResponse>) => {
           setError('');
           setSearchResult({
@@ -194,6 +196,8 @@ const ExplorePage: FunctionComponent = () => {
             resAggTier,
             resAggTag,
             resAggDatabase,
+            resAggDatabaseSchema,
+            resAggServiceName,
           });
           setIsLoadingForData(false);
         }

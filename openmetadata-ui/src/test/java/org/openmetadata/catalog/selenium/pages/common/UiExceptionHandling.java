@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -22,10 +23,11 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Order(16)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UiExceptionHandling {
+class UiExceptionHandling {
 
   static ChromeDriver webDriver;
   static Common common;
+  static DatabaseServicePage databaseServicePage;
   static DevTools devTools;
   static String url = Property.getInstance().getURL();
   static Actions actions;
@@ -35,7 +37,7 @@ public class UiExceptionHandling {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
-  public void interceptor(String content, String replaceContent) {
+  void interceptor(String content, String replaceContent) {
     devTools.createSession();
     devTools.send(Fetch.enable(Optional.empty(), Optional.empty()));
     devTools.addListener(
@@ -73,6 +75,7 @@ public class UiExceptionHandling {
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     actions = new Actions(webDriver);
+    databaseServicePage = new DatabaseServicePage(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
@@ -80,18 +83,17 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckForUserList() {
+  void exceptionCheckForUserList() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     interceptor("/api/v1/teams", "/api/v1/testing");
-    Events.click(webDriver, common.headerSettingsMenu("Users"));
-    Events.click(webDriver, common.containsText("Error while fetching teams!"));
+    Events.click(webDriver, common.headerSettingsMenu("Teams & Users"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(400, 400);
   }
 
   @Test
-  public void exceptionCheckForGetServices() throws InterruptedException {
+  void exceptionCheckForGetServices() throws InterruptedException {
     interceptor("databaseService", "testing");
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
@@ -102,59 +104,51 @@ public class UiExceptionHandling {
   }
 
   @Test
-  public void exceptionCheckFor() {
-    interceptor("services/databaseServices", "services/testing");
-    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Events.click(webDriver, common.headerSettings()); // Setting
-    Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-  }
-
-  @Test
-  public void exceptionCheckForPostService() {
+  void exceptionCheckForPostService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.noServicesAddServiceButton());
-    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.addServiceButton());
+    Events.click(webDriver, common.serviceType("Mysql"));
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
-    Events.sendKeys(webDriver, common.servicePort(), "3306");
+    // Events.sendKeys(webDriver, common.serviceUrl(), "localhost");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
+    Events.sendKeys(webDriver, common.servicePort(), "3306");
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
     interceptor("services/databaseServices", "services/testing");
-    Events.click(webDriver, common.nextButton());
-    Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.saveServiceButton());
     //    Assert.assertEquals(500, 500);
   }
 
   @Test
-  public void exceptionCheckForUpdateService() {
+  void exceptionCheckForUpdateService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.containsText("bigquery_gcp"));
+    Events.click(webDriver, databaseServicePage.serviceName("sample_data"));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Events.click(webDriver, common.containsText("Error while updating description!"));
     Events.click(webDriver, common.closeErrorMessage());
     //    Assert.assertEquals(500, 500);
   }
 
   @Test
-  public void exceptionCheckForDeleteService() {
+  void exceptionCheckForDeleteService() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.deleteServiceButton("bigquery_gcp"));
+    Events.click(webDriver, common.containsText("Glue"));
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, databaseServicePage.deleteDatabase());
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
     interceptor("services/databaseServices", "services/testing");
     //    Assert.assertEquals(500, 500);
   }

@@ -23,7 +23,41 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "owner": {
-              "type": "text"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "deleted": {
               "type": "boolean"
@@ -110,7 +144,41 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "owner": {
-              "type": "text"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "deleted": {
               "type": "boolean"
@@ -165,9 +233,43 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "display_name": {
               "type": "text"
-            },
+            }, 
             "owner": {
-              "type": "keyword"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "deleted": {
               "type": "boolean"
@@ -251,7 +353,41 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "owner": {
-              "type": "keyword"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "deleted": {
               "type": "boolean"
@@ -389,8 +525,42 @@ GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
           "owner": {
-            "type": "keyword"
-          },
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
+            },
          "last_updated_timestamp": {
             "type": "date",
             "format": "epoch_second"

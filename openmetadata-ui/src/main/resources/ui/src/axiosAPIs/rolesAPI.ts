@@ -13,7 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Policy } from '../pages/RolesPage/policy.interface';
+import { EntityReference } from '../generated/type/entityReference';
+import { Policy } from '../pages/RolesPage/role.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -34,7 +35,7 @@ export const getRoleByName = (
 };
 
 export const createRole = (
-  data: Record<string, string>
+  data: Record<string, string | Array<EntityReference>>
 ): Promise<AxiosResponse> => {
   return APIClient.post('/roles', data);
 };
@@ -63,4 +64,8 @@ export const updatePolicy = (
   data: Pick<Policy, 'name' | 'policyType' | 'rules'>
 ): Promise<AxiosResponse> => {
   return APIClient.put(`/policies`, data);
+};
+
+export const getPolicies = (): Promise<AxiosResponse> => {
+  return APIClient.get('/policies');
 };

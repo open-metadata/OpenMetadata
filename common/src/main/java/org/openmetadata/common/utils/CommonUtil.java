@@ -101,7 +101,7 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffsetSeconds(Date date, int seconds) throws ParseException {
+  public static Date getDateByOffsetSeconds(Date date, int seconds) {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(date);
     calendar.add(Calendar.SECOND, seconds);
@@ -151,7 +151,6 @@ public final class CommonUtil {
 
   /** Get SHA256 Hash-based Message Authentication Code */
   public static String calculateHMAC(String secretKey, String message) {
-    //    return message;
     try {
       Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
       SecretKeySpec secretKeySpec =
@@ -166,5 +165,13 @@ public final class CommonUtil {
 
   public static <T> List<T> listOrEmpty(List<T> list) {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
+  }
+
+  public static boolean nullOrEmpty(String string) {
+    return string == null || string.isEmpty();
+  }
+
+  public static boolean nullOrEmpty(List<?> list) {
+    return list == null || list.isEmpty();
   }
 }

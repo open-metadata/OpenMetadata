@@ -21,6 +21,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -37,6 +39,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
@@ -72,8 +75,6 @@ public class UserRepository extends EntityRepository<User> {
     Set<UUID> roleIds = listOrEmpty(user.getRoles()).stream().map(EntityReference::getId).collect(Collectors.toSet());
     // Get default role set up globally.
     daoCollection.roleDAO().getDefaultRolesIds().forEach(roleIdStr -> roleIds.add(UUID.fromString(roleIdStr)));
-    // Get default roles from the teams that the user belongs to.
-    getTeamDefaultRoles(user).forEach(roleRef -> roleIds.add(roleRef.getId()));
 
     // Assign roles.
     List<EntityReference> rolesRef = new ArrayList<>(roleIds.size());
@@ -82,6 +83,12 @@ public class UserRepository extends EntityRepository<User> {
     }
     rolesRef.sort(EntityUtil.compareEntityReference);
     user.setRoles(rolesRef);
+  }
+
+  @Override
+  public void restorePatchAttributes(User original, User updated) {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withId(original.getId()).withName(original.getName());
   }
 
   private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {
@@ -93,7 +100,7 @@ public class UserRepository extends EntityRepository<User> {
         defaultRoles.addAll(team.getDefaultRoles());
       }
     }
-    return defaultRoles;
+    return defaultRoles.stream().distinct().collect(Collectors.toList());
   }
 
   @Override
@@ -136,6 +143,22 @@ public class UserRepository extends EntityRepository<User> {
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     return user;
+  }
+
+  public boolean isTeamJoinable(String teamId) throws IOException {
+    Team team = daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
+    return team.getIsJoinable();
+  }
+
+  /* Validate if the user is already part of the given team */
+  public void validateTeamAddition(String userId, String teamId) throws IOException {
+    User user = dao.findEntityById(UUID.fromString(userId));
+    List<EntityReference> teams = getTeams(user);
+    Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(UUID.fromString(teamId))).findFirst();
+    if (team.isPresent()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));
+    }
   }
 
   private List<EntityReference> getOwns(User user) throws IOException {
@@ -183,13 +206,17 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the roles that user has been assigned, to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
     List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
-    return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+    List<EntityReference> roles = EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
+    roles.addAll(getTeamDefaultRoles(user));
+    return roles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
-    return EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
+    List<EntityReference> teams = EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
+    // return only the non-deleted teams
+    return teams.stream().filter((team) -> !team.getDeleted()).collect(Collectors.toList());
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -238,7 +265,7 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override
@@ -284,6 +311,11 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public void setName(String name) {
       entity.setName(name);
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return Entity.getEntityReference(entity);
     }
 
     @Override

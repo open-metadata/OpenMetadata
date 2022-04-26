@@ -18,11 +18,24 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TopicDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -32,7 +45,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(7)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TopicDetailsPageTest {
+class TopicDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
@@ -51,7 +64,7 @@ public class TopicDetailsPageTest {
   String description = "Test@1234";
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -83,7 +96,7 @@ public class TopicDetailsPageTest {
 
   @Test
   @Order(2)
-  public void checkTabs() throws InterruptedException {
+  void checkTabs() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, common.searchBox(), topic);
@@ -116,7 +129,7 @@ public class TopicDetailsPageTest {
 
   @Test
   @Order(4)
-  public void addTags() throws InterruptedException {
+  void addTags() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -171,19 +184,19 @@ public class TopicDetailsPageTest {
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
     webDriver.navigate().refresh();
     Thread.sleep(2000);
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    String checkDescription = webDriver.findElement(topicDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -193,7 +206,7 @@ public class TopicDetailsPageTest {
 
   @Test
   @Order(7)
-  public void checkManage() throws InterruptedException {
+  void checkManage() throws InterruptedException {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, common.selectTableLink(2));
@@ -206,7 +219,7 @@ public class TopicDetailsPageTest {
     String user = topicDetails.getOwnerName();
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, topicDetails.selectTier());
     String ownerName = webDriver.findElement(common.ownerDropdown()).getText();
     Assert.assertEquals(ownerName, user);
   }
@@ -234,7 +247,7 @@ public class TopicDetailsPageTest {
 
   @Test
   @Order(9)
-  public void checkVersion() throws InterruptedException {
+  void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -255,7 +268,7 @@ public class TopicDetailsPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

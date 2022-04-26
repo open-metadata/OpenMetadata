@@ -17,6 +17,7 @@ import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
+import { getLoggedInUserPermissions } from '../../axiosAPIs/miscAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
@@ -29,7 +30,7 @@ import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { fetchAllUsers } from '../../utils/UsedDataUtils';
+import { fetchAllUsers } from '../../utils/UserDataUtils';
 
 const Signup = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
@@ -45,6 +46,23 @@ const Signup = () => {
   const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
+
+  const getUserPermissions = () => {
+    getLoggedInUserPermissions()
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          appState.updateUserPermissions(res.data.metadataOperations);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-user-permission-error']
+        );
+      });
+  };
 
   const selectedTeamsHandler = (id?: string) => {
     setSelectedTeams((prevState: Array<string | undefined>) => {
@@ -68,6 +86,7 @@ const Signup = () => {
         if (res.data) {
           appState.updateUserDetails(res.data);
           fetchAllUsers();
+          getUserPermissions();
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);

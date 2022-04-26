@@ -27,6 +27,8 @@ jest.mock('../../../axiosAPIs/userAPI', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('feedcard'),
+  getNonDeletedTeams: jest.fn().mockReturnValue([]),
+  getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({

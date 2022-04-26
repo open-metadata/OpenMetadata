@@ -23,16 +23,22 @@ import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
+import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -78,7 +84,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     SupersetConnection supersetConnection =
         new SupersetConnection()
-            .withSupersetURL(new URI("http://localhost:8080"))
+            .withHostPort(new URI("http://localhost:8080"))
             .withUsername("user")
             .withPassword("password");
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
@@ -93,7 +99,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         new DashboardConnection()
             .withConfig(
                 new SupersetConnection()
-                    .withSupersetURL(new URI("http://localhost:8080"))
+                    .withHostPort(new URI("http://localhost:8080"))
                     .withUsername("user")
                     .withPassword("password"));
     DashboardService service =
@@ -105,7 +111,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         new DashboardConnection()
             .withConfig(
                 new SupersetConnection()
-                    .withSupersetURL(new URI("http://localhost:9000"))
+                    .withHostPort(new URI("http://localhost:9000"))
                     .withUsername("user1")
                     .withPassword("password1"));
 
@@ -135,7 +141,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
               new DashboardConnection()
                   .withConfig(
                       new SupersetConnection()
-                          .withSupersetURL(new URI("http://localhost:8080"))
+                          .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
                           .withPassword("admin")))
           .withOwner(owner)
@@ -216,11 +222,32 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
           actualSupersetConnection =
               JsonUtils.convertValue(actualDashboardConnection.getConfig(), SupersetConnection.class);
         }
-        assertEquals(expectedSupersetConnection.getSupersetURL(), actualSupersetConnection.getSupersetURL());
+        assertEquals(expectedSupersetConnection.getHostPort(), actualSupersetConnection.getHostPort());
         assertEquals(expectedSupersetConnection.getUsername(), actualSupersetConnection.getUsername());
         assertEquals(expectedSupersetConnection.getPassword(), actualSupersetConnection.getPassword());
         assertEquals(expectedSupersetConnection.getProvider(), actualSupersetConnection.getProvider());
       }
+    }
+  }
+
+  public void setupDashboardServices(TestInfo test) throws HttpResponseException {
+    DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService =
+        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
+
+    DashboardService dashboardService =
+        new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+
+    createDashboardService.withName("looker").withServiceType(DashboardServiceType.Looker);
+    dashboardService = new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+    LOOKER_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+    CHART_REFERENCES = new ArrayList<>();
+    ChartResourceTest chartResourceTest = new ChartResourceTest();
+    for (int i = 0; i < 3; i++) {
+      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
+      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
+      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
     }
   }
 }

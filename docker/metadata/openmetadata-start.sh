@@ -14,6 +14,11 @@ MYSQL="${MYSQL_HOST:-mysql}":"${MYSQL_PORT:-3306}"
 while ! wget -O /dev/null -o /dev/null "${MYSQL}";
   do echo "Trying to connect to ${MYSQL}"; sleep 5;
 done
+ELASTICSEARCH="${ELASTICSEARCH_HOST:-elasticsearch}":"${ELASTICSEARCH_PORT:-9200}"
+while ! wget -O /dev/null -o /dev/null "${ELASTICSEARCH}";
+  do echo "Trying to connect to ${ELASTICSEARCH}"; sleep 5;
+done
+sleep 5
 cd /openmetadata-*/
 ./bootstrap/bootstrap_storage.sh migrate-all
 ./bin/openmetadata-server-start.sh conf/openmetadata.yaml

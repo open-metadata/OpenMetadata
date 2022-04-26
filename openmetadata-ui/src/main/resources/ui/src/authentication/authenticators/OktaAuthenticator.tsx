@@ -19,7 +19,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { oidcTokenKey, ROUTES } from '../../constants/constants';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 
@@ -27,8 +27,6 @@ interface Props {
   children: ReactNode;
   onLogoutSuccess: () => void;
 }
-
-export type Ref = ReactNode | HTMLElement | string;
 
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
@@ -65,8 +63,12 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         logout();
       },
-      renewIdToken() {
-        return Promise.resolve('');
+      async renewIdToken() {
+        await oktaAuth.token.renewTokens();
+        const idToken = oktaAuth.getIdToken() || '';
+        localStorage.setItem(oidcTokenKey, idToken);
+
+        return Promise.resolve(idToken);
       },
     }));
 

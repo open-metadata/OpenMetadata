@@ -61,22 +61,21 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
   Column,
-  EntityReference,
   Table,
   TableData,
   TableJoins,
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -89,6 +88,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
   getFields,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -117,7 +117,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableId, setTableId] = useState('');
   const [tier, setTier] = useState<TagLabel>();
   const [name, setName] = useState('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -128,9 +128,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     rows: [],
   });
   const [tableTags, setTableTags] = useState<Array<EntityTags>>([]);
-  const [owner, setOwner] = useState<
-    Table['owner'] & { displayName?: string }
-  >();
+  const [owner, setOwner] = useState<EntityReference>();
   const [joins, setJoins] = useState<TableJoins>({
     startDate: new Date(),
     dayCount: 0,
@@ -157,7 +155,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromTableFQN(
       datasetFQN,
-      ['service', 'database', 'schema', 'table'],
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
       FQN_SEPARATOR_CHAR
     )
   );
@@ -314,21 +312,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
             },
             {
               name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                'database',
+                FqnPart.Database,
               ]),
               url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
             {
               name: getPartialNameFromTableFQN(
                 databaseSchema.fullyQualifiedName,
-                ['schema']
+                [FqnPart.Schema]
               ),
               url: getDatabaseSchemaDetailsPath(
                 databaseSchema.fullyQualifiedName
               ),
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
@@ -339,6 +337,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           }
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TABLE,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -657,9 +656,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
     setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.name, node.type)
+    getLineageByFQN(node.fullyQualifiedName, node.type)
       .then((res: AxiosResponse) => {
-        if (!res.data) {
+        if (res.data) {
           setLeafNode(res.data, pos);
           setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
         } else {
@@ -745,9 +744,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
@@ -932,8 +928,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
@@ -952,7 +946,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setTableFQN(
       getPartialNameFromTableFQN(
         datasetFQN,
-        ['service', 'database', 'schema', 'table'],
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
         FQN_SEPARATOR_CHAR
       )
     );
@@ -1004,7 +998,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           joins={joins}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
-          owner={owner as Table['owner'] & { displayName: string }}
+          owner={owner as EntityReference}
           paging={paging}
           postFeedHandler={postFeedHandler}
           qualityTestFormHandler={qualityTestFormHandler}

@@ -26,6 +26,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
   private static final String UPDATE_FIELDS = "owner";
@@ -117,7 +118,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public String getFullyQualifiedName() {
-      return entity.getName();
+      return FullyQualifiedName.build(entity.getName());
     }
 
     @Override

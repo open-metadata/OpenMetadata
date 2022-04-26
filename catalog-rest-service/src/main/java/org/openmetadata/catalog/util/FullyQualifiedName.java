@@ -4,14 +4,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.antlr.v4.runtime.BailErrorStrategy;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.FqnBaseListener;
+import org.openmetadata.catalog.FqnLexer;
+import org.openmetadata.catalog.FqnParser;
+import org.openmetadata.catalog.FqnParser.FqnContext;
+import org.openmetadata.catalog.FqnParser.QuotedNameContext;
+import org.openmetadata.catalog.FqnParser.UnquotedNameContext;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 
 public class FullyQualifiedName {
-  // Match the sub parts of fqn string "sss". or sss. or sss$
-  private static final Pattern partsPattern = Pattern.compile("((\")([^\"]+)(\"))|([^.]+)([.$])?");
-
-  // Quoted name of format "sss" or sss
+  // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
+
+  private FullyQualifiedName() {
+    /* Utility class with private constructor */
+  }
 
   /** Add to an existing valid FQN the given string */
   public static String add(String fqn, String part) {
@@ -28,23 +40,44 @@ public class FullyQualifiedName {
   }
 
   public static String[] split(String string) {
+    SplitListener listener = new SplitListener();
+    walk(string, listener);
+    return listener.split();
+  }
+
+  private static <L extends FqnBaseListener> void walk(String string, L listener) {
+    FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(string));
+    CommonTokenStream tokens = new CommonTokenStream(fqnLexer);
+    FqnParser fqnParser = new FqnParser(tokens);
+    fqnParser.setErrorHandler(new BailErrorStrategy());
+    FqnContext fqn = fqnParser.fqn();
+    ParseTreeWalker walker = new ParseTreeWalker();
+    walker.walk(listener, fqn);
+  }
+
+  private static class SplitListener extends FqnBaseListener {
     List<String> list = new ArrayList<>();
-    Matcher matcher = partsPattern.matcher(string);
-    while (matcher.find()) {
-      if (matcher.group(1) != null) {
-        list.add(matcher.group(3).contains(".") ? matcher.group(1) : matcher.group(3));
-      } else {
-        list.add(matcher.group(5));
-      }
+
+    public String[] split() {
+      return list.toArray(new String[0]);
     }
-    return list.toArray(new String[list.size()]);
+
+    @Override
+    public void enterQuotedName(QuotedNameContext ctx) {
+      list.add(ctx.getText());
+    }
+
+    @Override
+    public void enterUnquotedName(UnquotedNameContext ctx) {
+      list.add(ctx.getText());
+    }
   }
 
   /** Adds quotes to name as required */
   public static String quoteName(String name) {
     Matcher matcher = namePattern.matcher(name);
     if (!matcher.find() || matcher.end() != name.length()) {
-      throw new IllegalArgumentException("Invalid name " + name);
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
     }
 
     // Name matches quoted string "sss".
@@ -60,7 +93,22 @@ public class FullyQualifiedName {
     if (!unquotedName.contains("\"")) {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
-    throw new IllegalArgumentException("Invalid name " + name);
+    throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+  }
+
+  /** Adds quotes to name as required */
+  public static String unquoteName(String name) {
+    Matcher matcher = namePattern.matcher(name);
+    if (!matcher.find() || matcher.end() != name.length()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
+
+    // Name matches quoted string "sss".
+    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
+    if (matcher.group(1) != null) {
+      return matcher.group(2);
+    }
+    return name;
   }
 
   public static String getTableFQN(String columnFQN) {

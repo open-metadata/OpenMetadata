@@ -29,11 +29,8 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.RoleRepository;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
-import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -42,16 +39,9 @@ import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-
   private Set<String> adminUsers;
   private Set<String> botUsers;
-
   private String principalDomain;
-  private UserRepository userRepository;
-
-  private PolicyEvaluator policyEvaluator;
-  private Fields fieldsTeams;
-  private Fields fieldsRolesAndTeams;
 
   @Override
   public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
@@ -60,30 +50,21 @@ public class DefaultAuthorizer implements Authorizer {
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    CollectionDAO collectionDAO = dbi.onDemand(CollectionDAO.class);
-    this.userRepository = new UserRepository(collectionDAO);
-    // RoleRepository and TeamRepository needs to be instantiated for Entity.DAO_MAP to populated.
-    // As we create default admin/bots we need to have RoleRepository and TeamRepository available in DAO_MAP.
-    // This needs to be handled better in future releases.
-    RoleRepository roleRepository = new RoleRepository(collectionDAO);
-    TeamRepository teamRepository = new TeamRepository(collectionDAO);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
-    this.policyEvaluator = PolicyEvaluator.getInstance();
-    this.fieldsTeams = userRepository.getFields("teams");
-    this.fieldsRolesAndTeams = userRepository.getFields("roles,teams");
   }
 
   private void mayBeAddAdminUsers() {
     LOG.debug("Checking user entries for admin users");
     for (String adminUser : adminUsers) {
       try {
+        EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
         User user = userRepository.getByName(null, adminUser, Fields.EMPTY_FIELDS);
         if (user != null && (user.getIsAdmin() == null || !user.getIsAdmin())) {
           user.setIsAdmin(true);
         }
         addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
+      } catch (EntityNotFoundException | IOException ex) {
         User user =
             new User()
                 .withId(UUID.randomUUID())
@@ -93,8 +74,6 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateUser(user);
-      } catch (IOException e) {
-        LOG.error("Failed to create admin user {}", adminUser, e);
       }
     }
   }
@@ -103,12 +82,13 @@ public class DefaultAuthorizer implements Authorizer {
     LOG.debug("Checking user entries for bot users");
     for (String botUser : botUsers) {
       try {
+        EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
         User user = userRepository.getByName(null, botUser, Fields.EMPTY_FIELDS);
         if (user != null && (user.getIsBot() == null || !user.getIsBot())) {
           user.setIsBot(true);
         }
         addOrUpdateUser(user);
-      } catch (EntityNotFoundException ex) {
+      } catch (EntityNotFoundException | IOException ex) {
         User user =
             new User()
                 .withId(UUID.randomUUID())
@@ -118,8 +98,6 @@ public class DefaultAuthorizer implements Authorizer {
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());
         addOrUpdateUser(user);
-      } catch (IOException e) {
-        LOG.error("Failed to create admin user {}", botUser, e);
       }
     }
   }
@@ -138,10 +116,12 @@ public class DefaultAuthorizer implements Authorizer {
       AuthenticationContext ctx, EntityReference entityReference, MetadataOperation operation) {
     validate(ctx);
     try {
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      Fields fieldsRolesAndTeams = userRepository.getFields("roles, teams");
       User user = getUserFromAuthenticationContext(ctx, fieldsRolesAndTeams);
       if (entityReference == null) {
         // In some cases there is no specific entity being acted upon. Eg: Lineage.
-        return policyEvaluator.hasPermission(user, null, operation);
+        return RoleEvaluator.getInstance().hasPermissions(user.getRoles(), null, operation);
       }
 
       Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
@@ -150,7 +130,7 @@ public class DefaultAuthorizer implements Authorizer {
       if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
         return true; // Entity is owned by the user.
       }
-      return policyEvaluator.hasPermission(user, entity, operation);
+      return RoleEvaluator.getInstance().hasPermissions(user.getRoles(), entity, operation);
     } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
@@ -166,9 +146,11 @@ public class DefaultAuthorizer implements Authorizer {
     }
 
     try {
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      Fields fieldsRolesAndTeams = userRepository.getFields("roles, teams");
       User user = getUserFromAuthenticationContext(ctx, fieldsRolesAndTeams);
       if (entityReference == null) {
-        return policyEvaluator.getAllowedOperations(user, null);
+        return RoleEvaluator.getInstance().getAllowedOperations(user.getRoles(), null);
       }
       Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
       EntityReference owner = Entity.getEntityInterface(entity).getOwner();
@@ -176,7 +158,7 @@ public class DefaultAuthorizer implements Authorizer {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return policyEvaluator.getAllowedOperations(user, entity);
+      return RoleEvaluator.getInstance().getAllowedOperations(user.getRoles(), entity);
     } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
@@ -226,6 +208,8 @@ public class DefaultAuthorizer implements Authorizer {
     }
     validate(ctx);
     try {
+      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+      Fields fieldsTeams = userRepository.getFields("teams");
       User user = getUserFromAuthenticationContext(ctx, fieldsTeams);
       return isOwnedByUser(user, owner);
     } catch (IOException | EntityNotFoundException ex) {
@@ -240,6 +224,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private User getUserFromAuthenticationContext(AuthenticationContext ctx, Fields fields) throws IOException {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     if (ctx.getUser() != null) {
       // If a requested field is not present in the user, then add it
       for (String field : fields.getList()) {
@@ -258,10 +243,11 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   private void addOrUpdateUser(User user) {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added user entry: {}", addedUser);
-    } catch (IOException exception) {
+    } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);

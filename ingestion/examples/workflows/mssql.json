@@ -4,7 +4,7 @@
     "serviceName": "local_mssql",
     "serviceConnection": {
       "config": {
-        "type": "MSSQL",
+        "type": "Mssql",
         "database": "catalog_test",
         "username": "sa",
         "password": "test!Password",

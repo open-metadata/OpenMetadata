@@ -7,9 +7,14 @@ config = """
 {
   "source": {
     "type": "sample-data",
-    "config": {
-      "sample_data_folder": "ingestion/examples/sample_data"
-    }
+    "serviceName": "sample_data",
+    "serviceConnection": {
+      "config": {
+        "type": "SampleData",
+        "sampleDataFolder": "ingestion/examples/sample_data"
+      }
+    },
+    "sourceConfig": {}
   },
   "stage": {
     "type": "file",
@@ -17,11 +22,10 @@ config = """
       "filename": "/tmp/stage_test"
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }

@@ -20,6 +20,8 @@ public class PipelineDetails {
   By lineage = By.cssSelector("[data-testid='Lineage']");
   By lineageComponents = By.xpath("//div[@class=\"tw-relative nowheel \"]");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
+  By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
+  By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
 
   public List<WebElement> lineageNodes() {
     return webDriver.findElements(lineageComponents);

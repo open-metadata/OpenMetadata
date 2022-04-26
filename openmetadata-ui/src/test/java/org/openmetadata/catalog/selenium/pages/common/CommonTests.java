@@ -30,10 +30,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -44,7 +41,7 @@ import org.testng.Assert;
 @Slf4j
 @Order(17)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class CommonTests {
+class CommonTests {
   static WebDriver webDriver;
   static Common common;
   static Actions actions;
@@ -59,7 +56,7 @@ public class CommonTests {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -72,14 +69,14 @@ public class CommonTests {
     webDriver.get(url);
   }
 
-  public void openHomePage() throws InterruptedException {
+  void openHomePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Thread.sleep(waitTime);
   }
 
   @Test
   @Order(1)
-  public void tagDuplicationCheck() throws InterruptedException {
+  void tagDuplicationCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tables"));
     Events.sendKeys(webDriver, common.searchBar(), "dim_location");
@@ -88,28 +85,29 @@ public class CommonTests {
     //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData:Personal");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PersonalData.Personal");
     Events.click(webDriver, common.tagListItem());
-    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "User.FacePhoto");
+    Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PII.None");
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Thread.sleep(waitTime);
-    Object tagCount = webDriver.findElements(common.containsText("#PersonalData:Personal")).size();
+    Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
     Assert.assertEquals(tagCount, 1);
   }
 
   @Test
   @Order(2)
-  public void addTagWithSpaceCheck() throws InterruptedException, IOException {
+  void addTagWithSpaceCheck() throws InterruptedException, IOException {
     openHomePage();
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
@@ -118,7 +116,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "Testing Tag");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     Thread.sleep(waitTime);
     URL tagUrl = new URL(url + urlTag + tagCategoryDisplayName + "/");
@@ -130,14 +129,14 @@ public class CommonTests {
 
   @Test
   @Order(3)
-  public void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
+  void addTagCategoryWithSpaceCheck() throws InterruptedException, IOException {
     openHomePage();
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Tags")); // Setting/Tags
     Events.click(webDriver, common.addTagCategory());
-    wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(common.displayName())));
     Events.sendKeys(webDriver, common.displayName(), "Space Tag");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
     URL tagUrl = new URL(url + urlTag);
@@ -149,7 +148,7 @@ public class CommonTests {
 
   @Test
   @Order(4)
-  public void onlySpaceAsNameForServiceCheck() throws InterruptedException {
+  void onlySpaceAsNameForServiceCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("service"));
     Thread.sleep(2000);
@@ -159,11 +158,11 @@ public class CommonTests {
     } else {
       Events.click(webDriver, common.noServicesAddServiceButton());
     }
-    Events.click(webDriver, common.serviceType("MySQL"));
+    Events.click(webDriver, common.serviceType("Mysql"));
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), " ");
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.nextButton());
     wait.until(ExpectedConditions.presenceOfElementLocated(common.containsText("Service name is required.")));
     WebElement emptyName = webDriver.findElement(common.containsText("Service name is required."));
@@ -195,14 +194,15 @@ public class CommonTests {
 
   @Test
   @Order(6)
-  public void sameNameTagCategoryUIMessageCheck() throws InterruptedException {
+  void sameNameTagCategoryUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -211,7 +211,7 @@ public class CommonTests {
 
   @Test
   @Order(7)
-  public void sameNameTagUIMessageCheck() throws InterruptedException {
+  void sameNameTagUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -219,7 +219,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "personal");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -228,14 +229,15 @@ public class CommonTests {
 
   @Test
   @Order(8)
-  public void shortTagCategoryNameUIMessageCheck() throws InterruptedException {
+  void shortTagCategoryNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "P");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -244,14 +246,15 @@ public class CommonTests {
 
   @Test
   @Order(9)
-  public void longTagCategoryNameUIMessageCheck() throws InterruptedException {
+  void longTagCategoryNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
     Events.click(webDriver, common.addTagCategory());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -260,7 +263,7 @@ public class CommonTests {
 
   @Test
   @Order(10)
-  public void shortTagNameUIMessageCheck() throws InterruptedException {
+  void shortTagNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -268,7 +271,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "P");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -277,7 +281,7 @@ public class CommonTests {
 
   @Test
   @Order(11)
-  public void longTagNameUIMessageCheck() throws InterruptedException {
+  void longTagNameUIMessageCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Tags"));
@@ -285,7 +289,8 @@ public class CommonTests {
     Events.click(webDriver, common.addTagButton());
     wait.until(ExpectedConditions.elementToBeClickable(common.displayName()));
     Events.sendKeys(webDriver, common.displayName(), "PersonalData-DataPlatform-PersonalData");
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.click(webDriver, common.descriptionBox());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     String errorMessage = webDriver.findElement(common.errorMessage()).getAttribute("innerHTML");
     Thread.sleep(2000);
@@ -294,20 +299,20 @@ public class CommonTests {
 
   @Test
   @Order(12)
-  public void searchMatchesCountCheck() throws InterruptedException {
+  void searchMatchesCountCheck() throws InterruptedException {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
-    Thread.sleep(2000);
-    Object tagCount = webDriver.findElements(common.tagCountSearch()).size() - 1;
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
+    Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
+    Thread.sleep(waitTime);
     String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
   }
 
   @Test
   @Order(13)
-  public void overviewLinksAfterTour() throws InterruptedException {
+  void overviewLinksAfterTour() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tour"));
     webDriver.navigate().back();
@@ -318,7 +323,7 @@ public class CommonTests {
 
   @Test
   @Order(14)
-  public void tourStepSkippingCheck() throws InterruptedException {
+  void tourStepSkippingCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("tour"));
     for (int i = 0; i < 2; i++) {
@@ -331,13 +336,12 @@ public class CommonTests {
 
   @Test
   @Order(15)
-  public void tagFilterCountCheck() throws InterruptedException {
+  void tagFilterCountCheck() throws InterruptedException {
     int count = 0;
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 2; i++) {
@@ -346,28 +350,36 @@ public class CommonTests {
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Events.click(webDriver, common.editAssociatedTagButton());
+    try {
+      Events.click(webDriver, common.editAssociatedTagButton());
+    } catch (StaleElementReferenceException e) {
+      webDriver.findElement(common.editAssociatedTagButton()).click();
+    }
+
     Events.click(webDriver, common.enterAssociatedTagName());
-    for (int i = 0; i <= 1; i++) {
-      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "U");
+    for (int i = 0; i < 2; i++) {
+      Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editAssociatedTagButton());
-    Object tagsCount = webDriver.findElements(common.tagCount()).size();
-    Thread.sleep(2000);
     Events.click(webDriver, common.explore());
-    Thread.sleep(2000);
-    Events.click(webDriver, common.viewMore());
-    Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
-    Assert.assertEquals(tagsFilterCount.toString(), count);
+    Thread.sleep(waitTime);
+    try {
+      Events.click(webDriver, common.viewMore());
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    } catch (NoSuchElementException | TimeoutException e) {
+      Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
+      Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
+    }
   }
 
   @Test
   @Order(16)
-  public void differentSearchDifferentResultCheck() throws InterruptedException {
+  void differentSearchDifferentResultCheck() throws InterruptedException {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
@@ -387,7 +399,7 @@ public class CommonTests {
 
   @Test
   @Order(17)
-  public void missingMatchesForSearchCheck() throws InterruptedException {
+  void missingMatchesForSearchCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("dashboards"));
     Events.sendKeys(webDriver, common.searchBar(), "sales");
@@ -400,7 +412,7 @@ public class CommonTests {
 
   @Test
   @Order(18)
-  public void searchNotShowingResultsCheck() throws InterruptedException {
+  void searchNotShowingResultsCheck() throws InterruptedException {
     openHomePage();
     Events.click(webDriver, common.selectOverview("pipelines"));
     Events.sendKeys(webDriver, common.searchBar(), "sample");
@@ -416,7 +428,7 @@ public class CommonTests {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

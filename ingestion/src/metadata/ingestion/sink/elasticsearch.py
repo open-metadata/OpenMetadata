@@ -23,19 +23,20 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
 from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -98,14 +99,14 @@ class ElasticsearchSink(Sink[Entity]):
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = ElasticSearchConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
     def __init__(
         self,
         config: ElasticSearchConfig,
-        metadata_config: OpenMetadataServerConfig,
+        metadata_config: OpenMetadataConnection,
     ) -> None:
 
         self.config = config
@@ -237,7 +238,6 @@ class ElasticsearchSink(Sink[Entity]):
 
             if isinstance(record, User):
                 user_doc = self._create_user_es_doc(record)
-                print(user_doc.json())
                 self.elasticsearch_client.index(
                     index=self.config.user_index_name,
                     id=str(user_doc.user_id),
@@ -293,10 +293,12 @@ class ElasticsearchSink(Sink[Entity]):
         database_entity = self.metadata.get_by_id(
             entity=Database, entity_id=str(table.database.id.__root__)
         )
+        database_schema_entity = self.metadata.get_by_id(
+            entity=DatabaseSchema, entity_id=str(table.databaseSchema.id.__root__)
+        )
         service_entity = self.metadata.get_by_id(
             entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
         )
-        table_owner = str(table.owner.id.__root__) if table.owner is not None else ""
         table_followers = []
         if table.followers:
             for follower in table.followers.__root__:
@@ -313,6 +315,7 @@ class ElasticsearchSink(Sink[Entity]):
             service_category="databaseService",
             name=table.name.__root__,
             suggest=suggest,
+            database_schema=str(database_schema_entity.name.__root__),
             description=table.description,
             table_type=table_type,
             last_updated_timestamp=timestamp,
@@ -327,7 +330,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=table_owner,
+            owner=table.owner,
             followers=table_followers,
         )
         return table_doc
@@ -344,7 +347,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
-        topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
         topic_followers = []
         if topic.followers:
             for follower in topic.followers.__root__:
@@ -369,7 +371,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=topic_owner,
+            owner=topic.owner,
             followers=topic_followers,
         )
         return topic_doc
@@ -381,9 +383,6 @@ class ElasticsearchSink(Sink[Entity]):
         timestamp = dashboard.updatedAt.__root__
         service_entity = self.metadata.get_by_id(
             entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
-        )
-        dashboard_owner = (
-            str(dashboard.owner.id.__root__) if dashboard.owner is not None else ""
         )
         dashboard_followers = []
         if dashboard.followers:
@@ -421,7 +420,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=dashboard_owner,
+            owner=dashboard.owner,
             followers=dashboard_followers,
             monthly_stats=dashboard.usageSummary.monthlyStats.count,
             monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
@@ -441,9 +440,6 @@ class ElasticsearchSink(Sink[Entity]):
         service_entity = self.metadata.get_by_id(
             entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
         )
-        pipeline_owner = (
-            str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
-        )
         pipeline_followers = []
         if pipeline.followers:
             for follower in pipeline.followers.__root__:
@@ -459,7 +455,7 @@ class ElasticsearchSink(Sink[Entity]):
         task_descriptions = []
         for task in tasks:
             task_names.append(task.displayName)
-            if task.description is not None:
+            if task.description:
                 task_descriptions.append(task.description)
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
@@ -480,7 +476,7 @@ class ElasticsearchSink(Sink[Entity]):
             tier=tier,
             tags=list(tags),
             fqdn=fqdn,
-            owner=pipeline_owner,
+            owner=pipeline.owner,
             followers=pipeline_followers,
         )
 
@@ -527,7 +523,7 @@ class ElasticsearchSink(Sink[Entity]):
         owns = []
         if team.users:
             for user in team.users.__root__:
-                users.append(str(team.id.__root__))
+                users.append(user)
 
         if team.owns:
             for own in team.owns.__root__:
@@ -590,16 +586,16 @@ class ElasticsearchSink(Sink[Entity]):
         for column in columns:
             col_name = (
                 parent_column + "." + column.name.__root__
-                if parent_column is not None
+                if parent_column
                 else column.name.__root__
             )
             column_names.append(col_name)
-            if column.description is not None:
+            if column.description:
                 column_descriptions.append(column.description)
             if len(column.tags) > 0:
                 for col_tag in column.tags:
                     tags.add(col_tag.tagFQN.__root__)
-            if column.children is not None:
+            if column.children:
                 self._parse_columns(
                     column.children,
                     column.name.__root__,

@@ -16,8 +16,8 @@ from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -83,7 +83,7 @@ class PrestoSource(SQLSource):
         super().__init__(config, metadata_config)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PrestoConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PrestoConnection):

@@ -15,7 +15,6 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
-import logging
 import urllib
 from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
@@ -36,6 +35,9 @@ from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -45,18 +47,18 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
-)
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
@@ -64,9 +66,9 @@ from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
     auth_provider_registry,
 )
-from metadata.ingestion.ometa.utils import get_entity_type, model_str
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
@@ -115,6 +117,8 @@ class OpenMetadata(
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
+    OMetaServiceMixin,
+    ESMixin,
     Generic[T, C],
 ):
     """
@@ -136,7 +140,7 @@ class OpenMetadata(
     services_path = "services"
     teams_path = "teams"
 
-    def __init__(self, config: OpenMetadataServerConfig, raw_data: bool = False):
+    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
 
         # Load the auth provider init from the registry
@@ -390,7 +394,9 @@ class OpenMetadata(
                 f"PUT operations need a CrateEntity, not {entity}"
             )
 
-        resp = self.client.put(self.get_suffix(entity), data=data.json())
+        resp = self.client.put(
+            self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder)
+        )
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"

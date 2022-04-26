@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.util;
 
 import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
 import lombok.NonNull;
@@ -56,6 +58,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public final class EntityUtil {
@@ -66,7 +69,7 @@ public final class EntityUtil {
 
   // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
-      Comparator.comparing(entityReference -> entityReference.getId().toString());
+      Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
@@ -74,13 +77,14 @@ public final class EntityUtil {
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
+  public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
 
   //
   // Matchers used for matching two items in a list
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
+  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
@@ -167,11 +171,9 @@ public final class EntityUtil {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
-        ref.withDescription(ref2.getDescription())
-            .withName(ref2.getName())
-            .withDisplayName(ref2.getDisplayName())
-            .withFullyQualifiedName(ref2.getFullyQualifiedName());
+        EntityUtil.copy(ref2, ref);
       }
+      list.sort(compareEntityReference);
     }
     return list;
   }
@@ -182,6 +184,7 @@ public final class EntityUtil {
     for (String id : ids) {
       refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
     }
+    refs.sort(compareEntityReference);
     return refs;
   }
 
@@ -212,7 +215,7 @@ public final class EntityUtil {
 
   /** Merge derivedTags into tags, if it already does not exist in tags */
   public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (derivedTags == null || derivedTags.isEmpty()) {
+    if (nullOrEmpty(derivedTags)) {
       return;
     }
     for (TagLabel derivedTag : derivedTags) {
@@ -223,13 +226,17 @@ public final class EntityUtil {
     }
   }
 
+  public static List<String> getJsonDataResources(String path) throws IOException {
+    return CommonUtil.getResources(Pattern.compile(path));
+  }
+
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
     private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
-      if (fieldsParam == null || fieldsParam.isEmpty()) {
+      if (nullOrEmpty(fieldsParam)) {
         fieldList = new ArrayList<>();
         return;
       }
@@ -320,5 +327,14 @@ public final class EntityUtil {
                 new EventFilter()
                     .withEventType(EventType.ENTITY_SOFT_DELETED)
                     .withEntities(eventFilter.getEntities())));
+  }
+
+  public static EntityReference copy(EntityReference from, EntityReference to) {
+    return to.withType(from.getType())
+        .withId(from.getId())
+        .withName(from.getName())
+        .withDisplayName(from.getDisplayName())
+        .withFullyQualifiedName(from.getFullyQualifiedName())
+        .withDeleted(from.getDeleted());
   }
 }

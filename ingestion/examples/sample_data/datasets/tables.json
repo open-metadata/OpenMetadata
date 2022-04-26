@@ -129,7 +129,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -158,7 +158,7 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 35
                                       }
                                 ]
@@ -167,43 +167,43 @@
                                 "columnName": "address_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 49
                                       }
                                 ]
@@ -1088,7 +1088,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -1124,7 +1124,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -1153,63 +1153,63 @@
                                 "columnName": "api_client_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 55
                                       }
                                 ]
@@ -1444,7 +1444,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -1746,7 +1746,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -1775,31 +1775,31 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 45
                                       }
                                 ]
@@ -1808,67 +1808,67 @@
                                 "columnName": "customer_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 45
                                       }
                                 ]
@@ -3858,7 +3858,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -3951,7 +3951,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -3980,43 +3980,43 @@
                                 "columnName": "location_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 50
                                       }
                                 ]
@@ -4204,7 +4204,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -4274,7 +4274,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -4303,11 +4303,11 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
                                             "joinCount": 5
                                       }
                                 ]
@@ -4316,59 +4316,59 @@
                                 "columnName": "product_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product.variant:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product.variant:product_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product.variant:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product.variant:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
                                             "joinCount": 5
                                       }
                                 ]
@@ -4616,7 +4616,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -4719,7 +4719,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -4748,11 +4748,11 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
                                             "joinCount": 5
                                       }
                                 ]
@@ -4761,11 +4761,11 @@
                                 "columnName": "product_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
                                             "joinCount": 5
                                       }
                                 ]
@@ -5133,7 +5133,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -5179,7 +5179,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -5208,71 +5208,71 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
                                             "joinCount": 35
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 35
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:shop_id",
                                             "joinCount": 35
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product_variant:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product_variant:product_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.product_variant:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product_variant:shop_id",
                                             "joinCount": 5
                                       }
                                 ]
@@ -5430,7 +5430,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -5493,7 +5493,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -5522,15 +5522,15 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim.shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.shop:shop_id",
                                             "joinCount": 35
                                       }
                                 ]
@@ -5539,67 +5539,67 @@
                                 "columnName": "user_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 35
                                       }
                                 ]
@@ -5877,7 +5877,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -5885,7 +5885,7 @@
         {
               "id": "ebb535b6-234a-477f-8713-b0bc7ff5897f",
               "name": "fact_line_item",
-              "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item",
+              "fullyQualifiedName": "sample_data.shopify.fact_line_item",
               "description": "The fact table contains information about the line items in orders. Each row in the table is a line item in an order. It contains product and product variant details as they were at the time of the order. This table does not include information about returns. Join this table with the TODO fact_sales table to get the details of the product on the day it was sold. This data will match what appears on the order in your Shopify admin as well as the in the Sales reports.",
               "version": 0.1,
               "updatedAt": 1638354087696,
@@ -5898,7 +5898,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the line item. This column is the primary key for the this table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.line_item_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.line_item_id",
                           "tags": [],
                           "constraint": "PRIMARY_KEY",
                           "ordinalPosition": 1
@@ -5907,7 +5907,7 @@
                           "name": "billing_address_id",
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.billing_address_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.billing_address_id",
                           "tags": [],
                           "ordinalPosition": 2
                     },
@@ -5916,7 +5916,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the order. This column is a foreign key reference to the orders_id column in the fact_order table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.order_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.order_id",
                           "tags": [],
                           "ordinalPosition": 3
                     },
@@ -5925,7 +5925,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the dim.product table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.product_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.product_id",
                           "tags": [],
                           "ordinalPosition": 4
                     },
@@ -5933,7 +5933,7 @@
                           "name": "product_variant_id",
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.product_variant_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.product_variant_id",
                           "tags": [],
                           "ordinalPosition": 5
                     },
@@ -5942,7 +5942,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.shop_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.shop_id",
                           "tags": [],
                           "ordinalPosition": 6
                     },
@@ -5952,7 +5952,7 @@
                           "dataLength": 100,
                           "dataTypeDisplay": "varchar",
                           "description": "Name of the line item. This name combines the product title and the variant title into the following format: product-title - variant-title. If there is no variant title, then the format is product-title. This column is the same as order.line_items.name\"in the Admin API.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.name",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.name",
                           "tags": [],
                           "ordinalPosition": 7
                     },
@@ -5962,7 +5962,7 @@
                           "dataLength": 150,
                           "dataTypeDisplay": "varchar",
                           "description": "Name of the product ordered. This column is the same as order.line_items.title in the Admin API.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.product_title",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.product_title",
                           "tags": [],
                           "ordinalPosition": 8
                     },
@@ -5971,7 +5971,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Price of the product variant.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.price",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.price",
                           "tags": [],
                           "ordinalPosition": 9
                     },
@@ -5980,7 +5980,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Number of product variant items ordered in the line item.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.quantity",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.quantity",
                           "tags": [],
                           "ordinalPosition": 10
                     },
@@ -5989,7 +5989,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "Whether the product variant requires fulfillment (shipping). For example, online gift cards don't require shipping.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.requires_shipping",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.requires_shipping",
                           "tags": [],
                           "ordinalPosition": 11
                     },
@@ -5998,7 +5998,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "Whether taxes are charged for the product variant, otherwise contains 0. For example, when the line item is a gift card, taxes are not charged.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.taxable",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.taxable",
                           "tags": [],
                           "ordinalPosition": 12
                     },
@@ -6007,7 +6007,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "Whether the product variant is a gift card.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.gift_card",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.gift_card",
                           "tags": [],
                           "ordinalPosition": 13
                     },
@@ -6016,7 +6016,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Weight of a single unit of the product variant. Contains 0 when the product variant is a gift card.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.grams",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.grams",
                           "tags": [],
                           "ordinalPosition": 14
                     },
@@ -6026,7 +6026,7 @@
                           "dataLength": 200,
                           "dataTypeDisplay": "varchar",
                           "description": "Name of the manufacturer, wholesaler, or other vendor of the product.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.product_vendor",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.product_vendor",
                           "tags": [],
                           "ordinalPosition": 15
                     },
@@ -6035,7 +6035,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Number of product variant items in the line item that require fulfillment. Some product variants, such as gift cards and digital products, do not need to be fulfilled.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.fulfillable_quantity",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.fulfillable_quantity",
                           "tags": [],
                           "ordinalPosition": 16
                     },
@@ -6045,7 +6045,7 @@
                           "dataLength": 100,
                           "dataTypeDisplay": "varchar",
                           "description": "Name of the fulfillment service provider that fulfilled (shipped) the variant ordered. Contains manual when there is no fulfillment service specified for the variant.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_line_item.fulfillment_service",
+                          "fullyQualifiedName": "sample_data.shopify.fact_line_item.fulfillment_service",
                           "tags": [],
                           "ordinalPosition": 17
                     }
@@ -6053,7 +6053,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -6082,7 +6082,7 @@
                                 "columnName": "line_item_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.line_item_id",
+                                            "fullyQualifiedName": "sample_data.shopify.fact_sale.line_item_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -6660,7 +6660,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -6668,7 +6668,7 @@
         {
               "id": "6bd37162-1eb2-4c22-88ef-aedb7bf35d23",
               "name": "fact_order",
-              "fullyQualifiedName": "bigquery_gcp.shopify.fact_order",
+              "fullyQualifiedName": "sample_data.shopify.fact_order",
               "description": "The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.",
               "version": 0.1,
               "updatedAt": 1638354087730,
@@ -6681,7 +6681,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Unique numeric identifier for the order across Shopify stores. In your Shopify admin, this ID is used internally. Most merchants are familiar with the other ID that appears on orders in the Shopify admin. This ID can be found in the Name column.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.order_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.order_id",
                           "tags": [],
                           "constraint": "PRIMARY_KEY",
                           "ordinalPosition": 1
@@ -6691,7 +6691,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.api_client_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.api_client_id",
                           "tags": [],
                           "ordinalPosition": 2
                     },
@@ -6699,7 +6699,7 @@
                           "name": "billing_address_id",
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.billing_address_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.billing_address_id",
                           "tags": [],
                           "ordinalPosition": 3
                     },
@@ -6708,7 +6708,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.customer_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.customer_id",
                           "tags": [],
                           "ordinalPosition": 4
                     },
@@ -6716,7 +6716,7 @@
                           "name": "location_id",
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.location_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.location_id",
                           "tags": [],
                           "ordinalPosition": 5
                     },
@@ -6724,7 +6724,7 @@
                           "name": "shipping_address_id",
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shipping_address_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.shipping_address_id",
                           "tags": [],
                           "ordinalPosition": 6
                     },
@@ -6733,7 +6733,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.shop_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.shop_id",
                           "tags": [],
                           "ordinalPosition": 7
                     },
@@ -6742,7 +6742,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.user_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.user_id",
                           "tags": [],
                           "ordinalPosition": 8
                     },
@@ -6752,7 +6752,7 @@
                           "dataLength": 100,
                           "dataTypeDisplay": "varchar",
                           "description": "The identifier of the order that the merchant and customer sees. This is the ID that appears on the order in the Shopify admin. For example, #1001. By default, this identifier is unique to one store. If you have multiple stores, then use the order_id column to guarantee uniqueness across multiple stores.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.name",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.name",
                           "tags": [],
                           "ordinalPosition": 9
                     },
@@ -6761,7 +6761,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The total price of the order, including shipping and taxes. This column includes gift card sales, but does not include returns. This value may not be accurate for API-imported orders. Do not use this column for financial calculations. Instead, use the total_price column in the sales table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.total_price",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.total_price",
                           "tags": [],
                           "ordinalPosition": 10
                     },
@@ -6771,7 +6771,7 @@
                           "dataLength": 100,
                           "dataTypeDisplay": "varchar",
                           "description": "The discount code that was applied to the order.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.discount_code",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.discount_code",
                           "tags": [],
                           "ordinalPosition": 11
                     },
@@ -6780,7 +6780,7 @@
                           "dataType": "TIMESTAMP",
                           "dataTypeDisplay": "timestamp",
                           "description": "The date (ISO 8601) and time (UTC) when the order was created. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.processed_at",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.processed_at",
                           "tags": [],
                           "ordinalPosition": 12
                     },
@@ -6789,7 +6789,7 @@
                           "dataType": "TIMESTAMP",
                           "dataTypeDisplay": "timestamp",
                           "description": "If the order was canceled, then this column contains the date (ISO 8601) and time (UTC) when the order was canceled. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.canceled_at",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.canceled_at",
                           "tags": [],
                           "ordinalPosition": 13
                     },
@@ -6798,7 +6798,7 @@
                           "dataType": "TIMESTAMP",
                           "dataTypeDisplay": "timestamp",
                           "description": "If the order was deleted, then this column contains the date (ISO 8601) and time (UTC) when the order was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.deleted_at",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.deleted_at",
                           "tags": [],
                           "ordinalPosition": 14
                     },
@@ -6807,7 +6807,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "True when the order is a test order, False otherwise.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_order.test",
+                          "fullyQualifiedName": "sample_data.shopify.fact_order.test",
                           "tags": [],
                           "ordinalPosition": 15
                     }
@@ -6815,7 +6815,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -6844,23 +6844,23 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -6869,23 +6869,23 @@
                                 "columnName": "api_client_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -6894,27 +6894,27 @@
                                 "columnName": "user_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -6923,23 +6923,23 @@
                                 "columnName": "customer_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -6948,59 +6948,59 @@
                                 "columnName": "order_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_sale:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 30
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 25
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 5
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -7518,7 +7518,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -7526,7 +7526,7 @@
         {
               "id": "d16bcfa1-a63b-4f06-b042-9dd39a8c429b",
               "name": "fact_sale",
-              "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale",
+              "fullyQualifiedName": "sample_data.shopify.fact_sale",
               "description": "The fact table captures the value of products sold or returned, as well as the values of other charges such as taxes and shipping costs. The sales table contains one row per order line item, one row per returned line item, and one row per shipping charge. Use this table when you need financial metrics.",
               "version": 0.1,
               "updatedAt": 1638354087762,
@@ -7539,7 +7539,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the sale row. This column is the primary key for this table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.sale_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.sale_id",
                           "tags": [],
                           "constraint": "PRIMARY_KEY",
                           "ordinalPosition": 1
@@ -7549,7 +7549,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the dim_address table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.billing_address_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.billing_address_id",
                           "tags": [],
                           "ordinalPosition": 2
                     },
@@ -7558,7 +7558,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the dim_api_client table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.api_client_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.api_client_id",
                           "tags": [],
                           "ordinalPosition": 3
                     },
@@ -7567,7 +7567,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.customer_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.customer_id",
                           "tags": [],
                           "ordinalPosition": 4
                     },
@@ -7576,7 +7576,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the line item. This column is a foreign key reference to line_item_id column in the fact_line_item table. When the row describes a shipping charge, there is no line_item_id value.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.line_item_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.line_item_id",
                           "tags": [],
                           "ordinalPosition": 5
                     },
@@ -7585,7 +7585,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the dim_location table. When the order is not a POS order, then there is no location ID.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.location_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.location_id",
                           "tags": [],
                           "ordinalPosition": 6
                     },
@@ -7594,7 +7594,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the order. This column is a foreign key reference to order_id column in the fact_order table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.order_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.order_id",
                           "tags": [],
                           "ordinalPosition": 7
                     },
@@ -7603,7 +7603,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim.product table. When the line item describes a shipping charge, then there is no product ID.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.product_id",
                           "tags": [],
                           "ordinalPosition": 8
                     },
@@ -7612,7 +7612,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim.product_variant table. When the row describes a shipping charge, then there is no product variant ID.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.product_variant_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.product_variant_id",
                           "tags": [],
                           "ordinalPosition": 9
                     },
@@ -7621,7 +7621,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the dim_address table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping_address_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.shipping_address_id",
                           "tags": [],
                           "ordinalPosition": 10
                     },
@@ -7630,7 +7630,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of your store. This column is a foreign key reference to the shop_id column in the dim.shop table.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shop_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.shop_id",
                           "tags": [],
                           "ordinalPosition": 11
                     },
@@ -7639,7 +7639,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the dim_staff table. Not all sales have a staff member associated with them.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.user_id",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.user_id",
                           "tags": [],
                           "ordinalPosition": 12
                     },
@@ -7648,7 +7648,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Price of the product purchased multiplied by the quantity ordered. This value is formatted in the currency of your store. If the product purchased is a gift card, then 0 is returned because gift cards are not included in gross sales calculations. The gross sales amount also does not include any discounts, returns, taxes or shipping charges. The gross_sales column is calculated using the following formula: product (excluding gift cards) price x quantity (before taxes, shipping, discounts, and returns). Canceled, pending, and unpaid orders will have a value for this column, but test and deleted orders will not.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.gross_sales",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.gross_sales",
                           "tags": [],
                           "ordinalPosition": 13
                     },
@@ -7657,7 +7657,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Net sales of the line item. The value of the line item's gross sales minus any discounts minus the value of any returned items. Net sales does not include taxes or shipping costs, or the sale of gift cards. If the line item contains gift cards, then the field contains 0. Net sales is calculated by using the following formula: gross_sales - discounts - returns.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.net_sales",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.net_sales",
                           "tags": [],
                           "ordinalPosition": 14
                     },
@@ -7666,7 +7666,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Total sales of the line item. This value does not include gift cards. Total sales is calculated using the following formula: net_sales + shipping + taxes.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.total_sales",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.total_sales",
                           "tags": [],
                           "ordinalPosition": 15
                     },
@@ -7675,7 +7675,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Value of the products returned by the customer regardless of the amount that the merchant actually receives from the customer. This value is usually a negative number, but it can also be zero (for example, if the item being returned was a free gift with purchase). Taxes and shipping charges are not included. The returns amount is calculated by using the following formula: 0 - (product variant price * quantity) + discounts.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.returns",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.returns",
                           "tags": [],
                           "ordinalPosition": 16
                     },
@@ -7684,7 +7684,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Total amount discounted from the line item. The discounts column contains the sum of any line item discounts plus the line item's portion of any order-level discount. The value of the discount is either negative or zero. The discounts column is calculated using the following formula: line item discount + order level discount share.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.discounts",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.discounts",
                           "tags": [],
                           "ordinalPosition": 17
                     },
@@ -7693,7 +7693,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "When the line item is for a shipping charge, this column contains the amount charged for shipping the order or the amount of the shipping charge that is refunded when an item is returned. This value is positive for a shipping charge, and negative for the value returned. Any applicable taxes charged for shipping costs are recorded in the Taxes column. This column is calculated using the following formula: shipping charge or refund - shipping discount..",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.shipping",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.shipping",
                           "tags": [],
                           "ordinalPosition": 18
                     },
@@ -7702,7 +7702,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "The amount of taxes charged or returned for the line item. This value will be positive for a sale and negative for a return. Tax on an order is split proportionally amongst the line items to which it applies. Gift cards are not taxed. If multiple taxes are applied (for example, State and City sales taxes), then this column contains the sum of those tax amounts. This column can include taxes charged on shipping, if they are applicable.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.taxes",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.taxes",
                           "tags": [],
                           "ordinalPosition": 19
                     },
@@ -7711,7 +7711,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Total amount discounted from gift card sales. For example, if a $50 gift card is sold at a $10 discount for $40, then this column will contain $10.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.gift_card_discounts",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.gift_card_discounts",
                           "tags": [],
                           "ordinalPosition": 20
                     },
@@ -7720,7 +7720,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Total face value of gift cards sold. For example, a $50 gift card is sold at a $10 discount for $40. In this example, the gift_card_gross_sales column will contain $50. Use this column to measure the increase in liabilities due to gift cards being issued (even though this value will not balance against the actual payments that you receive).",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.gift_card_gross_sales",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.gift_card_gross_sales",
                           "tags": [],
                           "ordinalPosition": 21
                     },
@@ -7729,7 +7729,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Net amount that the gift cards sold for, after discounts. For example, for a $50 gift card sold at a $10 discount for $40, this column will contain $40. Use this column to balance against the payments that you receive.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.gift_cards_issued",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.gift_cards_issued",
                           "tags": [],
                           "ordinalPosition": 22
                     },
@@ -7738,7 +7738,7 @@
                           "dataType": "NUMERIC",
                           "dataTypeDisplay": "numeric",
                           "description": "Quantity of the items sold or returned. This value will be negative for returns and zero for line items that contain shipping charges.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.quantity",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.quantity",
                           "tags": [],
                           "ordinalPosition": 23
                     },
@@ -7748,7 +7748,7 @@
                           "dataLength": 200,
                           "dataTypeDisplay": "varchar",
                           "description": "Three-letter ISO currency code of the payment. For example, USD is the code for United States Dollar. This is the currency of the store at the time of the order.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.currency",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.currency",
                           "tags": [],
                           "ordinalPosition": 24
                     },
@@ -7757,7 +7757,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "Contains 1 when the sale's order was deleted, otherwise contains 0.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.is_deleted",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.is_deleted",
                           "tags": [],
                           "ordinalPosition": 25
                     },
@@ -7766,7 +7766,7 @@
                           "dataType": "BOOLEAN",
                           "dataTypeDisplay": "boolean",
                           "description": "Whether the sale is a test order. Returns True when the sale is a test sale. See Test orders.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.test",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.test",
                           "tags": [],
                           "ordinalPosition": 26
                     },
@@ -7775,7 +7775,7 @@
                           "dataType": "TIMESTAMP",
                           "dataTypeDisplay": "timestamp",
                           "description": "Date (ISO 8601) and time (UTC) when the order was created for a sale or when the order was returned.",
-                          "fullyQualifiedName": "bigquery_gcp.shopify.fact_sale.happened_at",
+                          "fullyQualifiedName": "sample_data.shopify.fact_sale.happened_at",
                           "tags": [],
                           "ordinalPosition": 27
                     }
@@ -7783,7 +7783,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -7812,35 +7812,35 @@
                                 "columnName": "billing_address_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -7849,35 +7849,35 @@
                                 "columnName": "shop_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -7886,7 +7886,7 @@
                                 "columnName": "line_item_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_line_item:line_item_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_line_item:line_item_id",
                                             "joinCount": 20
                                       }
                                 ]
@@ -7895,35 +7895,35 @@
                                 "columnName": "shipping_address_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -7932,35 +7932,35 @@
                                 "columnName": "api_client_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -7969,39 +7969,39 @@
                                 "columnName": "user_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -8010,35 +8010,35 @@
                                 "columnName": "product_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -8047,35 +8047,35 @@
                                 "columnName": "product_variant_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -8084,39 +8084,39 @@
                                 "columnName": "customer_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -8125,51 +8125,51 @@
                                 "columnName": "order_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
                                             "joinCount": 60
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -8178,35 +8178,35 @@
                                 "columnName": "location_id",
                                 "joinedWith": [
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_address:address_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
                                             "joinCount": 49
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
                                             "joinCount": 55
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_customer:customer_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
                                             "joinCount": 45
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_location:location_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
                                             "joinCount": 50
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim:product:product_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_shop:shop_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
                                             "joinCount": 40
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.dim_staff:user_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
                                             "joinCount": 20
                                       },
                                       {
-                                            "fullyQualifiedName": "bigquery_gcp.ecommerce_db.shopify.fact_order:order_id",
+                                            "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
                                             "joinCount": 60
                                       }
                                 ]
@@ -10066,7 +10066,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -10349,7 +10349,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -12453,7 +12453,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -12614,7 +12614,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -13388,7 +13388,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -13522,7 +13522,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -14491,7 +14491,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }
@@ -14564,7 +14564,7 @@
               "database": {
                     "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
                     "type": "database",
-                    "name": "bigquery_gcp.ecommerce_db",
+                    "name": "sample_data.ecommerce_db",
                     "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
               },
@@ -15113,7 +15113,7 @@
               "databaseSchema": {
                     "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
                     "type": "databaseSchema",
-                    "name": "bigquery_gcp.ecommerce_db.shopify",
+                    "name": "sample_data.ecommerce_db.shopify",
                     "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                     "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
               }

@@ -22,9 +22,9 @@ import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.OpenMetadataServerConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -268,7 +268,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateOpenMetadataServerConnection(
-        OpenMetadataServerConfig origConfig, OpenMetadataServerConfig updatedConfig) throws JsonProcessingException {
+        OpenMetadataServerConnection origConfig, OpenMetadataServerConnection updatedConfig)
+        throws JsonProcessingException {
       if (updatedConfig != null && !origConfig.equals(updatedConfig)) {
         recordChange("openMetadataServerConnection", origConfig, updatedConfig);
       }

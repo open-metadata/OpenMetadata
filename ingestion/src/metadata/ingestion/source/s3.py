@@ -24,21 +24,22 @@ from metadata.generated.schema.entity.policies.lifecycle.moveAction import (
 )
 from metadata.generated.schema.entity.policies.lifecycle.rule import LifecycleRule
 from metadata.generated.schema.entity.policies.policy import Policy, PolicyType
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataServerConfig,
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.storage import S3StorageClass, StorageServiceType
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
-from metadata.utils.aws_client import AWSClient, AWSClientConfigModel
+from metadata.utils.aws_client import AWSClient
 from metadata.utils.helpers import get_storage_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-class S3SourceConfig(AWSClientConfigModel):
+class S3SourceConfig(AWSCredentials):
     service_name: str
 
 
@@ -46,9 +47,7 @@ class S3Source(Source[Entity]):
     config: S3SourceConfig
     status: SourceStatus
 
-    def __init__(
-        self, config: S3SourceConfig, metadata_config: OpenMetadataServerConfig
-    ):
+    def __init__(self, config: S3SourceConfig, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
@@ -63,7 +62,7 @@ class S3Source(Source[Entity]):
         self.s3 = AWSClient(self.config).get_client("s3")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataServerConfig):
+    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = S3SourceConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
@@ -165,3 +164,6 @@ class S3Source(Source[Entity]):
             prefixFilter=prefix_filter,
             name=name,
         )
+
+    def test_connection(self) -> None:
+        pass

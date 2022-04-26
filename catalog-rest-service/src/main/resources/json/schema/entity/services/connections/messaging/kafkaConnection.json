@@ -15,30 +15,41 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/kafkaType",
       "default": "Kafka"
     },
     "bootstrapServers": {
+      "title": "Bootstrap Servers",
       "description": "Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092",
       "type": "string",
       "default": "localhost:9092"
     },
     "schemaRegistryURL": {
+      "title": "Schema Registry URL",
       "description": "Confluent Kafka Schema Registry URL.",
       "type": "string",
       "format": "uri",
       "default": "http://localhost:8081"
     },
-    "supportedPipelineTypes": {
-      "description": "Supported Metadata Extraction Pipelines.",
-      "type": "string",
-      "enum": ["Metadata"],
-      "javaEnums": [
-        {
-          "name": "Metadata"
-        }
-      ]
+    "consumerConfig": {
+      "title": "Consumer Config",
+      "description": "Confluent Kafka Consumer Config",
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "schemaRegistryConfig": {
+      "title": "Schema Registry Config",
+      "description": "Confluent Kafka Schema Registry Config.",
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false

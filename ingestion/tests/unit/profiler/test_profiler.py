@@ -18,12 +18,12 @@ import pytest
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ColumnProfile, Histogram
+from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler
-from metadata.utils.engines import create_and_bind_session
+from metadata.utils.connections import create_and_bind_session
 
 Base = declarative_base()
 
@@ -102,9 +102,9 @@ class ProfilerTest(TestCase):
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
-            histogram=Histogram(
-                boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
-            ),
+            # histogram=Histogram(
+            #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
+            # ),
         )
 
     def test_required_metrics(self):

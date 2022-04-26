@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { findAllByText, findByTestId, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { FilterPatternType } from '../../../enums/filterPattern.enum';
+import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import FilterPattern from './FilterPattern';
 import { FilterPatternProps } from './filterPattern.interface';
 
@@ -22,7 +22,7 @@ const mockFilterPatternProps: FilterPatternProps = {
   handleChecked: jest.fn(),
   includePattern: undefined,
   excludePattern: undefined,
-  type: FilterPatternType.DATABASE,
+  type: FilterPatternEnum.TABLE,
   getExcludeValue: jest.fn(),
   getIncludeValue: jest.fn(),
 };
@@ -46,14 +46,19 @@ describe('Test FilterPattern component', () => {
       container,
       `${mockFilterPatternProps.type}-filter-pattern-checkbox`
     );
-    const reactSelectMultiInputs = await findAllByText(
+    const includeFilterInput = await findByTestId(
       container,
-      'ReactSelectMultiInput.component'
+      'filter-pattern-includes-table'
+    );
+    const excludeFilterInput = await findByTestId(
+      container,
+      'filter-pattern-excludes-table'
     );
 
     expect(filterPatternContainer).toBeInTheDocument();
     expect(checkbox).toBeInTheDocument();
     expect(fieldContainer).toBeInTheDocument();
-    expect(reactSelectMultiInputs.length).toBe(2);
+    expect(includeFilterInput).toBeInTheDocument();
+    expect(excludeFilterInput).toBeInTheDocument();
   });
 });

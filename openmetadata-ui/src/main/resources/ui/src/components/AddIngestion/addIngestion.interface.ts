@@ -11,43 +11,83 @@
  *  limitations under the License.
  */
 
-import { FilterPatternType } from '../../enums/filterPattern.enum';
+import { LoadingState } from 'Models';
+import { FilterPatternEnum } from '../../enums/filterPattern.enum';
+import { FormSubmitType } from '../../enums/form.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  FilterPattern,
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
+  activeIngestionStep: number;
+  pipelineType: PipelineType;
+  heading: string;
+  status: FormSubmitType;
+  data?: IngestionPipeline;
+  serviceCategory: ServiceCategory;
   serviceData: DataObj;
-  handleAddIngestion: (value: boolean) => void;
+  showSuccessScreen?: boolean;
+  setActiveIngestionStep: (step: number) => void;
+  handleCancelClick: () => void;
+  onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  onUpdateIngestion?: (
+    data: IngestionPipeline,
+    oldData: IngestionPipeline,
+    id: string,
+    displayName: string,
+    triggerIngestion?: boolean
+  ) => Promise<void>;
+  onSuccessSave?: () => void;
+  handleViewServiceClick?: () => void;
 }
-
-export type PatternType = {
-  include: Array<string>;
-  exclude: Array<string>;
-};
 
 export interface ConfigureIngestionProps {
   ingestionName: string;
-  databaseFilterPattern: PatternType;
-  schemaFilterPattern: PatternType;
-  tableFilterPattern: PatternType;
-  viewFilterPattern: PatternType;
+  description?: string;
+  serviceCategory: ServiceCategory;
+  dashboardFilterPattern: FilterPattern;
+  schemaFilterPattern: FilterPattern;
+  tableFilterPattern: FilterPattern;
+  topicFilterPattern: FilterPattern;
+  chartFilterPattern: FilterPattern;
+  fqnFilterPattern: FilterPattern;
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
-  showDatabaseFilter: boolean;
+  markDeletedTables?: boolean;
+  pipelineType: PipelineType;
+  showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;
-  showViewFilter: boolean;
+  showTopicFilter: boolean;
+  showChartFilter: boolean;
+  showFqnFilter: boolean;
+  queryLogDuration: number;
+  stageFileLocation: string;
+  resultLimit: number;
+  handleIngestionName: (value: string) => void;
+  handleDescription?: (value: string) => void;
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
-  getIncludeValue: (value: string[], type: FilterPatternType) => void;
-  getExcludeValue: (value: string[], type: FilterPatternType) => void;
-  handleShowFilter: (value: boolean, type: FilterPatternType) => void;
+  handleMarkDeletedTables?: () => void;
+  getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
+  getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
+  handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;
+  handleQueryLogDuration: (value: number) => void;
+  handleStageFileLocation: (value: string) => void;
+  handleResultLimit: (value: number) => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
 export type ScheduleIntervalProps = {
+  status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
   startDate: string;
@@ -55,5 +95,5 @@ export type ScheduleIntervalProps = {
   endDate: string;
   handleEndDateChange: (value: string) => void;
   onBack: () => void;
-  onDeloy: () => void;
+  onDeploy: () => void;
 };

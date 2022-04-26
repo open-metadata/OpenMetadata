@@ -47,7 +47,7 @@ export const onErrorText = 'Error while deleting message';
 export const onUpdatedConversastionError =
   'Error while getting updated conversation';
 
-export const MENTION_ALLOWED_CHARS = /^w*$/;
+export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_]*$/;
 export const MENTION_DENOTATION_CHARS = ['@', '#'];
 
 export const TOOLBAR_ITEMS = [

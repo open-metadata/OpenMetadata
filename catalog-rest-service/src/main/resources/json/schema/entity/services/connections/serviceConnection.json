@@ -16,6 +16,9 @@
         },
         {
           "$ref": "../messagingService.json#/definitions/messagingConnection"
+        },
+        {
+          "$ref": "../metadataService.json#/definitions/metadataConnection"
         }
       ]
     }
