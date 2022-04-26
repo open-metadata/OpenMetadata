@@ -111,6 +111,14 @@ jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: true,
+    })),
+  };
+});
+
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
 
@@ -140,6 +148,7 @@ const mockProp = {
   postFeedHandler: postFeed,
   isAdminUser: false,
   isLoggedinUser: false,
+  isAuthDisabled: true,
   updateUserDetails,
 };
 
