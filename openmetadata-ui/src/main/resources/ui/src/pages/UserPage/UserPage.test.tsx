@@ -91,6 +91,14 @@ const mockUserData = {
   ],
 };
 
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: true,
+    })),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ username: 'xyz' })),
 }));
