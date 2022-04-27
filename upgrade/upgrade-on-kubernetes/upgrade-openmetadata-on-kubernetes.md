@@ -6,7 +6,13 @@ description: >-
 
 # Upgrade OpenMetadata on Kubernetes
 
-<mark style="color:red;">****</mark>
+> {% hint style="danger" %}
+> **The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
+>
+> **0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**&#x20;
+>
+> Please reach out to us at [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
+> {% endhint %}
 
 ## Requirements
 
@@ -28,7 +34,7 @@ At this moment, OpenMetadata does not support Rollbacks as part of Database Migr
 This guide assumes your helm chart release names are _openmetadata_ and _openmetadata-dependencies._
 {% endhint %}
 
-### Upgrade Helm Repository with new release
+### Upgrade Helm Repository with a new release
 
 Update Helm Chart Locally for open-metadata with the below command.
 
@@ -80,7 +86,7 @@ open-metadata/openmetadata-dependencies	0.0.1        	0.5.0      	Helm Dependenc
 
 ### Upgrade OpenMetadata Dependencies
 
-We upgrade OpenMetadata Dependencies with below command
+We upgrade OpenMetadata Dependencies with the  below command
 
 ```
 helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
@@ -95,7 +101,7 @@ helm upgrade openmetadata open-metadata/openmetadata
 ```
 
 {% hint style="info" %}
-Starting from `0.0.6` open-metadata helm release, we support automatic repair and migration of databases. This will **ONLY** be handle on Helm chart upgrades to latest versions going-forward.
+Starting from `0.0.6` open-metadata helm release, we support automatic repair and migration of databases. This will **ONLY** be handled on Helm chart upgrades to the latest versions going-forward.
 {% endhint %}
 
 ## Troubleshooting for 0.10 Release
@@ -168,4 +174,4 @@ pod "openmetadata-6488765769-b8nw7" deleted
 
 ## What's Next
 
-Head on to [connectors](../../docs/integrations/connectors/) section to ingest data from various sources.
+Head on to the [connectors](../../docs/integrations/connectors/) section to ingest data from various sources.
