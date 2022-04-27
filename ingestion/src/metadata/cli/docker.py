@@ -252,6 +252,7 @@ def ingest_sample_data() -> None:
                 raise TimeoutError("Ingestion container timed out")
         except TimeoutError as err:
             print(err)
+            sys.exit(1)
         except Exception:
             pass
     for dag in dags:
