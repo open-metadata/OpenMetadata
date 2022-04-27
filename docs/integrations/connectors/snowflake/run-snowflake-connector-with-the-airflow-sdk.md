@@ -2,15 +2,15 @@
 description: Use your own Airflow instance to schedule and run the Connector.
 ---
 
-# Run Snowflake Connector using Airflow SDK
+# Run Snowflake Connector with the Airflow SDK
 
 Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-snowflake-connector-using-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-snowflake-connector-using-airflow-sdk.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-snowflake-connector-using-airflow-sdk.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-snowflake-connector-using-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-snowflake-connector-using-airflow-sdk.md#dbt-integration)
+* [Requirements](run-snowflake-connector-with-the-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-snowflake-connector-with-the-airflow-sdk.md#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](run-snowflake-connector-with-the-airflow-sdk.md#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](run-snowflake-connector-with-the-airflow-sdk.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-snowflake-connector-with-the-airflow-sdk.md#dbt-integration)
 
 ## Requirements
 
@@ -297,7 +297,7 @@ To specify where the staging files will be located.
 
 #### Workflow Configuration
 
-The same as the [metadata](run-snowflake-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-snowflake-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 
@@ -414,7 +414,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-snowflake-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-snowflake-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 

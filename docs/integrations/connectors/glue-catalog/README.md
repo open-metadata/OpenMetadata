@@ -4,371 +4,264 @@ description: In this section, we provide guides and reference to use the Glue co
 
 # Glue Catalog
 
-1. [Requirements](./#1.-requirements)
-2. [Install Glue Connector](./#2.-install-glue-connector)
-3. [Configure your AWS default profile (optional)](./#3.-configure-your-aws-default-profile-optional)
-4. [Configure Glue Connector](./#4.-configure-glue-connector)
-5. [Run Glue Connector](./#5.-run-glue-connector)
-6. [Troubleshooting](./#6.-troubleshooting)
+Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
-## **1. Requirements**
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
 
-Please ensure that your host system meets the requirements listed below.
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-### **OpenMetadata (version 0.9.0 or later)**
+## Requirements
+
+#### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
 
-### **Python (version 3.8.0 or later)**
+To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-Use the following command to check your Python version.
+## Metadata Ingestion
 
-```
-python3 --version
-```
+### 1. Visit the _Services_ Page
 
-## 2. Install Glue Connector
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-### **2.1 Prepare a Python virtual environment**
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
 
-In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+### 2. Create a New Service
 
-#### **1 Create a directory for openmetadata**
+Click on the _Add New Service_ button to start the Service creation.
 
-Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
 
-```
-mkdir openmetadata; cd openmetadata
-```
+### 3. Select the Service Type
 
-#### **2 Create a virtual environment**
+Select Glue as the service type and click _Next_.
 
-Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
+![Select your Service type](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.07.07 PM.png>)
 
-```
-python3 -m venv env
-```
+### 4. Name and Describe your Service
 
-#### **3 Activate the virtual environment**
+Provide a name and description for your service as illustrated below.
 
-Run the following command to activate the virtual environment.
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.07.38 PM.png>)
 
-```
-source env/bin/activate
-```
+#### Service Name
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Glue services that you might be ingesting metadata from.
 
-#### **4 Upgrade pip and setuptools to the latest versions**
+#### Description
 
-Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
+Provide a description for your Glue service that enables other users to determine whether it might provide data of interest to them.
 
-```javascript
-pip3 install --upgrade pip setuptools
-```
+### 5. Configure the Service Connection
 
-### **2.2 Install the Python module for this connector**
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Glue service as desired.
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the Glue connector.
+![Configure the Service connection](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.19.49 PM.png>)
 
-```javascript
-pip3 install 'openmetadata-ingestion[glue]'
-```
+After hitting Save you will see that your Glue connector has been added successfully, and you can add an ingestion.&#x20;
 
-## 3. **Configure your AWS default profile (optional)**
+![Service has been saved](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.09.49 PM.png>)
 
-In order to use the Glue Catalog connector, you will need AWS credentials configured and available to the connector. The best way to do this is by configuring your AWS default profile using the AWS Command-Line Interface (CLI). In this step we will install the AWS CLI and then configure an AWS profile.
+### 6. Configure the Metadata Ingestion
 
-{% hint style="info" %}
-Note: If you do not have an existing AWS profile and opt not to create one, you will need to supply AWS credentials in your Glue catalog configuration file. We recommend that you use an AWS profile rather than including AWS credentials in your configuration file.
-{% endhint %}
+Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-#### 3a. Install the AWS CLI
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
 
-To install the AWS CLI, follow the installation guide for your operating system from the [AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+#### Include (Table Filter Pattern)
 
-#### 3b. Configure your AWS default profile
+Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
-With the AWS CLI installed, to configure your AWS profile run the following command.
+Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-```bash
-aws configure
-```
+#### Exclude (Table Filter Pattern)
 
-Then enter the appropriate values at the prompts to complete your profile. Your interaction with the `aws configure` command should look something like the following.
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-```bash
-$ aws configure
-AWS Access Key ID [None]: <your accesskey>
-AWS Secret Access Key [None]: <your secretkey>
-Default region name [None]: <your region, e.g., us-west-2>
-Default output format [None]:
-```
+#### Include (Schema Filter Pattern)
 
-Please enter your `Access Key`, `Secret Key`, and `Region` when prompted. The OpenMetadata Glue Catalog connector will use the credentials from your AWS profile to connect to the right endpoint and authenticate for metadata ingestion.
+Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
-#### 3c. Test access to your Glue catalog
+Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-Run the following command to ensure your AWS credentials and region are configured properly.
+#### Exclude (Schema Filter Pattern)
 
-```
-aws glue list-schemas
-```
+Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
-In response you will either see a formatted list of schemas defined in your Glue catalog or receive a message indicating that no schemas are defined.
+**Include views (toggle)**
 
-## 4. Configure Glue Connector
+Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
 
-Please follow the steps relevant to your use case.
+Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
 
-1. [Create a configuration file using template JSON](./#4.1-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#4.2-configure-service-settings)
-3. [Configure data filters (optional)](./#4.3-configure-data-filters-optional)
-4. [Confirm sink settings](./#4.4-confirm-sink-settings)
-5. [Confirm metadata\_server settings](./#4.5-confirm-metadata\_server-settings)
+**Enable data profiler (toggle)**
 
-### **4.1 Create a configuration file using template JSON**
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-Create a new file called `glue.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
 
-Copy and paste the configuration template below into the `glue.json` file you created.
+Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
 
-{% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
-{% endhint %}
+**Ingest sample data (toggle)**
 
-{% code title="glue.json" %}
-```javascript
-{
-  "source": {
-    "type": "glue",
-    "config": {
-      "aws_session_token": "session_token",
-      "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
-      "aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-      "service_name": "unique_name_to_identify_database_and_table_metadata",
-      "pipeline_service_name": "unique_name_to_identify_pipeline_metadata",
-      "storage_service_name": "unique_name_to_identify_storage_service_metadata",
-      "region_name": "us-east-2",
-      "endpoint_url": "glue.us-east-2.amazonaws.com"
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-{% endcode %}
+Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-### **4.2 Configure service settings**
+### 7. Schedule the Ingestion and Deploy
 
-In this step we will configure the Glue service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your Glue service as desired.
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-#### aws\_session\_token (optional)
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
-Edit the value for `source.config.aws_session_token` to specify a session token for your Glue client. This setting is optional.
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-See [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id\_credentials\_temp\_use-resources.html) for documentation on using AWS session tokens.
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
 
-```json
-"aws_session_token": "session_token"
-```
+**Every**
 
-{% hint style="info" %}
-Note: While you cannot configure a session token using the `aws configure` command (see Step 3 above), you can edit the `~/.aws/credentials` file to manually add a session token. See [Configuration and credential file settings](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) for more details.
-{% endhint %}
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
 
-#### aws\_access\_key\_id (optional)
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
 
-Edit the value for `source.config.aws_access_key_id` to specify the key id for your AWS user. This setting is optional.
+**Day**
 
-```json
-"aws_access_key_id": "AKIAIOSFODNN7EXAMPLE"
-```
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
 
-{% hint style="info" %}
-Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.
-{% endhint %}
+**Minute**
 
-#### aws\_secret\_access\_key (optional)
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
 
-Edit the value for `source.config.aws_secret_access_key` to specify the secret for your AWS user. This setting is optional.
+**Time**
 
-```json
-"aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-```
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
 
-{% hint style="info" %}
-Note: We recommend that you use a local AWS profile containing your access key id and secret access key rather than including these values in your configuration file.
-{% endhint %}
+**Start date (UTC)**
 
-#### service\_name
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
 
-OpenMetadata associates each database and table entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata ingested from database services you are using through AWS Glue.
+**End date (UTC)**
 
-Edit the value for `source.config.service_name` with a name that uniquely identifies this database and table metadata.
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-```json
-"service_name": "unique_name_to_identify_database_and_table_metadata"
-```
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-When the metadata has been ingested you will find it in the OpenMetadata UI databases view under the name you have specified.
+### 8. View the Ingestion Pipeline
 
-#### pipeline\_service\_name
+Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue.
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
 
-Edit the value for `source.config.pipeline_service_name` with a name that uniquely identifies this pipeline metadata.
+### 9. Workflow Deployment Error
 
-```json
-"pipeline_service_name": "unique_name_to_identify_pipeline_metadata"
-```
+If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
-When this metadata has been ingested you will find it in the OpenMetadata UI pipelines view under the name you have specified.
+You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-#### storage\_service\_name (optional)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
 
-OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
+From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-Edit the value for `source.config.storage_service_name` with a name that uniquely identifies this object store metadata.
+## Query Usage and Lineage Ingestion
 
-```json
-"storage_service_name": "unique_name_to_identify_storage_service_metadata"
-```
+Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add Query Usage and Entity Lineage information.
 
-#### region\_name
+This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-Specify the region in which your Glue catalog is located using `source.config.region_name`.
+![Table Entity Page](<../../../.gitbook/assets/image (1) (1).png>)
 
-```
-"region_name": "region_for_your_glue_catalog"
-```
+We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
-{% hint style="info" %}
-Note: This setting is required even if you have configured a local AWS profile and included a value for `region_name`.
-{% endhint %}
+### 1. Add a Usage Ingestion
 
-#### endpoint\_url (optional)
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Usage Ingestion_.
 
-The Glue connector will automatically determine the AWS Glue endpoint url based on the `region_name`.
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
-You may specify a value for `source.config.endpoint_url` to override this behavior. The value you specify should be a complete url, including the protocol (i.e. “http" or "https”).
+### 2. Configure the Usage Ingestion
 
-```json
-"endpoint_url": "endpoint_url"
-```
+Here you can enter the Usage Ingestion details:
 
-### **4.3 Configure data filters (optional)**
+![Configure the Usage Ingestion](<../../../.gitbook/assets/image (36).png>)
 
-**table\_filter\_pattern (optional)**
+#### Query Log Duration
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
+Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture usage information for 48 hours prior to when the ingestion workflow is run.
 
-Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
+#### Stage File Location
 
-```javascript
-"table_filter_pattern": {
-"excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-}
-```
+Mention the absolute file path of the temporary file name to store the query logs before processing.
 
-Use `source.config.table_filter_pattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
+#### &#x20;Result Limit
 
-```javascript
-"table_filter_pattern": {
-"includes": ["corp.*", "dept.*"]
-}
-```
+Set the limit for the query log results to be run at a time.
 
-See the documentation for the[ Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
+### 3. Schedule and Deploy
 
-{% hint style="info" %}
-You may use either `excludes` or `includes` but not both in `table_filter_pattern`.
-{% endhint %}
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
-### **4.4 Confirm `sink` settings**
+![View Service Ingestion pipelines](<../../../.gitbook/assets/image (37).png>)
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
+## Data Profiler and Quality Tests
 
-```javascript
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
-```
+After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 
-### **4.5 Confirm `metadata_server` settings**
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `glue.json` in Step 4. This part of your configuration file should be as follows.
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
 
-```javascript
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-    }
-}
-```
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
 
-## **5. Run Glue Connector**
+You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
-Your `glue.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+### 1. Add a Profiler Ingestion
 
-To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-```
-metadata ingest -c ./glue.json
-```
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
-### **Setup Glue connector in production (optional)**
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
-If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
+### 2. Configure the Profiler Ingestion
 
-## **Next Steps**
+Here you can enter the Profiler Ingestion details.
 
-To view the metadata ingested from Glue, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Glue service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1).png>)
 
-![](../../../.gitbook/assets/explore.png)
+#### Name
 
-## **6. Troubleshooting**
+Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
 
-### **ERROR: Failed building wheel for cryptography**
+As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
 
-When attempting to install the `openmetadata-ingestion[glue]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+#### FQN Filter Pattern
 
-```
-Failed to build cryptography
-ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
-```
+Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
 
-```
-pip3 install --upgrade pip setuptools
-```
+#### Description
 
-Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-this-connector).
+Give the Ingestion Pipeline a description to show what type of data we are profiling.
 
-### **requests.exceptions.ConnectionError**
+### 3. Schedule and Deploy
 
-If you encounter the following error when attempting to run the ingestion workflow, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
-```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/glue 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
-Failed to establish a new connection: [Errno 61] Connection refused'))
-```
+## DBT Integration
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
 
-Then re-run the metadata ingestion workflow in [Run Glue Connector](./#5.-run-glue-connector).
+## Run using Airflow SDK
+
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](../snowflake/run-snowflake-connector-with-the-airflow-sdk.md).
+
+## One-time ingestion with the CLI
+
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../snowflake/run-snowflake-connector-with-the-cli.md).
+
+****

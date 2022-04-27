@@ -6,6 +6,16 @@ description: >-
 
 # Upgrade OpenMetadata on Bare Metal
 
+
+
+{% hint style="danger" %}
+**The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
+
+**0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**&#x20;
+
+Please reach out to us at [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
+{% endhint %}
+
 ## Requirements
 
 This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run in Production](../../deploy/deploy-on-bare-metal/run-in-production.md) guide.
@@ -22,10 +32,10 @@ OpenMetadata release binaries are maintained as GitHub releases. To download a s
 
 ### 2. Extract the release binaries from the download file
 
-Using the command line tool or application of your choice, extract the release binaries. For example, to extract using tar, run the following command.
+Using the command-line tool or application of your choice, extract the release binaries. For example, to extract using tar, run the following command.
 
 ```
-tar xfz openmetadata-0.7.1.tar.gz
+tar xfz openmetadata-0.10.0.tar.gz
 ```
 
 This will create a directory with the same name as the download file minus the `.tar` and `.gz` extensions.
@@ -41,7 +51,7 @@ cd openmetadata-x.x.x
 For example, to navigate into the directory created by issuing the tar command above, you would run the following command.
 
 ```
-cd openmetadata-0.7.1
+cd openmetadata-0.10.0
 ```
 
 ### 4. Stop the OpenMetadata server
@@ -57,6 +67,8 @@ Most OpenMetadata releases will require you to migrate your data to updated sche
 ### 5. Drop and create the database schemas and Elasticsearch indexes
 
 The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of operations on the OpenMetadata database (in MySQL) and index (in Elasticsearch).
+
+Do not use your existing database. Please create a new database to use with 0.10.0
 
 Since the OpenMetadata **0.10** is a **backward incompatible release**, run the command  `drop-create-all` to:
 
@@ -84,13 +96,19 @@ Copy the following template to a configuration file named `metadata_to_es.json` 
 ```json
 {
   "source": {
-    "type": "metadata",
-    "config": {
-      "include_tables": "true",
-      "include_topics": "true",
-      "include_dashboards": "true",
-      "limit_records": 10
-    }
+    "type": "metadata_elasticsearch",
+    "serviceName": "openMetadata",
+    "serviceConnection": {
+      "config":{
+        "type":"MetadataES",
+        "includeTables": "true",
+        "includeUsers": "true",
+        "includeTopics": "true",
+        "includeDashboards": "true",
+        "limitRecords": 10
+      } 
+    },
+    "sourceConfig":{"config":{}}
   },
   "sink": {
     "type": "elasticsearch",
@@ -102,11 +120,10 @@ Copy the following template to a configuration file named `metadata_to_es.json` 
       "es_port": 9200
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
@@ -120,7 +137,7 @@ metadata ingest -c metadata_to_es.json pipeline
 
 ### 8. Upgrade all your connectors
 
-If you are ingesting data manually using OpenMetadata connectors, upgrade all your connectors by running the following command for each connector. You will need to replace `<connectorname>` in the command below by the name of the connector you are upgrading.
+If you are ingesting data manually using OpenMetadata connectors, upgrade all your connectors by running the following command for each connector. You will need to replace `<connectorname>` the command below with the name of the connector you are upgrading.
 
 ```bash
 pip3 install --upgrade 'openmetadata-ingestion[<connectorname>]'
@@ -130,40 +147,5 @@ pip3 install --upgrade 'openmetadata-ingestion[<connectorname>]'
 Note: Please see the installation instructions for the connectors you are using in order to ensure you are using the right Python virtual environment and following other norms for installing and upgrading connectors.
 {% endhint %}
 
-## Troubleshooting
 
-### "migrate" option failed
 
-In some circumstances, when attempting to migrate your database schemas and Elasticsearch indexes, you might encounter an error similar to the following.
-
-```
-14:42:40.630 [main] DEBUG org.flywaydb.core.FlywayExecutor - Memory usage: 
-58 of 1024M
-"migrate" option failed : org.flywaydb.core.api.exception.FlywayValidateException: 
-Validate failed: Migrations have failed validation
-Migration checksum mismatch for migration version 002
--> Applied to database : -163374426
--> Resolved locally    : 326575949. Either revert the changes to the migration, or
-run repair to update the schema history.
-Need more flexibility with validation rules?
-Learn more: https://rd.gt/3AbJUZE
-```
-
-If you encounter this error, run the following command to repair your schema.
-
-```bash
-./bootstrap/bootstrap_storage.sh repair  
-```
-
-After running this command, you should see output similar to the following in response.
-
-```
-14:42:48.110 [main] INFO org.flywaydb.core.internal.command.DbRepair - 
-Successfully repaired schema 
-history table `openmetadata_db`.`DATABASE_CHANGE_LOG` (execution time 00:00.058s).
-14:42:48.123 [main] DEBUG org.flywaydb.core.FlywayExecutor - 
-Memory usage: 58 of 1024M
-"repair" option successful
-```
-
-Once repair is successful, continue with the procedure above by rerunning the command in Step 5 and continuing from there.

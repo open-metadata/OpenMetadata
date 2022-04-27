@@ -244,7 +244,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-![Table Entity Page](<../../../.gitbook/assets/image (1).png>)
+![Table Entity Page](<../../../.gitbook/assets/image (1) (1).png>)
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
@@ -302,7 +302,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1).png>)
 
 #### Name
 

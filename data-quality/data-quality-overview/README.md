@@ -97,7 +97,7 @@ Clicking on _Add Test_ will allow us two options: **Table Test** or **Column Tes
 
 Adding a Table Test will show us the following view:
 
-![Add a Table Test](../../docs/.gitbook/assets/image.png)
+![Add a Table Test](<../../docs/.gitbook/assets/image (1).png>)
 
 * **Test Type**: It allows us to specify the test we want to configure.
 * **Description**: To explain why the test is necessary and what scenarios we want to validate.

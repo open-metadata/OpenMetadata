@@ -1,10 +1,28 @@
 ---
-description: >-
-  This guide will help you configure metadata ingestion workflows using the Glue
-  connector.
+description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Glue Connector Using Airflow SDK
+# Run Glue Connector with the CLI
+
+Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
+
+* [Requirements](run-glue-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-glue-connector-with-the-cli.md#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](run-glue-connector-with-the-cli.md#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](run-glue-connector-with-the-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-glue-connector-with-the-cli.md#dbt-integration)
+
+## Requirements
+
+Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
+
+### Python requirements
+
+To run the Glue ingestion, you will need to install:
+
+```
+pip install 'openmetadata-ingestion[glue]'
+```
 
 ## Metadata Ingestion
 
@@ -111,61 +129,16 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
 
-```python
-import pathlib
-import json
-from datetime import timedelta
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```
+metadata ingest -c <path-to-json>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
 
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).

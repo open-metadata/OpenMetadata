@@ -16,8 +16,8 @@ Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workf
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-snowflake-connector-using-airflow-sdk.md" %}
-[run-snowflake-connector-using-airflow-sdk.md](run-snowflake-connector-using-airflow-sdk.md)
+{% content-ref url="run-snowflake-connector-with-the-airflow-sdk.md" %}
+[run-snowflake-connector-with-the-airflow-sdk.md](run-snowflake-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 {% content-ref url="run-snowflake-connector-with-the-cli.md" %}
@@ -234,7 +234,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-![Table Entity Page](<../../../.gitbook/assets/image (1).png>)
+![Table Entity Page](<../../../.gitbook/assets/image (1) (1).png>)
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
@@ -292,7 +292,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1).png>)
 
 #### Name
 
@@ -318,7 +318,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-snowflake-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-snowflake-connector-with-the-airflow-sdk.md).
 
 ## One-time ingestion with the CLI
 

@@ -1,60 +1,77 @@
----
-description: >-
-  This guide will help you configure metadata ingestion workflows using the Glue
-  connector.
----
+# Run Athena Connector using Airflow SDK
 
-# Run Glue Connector Using Airflow SDK
+
+
+Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows using your own Airflow instances
+
+
+
+### &#x20;**Install the Python module for this connector**
+
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
+
+```javascript
+pip3 install 'openmetadata-ingestion[athena]'
+```
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Glue.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Snowflake.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is modelled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
+The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
 
-This is a sample config for Glue:
 
+### 1. Create a configuration file using template JSON
+
+Create a new file called `athena.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+
+Copy and paste the configuration template below into the `athena.json` the file you created.
+
+{% code title="athena.json" %}
 ```json
 {
     "source": {
-      "type": "glue",
-      "serviceName": "local_glue",
-      "serviceConnection": {
-        "config": {
-          "type": "Glue",
-          "awsConfig": {
-            "awsAccessKeyId": "AKIA6OMJII2Q3XBAXMOL",
-            "awsSecretAccessKey": "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",
-            "awsRegion": "us-east-2",
-            "endPointURL": "https://glue.us-east-2.amazonaws.com/"
-          },
-          "database": "local_glue_db",
-          "storageServiceName":"storage_name",
-	          "pipelineServiceName":"local_glue_pipeline"
+        "type": "athena",
+        "serviceName": "local_athena",
+        "serviceConnection": {
+            "config": {
+                "type": "Athena",
+                "database": "database_name",
+                "awsConfig": {
+                    "awsAccessKeyId": "access key id",
+                    "awsSecretAccessKey": "access secret key",
+                    "awsRegion": "aws region name"
+                },
+                "s3StagingDir": "s3 directory for datasource",
+                "workgroup": "workgroup name"
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "enableDataProfiler": false
+            }
         }
-      },
-      "sourceConfig": {
-        "config": {
-          "enableDataProfiler": false 
-        }
-      }
     },
     "sink": {
-      "type": "metadata-rest",
-      "config": {}
+        "type": "metadata-rest",
+        "config": {}
     },
     "workflowConfig": {
-      "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "no-auth"
-      }
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth"
+        }
     }
-  }
+}
 ```
+{% endcode %}
+
+### 2. Configure service settings
+
+In this step, we will configure the Athena service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Athena service as desired.
 
 #### Source Configuration - Source Config
 
@@ -111,14 +128,14 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-### 2. Prepare the Ingestion DAG
+#### &#x20;Edit a Python script to define your ingestion DAG
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+Copy and paste the code below into a file called `openmetadata-airflow.py`.
 
 ```python
-import pathlib
 import json
 from datetime import timedelta
+
 from airflow import DAG
 
 try:
@@ -126,21 +143,21 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
 from airflow.utils.dates import days_ago
+
+from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
     "email_on_failure": False,
     "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
+    "retry_delay": timedelta(seconds=10),
+    "execution_timeout": timedelta(minutes=60),
 }
 
 config = """
-<your JSON configuration>
+  ## REPLACE THIS LINE WITH YOUR CONFIGURATION JSON
 """
 
 def metadata_ingestion_workflow():
@@ -151,14 +168,12 @@ def metadata_ingestion_workflow():
     workflow.print_status()
     workflow.stop()
 
-
 with DAG(
-    "sample_data",
+    "openmetadata_athena_connector",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),
     is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(
@@ -167,5 +182,20 @@ with DAG(
     )
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
+#### 11. Copy your configuration JSON into the ingestion script
 
+In steps 3 - 9 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 10 as directed by the comment below.
+
+```
+config = """
+  ## REPLACE THIS LINE WITH YOUR CONFIGURATION JSON
+"""
+```
+
+#### 12. Run the script to create your ingestion DAG
+
+Run the following command to create your ingestion DAG in Airflow.
+
+```
+python openmetadata-airflow.py
+```
