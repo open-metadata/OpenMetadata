@@ -43,7 +43,6 @@ jobs:
          sudo su -c "echo 'deb http://security.ubuntu.com/ubuntu xenial-security main' >> /etc/apt/sources.list"
          sudo apt update
          sudo apt -y install libssl1.0.0
-         echo 'testcontainers.reuse.enable=true' ~/.testcontainers.properties
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -61,6 +60,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
+          echo 'testcontainers.reuse.enable=true' ~/.testcontainers.properties
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.head_ref }} \
