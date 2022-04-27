@@ -243,7 +243,6 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
-        handleRightPannelLoading(false);
       });
   };
 
@@ -281,7 +280,6 @@ const TeamsAndUsersPage = () => {
           showErrorToast(errMsg);
         })
         .finally(() => {
-          setIsLoading(false);
           setIsRightPannelLoading(false);
         });
     }
@@ -439,14 +437,16 @@ const TeamsAndUsersPage = () => {
    * @param name - team name
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
-    handleRightPannelLoading(true);
-    history.push(getTeamAndUserDetailsPath(name));
-    if (isUsersCategory) {
-      setIsTeamVisible(false);
-      setCurrentTeam(undefined);
-    } else {
-      setIsTeamVisible(true);
-      setactiveUserTab(undefined);
+    if (name !== teamAndUser) {
+      handleRightPannelLoading(true);
+      history.push(getTeamAndUserDetailsPath(name));
+      if (isUsersCategory) {
+        setIsTeamVisible(false);
+        setCurrentTeam(undefined);
+      } else {
+        setIsTeamVisible(true);
+        setactiveUserTab(undefined);
+      }
     }
   };
 
