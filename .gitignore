@@ -73,7 +73,6 @@ openmetadata-ui/src/main/resources/ui/test-report.xml
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
 
 #vscode
 */.vscode/*
