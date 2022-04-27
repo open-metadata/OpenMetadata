@@ -254,6 +254,8 @@ def ingest_sample_data() -> None:
             print(err)
             sys.exit(1)
         except Exception:
+            sys.stdout.write(".")
+            time.sleep(5)
             pass
     for dag in dags:
         json_sample_data = {"is_paused": False}
