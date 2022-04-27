@@ -11,16 +11,30 @@
  *  limitations under the License.
  */
 
+import { capitalize, isEmpty } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DbtConfigSource,
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import jsonData from '../../../jsons/en';
+import {
+  errorMsg,
+  getSeparator,
+  requiredField,
+} from '../../../utils/CommonUtils';
+import { validateDbtGCSCredsConfig } from '../../../utils/DBTConfigFormUtil';
+import { Button } from '../../buttons/Button/Button';
 import { DropDownListItem } from '../../dropdown/types';
 import { Field } from '../../Field/Field';
+import {
+  DbtConfigS3GCS,
+  DBTFormCommonProps,
+  ErrorDbtGCS,
+} from './DBTConfigForm.interface';
 
-interface Props extends Pick<DbtConfigSource, 'dbtSecurityConfig'> {
+interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
 }
 
@@ -42,6 +56,10 @@ const GCSCreds: Array<DropDownListItem> = [
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
+  okText,
+  cancelText,
+  onCancel,
+  onSubmit,
   handleSecurityConfigChange,
 }: Props) => {
   const [gcsCreds, setGcsCreds] = useState<GCS_CONFIG>(GCS_CONFIG.GCSValues);
@@ -50,7 +68,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     key: keyof GCSCredentialsValues,
     val: string
   ) => {
-    const { gcsConfig } = dbtSecurityConfig as SCredentials;
+    const gcsConfig = dbtSecurityConfig?.gcsConfig || {};
     const updatedCreds: SCredentials = {
       ...dbtSecurityConfig,
       gcsConfig: {
@@ -69,6 +87,40 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     handleSecurityConfigChange(updatedCreds);
   };
 
+  const [errors, setErrors] = useState<ErrorDbtGCS>();
+  const validate = (data: DbtConfigSource) => {
+    let valid = true;
+    const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
+    if (gcsCreds === GCS_CONFIG.GCSValues) {
+      const { isValid, errors } = validateDbtGCSCredsConfig(
+        (gcsConfig || {}) as GCSCredentialsValues
+      );
+      setErrors(errors);
+
+      valid = isValid;
+    } else {
+      if (isEmpty(gcsConfig)) {
+        setErrors({
+          gcsConfig: `${capitalize('gcsConfig')} ${
+            jsonData['form-error-messages']['is-required']
+          }`,
+        } as ErrorDbtGCS);
+        valid = false;
+      } else {
+        setErrors({} as ErrorDbtGCS);
+      }
+    }
+
+    return valid;
+  };
+
+  const handleSubmit = () => {
+    const submitData = { dbtSecurityConfig };
+    if (validate(submitData)) {
+      onSubmit(submitData);
+    }
+  };
+
   const gcsCredConfigs = (gcsConfig?: GCSCredentialsValues) => {
     return (
       <Fragment>
@@ -76,7 +128,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="credential-type">
-            Credentials Type
+            {requiredField('Credentials Type')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud service account type.
@@ -90,12 +142,13 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.type}
             onChange={(e) => updateGCSCredsConfig('type', e.target.value)}
           />
+          {errors?.type && errorMsg(errors.type)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="project-id">
-            Project ID
+            {requiredField('Project ID')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud project id.
@@ -109,12 +162,13 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.projectId}
             onChange={(e) => updateGCSCredsConfig('projectId', e.target.value)}
           />
+          {errors?.projectId && errorMsg(errors.projectId)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key-id">
-            Private Key ID
+            {requiredField('Private Key ID')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Private key id.
@@ -130,12 +184,13 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
               updateGCSCredsConfig('privateKeyId', e.target.value)
             }
           />
+          {errors?.privateKeyId && errorMsg(errors.privateKeyId)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="private-key">
-            Private Key
+            {requiredField('Private Key')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud private key.
@@ -149,12 +204,13 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.privateKey}
             onChange={(e) => updateGCSCredsConfig('privateKey', e.target.value)}
           />
+          {errors?.privateKey && errorMsg(errors.privateKey)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-email">
-            Client Email
+            {requiredField('Client Email')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud email.
@@ -170,10 +226,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
               updateGCSCredsConfig('clientEmail', e.target.value)
             }
           />
+          {errors?.clientEmail && errorMsg(errors.clientEmail)}
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="client-id">
-            Client ID
+            {requiredField('Client ID')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud Client ID.
@@ -187,10 +244,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.clientId}
             onChange={(e) => updateGCSCredsConfig('clientId', e.target.value)}
           />
+          {errors?.clientId && errorMsg(errors.clientId)}
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="auth-uri">
-            Authentication URI
+            {requiredField('Authentication URI')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud auth uri.
@@ -204,10 +262,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.authUri}
             onChange={(e) => updateGCSCredsConfig('authUri', e.target.value)}
           />
+          {errors?.authUri && errorMsg(errors.authUri)}
         </Field>
         <Field>
           <label className="tw-block tw-form-label tw-mb-1" htmlFor="token-uri">
-            Token URI
+            {requiredField('Token URI')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud token uri.
@@ -221,12 +280,13 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             value={gcsConfig?.tokenUri}
             onChange={(e) => updateGCSCredsConfig('tokenUri', e.target.value)}
           />
+          {errors?.tokenUri && errorMsg(errors.tokenUri)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="auth-x509-certificate-uri">
-            Authentication Provider x509 Certificate URL
+            {requiredField('Authentication Provider x509 Certificate URL')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud auth provider certificate.
@@ -242,12 +302,14 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
               updateGCSCredsConfig('authProviderX509CertUrl', e.target.value)
             }
           />
+          {errors?.authProviderX509CertUrl &&
+            errorMsg(errors.authProviderX509CertUrl)}
         </Field>
         <Field>
           <label
             className="tw-block tw-form-label tw-mb-1"
             htmlFor="client-x509-certificate-uri">
-            Client x509 Certificate URL
+            {requiredField('Client x509 Certificate URL')}
           </label>
           <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
             Google Cloud client certificate uri.
@@ -263,6 +325,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
               updateGCSCredsConfig('clientX509CertUrl', e.target.value)
             }
           />
+          {errors?.clientX509CertUrl && errorMsg(errors.clientX509CertUrl)}
         </Field>
       </Fragment>
     );
@@ -274,7 +337,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="gcs-cred-path">
-          GCS Credentials Path
+          {requiredField('GCS Credentials Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           GCS Credentials Path.
@@ -288,6 +351,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           value={gcsConfig}
           onChange={(e) => updateGCSCredsPath(e.target.value)}
         />
+        {errors?.gcsConfig && errorMsg(errors.gcsConfig)}
       </Field>
     );
   };
@@ -319,6 +383,29 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       {gcsCreds === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
         : gcsCredPath(dbtSecurityConfig?.gcsConfig as string)}
+
+      {getSeparator('')}
+
+      <Field className="tw-flex tw-justify-end">
+        <Button
+          className="tw-mr-2"
+          data-testid="back-button"
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={onCancel}>
+          <span>{cancelText}</span>
+        </Button>
+
+        <Button
+          data-testid="submit-btn"
+          size="regular"
+          theme="primary"
+          variant="contained"
+          onClick={handleSubmit}>
+          <span>{okText}</span>
+        </Button>
+      </Field>
     </Fragment>
   );
 };

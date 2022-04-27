@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import {
+  errorMsg,
+  getSeparator,
+  requiredField,
+} from '../../../utils/CommonUtils';
+import { validateDbtHttpConfig } from '../../../utils/DBTConfigFormUtil';
+import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import {
+  DbtConfigHttp,
+  DBTFormCommonProps,
+  ErrorDbtHttp,
+} from './DBTConfigForm.interface';
 
-interface Props
-  extends Pick<DbtConfigSource, 'dbtCatalogHttpPath' | 'dbtManifestHttpPath'> {
+interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleCatalogHttpPathChange: (value: string) => void;
   handleManifestHttpPathChange: (value: string) => void;
 }
@@ -24,14 +35,34 @@ interface Props
 export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtCatalogHttpPath = '',
   dbtManifestHttpPath = '',
+  okText,
+  cancelText,
+  onCancel,
+  onSubmit,
   handleCatalogHttpPathChange,
   handleManifestHttpPathChange,
 }: Props) => {
+  const [errors, setErrors] = useState<ErrorDbtHttp>();
+
+  const validate = (data: DbtConfigSource) => {
+    const { isValid, errors } = validateDbtHttpConfig(data);
+    setErrors(errors);
+
+    return isValid;
+  };
+
+  const handleSubmit = () => {
+    const submitData = { dbtCatalogHttpPath, dbtManifestHttpPath };
+    if (validate(submitData)) {
+      onSubmit(submitData);
+    }
+  };
+
   return (
     <Fragment>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="catalog-url">
-          DBT Catalog URL
+          {requiredField('DBT Catalog Http Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT catalog file to extract dbt models with their column schemas.
@@ -45,12 +76,13 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           value={dbtCatalogHttpPath}
           onChange={(e) => handleCatalogHttpPathChange(e.target.value)}
         />
+        {errors?.dbtCatalogHttpPath && errorMsg(errors.dbtManifestHttpPath)}
       </Field>
       <Field>
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-url">
-          DBT Manifest URL
+          {requiredField('DBT Manifest Http Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT manifest file path to extract dbt models and associate with
@@ -65,6 +97,28 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           value={dbtManifestHttpPath}
           onChange={(e) => handleManifestHttpPathChange(e.target.value)}
         />
+      </Field>
+      {getSeparator('')}
+
+      <Field className="tw-flex tw-justify-end">
+        <Button
+          className="tw-mr-2"
+          data-testid="back-button"
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={onCancel}>
+          <span>{cancelText}</span>
+        </Button>
+
+        <Button
+          data-testid="submit-btn"
+          size="regular"
+          theme="primary"
+          variant="contained"
+          onClick={handleSubmit}>
+          <span>{okText}</span>
+        </Button>
       </Field>
     </Fragment>
   );

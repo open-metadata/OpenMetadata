@@ -11,84 +11,33 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import {
   DbtConfigSource,
-  GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
-import { DropDownListItem } from '../../dropdown/types';
 import { Field } from '../../Field/Field';
-import { DBTGCSConfig } from './ DBTGCSConfig';
-import { DBTHttpConfig } from './ DBTHttpConfig';
-import { DBTLocalConfig } from './ DBTLocalConfig';
-import { DBTS3Config } from './ DBTS3Config';
+import { DBTConfigFormProps } from './DBTConfigForm.interface';
+import { DBTSources } from './DBTFormConstants';
+import { DBT_SOURCES } from './DBTFormEnum';
+import { DBTGCSConfig } from './DBTGCSConfig';
+import { DBTHttpConfig } from './DBTHttpConfig';
+import { DBTLocalConfig } from './DBTLocalConfig';
+import { DBTS3Config } from './DBTS3Config';
 
-interface Props {
-  okText: string;
-  cancelText: string;
-  data?: DbtConfigSource;
-  status?: LoadingState;
-  onCancel: () => void;
-  onSubmit: (data?: DbtConfigSource) => void;
-}
-
-enum DBT_SOURCES {
-  local = 'local',
-  http = 'http',
-  s3 = 's3',
-  gcs = 'gcs',
-}
-
-const DBTSources: Array<DropDownListItem> = [
-  {
-    name: 'None',
-    value: '',
-  },
-  {
-    name: 'DBT Local Config Source',
-    value: DBT_SOURCES.local,
-  },
-  {
-    name: 'DBT HTTP Config Source',
-    value: DBT_SOURCES.http,
-  },
-  {
-    name: 'DBT S3 Config Source',
-    value: DBT_SOURCES.s3,
-  },
-  {
-    name: 'DBT GCS Config Source',
-    value: DBT_SOURCES.gcs,
-  },
-];
-
-type GCSCredentialsErrors = Record<keyof GCSCredentialsValues, boolean>;
-type SCredentialsErrors = Record<
-  keyof SCredentials,
-  boolean | GCSCredentialsErrors
->;
-type DbtConfigSourceErrors = Record<
-  keyof DbtConfigSource,
-  boolean | SCredentialsErrors
->;
-
-const DBTConfigFormBuilder: FunctionComponent<Props> = ({
+const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   data = {},
   okText,
   cancelText,
+  source = '' as DBT_SOURCES,
+  handleSourceChange,
   onCancel,
   onSubmit,
-}: Props) => {
+}: DBTConfigFormProps) => {
   const [dbtConfig, setDbtConfig] = useState<DbtConfigSource>(data);
-  const [dbtSource, setDbtSource] = useState<DBT_SOURCES>('' as DBT_SOURCES);
-  /* eslint-disable-next-line */
-  const [showError, setShowError] = useState<DbtConfigSourceErrors>(
-    {} as DbtConfigSourceErrors
-  );
+  const [dbtSource, setDbtSource] = useState<DBT_SOURCES>(source);
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
@@ -97,38 +46,10 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
     setDbtConfig((pre) => ({ ...pre, [key]: val }));
   };
 
-  const validateDBTConfig = () => {
-    switch (dbtSource) {
-      case DBT_SOURCES.local: {
-        return;
-      }
-      case DBT_SOURCES.http: {
-        return;
-      }
-      case DBT_SOURCES.s3: {
-        return;
-      }
-      case DBT_SOURCES.gcs: {
-        return;
-      }
-      default: {
-        return true;
-      }
-    }
-  };
-
-  const handleSubmit = () => {
-    if (dbtSource) {
-      validateDBTConfig();
-      onSubmit(dbtConfig);
-    } else {
-      onSubmit();
-    }
-  };
-
   const getLocalConfigFields = () => {
     return (
       <DBTLocalConfig
+        cancelText={cancelText}
         dbtCatalogFilePath={dbtConfig.dbtCatalogFilePath}
         dbtManifestFilePath={dbtConfig.dbtManifestFilePath}
         handleCatalogFilePathChange={(val) => {
@@ -137,6 +58,9 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
         handleManifestFilePathChange={(val) => {
           updateDbtConfig('dbtManifestFilePath', val);
         }}
+        okText={okText}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
     );
   };
@@ -144,14 +68,18 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
   const getHttpConfigFields = () => {
     return (
       <DBTHttpConfig
-        dbtCatalogHttpPath={dbtConfig.dbtCatalogFilePath}
-        dbtManifestHttpPath={dbtConfig.dbtManifestFilePath}
+        cancelText={cancelText}
+        dbtCatalogHttpPath={dbtConfig.dbtCatalogHttpPath}
+        dbtManifestHttpPath={dbtConfig.dbtManifestHttpPath}
         handleCatalogHttpPathChange={(val) => {
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
         handleManifestHttpPathChange={(val) => {
           updateDbtConfig('dbtManifestHttpPath', val);
         }}
+        okText={okText}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
     );
   };
@@ -159,10 +87,14 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
   const getS3ConfigFields = () => {
     return (
       <DBTS3Config
+        cancelText={cancelText}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
         }}
+        okText={okText}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
     );
   };
@@ -170,10 +102,14 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
   const getGCSConfigFields = () => {
     return (
       <DBTGCSConfig
+        cancelText={cancelText}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
         }}
+        okText={okText}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
       />
     );
   };
@@ -193,10 +129,39 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
         return getGCSConfigFields();
       }
       default: {
-        return <Fragment />;
+        return (
+          <Fragment>
+            No source selected for DBT Configuration.
+            {getSeparator('')}
+            <Field className="tw-flex tw-justify-end">
+              <Button
+                className="tw-mr-2"
+                data-testid="back-button"
+                size="regular"
+                theme="primary"
+                variant="text"
+                onClick={onCancel}>
+                <span>{cancelText}</span>
+              </Button>
+
+              <Button
+                data-testid="submit-btn"
+                size="regular"
+                theme="primary"
+                variant="contained"
+                onClick={() => onSubmit()}>
+                <span>{okText}</span>
+              </Button>
+            </Field>
+          </Fragment>
+        );
       }
     }
   };
+
+  useEffect(() => {
+    handleSourceChange && handleSourceChange(dbtSource);
+  }, [dbtSource]);
 
   return (
     <Fragment>
@@ -214,7 +179,10 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
           name="dbt-source"
           placeholder="Select DBT Source"
           value={dbtSource}
-          onChange={(e) => setDbtSource(e.target.value as DBT_SOURCES)}>
+          onChange={(e) => {
+            setDbtSource(e.target.value as DBT_SOURCES);
+            setDbtConfig(data);
+          }}>
           {DBTSources.map((option, i) => (
             <option key={i} value={option.value}>
               {option.name}
@@ -222,30 +190,8 @@ const DBTConfigFormBuilder: FunctionComponent<Props> = ({
           ))}
         </select>
       </Field>
-      {dbtSource && getSeparator('')}
-      {getFields()}
       {getSeparator('')}
-
-      <Field className="tw-flex tw-justify-end">
-        <Button
-          className="tw-mr-2"
-          data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={onCancel}>
-          <span>{cancelText}</span>
-        </Button>
-
-        <Button
-          data-testid="submit-btn"
-          size="regular"
-          theme="primary"
-          variant="contained"
-          onClick={handleSubmit}>
-          <span>{okText}</span>
-        </Button>
-      </Field>
+      {getFields()}
     </Fragment>
   );
 };

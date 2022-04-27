@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent, useState } from 'react';
 import { DbtConfigSource } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import {
+  errorMsg,
+  getSeparator,
+  requiredField,
+} from '../../../utils/CommonUtils';
+import { validateDbtLocalConfig } from '../../../utils/DBTConfigFormUtil';
+import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import {
+  DbtConfigLocal,
+  DBTFormCommonProps,
+  ErrorDbtLocal,
+} from './DBTConfigForm.interface';
 
-interface Props
-  extends Pick<DbtConfigSource, 'dbtCatalogFilePath' | 'dbtManifestFilePath'> {
+interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleCatalogFilePathChange: (value: string) => void;
   handleManifestFilePathChange: (value: string) => void;
 }
@@ -24,16 +35,36 @@ interface Props
 export const DBTLocalConfig: FunctionComponent<Props> = ({
   dbtCatalogFilePath = '',
   dbtManifestFilePath = '',
+  okText,
+  cancelText,
+  onCancel,
+  onSubmit,
   handleCatalogFilePathChange,
   handleManifestFilePathChange,
 }: Props) => {
+  const [errors, setErrors] = useState<ErrorDbtLocal>();
+
+  const validate = (data: DbtConfigSource) => {
+    const { isValid, errors } = validateDbtLocalConfig(data);
+    setErrors(errors);
+
+    return isValid;
+  };
+
+  const handleSubmit = () => {
+    const submitData = { dbtCatalogFilePath, dbtManifestFilePath };
+    if (validate(submitData)) {
+      onSubmit(submitData);
+    }
+  };
+
   return (
     <Fragment>
       <Field>
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="catalog-file">
-          DBT Catalog File Path
+          {requiredField('DBT Catalog File Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT catalog file to extract dbt models with their column schemas.
@@ -47,12 +78,13 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           value={dbtCatalogFilePath}
           onChange={(e) => handleCatalogFilePathChange(e.target.value)}
         />
+        {errors?.dbtCatalogFilePath && errorMsg(errors.dbtCatalogFilePath)}
       </Field>
       <Field>
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-file">
-          DBT Manifest File Path
+          {requiredField('DBT Manifest File Path')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           DBT manifest file path to extract dbt models and associate with
@@ -67,6 +99,29 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           value={dbtManifestFilePath}
           onChange={(e) => handleManifestFilePathChange(e.target.value)}
         />
+        {errors?.dbtManifestFilePath && errorMsg(errors.dbtManifestFilePath)}
+      </Field>
+      {getSeparator('')}
+
+      <Field className="tw-flex tw-justify-end">
+        <Button
+          className="tw-mr-2"
+          data-testid="back-button"
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={onCancel}>
+          <span>{cancelText}</span>
+        </Button>
+
+        <Button
+          data-testid="submit-btn"
+          size="regular"
+          theme="primary"
+          variant="contained"
+          onClick={handleSubmit}>
+          <span>{okText}</span>
+        </Button>
       </Field>
     </Fragment>
   );

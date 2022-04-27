@@ -11,24 +11,57 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
   DbtConfigSource,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import {
+  errorMsg,
+  getSeparator,
+  requiredField,
+} from '../../../utils/CommonUtils';
+import { validateDbtS3Config } from '../../../utils/DBTConfigFormUtil';
+import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import {
+  DbtConfigS3GCS,
+  DBTFormCommonProps,
+  ErrorDbtS3,
+} from './DBTConfigForm.interface';
 
-interface Props extends Pick<DbtConfigSource, 'dbtSecurityConfig'> {
+interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
+  okText,
+  cancelText,
+  onCancel,
+  onSubmit,
   handleSecurityConfigChange,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = { ...dbtSecurityConfig, [key]: val };
     handleSecurityConfigChange(updatedCreds);
+  };
+
+  const [errors, setErrors] = useState<ErrorDbtS3>();
+  const validate = (data: DbtConfigSource) => {
+    const { isValid, errors } = validateDbtS3Config(
+      data.dbtSecurityConfig || {}
+    );
+    setErrors(errors);
+
+    return isValid;
+  };
+
+  const handleSubmit = () => {
+    const submitData = { dbtSecurityConfig };
+    if (validate(submitData)) {
+      onSubmit(submitData);
+    }
   };
 
   return (
@@ -37,7 +70,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="aws-access-key-id">
-          AWS Access Key ID
+          {requiredField('AWS Access Key ID')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Access Key ID.
@@ -51,12 +84,13 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.awsAccessKeyId}
           onChange={(e) => updateS3Creds('awsAccessKeyId', e.target.value)}
         />
+        {errors?.awsAccessKeyId && errorMsg(errors.awsAccessKeyId)}
       </Field>
       <Field>
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="aws-secret-access-key-id">
-          AWS Secret Access Key
+          {requiredField('AWS Secret Access Key')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Secret Access Key.
@@ -70,10 +104,11 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.awsSecretAccessKey}
           onChange={(e) => updateS3Creds('awsSecretAccessKey', e.target.value)}
         />
+        {errors?.awsSecretAccessKey && errorMsg(errors.awsSecretAccessKey)}
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="aws-region">
-          AWS Region
+          {requiredField('AWS Region')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           AWS Region.
@@ -87,6 +122,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.awsRegion}
           onChange={(e) => updateS3Creds('awsRegion', e.target.value)}
         />
+        {errors?.awsRegion && errorMsg(errors.awsRegion)}
       </Field>
       <Field>
         <label
@@ -125,6 +161,28 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.endPointURL}
           onChange={(e) => updateS3Creds('endPointURL', e.target.value)}
         />
+      </Field>
+      {getSeparator('')}
+
+      <Field className="tw-flex tw-justify-end">
+        <Button
+          className="tw-mr-2"
+          data-testid="back-button"
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={onCancel}>
+          <span>{cancelText}</span>
+        </Button>
+
+        <Button
+          data-testid="submit-btn"
+          size="regular"
+          theme="primary"
+          variant="contained"
+          onClick={handleSubmit}>
+          <span>{okText}</span>
+        </Button>
       </Field>
     </Fragment>
   );

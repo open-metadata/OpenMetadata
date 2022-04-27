@@ -37,8 +37,11 @@ import {
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
 import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
+import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
 import DBTConfigFormBuilder from '../common/DBTConfigFormBuilder/DBTConfigFormBuilder';
+import { DBT_SOURCES } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddIngestionProps } from './addIngestion.interface';
@@ -111,15 +114,22 @@ const AddIngestion = ({
       (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern
     )
   );
+  const configData = useMemo(
+    () =>
+      (data?.source.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
+        ?.dbtConfigSource,
+    [data]
+  );
   const [dbtConfigSource, setDbtConfigSource] = useState<
     DbtConfigSource | undefined
-  >(() => {
-    const configData = (
-      data?.source.sourceConfig.config as DatabaseServiceMetadataPipelineClass
-    )?.dbtConfigSource;
-
-    return showDBTConfig ? (configData as DbtConfigSource) : undefined;
-  });
+  >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
+  const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
+    DBT_SOURCES | undefined
+  >(
+    showDBTConfig
+      ? getSourceTypeFromConfig(configData as DbtConfigSource)
+      : undefined
+  );
   const [markDeletedTables, setMarkDeletedTables] = useState(
     isDatabaseService
       ? Boolean(
@@ -335,7 +345,9 @@ const AddIngestion = ({
       default: {
         const DatabaseConfigData = {
           markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
-          ...(showDBTConfig ? ({ dbtConfigSource } as ConfigClass) : undefined),
+          ...(showDBTConfig
+            ? escapeBackwardSlashChar({ dbtConfigSource } as ConfigClass)
+            : undefined),
         };
 
         return {
@@ -502,7 +514,10 @@ const AddIngestion = ({
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
             cancelText="Back"
+            data={dbtConfigSource}
+            handleSourceChange={(src) => setDbtConfigSourceType(src)}
             okText="Next"
+            source={dbtConfigSourceType}
             onCancel={handlePrev}
             onSubmit={(dbtConfigData) => {
               setDbtConfigSource(dbtConfigData);
