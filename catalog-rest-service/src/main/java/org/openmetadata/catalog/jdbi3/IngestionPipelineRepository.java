@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.UUID;
+import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -31,6 +32,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig";
@@ -253,9 +255,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateSource(Source origSource, Source updatedSource) throws JsonProcessingException {
-      if (origSource.getServiceConnection() != updatedSource.getServiceConnection()
-          || !origSource.getServiceName().equals(updatedSource.getServiceName())
-          || origSource.getSourceConfig().getConfig() != updatedSource.getSourceConfig().getConfig()) {
+      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(updatedSource.getSourceConfig().getConfig()));
+      JSONObject origSourceConnection = new JSONObject(JsonUtils.pojoToJson(origSource.getServiceConnection()));
+      JSONObject updatedSourceConnection = new JSONObject(JsonUtils.pojoToJson(updatedSource.getServiceConnection()));
+
+      if (!origSource.getServiceName().equals(updatedSource.getServiceName())
+          || !origSourceConfig.similar(updatedSourceConfig)
+          || !origSourceConnection.similar(updatedSourceConnection)) {
         recordChange("source", origSource, updatedSource);
       }
     }
