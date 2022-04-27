@@ -1820,8 +1820,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   private void printEntities(ResultList<T> list) {
-    list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
+    LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {
