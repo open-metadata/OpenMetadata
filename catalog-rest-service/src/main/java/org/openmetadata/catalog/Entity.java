@@ -13,20 +13,7 @@
 
 package org.openmetadata.catalog;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -37,6 +24,20 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
+
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 @Slf4j
 public final class Entity {
@@ -51,9 +52,6 @@ public final class Entity {
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
-
-  // Entity class to entity repository map
-  private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   // Common field names
   public static final String FIELD_OWNER = "owner";
@@ -140,7 +138,6 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-    CLASS_ENTITY_REPOSITORY_MAP.put(clazz, entityRepository);
     LOG.info(
         "Registering entity {} {} {} {}",
         clazz,
