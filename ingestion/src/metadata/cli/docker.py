@@ -256,7 +256,6 @@ def ingest_sample_data() -> None:
         except Exception:
             sys.stdout.write(".")
             time.sleep(5)
-            pass
     for dag in dags:
         json_sample_data = {"is_paused": False}
         client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))
