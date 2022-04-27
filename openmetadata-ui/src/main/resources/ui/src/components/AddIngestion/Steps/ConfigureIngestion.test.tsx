@@ -61,6 +61,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   stageFileLocation: '',
   enableDataProfiler: false,
   ingestSampleData: false,
+  markDeletedTables: false,
   showDashboardFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
@@ -74,6 +75,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleQueryLogDuration: jest.fn(),
   handleResultLimit: jest.fn(),
   handleStageFileLocation: jest.fn(),
+  handleMarkDeletedTables: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),
@@ -108,6 +110,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(2);
-    expect(toggleSwitchs.length).toBe(3);
+    expect(toggleSwitchs.length).toBe(4);
   });
 });

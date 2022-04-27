@@ -222,7 +222,7 @@ export const getEntityLink = (
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryPath();
+      return getGlossaryPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
     case EntityType.DASHBOARD_SERVICE:

@@ -59,6 +59,7 @@ export interface ConfigureIngestionProps {
   includeView: boolean;
   enableDataProfiler: boolean;
   ingestSampleData: boolean;
+  markDeletedTables?: boolean;
   pipelineType: PipelineType;
   showDashboardFilter: boolean;
   showSchemaFilter: boolean;
@@ -74,6 +75,7 @@ export interface ConfigureIngestionProps {
   handleIncludeView: () => void;
   handleEnableDataProfiler: () => void;
   handleIngestSampleData: () => void;
+  handleMarkDeletedTables?: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;

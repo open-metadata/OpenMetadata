@@ -11,10 +11,9 @@
 """
 Generic source to build SQL connectors.
 """
-import json
+
 import re
 import traceback
-import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -69,9 +68,9 @@ from metadata.utils.connections import (
     get_connection,
     test_connection,
 )
+from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
-from metadata.utils.helpers import store_gcs_credentials
 
 logger = ometa_logger()
 
@@ -106,114 +105,6 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
     else:
         description = table_info["text"]
     return description
-
-
-def get_dbt_local(config) -> Optional[Tuple[str, str]]:
-    try:
-        if config.dbtConfig.dbtCatalogFilePath is not None:
-            with open(
-                config.dbtConfig.dbtCatalogFilePath, "r", encoding="utf-8"
-            ) as catalog:
-                dbt_catalog = catalog.read()
-        if config.dbtConfig.dbtManifestFilePath is not None:
-            with open(
-                config.dbtConfig.dbtManifestFilePath, "r", encoding="utf-8"
-            ) as manifest:
-                dbt_manifest = manifest.read()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from local {repr(exc)}")
-    return None
-
-
-def get_dbt_http(config) -> Optional[Tuple[str, str]]:
-    try:
-        catalog_file = urllib.request.urlopen(config.dbtConfig.dbtCatalogFilePath)
-        manifest_file = urllib.request.urlopen(config.dbtConfig.dbtManifestFilePath)
-        dbt_catalog = catalog_file.read().decode()
-        dbt_manifest = manifest_file.read().decode()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from http {repr(exc)}")
-    return None
-
-
-def get_dbt_gcs(config) -> Optional[Tuple[str, str]]:
-    try:
-        dbt_options = config.dbtSecurityConfig.gcsConfig
-        if config.dbtProvider.value == "gcs":
-            options = {
-                "credentials": {
-                    "type": dbt_options.type,
-                    "project_id": dbt_options.projectId,
-                    "private_key_id": dbt_options.privateKeyId,
-                    "private_key": dbt_options.privateKey,
-                    "client_email": dbt_options.clientEmail,
-                    "client_id": dbt_options.clientId,
-                    "auth_uri": dbt_options.authUri,
-                    "token_uri": dbt_options.tokenUri,
-                    "auth_provider_x509_cert_url": dbt_options.authProviderX509CertUrl,
-                    "client_x509_cert_url": dbt_options.clientX509CertUrl,
-                }
-            }
-        else:
-            options = {"credentials_path": dbt_options.__root__}
-        if store_gcs_credentials(options):
-            from google.cloud import storage
-
-            client = storage.Client()
-            for bucket in client.list_buckets():
-                for blob in client.list_blobs(bucket.name):
-                    if config.dbtManifestFileName in blob.name:
-                        dbt_manifest = blob.download_as_string().decode()
-                    if config.dbtCatalogFileName in blob.name:
-                        dbt_catalog = blob.download_as_string().decode()
-            return json.loads(dbt_catalog), json.loads(dbt_manifest)
-        else:
-            return None
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from gcs {repr(exc)}")
-    return None
-
-
-def get_dbt_s3(config) -> Optional[Tuple[str, str]]:
-    try:
-        from metadata.utils.aws_client import AWSClient
-
-        aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
-        buckets = aws_client.buckets.all()
-        for bucket in buckets:
-            for bucket_object in bucket.objects.all():
-                if config.dbtManifestFileName in bucket_object.key:
-                    dbt_manifest = bucket_object.get()["Body"].read().decode()
-                if config.dbtCatalogFileName in bucket_object.key:
-                    dbt_catalog = bucket_object.get()["Body"].read().decode()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files from s3 {repr(exc)}")
-    return None
-
-
-def get_dbt_details(config) -> Optional[Tuple[str, str]]:
-    try:
-        if config.dbtProvider:
-            if config.dbtProvider.value == "s3":
-                return get_dbt_s3(config)
-            if "gcs" in config.dbtProvider.value:
-                return get_dbt_gcs(config)
-            if config.dbtProvider.value == "http":
-                return get_dbt_http(config)
-            if config.dbtProvider.value == "local":
-                return get_dbt_local(config)
-            raise Exception("Invalid DBT provider")
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.debug(f"Error fetching dbt files {repr(exc)}")
-    return None
 
 
 class SQLSource(Source[OMetaDatabaseAndTable]):
@@ -256,7 +147,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        dbt_details = get_dbt_details(self.config.sourceConfig.config)
+        dbt_details = get_dbt_details(self.config.sourceConfig.config.dbtConfigSource)
         self.dbt_catalog = dbt_details[0] if dbt_details else None
         self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.profile_date = datetime.now()
@@ -348,7 +239,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
@@ -565,7 +456,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Get all the DBT information and feed it to the Table Entity
         """
-        if self.source_config.dbtProvider and self.dbt_catalog and self.dbt_manifest:
+        if (
+            self.source_config.dbtConfigSource
+            and self.dbt_manifest
+            and self.dbt_catalog
+        ):
             logger.info("Parsing Data Models")
             manifest_entities = {
                 **self.dbt_manifest["nodes"],

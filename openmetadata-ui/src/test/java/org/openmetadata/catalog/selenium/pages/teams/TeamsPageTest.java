@@ -196,6 +196,7 @@ class TeamsPageTest {
     // Select the created listed team
     Events.click(webDriver, common.containsText(teamDisplayName));
     // Events.click(webDriver,teamsPage.getAsset());
+    Events.click(webDriver, common.manage());
     Events.click(webDriver, teamsPage.ownerDropdown());
     String ownerName = webDriver.findElement(teamsPage.selectOwner()).getText();
     Events.click(webDriver, teamsPage.selectOwner());

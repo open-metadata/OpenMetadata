@@ -73,6 +73,12 @@
       "description": "Connection to Snowflake instance via Private Key",
       "type": "string"
     },
+    "snowflakePrivatekeyPassphrase": {
+      "title": "Snowflake Passphrase Key",
+      "description": "Snowflake Passphrase Key used with Private Key",
+      "type": "string",
+      "format": "password"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

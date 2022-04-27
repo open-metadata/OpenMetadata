@@ -67,6 +67,7 @@ import {
   getEntityName,
   hasEditAccess,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
 import {
@@ -633,6 +634,43 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const getDeleteEntityMessage = () => {
+    const service = serviceName?.slice(0, -1);
+
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return `Deleting this ${service} will also delete ${pluralize(
+          instanceCount,
+          'database',
+          's'
+        )}`;
+
+      case ServiceCategory.MESSAGING_SERVICES:
+        return `Deleting this ${service} will also delete ${pluralize(
+          instanceCount,
+          'topic',
+          's'
+        )}`;
+
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return `Deleting this ${service} will also delete ${pluralize(
+          instanceCount,
+          'dashboard',
+          's'
+        )}`;
+
+      case ServiceCategory.PIPELINE_SERVICES:
+        return `Deleting this ${service} will also delete ${pluralize(
+          instanceCount,
+          'pipeline',
+          's'
+        )}`;
+
+      default:
+        return;
+    }
+  };
+
   useEffect(() => {
     setServiceName(serviceCategory || getServiceCategoryFromType(serviceType));
   }, [serviceCategory, serviceType]);
@@ -968,6 +1006,7 @@ const ServicePage: FunctionComponent = () => {
                       hideTier
                       isRecursiveDelete
                       currentUser={serviceDetails?.owner?.id}
+                      deletEntityMessage={getDeleteEntityMessage()}
                       entityId={serviceDetails?.id}
                       entityName={serviceDetails?.name}
                       entityType={serviceCategory.slice(0, -1)}

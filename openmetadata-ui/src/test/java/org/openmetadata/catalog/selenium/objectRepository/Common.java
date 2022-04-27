@@ -54,7 +54,7 @@ public class Common {
   By tagCount = By.xpath("//div[@data-testid='tag-container']/div/div");
   By errorMessage = By.cssSelector("[data-testid='error-message']");
   By matchesInDescription = By.xpath("(//div[@data-testid='matches-stats'][1])/span[3]");
-  By tagCountSearch = By.xpath("(//div[@data-testid='description-text'][1])/div/span/span[@class='text-highlighter']");
+  By tagCountSearch = By.xpath("(//div[@data-testid='viewer-container'])[1]//span[@class='text-highlighter']");
   By tagFilterCount = By.xpath("//div[@data-testid='filter-containers-2']/label");
   By noSearchResult = By.cssSelector("[data-testid='no-search-results']");
   By resultsCount = By.xpath("//div[@data-testid='search-container']/div");

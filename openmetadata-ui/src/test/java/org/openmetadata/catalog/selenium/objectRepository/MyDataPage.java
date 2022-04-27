@@ -23,8 +23,8 @@ public class MyDataPage {
   By pipelines = By.xpath("//a[@data-testid=\"pipelines\"]");
   By services = By.xpath("//a[@data-testid=\"service\"]");
   // By ingestion = By.linkText("Ingestion");
-  By users = By.xpath("//a[@data-testid=\"user\"]");
-  By teams = By.xpath("//a[@data-testid=\"terms\"]");
+  By users = By.cssSelector("[data-testid='user']");
+  By teams = By.cssSelector("[data-testid='terms']");
   By searchBox = By.xpath("//input[@data-testid=\"searchBox\"]");
   By tableName = By.linkText("dim_address");
   By explore = By.xpath("//a[@data-testid=\"appbar-item\"]");

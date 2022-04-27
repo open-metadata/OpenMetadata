@@ -62,8 +62,14 @@ const AddService = ({
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
 
+  const resetServiceData = () => {
+    setServiceName('');
+    setDescription('');
+  };
+
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    resetServiceData();
     setSelectServiceType(type);
   };
 

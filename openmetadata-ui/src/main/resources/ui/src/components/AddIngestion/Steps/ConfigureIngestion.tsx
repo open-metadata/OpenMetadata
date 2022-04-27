@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isNil } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useRef } from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
@@ -38,6 +39,7 @@ const ConfigureIngestion = ({
   enableDataProfiler,
   ingestSampleData,
   pipelineType,
+  markDeletedTables,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
@@ -50,6 +52,7 @@ const ConfigureIngestion = ({
   getExcludeValue,
   getIncludeValue,
   handleIngestionName,
+  handleMarkDeletedTables,
   handleDescription,
   handleShowFilter,
   handleEnableDataProfiler,
@@ -187,8 +190,8 @@ const ConfigureIngestion = ({
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
-              Slowdown metadata extraction by calculate the metrics and
-              distribution of data in the table
+              Enable Data Profiler to collect metrics and distribution of data
+              in the table. This will however slowdown the metadata extraction.
             </p>
             {getSeparator('')}
           </Field>
@@ -205,6 +208,26 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
+          {!isNil(markDeletedTables) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTables}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTables) {
+                      handleMarkDeletedTables();
+                    }
+                  }}
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Any deleted tables in the data source will be soft deleted in
+                OpenMetadata
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
         </div>
       </>
     );

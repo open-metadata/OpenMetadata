@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -230,16 +233,16 @@ def _(connection: SnowflakeConnection):
 
     if connection.username:
         url += f"{connection.username}"
-        url += (
-            f":{quote_plus(connection.password.get_secret_value())}"
-            if connection
-            else ""
-        )
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += f":{quote_plus(connection.password.get_secret_value())}"
+
         url += "@"
 
     url += connection.account
     url += f"/{connection.database}" if connection.database else ""
-    url += "?warehouse=" + connection.warehouse
+    if connection.warehouse:
+        url += "?warehouse=" + connection.warehouse
     options = (
         connection.connectionOptions.dict()
         if connection.connectionOptions
@@ -319,3 +322,9 @@ def _(connection: AthenaConnection):
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
     url += f"&work_group={connection.workgroup}"
     return url
+
+
+@get_connection_url.register
+def _(connection: DruidConnection):
+    url = get_connection_url_common(connection)
+    return f"{url}/druid/v2/sql"

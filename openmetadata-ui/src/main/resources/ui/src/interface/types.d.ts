@@ -219,7 +219,7 @@ declare module 'Models' {
     tier: string | TagLabel;
     highlight?: {
       description: string[];
-      table_name: string[];
+      name: string[];
     };
     index: string;
     database?: string;

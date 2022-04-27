@@ -21,6 +21,7 @@ import {
 } from '../../constants/ingestion.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
   ConfigClass,
   CreateIngestionPipeline,
@@ -55,6 +56,10 @@ const AddIngestion = ({
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
+  const isDatabaseService = useMemo(() => {
+    return serviceCategory === ServiceCategory.DATABASE_SERVICES;
+  }, [serviceCategory]);
+
   const [saveState, setSaveState] = useState<LoadingState>('initial');
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
@@ -108,6 +113,14 @@ const AddIngestion = ({
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
       true
+  );
+  const [markDeletedTables, setMarkDeletedTables] = useState(
+    isDatabaseService
+      ? Boolean(
+          (data?.source.sourceConfig.config as ConfigClass)
+            ?.markDeletedTables ?? true
+        )
+      : undefined
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -299,6 +312,7 @@ const AddIngestion = ({
           enableDataProfiler: enableDataProfiler,
           generateSampleData: ingestSampleData,
           includeViews: includeView,
+          markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
           schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
           tableFilterPattern: getFilterPatternData(tableFilterPattern),
           chartFilterPattern: getFilterPatternData(chartFilterPattern),
@@ -344,7 +358,12 @@ const AddIngestion = ({
             onSuccessSave?.();
           }
         })
-        .finally(() => setTimeout(() => setSaveState('initial'), 500));
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise
+        })
+        .finally(() => {
+          setTimeout(() => setSaveState('initial'), 500);
+        });
     }
   };
 
@@ -421,6 +440,7 @@ const AddIngestion = ({
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
+            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
@@ -428,6 +448,7 @@ const AddIngestion = ({
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            markDeletedTables={markDeletedTables}
             pipelineType={pipelineType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}

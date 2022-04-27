@@ -153,6 +153,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
   getEntityPlaceHolder: jest.fn().mockReturnValue('value'),
   getEntityName: jest.fn().mockReturnValue('entityName'),
+  pluralize: jest.fn().mockReturnValue('2 charts'),
 }));
 
 describe('Test DashboardDetails component', () => {
