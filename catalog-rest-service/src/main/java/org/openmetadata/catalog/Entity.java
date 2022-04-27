@@ -13,19 +13,9 @@
 
 package org.openmetadata.catalog;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.EntityDAO;
-import org.openmetadata.catalog.jdbi3.EntityRepository;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import javax.ws.rs.core.UriInfo;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -36,8 +26,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import javax.ws.rs.core.UriInfo;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.EntityDAO;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 
 @Slf4j
 public final class Entity {
