@@ -24,7 +24,10 @@ import {
   getSeparator,
   requiredField,
 } from '../../../utils/CommonUtils';
-import { validateDbtGCSCredsConfig } from '../../../utils/DBTConfigFormUtil';
+import {
+  checkDbtGCSCredsConfigRules,
+  validateDbtGCSCredsConfig,
+} from '../../../utils/DBTConfigFormUtil';
 import { Button } from '../../buttons/Button/Button';
 import { DropDownListItem } from '../../dropdown/types';
 import { Field } from '../../Field/Field';
@@ -92,12 +95,18 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
     if (gcsCreds === GCS_CONFIG.GCSValues) {
-      const { isValid, errors } = validateDbtGCSCredsConfig(
+      const { isValid: reqValid, errors: reqErr } = validateDbtGCSCredsConfig(
         (gcsConfig || {}) as GCSCredentialsValues
       );
-      setErrors(errors);
+      const { isValid: fieldValid, errors: fieldErr } =
+        checkDbtGCSCredsConfigRules((gcsConfig || {}) as GCSCredentialsValues);
 
-      valid = isValid;
+      setErrors({
+        ...fieldErr,
+        ...reqErr,
+      });
+
+      valid = reqValid && fieldValid;
     } else {
       if (isEmpty(gcsConfig)) {
         setErrors({

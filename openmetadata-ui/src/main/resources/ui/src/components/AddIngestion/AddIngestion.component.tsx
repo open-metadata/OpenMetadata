@@ -127,7 +127,7 @@ const AddIngestion = ({
     DBT_SOURCES | undefined
   >(
     showDBTConfig
-      ? getSourceTypeFromConfig(configData as DbtConfigSource)
+      ? getSourceTypeFromConfig(configData as DbtConfigSource | undefined)
       : undefined
   );
   const [markDeletedTables, setMarkDeletedTables] = useState(

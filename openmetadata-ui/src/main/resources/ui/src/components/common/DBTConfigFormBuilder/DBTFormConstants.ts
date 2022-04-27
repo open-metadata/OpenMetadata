@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FormValidationRulesType } from '../../../enums/form.enum';
+import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
   DbtConfigHttp,
@@ -68,3 +70,13 @@ export const reqDBTGCSCredsFields: Array<keyof DbtGCSCreds> = [
   'tokenUri',
   'type',
 ];
+export const rulesDBTGCSCredsFields: Record<
+  keyof Pick<
+    FormValidationRules,
+    FormValidationRulesType.email | FormValidationRulesType.url
+  >,
+  Array<keyof DbtGCSCreds>
+> = {
+  email: ['clientEmail'],
+  url: ['authUri', 'tokenUri', 'authProviderX509CertUrl', 'clientX509CertUrl'],
+};

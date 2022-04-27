@@ -21,6 +21,7 @@ import {
 import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { ROUTES } from '../constants/constants';
+import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { isDev } from './EnvironmentUtils';
 
@@ -147,7 +148,7 @@ export const msalGraphConfig = {
 };
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(/^\S+@\S+\.\S+$/)) {
+  if (email?.match(validEmailRegEx)) {
     return email.split('@')[0];
   } else {
     return '';

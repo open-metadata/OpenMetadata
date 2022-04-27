@@ -31,7 +31,11 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { FQN_REGEX, UrlEntityCharRegEx } from '../constants/regex.constants';
+import {
+  FQN_REGEX,
+  UrlEntityCharRegEx,
+  validEmailRegEx,
+} from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
 import {
@@ -454,6 +458,20 @@ export const isValidUrl = (href: string) => {
   } catch {
     return false;
   }
+};
+
+/**
+ *
+ * @param email - email address string
+ * @returns - True|False
+ */
+export const isValidEmail = (email: string) => {
+  let isValid = true;
+  if (!email.match(validEmailRegEx)) {
+    isValid = false;
+  }
+
+  return isValid;
 };
 
 export const getFields = (defaultFields: string, tabSpecificField: string) => {
