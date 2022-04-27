@@ -13,6 +13,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.Webhooks;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -72,6 +73,8 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), faker.address().toString());
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, webhooks.checkbox());
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
@@ -96,6 +99,8 @@ class WebhooksPageTest {
       Events.click(webDriver, webhooks.descriptionBox());
       Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
       Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
+      ((JavascriptExecutor) webDriver)
+          .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
       Events.click(webDriver, webhooks.checkbox());
       Events.click(webDriver, webhooks.entityCreatedMenu());
       Events.click(webDriver, webhooks.allEntities());
@@ -117,7 +122,9 @@ class WebhooksPageTest {
     Events.sendKeys(webDriver, webhooks.name(), "");
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
-    Events.sendKeys(webDriver, webhooks.endpoint(), "test.com");
+    Events.sendKeys(webDriver, webhooks.endpoint(), "http://www.test.com");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, webhooks.checkbox());
     Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.entityCreatedMenu());
@@ -139,6 +146,8 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, webhooks.checkbox());
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
@@ -159,6 +168,8 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.test.com");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
     Assert.assertTrue(errorMessage.isDisplayed());
