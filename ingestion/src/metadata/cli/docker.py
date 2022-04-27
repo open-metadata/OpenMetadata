@@ -6,11 +6,10 @@ import tempfile
 import time
 import traceback
 from base64 import b64encode
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import click
 import requests as requests
-from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -165,7 +164,6 @@ def run_docker(
             docker.compose.stop()
             logger.info("Docker compose for OpenMetadata stopped successfully.")
         if reset_db:
-
             reset_db_om(docker)
         if clean:
             logger.info(
@@ -230,6 +228,7 @@ def ingest_sample_data() -> None:
     """
     Trigger sample data DAGs
     """
+    from requests._internal_utils import to_native_string
 
     base_url = "http://localhost:8080/api"
     dags = ["sample_data", "sample_usage", "index_metadata"]
@@ -243,9 +242,13 @@ def ingest_sample_data() -> None:
         ),
     )
     client = REST(client_config)
-
+    timeout = time.time() + 60 * 5  # Timeout of 5 minutes
+    while True:
+        resp = client.get("/dags")
+        if resp:
+            break
+        elif time.time() > timeout:
+            raise TimeoutError("Ingestion tontainer timed out")
     for dag in dags:
-        json_sample_data = {
-            "dag_run_id": "{}_{}".format(dag, datetime.now()),
-        }
-        client.post("/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data))
+        json_sample_data = {"is_paused": False}
+        client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))
