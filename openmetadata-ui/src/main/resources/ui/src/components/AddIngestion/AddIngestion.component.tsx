@@ -547,6 +547,7 @@ const AddIngestion = ({
             handleViewServiceClick={handleViewServiceClick}
             name={ingestionName}
             showIngestionButton={false}
+            state={status}
           />
         )}
       </div>
