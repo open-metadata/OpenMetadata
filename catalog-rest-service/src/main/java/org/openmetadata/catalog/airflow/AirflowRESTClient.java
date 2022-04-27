@@ -211,6 +211,6 @@ public class AirflowRESTClient {
     } catch (Exception e) {
       throw AirflowException.byMessage("Failed to test connection.", e.getMessage());
     }
-    throw AirflowException.byMessage("Failed to test connection.", response.toString());
+    throw AirflowException.byMessage("Failed to test connection.", response.body());
   }
 }
