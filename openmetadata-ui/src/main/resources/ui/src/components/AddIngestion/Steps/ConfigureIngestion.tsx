@@ -222,8 +222,8 @@ const ConfigureIngestion = ({
                 />
               </div>
               <p className="tw-text-grey-muted tw-mt-3">
-                Configuration to soft delete tables in OpenMetadata if the
-                source tables are deleted.
+                Any deleted tables in the data source will be soft deleted in
+                OpenMetadata
               </p>
               {getSeparator('')}
             </Field>
