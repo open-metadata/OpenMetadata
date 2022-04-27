@@ -1207,7 +1207,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "status";
+      return "name";
     }
 
     @Override
@@ -1500,6 +1500,10 @@ public interface CollectionDAO {
       if (team == null) {
         return EntityDAO.super.listCount(filter);
       }
+      String status = filter.getQueryParam("status");
+      if (status != null) {
+        return listCount(getTableName(), "status", filter.getCondition("ue"), team, Relationship.HAS.ordinal());
+      }
       return listCount(getTableName(), getNameColumn(), filter.getCondition("ue"), team, Relationship.HAS.ordinal());
     }
 
@@ -1508,6 +1512,11 @@ public interface CollectionDAO {
       String team = filter.getQueryParam("team");
       if (team == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
+      }
+      String status = filter.getQueryParam("status");
+      if (status != null) {
+        return listBefore(
+            getTableName(), "status", filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
       }
       return listBefore(
           getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
@@ -1518,6 +1527,11 @@ public interface CollectionDAO {
       String team = filter.getQueryParam("team");
       if (team == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
+      }
+      String status = filter.getQueryParam("status");
+      if (status != null) {
+        return listBefore(
+            getTableName(), "status", filter.getCondition("ue"), team, limit, after, Relationship.HAS.ordinal());
       }
       return listAfter(
           getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, after, Relationship.HAS.ordinal());
