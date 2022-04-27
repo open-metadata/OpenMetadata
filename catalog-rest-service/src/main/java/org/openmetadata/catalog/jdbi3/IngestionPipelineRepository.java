@@ -254,8 +254,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     private void updateSource(Source origSource, Source updatedSource) throws JsonProcessingException {
       if (origSource.getServiceConnection() != updatedSource.getServiceConnection()
-          && !origSource.getServiceName().equals(updatedSource.getServiceName())
-          && origSource.getSourceConfig() != updatedSource.getSourceConfig()) {
+          || !origSource.getServiceName().equals(updatedSource.getServiceName())
+          || origSource.getSourceConfig().getConfig() != updatedSource.getSourceConfig().getConfig()) {
         recordChange("source", origSource, updatedSource);
       }
     }
