@@ -75,6 +75,7 @@ class UiExceptionHandling {
     webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     actions = new Actions(webDriver);
+    databaseServicePage = new DatabaseServicePage(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
@@ -129,7 +130,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, common.containsText("Glue"));
+    Events.click(webDriver, databaseServicePage.serviceName("sample_data"));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");
@@ -146,7 +147,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.containsText("Glue"));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, databaseServicePage.deleteDatabase());
-    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "Delete");
+    Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
     interceptor("services/databaseServices", "services/testing");
     //    Assert.assertEquals(500, 500);
