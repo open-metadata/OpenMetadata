@@ -93,21 +93,34 @@ class WebhooksPageTest {
     String name = faker.name().name();
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
-    for (int i = 0; i < 2; i++) {
-      Events.click(webDriver, webhooks.addWebhook());
-      Events.sendKeys(webDriver, webhooks.name(), name);
-      Events.click(webDriver, webhooks.descriptionBox());
-      Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
-      Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
-      ((JavascriptExecutor) webDriver)
-          .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
-      Events.click(webDriver, webhooks.checkbox());
-      Events.click(webDriver, webhooks.entityCreatedMenu());
-      Events.click(webDriver, webhooks.allEntities());
-      Events.click(webDriver, webhooks.clickToCloseDropdown());
-      Events.click(webDriver, common.saveWebhook());
-      Thread.sleep(waitTime);
-    }
+    Thread.sleep(waitTime);
+    Events.click(webDriver, webhooks.addWebhook());
+    Events.sendKeys(webDriver, webhooks.name(), name);
+    Events.click(webDriver, webhooks.descriptionBox());
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
+    Events.click(webDriver, webhooks.checkbox());
+    Events.click(webDriver, webhooks.entityCreatedMenu());
+    Events.click(webDriver, webhooks.allEntities());
+    Events.click(webDriver, webhooks.clickToCloseDropdown());
+    Events.click(webDriver, common.saveWebhook());
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, webhooks.webhookLink());
+    Events.click(webDriver, webhooks.addWebhook());
+    Events.sendKeys(webDriver, webhooks.name(), name);
+    Events.click(webDriver, webhooks.descriptionBox());
+    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
+    Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
+    ((JavascriptExecutor) webDriver)
+        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
+    Events.click(webDriver, webhooks.checkbox());
+    Events.click(webDriver, webhooks.entityCreatedMenu());
+    Events.click(webDriver, webhooks.allEntities());
+    Events.click(webDriver, webhooks.clickToCloseDropdown());
+    Events.click(webDriver, common.saveWebhook());
+    Thread.sleep(waitTime);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");
