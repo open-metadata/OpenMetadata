@@ -28,7 +28,7 @@ To check what version of Docker you have, please use the following command.
 docker --version
 ```
 
-If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).&#x20;
+If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
 
 {% hint style="warning" %}
 Note: You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
@@ -38,9 +38,9 @@ Preferences -> Resources -> Advanced
 
 ### `compose` command for Docker (version v2.1.1 or greater)
 
-The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.&#x20;
+The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.
 
-**MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.&#x20;
+**MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
 
 **Linux**: To install compose on Linux systems, please visit the [Docker CLI command documentation](https://docs.docker.com/compose/cli-command/#install-on-linux) and follow the instructions.
 
@@ -368,3 +368,8 @@ Once you have successfully installed your preferred version of `openmetadata-ing
 ```bash
 metadata docker --start
 ```
+
+### 7. Clean your Environment before Upgrade
+
+It is advisable to run `metadata docker --stop` and `metadata docker --clean` to remove any lingering dependencies from previous versions of OpenMetadata Docker Images as well as docker-compose.yaml files.\
+Additionally, you can also manually clean docker-compose.yaml file via `rm $TMP/docker-compose.yaml` as metadata docker CLI relies on downloading Docker Compose file only if it's not available on host machine in the TMP Directory.
