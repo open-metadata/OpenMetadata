@@ -69,16 +69,22 @@ For example, the release for version 0.6 is found in the Assets section at the l
 Once the tar file has download, run the following command, updated if necessary for the version of OpenMetadata that you downloaded.
 
 ```bash
-tar -zxvf openmetadata-0.9.0.tar.gz
+tar -zxvf openmetadata-0.10.0.tar.gz
 ```
 
 ### 3. Navigate to the directory created
 
 ```
-cd openmetadata-0.9.0
+cd openmetadata-0.10.0
 ```
 
-### 4. Start OpenMetadata
+### 4. Prepare OpenMetadata Database
+
+```
+./bootstrap/bootstrap_storage.sh drop-create-all
+```
+
+### 5. Start OpenMetadata
 
 OpenMetadata release ships with `./bin/openmetadata` init.d style script. Run the following command from the `openmetadata-0.9.0` directory.
 
