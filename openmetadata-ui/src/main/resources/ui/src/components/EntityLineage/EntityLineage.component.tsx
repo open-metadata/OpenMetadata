@@ -251,20 +251,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           )
       );
 
-      /**
-       * Get new nodes that have either downstreamEdge or upstreamEdge
-       */
-      const newNodes = lineageData.nodes?.filter(
-        (n) =>
-          !isUndefined(newDownStreamEdges?.find((d) => d.toEntity === n.id)) ||
-          !isUndefined(newUpStreamEdges?.find((u) => u.fromEntity === n.id))
-      );
-
       setNewAddedNode({} as FlowElement);
       setSelectedEntity({} as EntityReference);
       entityLineageHandler({
         ...lineageData,
-        nodes: newNodes,
         downstreamEdges: newDownStreamEdges,
         upstreamEdges: newUpStreamEdges,
       });
