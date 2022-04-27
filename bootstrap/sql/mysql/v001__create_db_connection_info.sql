@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS dbservice_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS messaging_service_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS dashboard_service_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS pipeline_service_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS storage_service_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS database_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS database_schema_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS table_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS metric_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS report_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS dashboard_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS ml_model_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS pipeline_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS topic_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS chart_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS location_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL ,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS thread_entity (
     createdBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.createdBy') STORED NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    resolved BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.resolved')),
+    resolved BOOLEAN GENERATED ALWAYS AS (json -> '$.resolved'),
     PRIMARY KEY (id)
 );
 
@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS policy_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
@@ -272,7 +272,7 @@ CREATE TABLE IF NOT EXISTS ingestion_pipeline_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     timestamp BIGINT,
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS team_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -300,7 +300,7 @@ CREATE TABLE IF NOT EXISTS user_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -311,7 +311,7 @@ CREATE TABLE IF NOT EXISTS bot_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -322,8 +322,8 @@ CREATE TABLE IF NOT EXISTS role_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
-    defaultRole BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.defaultRole')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    defaultRole BOOLEAN GENERATED ALWAYS AS (json -> '$.defaultRole'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS tag_category (
     json JSON NOT NULL, -- JSON stores category information and does not store children
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     UNIQUE KEY unique_name(name) -- Unique tag category name
 );
 
@@ -363,7 +363,7 @@ CREATE TABLE IF NOT EXISTS tag (
     json JSON NOT NULL, -- JSON stores all tag attributes and does not store children
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
 
@@ -390,7 +390,7 @@ CREATE TABLE IF NOT EXISTS change_event (
 CREATE TABLE IF NOT EXISTS webhook_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     json JSON NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
@@ -403,7 +403,7 @@ CREATE TABLE IF NOT EXISTS glossary_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(name)
 );
@@ -414,7 +414,7 @@ CREATE TABLE IF NOT EXISTS glossary_term_entity (
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
