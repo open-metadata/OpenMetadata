@@ -20,7 +20,9 @@ import React, {
   DragEvent,
   Fragment,
   FunctionComponent,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -39,6 +41,7 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
@@ -75,6 +78,7 @@ import {
   CustomEdgeData,
   Edge as NewEdge,
   EdgeData,
+  ElementLoadingState,
   EntityLineageProp,
   SelectedEdge,
   SelectedNode,
@@ -126,11 +130,17 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [status, setStatus] = useState<LoadingState>('initial');
   const [deletionState, setDeletionState] = useState<{
     loading: boolean;
-    status: Exclude<LoadingState, 'waiting'>;
-  }>({
-    loading: false,
-    status: 'initial',
-  });
+    status: ElementLoadingState;
+  }>(ELEMENT_DELETE_STATE);
+
+  const nodeTypes = useMemo(
+    () => ({
+      output: CustomNode,
+      input: CustomNode,
+      default: CustomNode,
+    }),
+    []
+  );
 
   /**
    * take node as input and check if node is main entity or not
@@ -364,114 +374,117 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * take edge or connection to add new element in the graph
    * @param params
    */
-  const onConnect = (params: Edge | Connection) => {
-    setStatus('waiting');
-    setLoading(true);
-    const { target, source } = params;
+  const onConnect = useCallback(
+    (params: Edge | Connection) => {
+      setStatus('waiting');
+      setLoading(true);
+      const { target, source } = params;
 
-    const nodes = [
-      ...(lineageData.nodes as EntityReference[]),
-      lineageData.entity,
-    ];
+      const nodes = [
+        ...(lineageData.nodes as EntityReference[]),
+        lineageData.entity,
+      ];
 
-    const sourceDownstreamNode = lineageData.downstreamEdges?.find((d) =>
-      source?.includes(d.toEntity as string)
-    );
+      const sourceDownstreamNode = lineageData.downstreamEdges?.find((d) =>
+        source?.includes(d.toEntity as string)
+      );
 
-    const sourceUpStreamNode = lineageData.upstreamEdges?.find((u) =>
-      source?.includes(u.fromEntity as string)
-    );
+      const sourceUpStreamNode = lineageData.upstreamEdges?.find((u) =>
+        source?.includes(u.fromEntity as string)
+      );
 
-    const targetDownStreamNode = lineageData.downstreamEdges?.find((d) =>
-      target?.includes(d.toEntity as string)
-    );
+      const targetDownStreamNode = lineageData.downstreamEdges?.find((d) =>
+        target?.includes(d.toEntity as string)
+      );
 
-    const targetUpStreamNode = lineageData.upstreamEdges?.find((u) =>
-      target?.includes(u.fromEntity as string)
-    );
+      const targetUpStreamNode = lineageData.upstreamEdges?.find((u) =>
+        target?.includes(u.fromEntity as string)
+      );
 
-    let targetNode = nodes?.find((n) => target?.includes(n.id));
+      let targetNode = nodes?.find((n) => target?.includes(n.id));
 
-    let sourceNode = nodes?.find((n) => source?.includes(n.id));
+      let sourceNode = nodes?.find((n) => source?.includes(n.id));
 
-    if (isUndefined(targetNode)) {
-      targetNode = target?.includes(lineageData.entity?.id)
-        ? lineageData.entity
-        : selectedEntity;
-    }
-    if (isUndefined(sourceNode)) {
-      sourceNode = source?.includes(lineageData.entity?.id)
-        ? lineageData.entity
-        : selectedEntity;
-    }
+      if (isUndefined(targetNode)) {
+        targetNode = target?.includes(lineageData.entity?.id)
+          ? lineageData.entity
+          : selectedEntity;
+      }
+      if (isUndefined(sourceNode)) {
+        sourceNode = source?.includes(lineageData.entity?.id)
+          ? lineageData.entity
+          : selectedEntity;
+      }
 
-    const newEdge: NewEdge = {
-      edge: {
-        fromEntity: {
-          id: sourceNode.id,
-          type: sourceNode.type,
+      const newEdge: NewEdge = {
+        edge: {
+          fromEntity: {
+            id: sourceNode.id,
+            type: sourceNode.type,
+          },
+          toEntity: {
+            id: targetNode.id,
+            type: targetNode.type,
+          },
         },
-        toEntity: {
-          id: targetNode.id,
-          type: targetNode.type,
-        },
-      },
-    };
+      };
 
-    setElements((els) =>
-      addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
-    );
+      setElements((els) =>
+        addEdge({ ...params, arrowHeadType: ArrowHeadType.ArrowClosed }, els)
+      );
 
-    setTimeout(() => {
-      addLineageHandler(newEdge)
-        .then(() => {
-          setStatus('success');
-          setLoading(false);
-          setTimeout(() => {
-            entityLineageHandler({
-              ...lineageData,
-              nodes: selectedEntity
-                ? [
-                    ...(lineageData.nodes as Array<EntityReference>),
-                    selectedEntity,
-                  ]
-                : lineageData.nodes,
-              downstreamEdges:
-                !isUndefined(sourceUpStreamNode) ||
-                !isUndefined(targetUpStreamNode) ||
-                targetNode?.id === selectedEntity.id
+      setTimeout(() => {
+        addLineageHandler(newEdge)
+          .then(() => {
+            setStatus('success');
+            setLoading(false);
+            setTimeout(() => {
+              entityLineageHandler({
+                ...lineageData,
+                nodes: selectedEntity
                   ? [
-                      ...(lineageData.downstreamEdges as EntityEdge[]),
-                      {
-                        fromEntity: sourceNode?.id,
-                        toEntity: targetNode?.id,
-                      },
+                      ...(lineageData.nodes as Array<EntityReference>),
+                      selectedEntity,
                     ]
-                  : lineageData.downstreamEdges,
-              upstreamEdges:
-                !isUndefined(sourceDownstreamNode) ||
-                !isUndefined(targetDownStreamNode) ||
-                sourceNode?.id === selectedEntity.id
-                  ? [
-                      ...(lineageData.upstreamEdges as EntityEdge[]),
-                      {
-                        fromEntity: sourceNode?.id,
-                        toEntity: targetNode?.id,
-                      },
-                    ]
-                  : lineageData.upstreamEdges,
-            });
+                  : lineageData.nodes,
+                downstreamEdges:
+                  !isUndefined(sourceUpStreamNode) ||
+                  !isUndefined(targetUpStreamNode) ||
+                  targetNode?.id === selectedEntity.id
+                    ? [
+                        ...(lineageData.downstreamEdges as EntityEdge[]),
+                        {
+                          fromEntity: sourceNode?.id,
+                          toEntity: targetNode?.id,
+                        },
+                      ]
+                    : lineageData.downstreamEdges,
+                upstreamEdges:
+                  !isUndefined(sourceDownstreamNode) ||
+                  !isUndefined(targetDownStreamNode) ||
+                  sourceNode?.id === selectedEntity.id
+                    ? [
+                        ...(lineageData.upstreamEdges as EntityEdge[]),
+                        {
+                          fromEntity: sourceNode?.id,
+                          toEntity: targetNode?.id,
+                        },
+                      ]
+                    : lineageData.upstreamEdges,
+              });
+              setStatus('initial');
+            }, 100);
+            setNewAddedNode({} as FlowElement);
+            setSelectedEntity({} as EntityReference);
+          })
+          .catch(() => {
             setStatus('initial');
-          }, 100);
-          setNewAddedNode({} as FlowElement);
-          setSelectedEntity({} as EntityReference);
-        })
-        .catch(() => {
-          setStatus('initial');
-          setLoading(false);
-        });
-    }, 500);
-  };
+            setLoading(false);
+          });
+      }, 500);
+    },
+    [selectedNode, lineageData, selectedEntity]
+  );
 
   /**
    * take element and perform onClick logic
@@ -692,15 +705,129 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   const onRemove = () => {
-    setDeletionState({ loading: true, status: 'initial' });
+    setDeletionState({ ...ELEMENT_DELETE_STATE, loading: true });
     setTimeout(() => {
-      setDeletionState({ loading: false, status: 'success' });
+      setDeletionState({ ...ELEMENT_DELETE_STATE, status: 'success' });
       setTimeout(() => {
         setShowDeleteModal(false);
         setConfirmDelete(true);
         setDeletionState((pre) => ({ ...pre, status: 'initial' }));
       }, 500);
     }, 500);
+  };
+
+  const getCustomControlElements = () => {
+    return (
+      <CustomControls
+        className="tw-absolute tw-top-1 tw-right-3 tw-bottom-full tw-ml-4 tw-mt-4"
+        fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
+        {!deleted && (
+          <NonAdminAction
+            html={
+              <Fragment>
+                <p>You do not have permission to edit the lineage</p>
+              </Fragment>
+            }
+            permission={Operation.UpdateLineage}>
+            <ControlButton
+              className={classNames(
+                'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
+                {
+                  'tw-bg-primary': isEditMode,
+                  'tw-bg-primary-hover-lite': !isEditMode,
+                },
+                {
+                  'tw-opacity-40':
+                    !userPermissions[Operation.UpdateLineage] &&
+                    !isAuthDisabled &&
+                    !isAdminUser,
+                }
+              )}
+              onClick={() => {
+                setEditMode((pre) => !pre && !deleted);
+                setSelectedNode({} as SelectedNode);
+                setIsDrawerOpen(false);
+                setNewAddedNode({} as FlowElement);
+              }}>
+              {loading ? (
+                <Loader size="small" type="white" />
+              ) : status === 'success' ? (
+                <FontAwesomeIcon className="tw-text-white" icon="check" />
+              ) : (
+                <SVGIcons
+                  alt="icon-edit-lineag"
+                  className="tw--mt-1"
+                  data-testid="edit-lineage"
+                  icon={
+                    !isEditMode
+                      ? 'icon-edit-lineage-color'
+                      : 'icon-edit-lineage'
+                  }
+                  width="14"
+                />
+              )}
+            </ControlButton>
+          </NonAdminAction>
+        )}
+      </CustomControls>
+    );
+  };
+
+  const getGraphBackGround = () => {
+    if (!isEditMode) {
+      return null;
+    } else {
+      return <Background gap={12} size={1} variant={BackgroundVariant.Lines} />;
+    }
+  };
+
+  const getEntityDrawer = () => {
+    if (isEmpty(selectedNode)) {
+      return null;
+    } else {
+      return (
+        <EntityInfoDrawer
+          isMainNode={selectedNode.name === lineageData.entity?.name}
+          selectedNode={selectedNode}
+          show={isDrawerOpen && !isEditMode}
+          onCancel={closeDrawer}
+        />
+      );
+    }
+  };
+
+  const getConfirmationModal = () => {
+    if (!showdeleteModal) {
+      return null;
+    } else {
+      return (
+        <ConfirmationModal
+          bodyText={getModalBodyText(selectedEdge)}
+          cancelText={
+            <span
+              className={classNames({
+                'tw-pointer-events-none tw-opacity-70': deletionState.loading,
+              })}>
+              Cancel
+            </span>
+          }
+          confirmText={
+            deletionState.loading ? (
+              <Loader size="small" type="white" />
+            ) : deletionState.status === 'success' ? (
+              <FontAwesomeIcon className="tw-text-white" icon="check" />
+            ) : (
+              'Confirm'
+            )
+          }
+          header="Remove lineage edge"
+          onCancel={() => {
+            setShowDeleteModal(false);
+          }}
+          onConfirm={onRemove}
+        />
+      );
+    }
   };
 
   useEffect(() => {
@@ -744,155 +871,55 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
-  return (
+  return deleted ? (
+    getDeletedLineagePlaceholder()
+  ) : (
     <Fragment>
-      {!deleted ? (
-        <div
-          className={classNames(
-            'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
-          )}
-          data-testid="lineage-container">
-          <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
-            <ReactFlowProvider>
-              <ReactFlow
-                data-testid="react-flow-component"
-                edgeTypes={{ buttonedge: CustomEdge }}
-                elements={elements as Elements}
-                elementsSelectable={!isEditMode}
-                maxZoom={2}
-                minZoom={0.5}
-                nodeTypes={{
-                  output: CustomNode,
-                  input: CustomNode,
-                  default: CustomNode,
-                }}
-                nodesConnectable={isEditMode}
-                selectNodesOnDrag={false}
-                zoomOnDoubleClick={false}
-                zoomOnPinch={false}
-                zoomOnScroll={false}
-                onConnect={onConnect}
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                onElementClick={(_e, el) => onElementClick(el)}
-                onElementsRemove={onElementsRemove}
-                onLoad={(reactFlowInstance: OnLoadParams) => {
-                  onLoad(reactFlowInstance);
-                  setReactFlowInstance(reactFlowInstance);
-                }}
-                onNodeContextMenu={onNodeContextMenu}
-                onNodeDrag={dragHandle}
-                onNodeDragStart={dragHandle}
-                onNodeDragStop={dragHandle}
-                onNodeMouseEnter={onNodeMouseEnter}
-                onNodeMouseLeave={onNodeMouseLeave}
-                onNodeMouseMove={onNodeMouseMove}>
-                <CustomControls
-                  className="tw-absolute tw-top-1 tw-right-3 tw-bottom-full tw-ml-4 tw-mt-4"
-                  fitViewParams={{ minZoom: 0.5, maxZoom: 2.5 }}>
-                  {!deleted && (
-                    <NonAdminAction
-                      html={
-                        <>
-                          <p>You do not have permission to edit the lineage</p>
-                        </>
-                      }
-                      permission={Operation.UpdateLineage}>
-                      <ControlButton
-                        className={classNames(
-                          'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
-                          {
-                            'tw-bg-primary': isEditMode,
-                            'tw-bg-primary-hover-lite': !isEditMode,
-                          },
-                          {
-                            'tw-opacity-40':
-                              !userPermissions[Operation.UpdateLineage] &&
-                              !isAuthDisabled &&
-                              !isAdminUser,
-                          }
-                        )}
-                        onClick={() => {
-                          setEditMode((pre) => !pre && !deleted);
-                          setSelectedNode({} as SelectedNode);
-                          setIsDrawerOpen(false);
-                          setNewAddedNode({} as FlowElement);
-                        }}>
-                        {loading ? (
-                          <Loader size="small" type="white" />
-                        ) : status === 'success' ? (
-                          <FontAwesomeIcon
-                            className="tw-text-white"
-                            icon="check"
-                          />
-                        ) : (
-                          <SVGIcons
-                            alt="icon-edit-lineag"
-                            className="tw--mt-1"
-                            data-testid="edit-lineage"
-                            icon={
-                              !isEditMode
-                                ? 'icon-edit-lineage-color'
-                                : 'icon-edit-lineage'
-                            }
-                            width="14"
-                          />
-                        )}
-                      </ControlButton>
-                    </NonAdminAction>
-                  )}
-                </CustomControls>
-                {isEditMode ? (
-                  <Background
-                    gap={12}
-                    size={1}
-                    variant={BackgroundVariant.Lines}
-                  />
-                ) : null}
-              </ReactFlow>
-            </ReactFlowProvider>
-          </div>
-          {!isEmpty(selectedNode) ? (
-            <EntityInfoDrawer
-              isMainNode={selectedNode.name === lineageData.entity?.name}
-              selectedNode={selectedNode}
-              show={isDrawerOpen && !isEditMode}
-              onCancel={closeDrawer}
-            />
-          ) : null}
-          <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-          {showdeleteModal ? (
-            <ConfirmationModal
-              bodyText={getModalBodyText(selectedEdge)}
-              cancelText={
-                <span
-                  className={classNames({
-                    'tw-pointer-events-none tw-opacity-70':
-                      deletionState.loading,
-                  })}>
-                  Cancel
-                </span>
-              }
-              confirmText={
-                deletionState.loading ? (
-                  <Loader size="small" type="white" />
-                ) : deletionState.status === 'success' ? (
-                  <FontAwesomeIcon className="tw-text-white" icon="check" />
-                ) : (
-                  'Confirm'
-                )
-              }
-              header="Remove lineage edge"
-              onCancel={() => {
-                setShowDeleteModal(false);
+      <div
+        className={classNames(
+          'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
+        )}
+        data-testid="lineage-container">
+        <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+          <ReactFlowProvider>
+            <ReactFlow
+              data-testid="react-flow-component"
+              edgeTypes={{ buttonedge: CustomEdge }}
+              elements={elements as Elements}
+              elementsSelectable={!isEditMode}
+              maxZoom={2}
+              minZoom={0.5}
+              nodeTypes={nodeTypes}
+              nodesConnectable={isEditMode}
+              selectNodesOnDrag={false}
+              zoomOnDoubleClick={false}
+              zoomOnPinch={false}
+              zoomOnScroll={false}
+              onConnect={onConnect}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onElementClick={(_e, el) => onElementClick(el)}
+              onElementsRemove={onElementsRemove}
+              onLoad={(reactFlowInstance: OnLoadParams) => {
+                onLoad(reactFlowInstance);
+                setReactFlowInstance(reactFlowInstance);
               }}
-              onConfirm={onRemove}
-            />
-          ) : null}
+              onNodeContextMenu={onNodeContextMenu}
+              onNodeDrag={dragHandle}
+              onNodeDragStart={dragHandle}
+              onNodeDragStop={dragHandle}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
+              onNodeMouseMove={onNodeMouseMove}>
+              {getCustomControlElements()}
+              {getGraphBackGround()}
+            </ReactFlow>
+          </ReactFlowProvider>
         </div>
-      ) : (
-        getDeletedLineagePlaceholder()
-      )}
+        {getEntityDrawer()}
+        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+        {getConfirmationModal()}
+      </div>
     </Fragment>
   );
 };

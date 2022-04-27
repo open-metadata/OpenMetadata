@@ -140,6 +140,7 @@ export const getLineageData = (
       isMapped: false,
       ...down,
     })) || [];
+
   const mainNode = entityLineage['entity'];
 
   const UPStreamNodes: Elements = [];
@@ -496,8 +497,8 @@ export const getLayoutedElements = (
   elements.forEach((el) => {
     if (isNode(el)) {
       dagreGraph.setNode(el.id, {
-        width: el?.__rf?.width ?? nodeWidth,
-        height: el?.__rf?.height ?? nodeHeight,
+        width: nodeWidth,
+        height: nodeHeight,
       });
     } else {
       dagreGraph.setEdge(el.source, el.target);
@@ -512,11 +513,8 @@ export const getLayoutedElements = (
       el.targetPosition = isHorizontal ? Position.Left : Position.Top;
       el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
       el.position = {
-        x:
-          nodeWithPosition.x -
-          (el?.__rf?.width ?? nodeWidth) / 2 +
-          Math.random() / 1000,
-        y: nodeWithPosition.y - (el?.__rf?.height ?? nodeHeight) / 2,
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
       };
     }
 

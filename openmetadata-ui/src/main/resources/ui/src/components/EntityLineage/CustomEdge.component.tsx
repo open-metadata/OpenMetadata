@@ -53,6 +53,13 @@ export const CustomEdge = ({
     targetY,
   });
 
+  const isSelectedNode = () => {
+    return (
+      (rest as CustomEdgeData)?.source === selectedNode?.id ||
+      (rest as CustomEdgeData)?.target === selectedNode?.id
+    );
+  };
+
   return (
     <Fragment>
       <path
@@ -63,8 +70,7 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={style}
       />
-      {(rest as CustomEdgeData)?.source?.includes(selectedNode?.id) ||
-      (rest as CustomEdgeData)?.target?.includes(selectedNode?.id) ? (
+      {isSelectedNode() ? (
         <foreignObject
           data-testid="delete-button"
           height={foreignObjectSize}
