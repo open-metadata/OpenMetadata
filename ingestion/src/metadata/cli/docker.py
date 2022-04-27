@@ -244,11 +244,16 @@ def ingest_sample_data() -> None:
     client = REST(client_config)
     timeout = time.time() + 60 * 5  # Timeout of 5 minutes
     while True:
-        resp = client.get("/dags")
-        if resp:
-            break
-        elif time.time() > timeout:
-            raise TimeoutError("Ingestion tontainer timed out")
+        try:
+            resp = client.get("/dags")
+            if resp:
+                break
+            elif time.time() > timeout:
+                raise TimeoutError("Ingestion container timed out")
+        except TimeoutError as err:
+            print(err)
+        except Exception:
+            pass
     for dag in dags:
         json_sample_data = {"is_paused": False}
         client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))
