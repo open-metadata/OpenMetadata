@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS entity_relationship (
     jsonSchema VARCHAR(256),          -- Schema used for generating JSON
     json JSONB,                       -- JSON payload with additional information
 
-    deleted BOOLEAN NOT NULL DEFAULT 0,
+    deleted BOOLEAN NOT NULL DEFAULT FALSE,
 
     PRIMARY KEY (fromId, toId, relation)
 );
