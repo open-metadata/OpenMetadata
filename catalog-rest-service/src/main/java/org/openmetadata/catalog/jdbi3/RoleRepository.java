@@ -37,7 +37,6 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -169,7 +168,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Override
     public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
+      return entity.getName();
     }
 
     @Override

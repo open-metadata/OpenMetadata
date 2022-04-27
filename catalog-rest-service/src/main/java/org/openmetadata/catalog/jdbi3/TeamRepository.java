@@ -32,7 +32,6 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class TeamRepository extends EntityRepository<Team> {
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles";
@@ -175,7 +174,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
+      return entity.getName();
     }
 
     @Override
