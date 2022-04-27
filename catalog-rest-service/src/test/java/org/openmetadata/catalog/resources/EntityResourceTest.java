@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
+import static java.lang.String.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -376,11 +377,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i), "", null, null), ADMIN_AUTH_HEADERS))
+          getEntityInterface(
+                  createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, -1), "", null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> deleted = getEntityInterface(entity);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
@@ -709,7 +711,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
     // Entity without "." should not have quoted fullyQualifiedName
-    String name = String.format("%s_foo_bar", entityType);
+    String name = format("%s_foo_bar", entityType);
     K request = createRequest(name, "", null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -1474,7 +1476,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     String originalDescription = entityInterface.getDescription();
-    String newDescription = String.format("Description added by %s", userName);
+    String newDescription = format("Description added by %s", userName);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
     change
         .getFieldsUpdated()
@@ -1882,10 +1884,31 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final String getEntityName(TestInfo test) {
-    return String.format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
+  /**
+   * Generates and entity name by adding a char from a-z to ensure alphanumeric ordering In alphanumeric ordering using
+   * numbers can be counterintuitive (e.g :entity_0_test < entity_10_test < entity_1_test is the correct ordering of
+   * these 3 strings)
+   */
   public final String getEntityName(TestInfo test, int index) {
-    return String.format("%s_%d_%s", entityType, index, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format(
+        "%s_%s_%s", entityType, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+  }
+
+  /**
+   * Transforms a positive integer to base 26 using digits a...z Alphanumeric ordering of results is equivalent to
+   * ordering of inputs
+   */
+  private String getNthAlphanumericString(int index) {
+    final int N_LETTERS = 26;
+    if (index < 0) {
+      throw new IllegalArgumentException(format("Index must be positive, cannot be %d", index));
+    }
+    if (index < 26) {
+      return String.valueOf((char) ('a' + index));
+    }
+    return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
   }
 }
