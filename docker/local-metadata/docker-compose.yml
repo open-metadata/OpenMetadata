@@ -10,6 +10,10 @@
 #  limitations under the License.
 
 version: "3.9"
+volumes:
+  ingestion-volume-dag-airflow:
+  ingestion-volume-dags:
+  ingestion-volume-tmp:
 services:
   mysql:
     build:
@@ -129,13 +133,9 @@ services:
       - "localhost:172.16.239.13"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ingestion-volme-dag-airflow:/airflow/dag_generated_configs
-      - ingestion-volme-dags:/airflow/dags
-      - ingestion-volme-tmp:/tmp
-volumes:
-  ingestion-dag-airflow:
-  ingestion-volme-dags:
-  ingestion-volume-tmp:
+      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
+      - ingestion-volume-dags:/airflow/dags
+      - ingestion-volume-tmp:/tmp
 networks:
   local_app_net:
     name: ometa_network
