@@ -207,10 +207,9 @@ public class AirflowRESTClient {
       if (response.statusCode() == 200) {
         return response;
       }
-
     } catch (Exception e) {
       throw AirflowException.byMessage("Failed to test connection.", e.getMessage());
     }
-    throw AirflowException.byMessage("Failed to test connection.", response.body());
+    throw new AirflowException(String.format("Failed to test connection due to %s", response.body()));
   }
 }
