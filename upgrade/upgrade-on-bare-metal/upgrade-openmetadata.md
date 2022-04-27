@@ -11,9 +11,9 @@ description: >-
 {% hint style="danger" %}
 **The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
 
-**0.10.0 installations requires brand new installation and we have migration tool to transfer all your entity descriptions, tags, owners etc.. to 0.10.0 release**&#x20;
+**0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**&#x20;
 
-Please reach out to us on [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
+Please reach out to us at [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
 {% endhint %}
 
 ## Requirements

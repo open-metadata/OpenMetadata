@@ -6,6 +6,8 @@ description: >-
 
 # Upgrade OpenMetadata on Kubernetes
 
+<mark style="color:red;">****</mark>
+
 ## Requirements
 
 This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run OpenMetadata](../../deploy/deploy-on-kubernetes/run-in-kubernetes.md) guide.
