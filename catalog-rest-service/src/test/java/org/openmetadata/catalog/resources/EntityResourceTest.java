@@ -123,7 +123,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -721,11 +720,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     request = createRequest(name, "", null, null);
     entity = createEntity(request, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
-    assertTrue(entityInterface.getFullyQualifiedName().contains("\""));
-    String[] split = FullyQualifiedName.split(entityInterface.getFullyQualifiedName());
-    String actualName = split[split.length - 1];
+
+    // The FQN has quote delimited parts if the FQN is hierarchical.
+    // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
+    // team, webhook and the entity names that are at the root for FQN like services, TagCategory, and Glossary etc.)
+    // No delimiter is expected.
+    boolean noHierarchicalName = entityInterface.getFullyQualifiedName().equals(entityInterface.getName());
+    assertTrue(noHierarchicalName || entityInterface.getFullyQualifiedName().contains("\""));
     assertEquals(name, entityInterface.getName());
-    assertEquals(FullyQualifiedName.quoteName(name), actualName);
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

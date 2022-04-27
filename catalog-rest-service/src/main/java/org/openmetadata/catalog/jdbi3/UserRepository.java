@@ -39,7 +39,6 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
@@ -265,7 +264,7 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
+      return entity.getName();
     }
 
     @Override
