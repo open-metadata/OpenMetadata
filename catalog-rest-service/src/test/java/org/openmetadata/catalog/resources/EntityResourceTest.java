@@ -393,6 +393,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         };
 
     // Test listing entities that include deleted, non-deleted, and all the entities
+    Random random = new Random();
     for (String include : List.of("non-deleted", "all", "deleted")) {
       if (!supportsSoftDelete && include.equals("deleted")) {
         continue;
@@ -405,9 +406,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with "limit" set from 1 to maxTables size
+      // List entity with "limit" set from 1 to maxTables size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
-      for (int limit = 1; limit < maxEntities; limit++) {
+      for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
         String before;
         int pageCount = 0;
