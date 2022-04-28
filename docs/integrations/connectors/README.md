@@ -21,7 +21,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MariaDB](mariadb.md)
 * [MSSQL](mssql/)
 * [MSSQL Usage](mssql/mssql-usage.md)
-* [MySQL](mysql/mysql.md)
+* [MySQL](broken-reference)
 * [Oracle](oracle.md)
 * [Postgres](postgres/)
 * [Presto](presto.md)

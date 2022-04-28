@@ -68,7 +68,7 @@ In this step, we will configure the connection settings required for this connec
 
 ####
 
-![Service has been saved](<../../../.gitbook/assets/image (17) (2).png>)
+![Service has been saved](<../../../.gitbook/assets/image (17) (3).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -122,7 +122,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
 
 **Every**
 
@@ -158,7 +158,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -166,7 +166,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -234,7 +234,7 @@ If you already added Usage ingestion, the button will directly specify to _Add P
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
 #### Name
 
@@ -264,4 +264,4 @@ You can learn more about how to host and run the different workflows on your own
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../snowflake/run-snowflake-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../mysql/run-mysql-connector-with-the-cli.md).

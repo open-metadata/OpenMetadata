@@ -493,7 +493,7 @@ From the Database Service UI, click the _Add New Service_ button to add your Pos
 
 Select Postgres as the service type.
 
-![](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![](<../../../.gitbook/assets/image (8) (1) (1) (1).png>)
 
 #### 4. Name and describe your service
 

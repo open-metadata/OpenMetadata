@@ -120,7 +120,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **includeViews**: `true` or `false`, to ingest views definitions.
 * **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
 * **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+* **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
 "tableFilterPattern": {
@@ -281,61 +281,6 @@ metadata ingest -c <path-to-json>
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
-### 1. Define the JSON configuration
-
-This is a sample config for a Snowflake profiler:
-
-```json
-{
-    "source": {
-        "type": "snowflake",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-                "type": "Snowflake",
-                "hostPort": "<hostPort>",
-                "username": "<username>",
-                "password": "<password>",
-                "database": "<database>",
-                "warehouse": "<warehouse>",
-                "account": "<acount>",
-                "privateKey": "<privateKey>",
-                "snowflakePrivatekeyPassphrase": "<passphrase>",
-                "scheme": "<scheme>",
-                "role": "<role>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "Profiler",
-                "fqnFilterPattern": "<table FQN filtering regex>"
-            }
-        }
-    },
-    "processor": {
-        "type": "orm-profiler",
-        "config": {}
-    },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
-```
-
-#### Source Configuration
-
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json).
-* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
-
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
-
 ```
 "fqnFilterPattern": {
   "includes": ["service.database.schema.*"]
@@ -399,8 +344,6 @@ Then, we can run the workflow as:
 ```
 metadata profile -c <path-to-json>
 ```
-
-Note how instead of running `ingest`, we are using the `profile` command to select the `Profiler` workflow.
 
 ## DBT Integration
 

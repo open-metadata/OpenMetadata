@@ -87,7 +87,7 @@ Provide a description for your Snowflake service that enables other users to det
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (17) (2).png>)
 
 #### Username
 
@@ -117,13 +117,13 @@ Enter the details for any additional connection options that can be sent to Snow
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
-![Service has been saved](<../../../.gitbook/assets/image (4).png>)
+![Service has been saved](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -171,7 +171,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
 
 **Every**
 
@@ -215,7 +215,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

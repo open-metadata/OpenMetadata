@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select Trino as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (20).png>)
+![Select your Service type](<../../../.gitbook/assets/image (20) (1).png>)
 
 ### 4. Name and Describe your Service
 
@@ -63,7 +63,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Trino service that enables other users to determine whether it might provide data of interest to them.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13) (1).png>)
+![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13) (2).png>)
 
 ### 5. Configure the Service Connection
 
@@ -73,7 +73,7 @@ In this step, we will configure the connection settings required for this connec
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1).png>)
+![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1).png>)
 
 #### Host and Port
 
@@ -173,7 +173,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
 
 **Every**
 
@@ -209,7 +209,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -285,7 +285,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
 #### Name
 

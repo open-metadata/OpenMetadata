@@ -18,7 +18,7 @@
 * Set the **App ID URI.** If it has not been set, the default value is api://\<client\_id>.
 * Click Save.
 
-![](<../../../.gitbook/assets/image (4) (2).png>)
+![](<../../../.gitbook/assets/image (4) (2) (1).png>)
 
 ## Step 3: Add a Scope
 
@@ -26,7 +26,7 @@
 * Enter the details with a custom scope name to expose.
 * Once completed, click on Add Scope.
 
-![](<../../../.gitbook/assets/image (32) (2).png>)
+![](<../../../.gitbook/assets/image (32) (3).png>)
 
 ## Step 4: Register Another Azure Application
 
@@ -64,14 +64,14 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Click on Permissions.
 * Click on **Grant Admin Consent for Default Directory**.
 
-![](<../../../.gitbook/assets/image (19) (1) (1).png>)
+![](<../../../.gitbook/assets/image (19) (1) (1) (1).png>)
 
 ## Step 7: Set the App ID URI
 
 * Navigate to the Azure Active Directory >> App Registrations >> \[OpenMetadata Ingestion Application] >> Expose an API.
 * Click on **Set** in Application ID URI
 
-![](<../../../.gitbook/assets/image (21) (1).png>)
+![](<../../../.gitbook/assets/image (21) (1) (1).png>)
 
 * Click on Save to set the App ID URI which is required for scopes while connecting from manual ingestion.
 
@@ -86,6 +86,6 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 
 * Enter a description and an expiry period.
 
-![](<../../../.gitbook/assets/image (20) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1).png>)
 
 * The `secret_key` is required for ingestion.

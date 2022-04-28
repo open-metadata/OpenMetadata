@@ -4,418 +4,259 @@ description: In this section, we provide guides and reference to use the MySQL c
 
 # MySQL
 
-1. [Requirements](./#1.-requirements)
-2. [Install MySQL Connector](./#2.-install-mysql-connector)
-3. [Configure MySQL Connector](./#3.-configure-mysql-connector)
-4. [Run MySQL Connector](./#4.-run-mysql-connector)
-5. [Troubleshooting](./#5.-troubleshooting)
+Configure and schedule MySQL **metadata**, and **profiler** workflows from the OpenMetadata UI.
 
-## **1. Requirements**
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
 
-Please ensure that your host system meets the requirements listed below.
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-### **OpenMetadata (version 0.9.0 or later)**
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
+
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
+
+{% content-ref url="run-mysql-connector-with-the-cli.md" %}
+[run-mysql-connector-with-the-cli.md](run-mysql-connector-with-the-cli.md)
+{% endcontent-ref %}
+
+## **Requirements**
+
+#### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
 
-### **Python (version 3.8.0 or later)**
+To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-Use the following command to check your Python version.
+## Metadata Ingestion
 
-```
-python3 --version
-```
+### 1. Visit the _Services_ Page
 
-## 2. Install MySQL Connector
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-### **2.1 Prepare a Python virtual environment**
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (4).png>)
 
-In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+### 2. Create a New Service
 
-#### **1 Create a directory for openmetadata**
+Click on the _Add New Service_ button to start the Service creation.
 
-Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (15).png>)
 
-```
-mkdir openmetadata; cd openmetadata
-```
+### 3. Select the Service Type
 
-#### **2 Create a virtual environment**
+Select MySQL as the service type and click _Next_.
 
-Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
+![Select your Service type](<../../../.gitbook/assets/image (29).png>)
 
-```
-python3 -m venv env
-```
+### 4. Name and Describe your Service
 
-#### **3 Activate the virtual environment**
+Provide a name and description for your service as illustrated below.
 
-Run the following command to activate the virtual environment.
+#### Service Name
 
-```
-source env/bin/activate
-```
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MySQL services that you might be ingesting metadata from.
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
+#### Description
 
-#### **4 Upgrade pip and setuptools to the latest versions**
+Provide a description for your MySQL service that enables other users to determine whether it might provide data of interest to them.
 
-Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
+![](<../../../.gitbook/assets/image (32).png>)
 
-```javascript
-pip3 install --upgrade pip setuptools
-```
+### 5. Configure the Service Connection
 
-### **2.2 Install the Python module for this connector**
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the MySQL connector.
+![Configure the Service connection](<../../../.gitbook/assets/image (18).png>)
 
-```javascript
-pip3 install 'openmetadata-ingestion[mysql]'
-```
+#### Username
 
-## 3. Configure MySQL Connector
+Enter the username of your MySQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
-Please follow the steps relevant to your use case.
+#### Password
 
-1. [Create a configuration file using template JSON](./#3.1-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#3.2-configure-service-settings)
-3. [Enable/disable the data profile](./#3.3-enable-disable-the-data-profiler)r
-4. [Install the data profiler Python module (optional)](./#3.4-install-the-data-profiler-python-module-optional)
-5. [Configure data filters (optional)](./#3.5-configure-data-filters-optional)
-6. [Configure sample data (optional)](./#3.6-configure-sample-data-optional)
-7. [Configure DBT (optional)](./#3.7-configure-dbt-optional)
-8. [Confirm sink settings](./#3.8-confirm-sink-settings)
-9. [Confirm metadata\_server settings](./#3.9-confirm-metadata\_server-settings)
+Enter the password for your MySQL user in the _Password_ field.
 
-### 3.1 Create a configuration file using template JSON
+#### Host and Port
 
-Create a new file called `mysql.json`. Copy and paste the configuration template below into the `mysql.json` file you created.
+Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
 
-{% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
-{% endhint %}
+#### Database (optional)
 
-{% code title="mysql.json" %}
-```json
-{
-  "source": {
-    "type": "mysql",
-    "config": {
-      "host_port": "hostname.domain.com:5439",
-      "username": "username",
-      "password": "strong_password",
-      "database": "mysql_db",
-      "service_name": "local_mysql",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
-      },
-      "schema_filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}  
-```
-{% endcode %}
+If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-### 3.2 Configure service settings
+#### Connection Options (Optional)
 
-In this step we will configure the MySQL service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
+Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
-#### host\_port
+#### Connection Arguments (Optional)
 
-Edit the value for `source.config.host_port` in `mysql.json` for your MySQL deployment. Use the `host:port` format illustrated in the example below.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
-```json
-"host_port": "hostname.domain.com:5439"
-```
+![Service has been saved](<../../../.gitbook/assets/image (13).png>)
 
-Please ensure that your MySQL deployment is reachable from the host you are using to run metadata ingestion.
+### 6. Configure the Metadata Ingestion
 
-#### username
+Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-Edit the value for `source.config.username` to identify your MySQL user.
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68).png>)
 
-```json
-"username": "username"
-```
+#### Include (Table Filter Pattern)
 
-{% hint style="danger" %}
-Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
+Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
-#### password
+Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-Edit the value for `source.config.password` with the password for your MySQL user.
+#### Exclude (Table Filter Pattern)
 
-```json
-"password": "strong_password"
-```
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### service\_name
+#### Include (Schema Filter Pattern)
 
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other MySQL services that you might be ingesting metadata from.
+Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
-```json
-"service_name": "local_mysql"
-```
+Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### database (optional)
+#### Exclude (Schema Filter Pattern)
 
-If you want to limit metadata ingestion to a single database, include the `source.config.database` field in your configuration file. If this field is not included, the connector will ingest metadata from all databases that the specified user is authorized to read.
+Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
-To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.database` key as illustrated in the example below.
+**Include views (toggle)**
 
-```json
-"database": "mysql_db"
-```
-
-### **3.3 Enable/disable the data profiler**
-
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-#### **data\_profiler\_enabled**
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion, but provides the benefits mentioned above.
-
-You may disable the data profiler by setting the value for the key `source.config.data_profiler_enabled` to `"false"` as follows. We’ve done this in the configuration template provided.
-
-```javascript
-"data_profiler_enabled": "false"
-```
-
-If you want to enable the data profiler, update your configuration file as follows.
-
-```javascript
-"data_profiler_enabled": "true"
-```
-
-{% hint style="info" %}
-**Note:** The data profiler is enabled by default if no setting is provided for `data_profiler_enabled`
-{% endhint %}
-
-### **3.4 Install the data profiler Python module (optional)**
-
-If you’ve enabled the data profiler in Step 3.3, run the following command to install the Python module for the data profiler. You’ll need this to run the ingestion workflow.
-
-```javascript
-pip3 install 'openmetadata-ingestion[data-profiler]'
-```
-
-The data profiler module takes a few minutes to install. While it installs, continue through the remaining steps in this guide.
-
-### 3.5 Configure data filters (optional)
-
-#### include\_views (optional)
-
-Use `source.config.include_views` to control whether or not to include views as part of metadata ingestion and data profiling.
+Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
 
 Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
 
-```json
-"include_views": "true"
-```
+**Enable data profiler (toggle)**
 
-Exclude views as follows.
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
 
-```json
-"include_views": "false"
-```
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
 
-{% hint style="info" %}
-Note: `source.config.include_views` is set to `true` by default.
-{% endhint %}
+Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
 
-#### include\_tables (optional)
+**Ingest sample data (toggle)**
 
-Use `source.config.include_tables` to control whether or not to include tables as part of metadata ingestion and data profiling.
+Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
-Explicitly include tables by adding the following key-value pair in the `source.config` field of your configuration file.
+### 7. Schedule the Ingestion and Deploy
 
-```json
-"include_tables": "true"
-```
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-Exclude tables as follows.
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
-```json
-"include_tables": "false"
-```
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-{% hint style="info" %}
-Note: `source.config.include_tables` is set to `true` by default.
-{% endhint %}
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20).png>)
 
-#### table\_filter\_pattern (optional)
+**Every**
 
-Use `source.config.table_filter_pattern` to select tables for metadata ingestion by name.
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
 
-Use `source.config.table_filter_pattern.excludes` to exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See below for an example. This example is also included in the configuration template provided.
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
 
-```json
-"table_filter_pattern": {
-    "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-}
-```
+**Day**
 
-Use `source.config.table_filter_pattern.includes` to include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See below for an example.
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
 
-```json
-"table_filter_pattern": {
-    "includes": ["corp.*", "dept.*"]
-}
-```
+**Minute**
 
-See the documentation for the [Python re module](https://docs.python.org/3/library/re.html) for information on how to construct regular expressions.
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
 
-{% hint style="info" %}
-You may use either `excludes` or `includes` but not both in `table_filter_pattern.`
-{% endhint %}
+**Time**
 
-#### schema\_filter\_pattern (optional)
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
 
-Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_filter_pattern.includes` field to select the schemas for metadata ingestion by name. The configuration template provides an example.
+**Start date (UTC)**
 
-The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
 
-### 3.6 Configure sample data (optional)
+**End date (UTC)**
 
-#### generate\_sample\_data (optional)
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![](../../../.gitbook/assets/generate\_sample\_data.png)
+### 8. View the Ingestion Pipeline
 
-Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
+Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-```json
-"generate_sample_data": "true"
-```
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (12).png>)
 
-If set to true, the connector will collect the first 50 rows of data from each table included in ingestion, and catalog that data as sample data, which users can refer to in the OpenMetadata user interface.
+### 9. Workflow Deployment Error
 
-You can exclude the collection of sample data by adding the following key-value pair in the `source.config` field of your configuration file.
+If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
-```json
-"generate_sample_data": "false"
-```
+You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-{% hint style="info" %}
-Note: `generate_sample_data` is set to `true` by default.
-{% endhint %}
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19).png>)
 
-### 3.7 Configure DBT (optional)
+From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
+## Data Profiler and Quality Tests
 
-![](../../../.gitbook/assets/configure\_dbt.png)
+After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 
-To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-#### dbt\_manifest\_file (optional)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (21).png>)
 
-Use the field `source.config.dbt_manifest_file` to specify the location of your DBT manifest file. See below for an example.
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (8).png>)
 
-```json
-"dbt_manifest_file": "./dbt/manifest.json"
-```
+You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
-#### dbt\_catalog\_file (optional)
 
-Use the field `source.config.dbt_catalog_file` to specify the location of your DBT catalog file. See below for an example.
 
-```json
-"dbt_catalog_file": "./dbt/catalog.json"
-```
+### 1. Add a Profiler Ingestion
 
-### 3.8 Confirm `sink` settings
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `mysql.json` in Step 3. This part of your configuration file should be as follows.
+![Add Ingestion](<../../../.gitbook/assets/image (43).png>)
 
-```json
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
-```
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
-### 3.9 Confirm `metadata_server` settings
+### 2. Configure the Profiler Ingestion
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `mysql.json` in Step 3. This part of your configuration file should be as follows.
+Here you can enter the Profiler Ingestion details.
 
-```json
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
-    }
-}
-```
+![Profiler Workflow Details](<../../../.gitbook/assets/image (17).png>)
 
-## **4. Run MySQL Connector**
+#### Name
 
-Your `mysql.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
 
-To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
+As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
 
-```
-metadata ingest -c ./mysql.json
-```
+#### FQN Filter Pattern
 
-### **Setup MySQL connector in production (optional)**
+Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
 
-If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
+#### Description
 
-## **Next Steps**
+Give the Ingestion Pipeline a description to show what type of data we are profiling.
 
-To view the metadata ingested from MySQL, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MySQL service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
+### 3. Schedule and Deploy
 
-![](../../../.gitbook/assets/explore.png)
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
-## **5. Troubleshooting**
+## DBT Integration
 
-### **ERROR: Failed building wheel for cryptography**
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
 
-When attempting to install the `openmetadata-ingestion[mysql]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+## Run using Airflow SDK
 
-```
-Failed to build cryptography
-ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
-```
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-mysql-connector-with-the-airflow-sdk.md).
 
-```
-pip3 install --upgrade pip setuptools
-```
+## One-time ingestion with the CLI
 
-Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-this-connector).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-mysql-connector-with-the-cli.md).
 
-### **requests.exceptions.ConnectionError**
 
-If you encounter the following error when attempting to run the ingestion workflow, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
-```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/mysql 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
-Failed to establish a new connection: [Errno 61] Connection refused'))
-```
-
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
-
-Then re-run the metadata ingestion workflow in [Run MySQL Connector](./#4.-run-mysql-connector).
+####
