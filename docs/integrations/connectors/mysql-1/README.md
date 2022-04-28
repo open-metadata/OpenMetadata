@@ -1,12 +1,10 @@
 ---
-description: >-
-  This guide will help you install and configure the Hive connector and run
-  metadata ingestion workflows manually.
+description: In this section, we provide guides and reference to use the Oracle connector.
 ---
 
-# Hive
+# Oracle
 
-Configure and schedule Hive **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Oracle **metadata**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,15 +13,17 @@ Configure and schedule Hive **metadata** and **profiler** workflows from the Ope
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-hive-connector-using-airflow-sdk.md" %}
-[run-hive-connector-using-airflow-sdk.md](run-hive-connector-using-airflow-sdk.md)
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
+
+{% content-ref url="run-oracle-connector-with-the-airflow-sdk.md" %}
+[run-oracle-connector-with-the-airflow-sdk.md](run-oracle-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-hive-connector-with-the-cli.md" %}
-[run-hive-connector-with-the-cli.md](run-hive-connector-with-the-cli.md)
+{% content-ref url="run-oracle-connector-with-the-cli.md" %}
+[run-oracle-connector-with-the-cli.md](run-oracle-connector-with-the-cli.md)
 {% endcontent-ref %}
 
-## Requirements
+## **Requirements**
 
 #### **OpenMetadata (version 0.10 or later)**
 
@@ -31,23 +31,7 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-### 1. Visit the _Services_ Page
-
-The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
-
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
-
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
-
-### 2. Create a New Service
-
-Click on the _Add New Service_ button to start the Service creation.
-
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
-
-### 3. Select the Service Type
-
-Select Snowflake as the service type and click _Next_.
+## Metadata Ingestion
 
 ### 1. Visit the _Services_ Page
 
@@ -55,75 +39,75 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (4).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (15).png>)
 
 ### 3. Select the Service Type
 
-Select Snowflake as the service type and click _Next._
+Select Oracle as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (3).png>)
+![Add New Service Page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
 
-### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
+### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-#### Service Name <a href="#service-name" id="service-name"></a>
+![Service Name and Description page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (2).png>)
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
+#### Service Name
 
-#### Description <a href="#description" id="description"></a>
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Oracle services that you might be ingesting metadata from.
 
-Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
+#### Description
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (34).png>)
+Provide a description for your Oracle service that enables other users to determine whether it might provide data of interest to them.
 
-### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
+### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Oracle service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17) (2).png>)
+![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
 
 #### Username
 
-Enter the username of your Hive user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your Oracle user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your Hive user in the _Password_ field.
+Enter the password for your Oracle user in the _Password_ field.
 
 #### Host and Port
 
-Enter the fully qualified hostname and port number for your Hive deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Oracle deployment in the _Host and Port_ field.
 
-#### Database (optional)
+#### Database (any one, Database or Oracle Service Name)
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-#### **URL Authentication Options** (Optional)
+#### Oracle Service Name (any one, Database or Oracle Service Name)
 
-Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
+Oracle Service name is **the TNS alias that you give when you remotely connect to your database**, and this Service name is recorded in tnsnames
 
 #### Connection Options (Optional)
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 
 #### Connection Arguments (Optional)
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
 
-![Service has been saved](<../../../.gitbook/assets/image (4) (1).png>)
+![Add Ingestion Page](<../../../.gitbook/assets/image (22).png>)
 
-### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
+### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -171,7 +155,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20).png>)
 
 **Every**
 
@@ -203,44 +187,47 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-### 8. View the Ingestion Pipeline <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
+### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55).png>)
+![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9).png>)
 
-### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
+### 9. Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-## Data Profiler and Quality Tests <a href="#data-profiler-and-quality-tests" id="data-profiler-and-quality-tests"></a>
+## Data Profiler and Quality Tests
 
 After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 
-This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.\
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (7).png>)
+![Data Profiler tab of a Table Entity](<../../../.gitbook/assets/image (54).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
-### 1. Add a Profiler Ingestion <a href="#1.-add-a-profiler-ingestion" id="1.-add-a-profiler-ingestion"></a>
+![Data Quality tab of a table entity](<../../../.gitbook/assets/image (42).png>)
 
-From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
+### 1. Add a Profiler Ingestion
 
-![Add Ingestion](<../../../.gitbook/assets/image (6).png>)
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion (on the right)_.
 
-### 2. Configure the Profiler Ingestion <a href="#2.-configure-the-profiler-ingestion" id="2.-configure-the-profiler-ingestion"></a>
+![Add Profiler Ingestion from Page](<../../../.gitbook/assets/image (5).png>)
+
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
+
+### 2. Configure the Profiler Ingestion
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (1).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (44).png>)
 
 #### Name
 
@@ -266,8 +253,8 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-hive-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-oracle-connector-with-the-airflow-sdk.md).
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-hive-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-oracle-connector-with-the-cli.md).

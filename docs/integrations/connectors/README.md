@@ -22,7 +22,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MSSQL](mssql/)
 * [MSSQL Usage](mssql/mssql-usage.md)
 * [MySQL](mysql/)
-* [Oracle](oracle.md)
+* [Oracle](mysql-1/)
 * [Postgres](postgres/)
 * [Presto](presto.md)
 * [Redshift](redshift/)

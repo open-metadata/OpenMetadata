@@ -32,13 +32,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
 
 ### 3. Select the Service Type
 

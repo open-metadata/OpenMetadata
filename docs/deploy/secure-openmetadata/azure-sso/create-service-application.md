@@ -82,7 +82,7 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Navigate to **Certificates & Secrets** to generate the `clientSecret`.
 * Click on New Client Secret.
 
-![](<../../../.gitbook/assets/image (9) (2).png>)
+![](<../../../.gitbook/assets/image (9) (2) (1).png>)
 
 * Enter a description and an expiry period.
 

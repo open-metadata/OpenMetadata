@@ -40,13 +40,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
 
 ### 3. Select the Service Type
 
@@ -72,7 +72,7 @@ Provide a description for your BigQuery service that enables other users to dete
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -252,7 +252,7 @@ We can create a workflow that will obtain the query log and table creation infor
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Usage Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
 
 ### 2. Configure the Usage Ingestion
 
@@ -294,7 +294,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../.
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
