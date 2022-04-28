@@ -530,7 +530,7 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="tw-mt-10">
+        <div className="tw-mt-3.5">
           <ActivityFeedList
             withSidePanel
             className=""
@@ -662,7 +662,7 @@ const Users = ({
       leftPanel={fetchLeftPanel()}
       rightPanel={getRightPanel()}>
       {userData?.isBot && isAdminUser && (
-        <div className="tw-mb-3">
+        <div className="tw-mb-10">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
