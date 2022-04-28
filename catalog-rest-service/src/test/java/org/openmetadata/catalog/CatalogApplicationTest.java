@@ -54,6 +54,8 @@ public abstract class CatalogApplicationTest {
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
     SQL_CONTAINER.withReuse(true);
+    SQL_CONTAINER.withStartupTimeoutSeconds(240);
+    SQL_CONTAINER.withConnectTimeoutSeconds(240);
     SQL_CONTAINER.start();
 
     final String migrationScripsLocation =
