@@ -28,12 +28,11 @@ public final class Migration {
     try {
       return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxVersion);
     } catch (StatementException e) {
-      System.out.println(
+      throw new IllegalArgumentException(
           "Exception encountered when trying to obtain last migrated Flyway version."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
-      System.exit(1);
+              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+          e);
     }
-    return Optional.empty();
   }
 
   public static String lastMigrationFile(MigrationConfiguration conf) throws IOException {
