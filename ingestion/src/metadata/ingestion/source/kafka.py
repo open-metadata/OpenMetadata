@@ -110,7 +110,9 @@ class KafkaSource(Source[CreateTopicRequest]):
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
             try:
-                if filter_by_topic(self.source_config.topicFilterPattern, topic_name):
+                if not filter_by_topic(
+                    self.source_config.topicFilterPattern, topic_name
+                ):
                     logger.info("Fetching topic schema {}".format(topic_name))
                     topic_schema = self._parse_topic_metadata(topic_name)
                     logger.info("Fetching topic config {}".format(topic_name))

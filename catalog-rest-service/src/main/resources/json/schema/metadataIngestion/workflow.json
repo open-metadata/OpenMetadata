@@ -128,7 +128,7 @@
       "properties": {
         "loggerLevel": {
           "type": "string",
-          "enum": ["DEBUG", "INFO", "WARN"],
+          "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
           "default": "INFO"
         },
         "openMetadataServerConfig": {
