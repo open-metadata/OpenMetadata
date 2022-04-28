@@ -13,14 +13,20 @@
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -166,6 +172,11 @@ class MetadataSource(Source[Entity]):
         yield from self.fetch_users()
         yield from self.fetch_teams()
         yield from self.fetch_glossary_terms()
+        yield from self.fetch_locations()
+        yield from self.fetch_charts()
+        yield from self.fetch_glossary()
+        yield from self.fetch_role()
+        yield from self.fetch_policy()
 
     def fetch_table(self) -> Table:
         """Fetch table method
@@ -333,6 +344,116 @@ class MetadataSource(Source[Entity]):
                 if glossary_term_entities.after is None:
                     break
                 after = glossary_term_entities.after
+
+    def fetch_locations(self) -> Location:
+        """fetch location method
+
+        Returns:
+            Location:
+        """
+        if self.service_connection.includeGlossaryTerms:
+            after = None
+            while True:
+                location_entities = self.metadata.list_entities(
+                    entity=Location,
+                    fields=["owner", "followers", "tags"],
+                    after=after,
+                    limit=self.service_connection.limitRecords,
+                )
+                for location in location_entities.entities:
+                    self.status.scanned_team(location.name)
+                    yield location
+                if location_entities.after is None:
+                    break
+                after = location_entities.after
+
+    def fetch_charts(self) -> Chart:
+        """fetch charts method
+
+        Returns:
+            Chart:
+        """
+        if self.service_connection.includeGlossaryTerms:
+            after = None
+            while True:
+                chart_entities = self.metadata.list_entities(
+                    entity=Chart,
+                    fields=["owner", "followers", "tags"],
+                    after=after,
+                    limit=self.service_connection.limitRecords,
+                )
+                for chart in chart_entities.entities:
+                    self.status.scanned_team(chart.name)
+                    yield chart
+                if chart_entities.after is None:
+                    break
+                after = chart_entities.after
+
+    def fetch_glossary(self) -> Glossary:
+        """fetch glossary method
+
+        Returns:
+            Glossary:
+        """
+        if self.service_connection.includeGlossaryTerms:
+            after = None
+            while True:
+                glossary_term_entities = self.metadata.list_entities(
+                    entity=Glossary,
+                    fields=["owner", "tags", "reviewers", "usageCount"],
+                    after=after,
+                    limit=self.service_connection.limitRecords,
+                )
+                for glossary_term in glossary_term_entities.entities:
+                    self.status.scanned_team(glossary_term.name)
+                    yield glossary_term
+                if glossary_term_entities.after is None:
+                    break
+                after = glossary_term_entities.after
+
+    def fetch_role(self) -> Role:
+        """fetch role method
+
+        Returns:
+            Role:
+        """
+        if self.service_connection.includeGlossaryTerms:
+            after = None
+            while True:
+                role_entities = self.metadata.list_entities(
+                    entity=Role,
+                    fields=[],
+                    after=after,
+                    limit=self.service_connection.limitRecords,
+                )
+                for role_entity in role_entities.entities:
+                    self.status.scanned_team(role_entity.name)
+                    yield role_entity
+                if role_entities.after is None:
+                    break
+                after = role_entities.after
+
+    def fetch_policy(self) -> Policy:
+        """fetch policy method
+
+        Returns:
+            Policy:
+        """
+        if self.service_connection.includeGlossaryTerms:
+            after = None
+            while True:
+                policy_entities = self.metadata.list_entities(
+                    entity=Policy,
+                    fields=[],
+                    after=after,
+                    limit=self.service_connection.limitRecords,
+                )
+                for policy_entity in policy_entities.entities:
+                    self.status.scanned_team(policy_entity.name)
+                    yield policy_entity
+                if policy_entities.after is None:
+                    break
+                after = policy_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status

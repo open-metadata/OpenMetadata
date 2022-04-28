@@ -1,0 +1,41 @@
+{
+  "source": {
+    "type": "migrate",
+    "serviceName": "local_metadata",
+    "serviceConnection": {
+      "config": {
+        "type": "OpenMetadata",
+        "hostPort": "http://<hostport of 0.9.0 Openmetadata Server>:8585/api",
+        "authProvider": "no-auth",
+        "includeTables": true,
+        "includeUsers": true,
+        "includeTopics": true,
+        "includeDashboards": true,
+        "limitRecords": 10
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "enableDataProfiler": false
+      }
+    }
+  },
+  "stage": {
+    "type": "migrate",
+    "config": {
+      "filename": "<Directory Path to store data>"
+    }
+  },
+  "bulkSink":{
+    "type": "migrate",
+    "config": {
+      "filename": "<Directory Path to store data>"
+    }
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://<hostport of 0.10.0 Openmetadata Server>/api",
+      "authProvider": "no-auth"
+    }
+  }
+}
