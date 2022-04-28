@@ -12,7 +12,6 @@
  */
 
 import { EntityThread } from 'Models';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 
@@ -34,15 +33,13 @@ export type UserDetails = Record<
 export interface Props {
   userData: User;
   feedData: EntityThread[];
-  feedFilter: FeedFilter;
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
   updateUserDetails: (data: UserDetails) => void;
-  feedFilterHandler: (v: FeedFilter) => void;
-  fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
+  fetchFeedHandler: (after?: string) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
 }
