@@ -16,6 +16,7 @@ from typing import Iterable
 import click
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -26,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSource
@@ -38,6 +40,9 @@ logger = ingestion_logger()
 
 class TrinoSource(SQLSource):
     def __init__(self, config, metadata_config):
+        self.trino_connection: TrinoConnection = (
+            config.serviceConnection.__root__.config
+        )
         self.schema_names = None
         self.inspector = None
         try:
@@ -64,6 +69,14 @@ class TrinoSource(SQLSource):
                 f"Expected TrinoConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def _get_database(self, _) -> Database:
+        return Database(
+            name=self.trino_connection.catalog,
+            service=EntityReference(
+                id=self.service.id, type=self.service_connection.type.value
+            ),
+        )
 
     def prepare(self):
         self.inspector = inspect(self.engine)

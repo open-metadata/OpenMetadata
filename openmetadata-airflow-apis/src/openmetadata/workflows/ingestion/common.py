@@ -12,6 +12,7 @@
 Metadata DAG common functions
 """
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 
@@ -35,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
 
@@ -48,6 +50,9 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
+
+    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
+
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = Workflow.create(config)
@@ -66,6 +71,9 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
+
+    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
+
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = ProfilerWorkflow.create(config)
@@ -85,6 +93,20 @@ def date_to_datetime(
         return
 
     return datetime.strptime(str(date.__root__), date_format)
+
+
+def build_workflow_config_property(
+    ingestion_pipeline: IngestionPipeline,
+) -> WorkflowConfig:
+    """
+    Prepare the workflow config with logLevels and openMetadataServerConfig
+    :param ingestion_pipeline: Received payload from REST
+    :return: WorkflowConfig
+    """
+    return WorkflowConfig(
+        loggerLevel=ingestion_pipeline.loggerLevel,
+        openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
+    )
 
 
 def build_default_args() -> Dict[str, Any]:
