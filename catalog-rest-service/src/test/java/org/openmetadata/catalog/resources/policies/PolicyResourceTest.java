@@ -258,8 +258,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private void printPolicies(PolicyList list) {
-    list.getData().forEach(Policy -> LOG.info("DB {}", Policy.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(Policy -> LOG.debug("DB {}", Policy.getFullyQualifiedName()));
+    LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test

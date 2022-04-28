@@ -42,24 +42,20 @@ public abstract class CatalogApplicationTest {
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
-
-    // The system properties are provided by maven-surefire for testing with mysql and postgres
-    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
-    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
-    try {
-      SQL_CONTAINER =
-          (JdbcDatabaseContainer<?>)
-              Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
-    } catch (Exception e) {
-      e.printStackTrace();
-      LOG.error("Failed to create JDBC database container", e);
-    }
-    SQL_CONTAINER.withReuse(true);
-    SQL_CONTAINER.start();
   }
 
   @BeforeAll
   public static void createApplication() throws Exception {
+    // The system properties are provided by maven-surefire for testing with mysql and postgres
+    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
+    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+
+    SQL_CONTAINER =
+        (JdbcDatabaseContainer<?>)
+            Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+    SQL_CONTAINER.withReuse(true);
+    SQL_CONTAINER.start();
+
     final String migrationScripsLocation =
         ResourceHelpers.resourceFilePath("db/sql/" + SQL_CONTAINER.getDriverClassName());
     Flyway flyway =
