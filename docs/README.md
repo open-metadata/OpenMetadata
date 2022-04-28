@@ -28,7 +28,7 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 | [DynamoDB](integrations/connectors/dynamodb.md)                            |                                                             |                                                                      |                                                       |
 | [Elasticsearch](integrations/connectors/elastic-search.md)                 |                                                             |                                                                      |                                                       |
 | [Glue Catalog](integrations/connectors/glue-catalog/)                      |                                                             |                                                                      |                                                       |
-| [Hive](integrations/connectors/hive.md)                                    |                                                             |                                                                      |                                                       |
+| [Hive](integrations/connectors/hive/)                                      |                                                             |                                                                      |                                                       |
 
 ## OpenMetadata Components
 

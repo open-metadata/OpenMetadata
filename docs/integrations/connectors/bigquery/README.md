@@ -72,7 +72,7 @@ Provide a description for your BigQuery service that enables other users to dete
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (22) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -136,7 +136,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (13) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (13) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -226,7 +226,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (1).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -284,9 +284,9 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 

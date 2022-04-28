@@ -52,7 +52,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select Snowflake as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (3).png>)
+![Select your Service type](<../../../.gitbook/assets/image (3) (1).png>)
 
 ### 4. Name and Describe your Service
 
@@ -66,7 +66,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 5. Configure the Service Connection
 
@@ -126,7 +126,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (17).png>)
+![Service has been saved](<../../../.gitbook/assets/image (17) (2).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -216,7 +216,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (1).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -274,9 +274,9 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 

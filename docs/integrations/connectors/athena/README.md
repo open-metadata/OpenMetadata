@@ -68,7 +68,7 @@ In this step, we will configure the connection settings required for this connec
 
 
 
-![Service has been saved](<../../../.gitbook/assets/image (17).png>)
+![Service has been saved](<../../../.gitbook/assets/image (17) (2).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -128,7 +128,7 @@ If something doesn't look right, click the _Back_ button to return to the approp
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (1).png>)
 
 ### 9. Workflow Deployment Error
 

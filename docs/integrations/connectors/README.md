@@ -16,7 +16,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [DynamoDB](dynamodb.md)
 * [ElasticSearch](elastic-search.md)
 * [Glue Catalog](glue-catalog/)
-* [Hive](hive.md)
+* [Hive](hive/)
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
 * [MSSQL](mssql/)

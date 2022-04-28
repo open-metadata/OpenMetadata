@@ -2,11 +2,11 @@
 
 
 
-Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows using your own Airflow instances
+Configure and schedule Athena **metadata** and **profiler** workflows using your own Airflow instances
 
 
 
-### &#x20;**Install the Python module for this connector**
+### **Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -16,7 +16,7 @@ pip3 install 'openmetadata-ingestion[athena]'
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Snowflake.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json) you can find the structure to create a connection to Athena.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
