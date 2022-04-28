@@ -454,6 +454,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSource(source)
+        .withLoggerLevel(create.getLoggerLevel())
         .withOwner(create.getOwner())
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
