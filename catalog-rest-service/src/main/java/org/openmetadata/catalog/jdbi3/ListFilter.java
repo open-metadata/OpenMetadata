@@ -38,39 +38,39 @@ public class ListFilter {
     condition = addCondition(condition, getDatabaseCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
-    return condition.isEmpty() ? "WHERE true" : "WHERE " + condition;
+    return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
     if (include == Include.NON_DELETED) {
-      return columnName + " = false";
+      return columnName + " = FALSE";
     }
     if (include == Include.DELETED) {
-      return columnName + " = true";
+      return columnName + " = TRUE";
     }
     return "";
   }
 
   public String getDatabaseCondition(String tableName) {
     String database = queryParams.get("database");
-    return database == null ? "" : getFqnPrefixCondition(tableName, database);
+    return database == null ? "" : getFqnPrefixCondition(tableName, escape(database));
   }
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, service);
+    return service == null ? "" : getFqnPrefixCondition(tableName, escape(service));
   }
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
-    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+    return parentFqn == null ? "" : getFqnPrefixCondition(tableName, escape(parentFqn));
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE \"%s%s%%\"", fqnPrefix, Entity.SEPARATOR)
-        : String.format("%s.fullyQualifiedName LIKE \"%s%s%%\"", tableName, fqnPrefix, Entity.SEPARATOR);
+        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
+        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
   }
 
   private String addCondition(String condition1, String condition2) {
@@ -81,5 +81,9 @@ public class ListFilter {
       return condition1;
     }
     return condition1 + " AND " + condition2;
+  }
+
+  private String escape(String name) {
+    return name.replace("'", "''");
   }
 }

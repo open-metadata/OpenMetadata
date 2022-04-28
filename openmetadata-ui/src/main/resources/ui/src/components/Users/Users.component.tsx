@@ -16,7 +16,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
-import Select, { MultiValue } from 'react-select';
+import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { TERM_ADMIN, TERM_USER } from '../../constants/constants';
@@ -192,7 +192,7 @@ const Users = ({
   };
 
   const handleOnRolesChange = (
-    value: MultiValue<unknown>,
+    value: unknown,
     { action }: { action: string }
   ) => {
     if (isNil(value) || action === 'clear') {
@@ -202,7 +202,7 @@ const Users = ({
     }
   };
   const handleOnTeamsChange = (
-    value: MultiValue<unknown>,
+    value: unknown,
     { action }: { action: string }
   ) => {
     if (isNil(value) || action === 'clear') {

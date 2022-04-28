@@ -27,10 +27,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -99,7 +96,7 @@ class TagsPageTest {
   @Order(3)
   void editTagCategoryDescription() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.click(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.editDescriptionSaveButton());
@@ -109,7 +106,7 @@ class TagsPageTest {
   @Order(4)
   void addTag() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Events.click(webDriver, common.addTagButton());
     Events.sendKeys(webDriver, common.displayName(), tagDisplayName);
     Events.click(webDriver, common.descriptionBoldButton());
@@ -126,7 +123,7 @@ class TagsPageTest {
   @Order(5)
   void changeTagDescription() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Thread.sleep(waitTime);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
@@ -180,7 +177,7 @@ class TagsPageTest {
   @Order(10)
   void removeTagFromTableColumn() throws InterruptedException {
     openTagsPage();
-    Events.click(webDriver, common.containsText(tagCategoryDisplayName));
+    Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
     try {
       Events.click(webDriver, tagsPage.tableLink());
@@ -230,7 +227,7 @@ class TagsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
-    Events.click(webDriver, common.containsText("PersonalData"));
+    Events.click(webDriver, common.textEquals("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(1));
     Thread.sleep(2000);
     String beforeFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
