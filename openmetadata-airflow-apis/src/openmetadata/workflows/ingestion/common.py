@@ -12,16 +12,15 @@
 Metadata DAG common functions
 """
 import json
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 
 from airflow import DAG
-from metadata.utils.logger import set_loggers_level
 
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 try:
     from airflow.operators.python import PythonOperator
