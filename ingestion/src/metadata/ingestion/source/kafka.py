@@ -90,7 +90,6 @@ class KafkaSource(Source[CreateTopicRequest]):
         admin_client_config[
             "bootstrap.servers"
         ] = self.service_connection.bootstrapServers
-        admin_client_config["session.timeout.ms"] = 6000
         self.admin_client = AdminClient(admin_client_config)
 
     @classmethod
