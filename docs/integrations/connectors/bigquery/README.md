@@ -62,10 +62,6 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
 
-#### Description
-
-Provide a description for your BigQuery service that enables other users to determine whether it might provide data of interest to them.
-
 ![Provide a Name and description for your Service](<../../../.gitbook/assets/image (14) (1).png>)
 
 ### 5. Configure the Service Connection
