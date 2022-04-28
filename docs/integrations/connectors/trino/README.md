@@ -119,7 +119,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22) (2).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

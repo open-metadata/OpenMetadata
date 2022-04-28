@@ -72,7 +72,7 @@ Provide a description for your BigQuery service that enables other users to dete
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -252,7 +252,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

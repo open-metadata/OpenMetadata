@@ -1,10 +1,12 @@
 ---
-description: In this section, we provide guides and reference to use the Glue connector.
+description: >-
+  In this section, we provide guides and references to use the Snowflake
+  connector.
 ---
 
-# Glue Catalog
+# Snowflake
 
-Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -13,6 +15,14 @@ Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows 
 * [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
+
+{% content-ref url="run-snowflake-connector-with-the-airflow-sdk.md" %}
+[run-snowflake-connector-with-the-airflow-sdk.md](run-snowflake-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
+
+{% content-ref url="run-snowflake-connector-with-the-cli.md" %}
+[run-snowflake-connector-with-the-cli.md](run-snowflake-connector-with-the-cli.md)
+{% endcontent-ref %}
 
 ## Requirements
 
@@ -40,33 +50,83 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Glue as the service type and click _Next_.
+Select Snowflake as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.07.07 PM.png>)
+![Select your Service type](<../../../.gitbook/assets/image (3) (1).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.07.38 PM.png>)
-
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Glue services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
 #### Description
 
-Provide a description for your Glue service that enables other users to determine whether it might provide data of interest to them.
+Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
+
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Glue service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.19.49 PM.png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (29) (2).png>)
 
-After hitting Save you will see that your Glue connector has been added successfully, and you can add an ingestion.&#x20;
+#### Username
 
-![Service has been saved](<../../../.gitbook/assets/Screen Shot 2022-04-27 at 6.09.49 PM.png>)
+Enter the username of your Snowflake user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+
+#### Password
+
+Enter the password for your Snowflake user in the _Password_ field.
+
+#### Host and Port
+
+Enter the fully qualified hostname and port number for your Snowflake deployment in the _Host and Port_ field.
+
+#### Account
+
+Enter the details for the Snowflake _Account_.
+
+#### Role (Optional)
+
+Enter the details of the Snowflake Account _Role_. This is an optional detail.
+
+#### Database (optional)
+
+If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+
+#### Warehouse (Optional)
+
+Enter the details of the Snowflake warehouse. This is an optional requirement.
+
+#### Private Key (Optional)
+
+Connection to Snowflake instance via Private Key. Read about how to create a Private Key [here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#step-1-generate-the-private-key).
+
+#### Snowflake Passphrase Key (Optional)
+
+Snowflake Passphrase Key used with Private Key.
+
+#### Connection Options (Optional)
+
+Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+
+#### Connection Arguments (Optional)
+
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+
+In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "sso_login_url"`
+
+In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "externalbrowser"`
+
+![Service has been saved](<../../../.gitbook/assets/image (17) (3).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -258,10 +318,8 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../snowflake-1/run-snowflake-connector-with-the-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-snowflake-connector-with-the-airflow-sdk.md).
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../mysql/run-mysql-connector-with-the-cli.md).
-
-****

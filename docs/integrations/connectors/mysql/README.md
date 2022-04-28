@@ -207,7 +207,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (21).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (8).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (8) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
