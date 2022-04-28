@@ -53,13 +53,10 @@ def check() -> None:
 def metadata(debug: bool, log_level: str) -> None:
     if debug:
         set_loggers_level(logging.DEBUG)
-        logger.setLevel(logging.INFO)
     elif log_level:
         set_loggers_level(log_level)
-        logger.setLevel(log_level)
     else:
         set_loggers_level(logging.INFO)
-        logger.setLevel(logging.WARN)
 
 
 @metadata.command()
