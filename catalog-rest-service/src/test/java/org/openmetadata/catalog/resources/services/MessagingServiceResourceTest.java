@@ -27,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
@@ -46,6 +48,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 

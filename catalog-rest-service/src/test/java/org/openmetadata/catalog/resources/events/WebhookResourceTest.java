@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
@@ -52,6 +54,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebhook> {
   public static final List<EventFilter> ALL_EVENTS_FILTER;

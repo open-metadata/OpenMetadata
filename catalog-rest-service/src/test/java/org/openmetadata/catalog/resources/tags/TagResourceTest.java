@@ -43,6 +43,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -60,6 +62,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 /** Tests not covered here: Tag category and Tag usage counts are covered in TableResourceTest */
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends CatalogApplicationTest {

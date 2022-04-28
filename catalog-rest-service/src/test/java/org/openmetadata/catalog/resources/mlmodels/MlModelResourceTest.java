@@ -39,6 +39,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateMlModel;
 import org.openmetadata.catalog.api.data.CreateTable;
@@ -65,6 +67,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlModel> {
