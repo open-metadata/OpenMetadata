@@ -122,13 +122,24 @@
       "additionalProperties": false,
       "required": ["type"]
     },
+    "logLevels": {
+      "description": "Supported logging levels",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.LogLevels",
+      "type": "string",
+      "enum": [
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR"
+      ],
+      "default": "INFO"
+    },
     "workflowConfig": {
       "description": "Configuration for the entire Ingestion Workflow.",
       "type": "object",
       "properties": {
         "loggerLevel": {
-          "type": "string",
-          "enum": ["DEBUG", "INFO", "WARN"],
+          "$ref": "#/definitions/logLevels",
           "default": "INFO"
         },
         "openMetadataServerConfig": {
