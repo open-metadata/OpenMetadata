@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { capitalize, isEmpty } from 'lodash';
-import React, { Fragment, FunctionComponent, useState } from 'react';
+import { isEmpty, isString } from 'lodash';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import {
   DbtConfigSource,
   GCSCredentialsValues,
@@ -29,51 +29,37 @@ import {
   validateDbtGCSCredsConfig,
 } from '../../../utils/DBTConfigFormUtil';
 import { Button } from '../../buttons/Button/Button';
-import { DropDownListItem } from '../../dropdown/types';
 import { Field } from '../../Field/Field';
 import {
   DbtConfigS3GCS,
   DBTFormCommonProps,
   ErrorDbtGCS,
 } from './DBTConfigForm.interface';
+import { GCSCreds } from './DBTFormConstants';
+import { GCS_CONFIG } from './DBTFormEnum';
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
-  handleSecurityConfigChange: (value: SCredentials) => void;
+  gcsType?: GCS_CONFIG;
+  handleGcsTypeChange?: (type: GCS_CONFIG) => void;
+  handleSecurityConfigChange: (value?: SCredentials) => void;
 }
-
-enum GCS_CONFIG {
-  GCSValues = 'GCSValues',
-  GCSCredentialsPath = 'GCSCredentialsPath',
-}
-
-const GCSCreds: Array<DropDownListItem> = [
-  {
-    name: 'GCS Credentials Values',
-    value: GCS_CONFIG.GCSValues,
-  },
-  {
-    name: 'GCS Credentials Path',
-    value: GCS_CONFIG.GCSCredentialsPath,
-  },
-];
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
+  gcsType = GCS_CONFIG.GCSValues,
   okText,
   cancelText,
   onCancel,
   onSubmit,
+  handleGcsTypeChange,
   handleSecurityConfigChange,
 }: Props) => {
-  const [gcsCreds, setGcsCreds] = useState<GCS_CONFIG>(GCS_CONFIG.GCSValues);
-
   const updateGCSCredsConfig = (
     key: keyof GCSCredentialsValues,
     val: string
   ) => {
     const gcsConfig = dbtSecurityConfig?.gcsConfig || {};
     const updatedCreds: SCredentials = {
-      ...dbtSecurityConfig,
       gcsConfig: {
         ...(gcsConfig as GCSCredentialsValues),
         [key]: val,
@@ -84,7 +70,6 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
 
   const updateGCSCredsPath = (val: string) => {
     const updatedCreds: SCredentials = {
-      ...dbtSecurityConfig,
       gcsConfig: val,
     };
     handleSecurityConfigChange(updatedCreds);
@@ -94,7 +79,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   const validate = (data: DbtConfigSource) => {
     let valid = true;
     const gcsConfig = data.dbtSecurityConfig?.gcsConfig;
-    if (gcsCreds === GCS_CONFIG.GCSValues) {
+    if (gcsType === GCS_CONFIG.GCSValues) {
       const { isValid: reqValid, errors: reqErr } = validateDbtGCSCredsConfig(
         (gcsConfig || {}) as GCSCredentialsValues
       );
@@ -110,9 +95,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
     } else {
       if (isEmpty(gcsConfig)) {
         setErrors({
-          gcsConfig: `${capitalize('gcsConfig')} ${
-            jsonData['form-error-messages']['is-required']
-          }`,
+          gcsConfig: `GCS Config ${jsonData['form-error-messages']['is-required']}`,
         } as ErrorDbtGCS);
         valid = false;
       } else {
@@ -357,13 +340,17 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           id="gcs-cred-path"
           name="gcs-cred-path"
           type="text"
-          value={gcsConfig}
+          value={isString(gcsConfig) ? gcsConfig : ''}
           onChange={(e) => updateGCSCredsPath(e.target.value)}
         />
         {errors?.gcsConfig && errorMsg(errors.gcsConfig)}
       </Field>
     );
   };
+
+  useEffect(() => {
+    handleSecurityConfigChange();
+  }, [gcsType]);
 
   return (
     <Fragment>
@@ -380,8 +367,11 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           id="gcs-config"
           name="gcs-config"
           placeholder="Select GCS Config Type"
-          value={gcsCreds}
-          onChange={(e) => setGcsCreds(e.target.value as GCS_CONFIG)}>
+          value={gcsType}
+          onChange={(e) => {
+            handleGcsTypeChange &&
+              handleGcsTypeChange(e.target.value as GCS_CONFIG);
+          }}>
           {GCSCreds.map((option, i) => (
             <option key={i} value={option.value}>
               {option.name}
@@ -389,7 +379,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           ))}
         </select>
       </Field>
-      {gcsCreds === GCS_CONFIG.GCSValues
+      {gcsType === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
         : gcsCredPath(dbtSecurityConfig?.gcsConfig as string)}
 

@@ -45,8 +45,8 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   const [errors, setErrors] = useState<ErrorDbtHttp>();
 
   const validate = (data: DbtConfigSource) => {
-    const { isValid, errors } = validateDbtHttpConfig(data);
-    setErrors(errors);
+    const { isValid, errors: reqErrors } = validateDbtHttpConfig(data);
+    setErrors(reqErrors);
 
     return isValid;
   };

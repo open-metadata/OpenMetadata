@@ -31,7 +31,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   data = {},
   okText,
   cancelText,
+  gcsType,
   source = '' as DBT_SOURCES,
+  handleGcsTypeChange,
   handleSourceChange,
   onCancel,
   onSubmit,
@@ -41,9 +43,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
-    val: string | SCredentials
+    val?: string | SCredentials
   ) => {
-    setDbtConfig((pre) => ({ ...pre, [key]: val }));
+    setDbtConfig((pre) => {
+      return { ...pre, [key]: val };
+    });
   };
 
   const getLocalConfigFields = () => {
@@ -104,6 +108,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       <DBTGCSConfig
         cancelText={cancelText}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
+        gcsType={gcsType}
+        handleGcsTypeChange={(type) => {
+          handleGcsTypeChange && handleGcsTypeChange(type);
+          setDbtConfig(data);
+        }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
         }}
@@ -163,6 +172,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     handleSourceChange && handleSourceChange(dbtSource);
   }, [dbtSource]);
 
+  useEffect(() => {
+    setDbtConfig(data);
+  }, [data, dbtSource, gcsType]);
+
   return (
     <Fragment>
       <Field>
@@ -181,7 +194,6 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           value={dbtSource}
           onChange={(e) => {
             setDbtSource(e.target.value as DBT_SOURCES);
-            setDbtConfig(data);
           }}>
           {DBTSources.map((option, i) => (
             <option key={i} value={option.value}>

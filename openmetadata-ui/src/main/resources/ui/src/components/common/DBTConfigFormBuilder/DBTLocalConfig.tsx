@@ -45,8 +45,8 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   const [errors, setErrors] = useState<ErrorDbtLocal>();
 
   const validate = (data: DbtConfigSource) => {
-    const { isValid, errors } = validateDbtLocalConfig(data);
-    setErrors(errors);
+    const { isValid, errors: reqErrors } = validateDbtLocalConfig(data);
+    setErrors(reqErrors);
 
     return isValid;
   };

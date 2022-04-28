@@ -17,3 +17,8 @@ export enum DBT_SOURCES {
   s3 = 's3',
   gcs = 'gcs',
 }
+
+export enum GCS_CONFIG {
+  GCSValues = 'GCSValues',
+  GCSCredentialsPath = 'GCSCredentialsPath',
+}

@@ -16,7 +16,7 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { DBT_SOURCES } from './DBTFormEnum';
+import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export interface DBTFormCommonProps {
   okText: string;
@@ -27,20 +27,11 @@ export interface DBTFormCommonProps {
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
   data?: DbtConfigSource;
+  gcsType?: GCS_CONFIG;
   source?: DBT_SOURCES;
+  handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSourceChange?: (src: DBT_SOURCES) => void;
 }
-
-export type GCSCredentialsErrors = Record<keyof GCSCredentialsValues, boolean>;
-type SCredentialsErrors = Record<
-  keyof SCredentials,
-  boolean | GCSCredentialsErrors
->;
-
-export type DbtConfigSourceErrors = Record<
-  keyof DbtConfigSource,
-  boolean | SCredentialsErrors
->;
 
 export type DbtConfigLocal = Pick<
   DbtConfigSource,
@@ -62,6 +53,16 @@ export type DbtS3Creds = Pick<
   | 'awsSessionToken'
   | 'endPointURL'
 >;
+
+export type DbtS3CredsReq = Pick<
+  DbtS3Creds,
+  'awsAccessKeyId' | 'awsSecretAccessKey' | 'awsRegion'
+>;
+
+export interface DbtSourceTypes {
+  sourceType: DBT_SOURCES;
+  gcsType?: GCS_CONFIG;
+}
 
 export type DbtGCSCreds = GCSCredentialsValues;
 

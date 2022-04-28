@@ -19,8 +19,9 @@ import {
   DbtConfigLocal,
   DbtGCSCreds,
   DbtS3Creds,
+  DbtS3CredsReq,
 } from './DBTConfigForm.interface';
-import { DBT_SOURCES } from './DBTFormEnum';
+import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
   {
@@ -45,31 +46,53 @@ export const DBTSources: Array<DropDownListItem> = [
   },
 ];
 
-export const reqDBTLocalFields: Array<keyof DbtConfigLocal> = [
-  'dbtCatalogFilePath',
-  'dbtManifestFilePath',
+export const GCSCreds: Array<DropDownListItem> = [
+  {
+    name: 'GCS Credentials Values',
+    value: GCS_CONFIG.GCSValues,
+  },
+  {
+    name: 'GCS Credentials Path',
+    value: GCS_CONFIG.GCSCredentialsPath,
+  },
 ];
-export const reqDBTHttpFields: Array<keyof DbtConfigHttp> = [
-  'dbtCatalogHttpPath',
-  'dbtManifestHttpPath',
-];
-export const reqDBTS3Fields: Array<keyof DbtS3Creds> = [
-  'awsAccessKeyId',
-  'awsSecretAccessKey',
-  'awsRegion',
-];
-export const reqDBTGCSCredsFields: Array<keyof DbtGCSCreds> = [
-  'authProviderX509CertUrl',
-  'authUri',
-  'clientEmail',
-  'clientId',
-  'clientX509CertUrl',
-  'privateKey',
-  'privateKeyId',
-  'projectId',
-  'tokenUri',
-  'type',
-];
+
+export const reqDBTLocalFields: Record<keyof DbtConfigLocal, string> = {
+  dbtCatalogFilePath: 'DBT Catalog File Path',
+  dbtManifestFilePath: 'DBT Manifest File Path',
+};
+
+export const reqDBTHttpFields: Record<keyof DbtConfigHttp, string> = {
+  dbtCatalogHttpPath: 'DBT Catalog Http Path',
+  dbtManifestHttpPath: 'DBT Manifest Http Path',
+};
+
+export const reqDBTS3Fields: Record<keyof DbtS3CredsReq, string> = {
+  awsAccessKeyId: 'AWS Access Key ID',
+  awsSecretAccessKey: 'AWS Secret Access Key',
+  awsRegion: 'AWS Region',
+};
+
+export const reqDBTGCSCredsFields: Record<keyof DbtGCSCreds, string> = {
+  authProviderX509CertUrl: 'Authentication Provider x509 Certificate URL',
+  authUri: 'Authentication URI',
+  clientEmail: 'Client Email',
+  clientId: 'Client ID',
+  clientX509CertUrl: 'Client x509 Certificate URL',
+  privateKey: 'Private Key',
+  privateKeyId: 'Private Key ID',
+  projectId: 'Project ID',
+  tokenUri: 'Token URI',
+  type: 'Credentials Type',
+};
+
+export const rulesDBTS3CredsFields: Record<
+  keyof Pick<FormValidationRules, FormValidationRulesType.url>,
+  Array<keyof DbtS3Creds>
+> = {
+  url: ['endPointURL'],
+};
+
 export const rulesDBTGCSCredsFields: Record<
   keyof Pick<
     FormValidationRules,

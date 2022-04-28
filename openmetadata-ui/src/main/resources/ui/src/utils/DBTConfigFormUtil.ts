@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { capitalize, isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isString } from 'lodash';
 import {
+  DbtConfigHttp,
+  DbtConfigLocal,
+  DbtGCSCreds,
+  DbtS3CredsReq,
+  DbtSourceTypes,
   ErrorDbtGCS,
   ErrorDbtHttp,
   ErrorDbtLocal,
@@ -24,8 +29,12 @@ import {
   reqDBTLocalFields,
   reqDBTS3Fields,
   rulesDBTGCSCredsFields,
+  rulesDBTS3CredsFields,
 } from '../components/common/DBTConfigFormBuilder/DBTFormConstants';
-import { DBT_SOURCES } from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
+import {
+  DBT_SOURCES,
+  GCS_CONFIG,
+} from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
   DbtConfigSource,
@@ -41,12 +50,14 @@ export const validateDbtLocalConfig = (
 ) => {
   let isValid = true;
   const errors = {} as ErrorDbtLocal;
-  for (const field of requiredFields) {
+  for (const field of Object.keys(requiredFields) as Array<
+    keyof DbtConfigLocal
+  >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[field] = `${capitalize(field)} ${
-        jsonData['form-error-messages']['is-required']
-      }`;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
     }
   }
 
@@ -59,12 +70,14 @@ export const validateDbtHttpConfig = (
 ) => {
   let isValid = true;
   const errors = {} as ErrorDbtHttp;
-  for (const field of requiredFields) {
+  for (const field of Object.keys(requiredFields) as Array<
+    keyof DbtConfigHttp
+  >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[field] = `${capitalize(field)} ${
-        jsonData['form-error-messages']['is-required']
-      }`;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
     }
   }
 
@@ -77,12 +90,14 @@ export const validateDbtS3Config = (
 ) => {
   let isValid = true;
   const errors = {} as ErrorDbtS3;
-  for (const field of requiredFields) {
+  for (const field of Object.keys(requiredFields) as Array<
+    keyof DbtS3CredsReq
+  >) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[field] = `${capitalize(field)} ${
-        jsonData['form-error-messages']['is-required']
-      }`;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
     }
   }
 
@@ -95,12 +110,32 @@ export const validateDbtGCSCredsConfig = (
 ) => {
   let isValid = true;
   const errors = {} as ErrorDbtGCS;
-  for (const field of requiredFields) {
+  for (const field of Object.keys(requiredFields) as Array<keyof DbtGCSCreds>) {
     if (isEmpty(data[field])) {
       isValid = false;
-      errors[field] = `${capitalize(field)} ${
-        jsonData['form-error-messages']['is-required']
-      }`;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+    }
+  }
+
+  return { isValid, errors };
+};
+
+export const checkDbtS3CredsConfigRules = (
+  data: SCredentials,
+  ruleFields = rulesDBTS3CredsFields
+) => {
+  let isValid = true;
+  const errors = {} as ErrorDbtS3;
+  for (const rule in ruleFields) {
+    if (rule === FormValidationRulesType.url) {
+      for (const field of ruleFields[rule]) {
+        if (!isValidUrl(data[field] || '')) {
+          isValid = false;
+          errors[field] = jsonData['form-error-messages']['invalid-url'];
+        }
+      }
     }
   }
 
@@ -143,26 +178,35 @@ export const checkDbtGCSCredsConfigRules = (
   return { isValid, errors };
 };
 
-export const getSourceTypeFromConfig = (data?: DbtConfigSource) => {
-  if (!data) {
-    return '' as DBT_SOURCES;
-  } else {
+export const getSourceTypeFromConfig = (
+  data?: DbtConfigSource
+): DbtSourceTypes => {
+  let sourceType = '' as DBT_SOURCES;
+  let gcsType = undefined;
+  if (data) {
     if (data && !isNil(data.dbtSecurityConfig)) {
       if (!isNil(data.dbtSecurityConfig.gcsConfig)) {
-        return DBT_SOURCES.gcs;
+        sourceType = DBT_SOURCES.gcs;
+        gcsType = isString(data.dbtSecurityConfig.gcsConfig)
+          ? GCS_CONFIG.GCSCredentialsPath
+          : GCS_CONFIG.GCSValues;
       } else {
-        return DBT_SOURCES.s3;
+        sourceType = DBT_SOURCES.s3;
       }
     } else if (
-      reqDBTHttpFields.filter((field) => !isEmpty(data[field])).length > 0
+      Object.keys(reqDBTHttpFields).filter(
+        (field) => !isEmpty(data[field as keyof DbtConfigHttp])
+      ).length > 0
     ) {
-      return DBT_SOURCES.http;
+      sourceType = DBT_SOURCES.http;
     } else if (
-      reqDBTLocalFields.filter((field) => !isEmpty(data[field])).length > 0
+      Object.keys(reqDBTLocalFields).filter(
+        (field) => !isEmpty(data[field as keyof DbtConfigLocal])
+      ).length > 0
     ) {
-      return DBT_SOURCES.local;
-    } else {
-      return '' as DBT_SOURCES;
+      sourceType = DBT_SOURCES.local;
     }
   }
+
+  return { sourceType, gcsType };
 };

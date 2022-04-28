@@ -41,7 +41,10 @@ import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
 import DBTConfigFormBuilder from '../common/DBTConfigFormBuilder/DBTConfigFormBuilder';
-import { DBT_SOURCES } from '../common/DBTConfigFormBuilder/DBTFormEnum';
+import {
+  DBT_SOURCES,
+  GCS_CONFIG,
+} from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddIngestionProps } from './addIngestion.interface';
@@ -123,12 +126,16 @@ const AddIngestion = ({
   const [dbtConfigSource, setDbtConfigSource] = useState<
     DbtConfigSource | undefined
   >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
+
+  const sourceTypeData = useMemo(
+    () => getSourceTypeFromConfig(configData as DbtConfigSource | undefined),
+    [configData]
+  );
   const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
     DBT_SOURCES | undefined
-  >(
-    showDBTConfig
-      ? getSourceTypeFromConfig(configData as DbtConfigSource | undefined)
-      : undefined
+  >(showDBTConfig ? sourceTypeData.sourceType : undefined);
+  const [gcsConfigType, setGcsConfigType] = useState<GCS_CONFIG | undefined>(
+    showDBTConfig ? sourceTypeData.gcsType : undefined
   );
   const [markDeletedTables, setMarkDeletedTables] = useState(
     isDatabaseService
@@ -515,6 +522,8 @@ const AddIngestion = ({
           <DBTConfigFormBuilder
             cancelText="Back"
             data={dbtConfigSource}
+            gcsType={gcsConfigType}
+            handleGcsTypeChange={(type) => setGcsConfigType(type)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}
             okText="Next"
             source={dbtConfigSourceType}

@@ -21,7 +21,10 @@ import {
   getSeparator,
   requiredField,
 } from '../../../utils/CommonUtils';
-import { validateDbtS3Config } from '../../../utils/DBTConfigFormUtil';
+import {
+  checkDbtS3CredsConfigRules,
+  validateDbtS3Config,
+} from '../../../utils/DBTConfigFormUtil';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
 import {
@@ -43,18 +46,25 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   handleSecurityConfigChange,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
-    const updatedCreds: SCredentials = { ...dbtSecurityConfig, [key]: val };
+    const updatedCreds: SCredentials = {
+      ...dbtSecurityConfig,
+      [key]: val,
+    };
+    delete updatedCreds.gcsConfig;
     handleSecurityConfigChange(updatedCreds);
   };
 
   const [errors, setErrors] = useState<ErrorDbtS3>();
   const validate = (data: DbtConfigSource) => {
-    const { isValid, errors } = validateDbtS3Config(
+    const { isValid, errors: reqErrors } = validateDbtS3Config(
       data.dbtSecurityConfig || {}
     );
-    setErrors(errors);
+    const { isValid: fieldValid, errors: fieldErr } =
+      checkDbtS3CredsConfigRules(data.dbtSecurityConfig || {});
 
-    return isValid;
+    setErrors({ ...reqErrors, ...fieldErr });
+
+    return isValid && fieldValid;
   };
 
   const handleSubmit = () => {
@@ -161,6 +171,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           value={dbtSecurityConfig?.endPointURL}
           onChange={(e) => updateS3Creds('endPointURL', e.target.value)}
         />
+        {errors?.endPointURL && errorMsg(errors.endPointURL)}
       </Field>
       {getSeparator('')}
 
