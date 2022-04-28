@@ -61,6 +61,7 @@
     <redshift-jdbc.version>2.1.0.6</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.28</mysql.connector.version>
+    <postgres.connector.version>42.3.3</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.22</lombok.version>
@@ -214,6 +215,11 @@
             <artifactId>protobuf-java</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgres.connector.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>

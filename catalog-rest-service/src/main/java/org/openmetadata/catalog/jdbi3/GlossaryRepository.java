@@ -36,7 +36,6 @@ import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "owner,tags,reviewers";
@@ -149,7 +148,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Override
     public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
+      return entity.getName();
     }
 
     @Override

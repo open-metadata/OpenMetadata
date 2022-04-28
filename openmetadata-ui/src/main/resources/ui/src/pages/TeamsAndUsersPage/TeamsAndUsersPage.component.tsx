@@ -224,7 +224,7 @@ const TeamsAndUsersPage = () => {
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          if (!teamAndUser) {
+          if (!teamAndUser && res.data.data > 0) {
             getCurrentTeamUsers(res.data.data[0].name);
             setCurrentTeam(res.data.data[0]);
           }

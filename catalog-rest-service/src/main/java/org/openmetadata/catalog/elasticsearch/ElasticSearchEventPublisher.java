@@ -139,7 +139,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           LOG.error("Error in publishing to ElasticSearch");
           throw new ElasticSearchRetriableException(e.getMessage());
         } else {
-          throw new EventPublisherException(e.getMessage());
+          LOG.error(e.getMessage(), e);
         }
       } catch (IOException ie) {
         throw new EventPublisherException(ie.getMessage());

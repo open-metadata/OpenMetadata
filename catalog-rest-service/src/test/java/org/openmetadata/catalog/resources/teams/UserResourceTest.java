@@ -281,18 +281,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Test
   void put_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
-    CreateUser create = createRequest(test, 1);
+    CreateUser create = createRequest("user.xyz", null, null, null);
     User user = updateAndCheckEntity(create, CREATED, ADMIN_AUTH_HEADERS, UpdateType.CREATED, null);
 
     // Update the user information using PUT
     String oldEmail = create.getEmail();
-    String oldDisplayName = create.getDisplayName();
     CreateUser update = create.withEmail("test1@email.com").withDisplayName("displayName1");
 
     ChangeDescription change = getChangeDescription(user.getVersion());
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName1"));
+    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName1"));
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("email").withOldValue(oldEmail).withNewValue("test1@email.com"));
