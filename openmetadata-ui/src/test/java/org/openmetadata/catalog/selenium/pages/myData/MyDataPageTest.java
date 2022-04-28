@@ -31,15 +31,13 @@ import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
 import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -63,6 +61,7 @@ class MyDataPageTest {
   Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -82,6 +81,11 @@ class MyDataPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(30))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -143,11 +147,8 @@ class MyDataPageTest {
     wait.until(ExpectedConditions.elementToBeClickable(myDataPage.searchBox())); // Search bar/dim
     Events.sendKeys(webDriver, myDataPage.searchBox(), sendkeys); // Search bar/dim
     Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
-    Thread.sleep(waitTime);
-    WebElement tableName =
-        tableDetails
-            .breadCrumb()
-            .get(tableDetails.breadCrumb().size() - 1); // getting the last element as it would match the table name
+    Events.click(webDriver, tableDetails.queries());
+    WebElement tableName = webDriver.findElement(tableDetails.tableName());
     Assert.assertTrue(tableName.getText().contains(sendkeys));
   }
 
@@ -254,8 +255,7 @@ class MyDataPageTest {
       Events.click(webDriver, tableDetails.follow());
     }
     Events.click(webDriver, myDataPage.home());
-    Thread.sleep(2000);
-    webDriver.navigate().refresh();
+    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(myDataPage.tables())));
     try {
       Events.click(webDriver, common.followingTable(table));
     } catch (TimeoutException | NoSuchElementException e) {
@@ -332,9 +332,7 @@ class MyDataPageTest {
     webDriver.navigate().back();
     webDriver.switchTo().window(tabs.get(0));
     Events.click(webDriver, myDataPage.help());
-    Thread.sleep(1000);
     Events.click(webDriver, myDataPage.slack());
-    Thread.sleep(1000);
     webDriver.switchTo().window(tabs.get(0));
   }
 

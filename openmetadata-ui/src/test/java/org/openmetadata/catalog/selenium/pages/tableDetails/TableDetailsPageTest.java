@@ -44,6 +44,8 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -72,6 +74,7 @@ class TableDetailsPageTest {
   Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -92,6 +95,11 @@ class TableDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(30))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -129,18 +137,15 @@ class TableDetailsPageTest {
 
   @Test
   @Order(3)
-  void editDescription() throws InterruptedException {
+  void editDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
     Events.click(webDriver, tableDetails.saveTableDescription());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
     String description = webDriver.findElement(tableDetails.descriptionBox()).getText();
     if (!description.contains(updatedDescription)) {
       Assert.fail("Description not updated");
@@ -151,19 +156,16 @@ class TableDetailsPageTest {
 
   @Test
   @Order(4)
-  void searchColumnAndEditDescription() throws InterruptedException {
+  void searchColumnAndEditDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    WebElement columnDescripitonBox;
     String sendKeys = "Description Added";
     Events.click(webDriver, explorePage.selectTable());
     for (int i = 0; i < 1; i++) {
       actions.moveToElement(webDriver.findElement(tableDetails.columnDescriptionButton())).perform();
       Events.click(webDriver, tableDetails.columnDescriptionButton());
       Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
-      Thread.sleep(2000);
       Events.click(webDriver, tableDetails.saveTableDescription());
-      Thread.sleep(2000);
       webDriver.navigate().refresh();
     }
     try {
@@ -180,7 +182,7 @@ class TableDetailsPageTest {
 
   @Test
   @Order(5)
-  void addTagsToColumn() throws InterruptedException {
+  void addTagsToColumn() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(3));
@@ -190,28 +192,23 @@ class TableDetailsPageTest {
     for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Assert.assertEquals(tagCount, 2);
   }
 
   @Test
   @Order(6)
-  void removeTags() throws InterruptedException {
+  void removeTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(1));
     Object count = webDriver.findElements(tableDetails.columnTags()).size();
     Events.click(webDriver, tableDetails.editTags());
-    Thread.sleep(1000);
     Events.click(webDriver, tableDetails.removeTag());
     Events.click(webDriver, tableDetails.saveTag());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Object updatedCount = webDriver.findElements(tableDetails.columnTags());
     if (updatedCount.equals(count)) {
@@ -236,7 +233,7 @@ class TableDetailsPageTest {
 
   @Test
   @Order(8)
-  void checkManage() throws InterruptedException {
+  void checkManage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(1));
@@ -258,30 +255,27 @@ class TableDetailsPageTest {
     // Clicking and checking all the nodes text matches to side drawer text
     for (WebElement e : nodes) {
       e.click();
-      actions.dragAndDropBy(e, 100, 200).perform();
+      Events.click(webDriver, tableDetails.closeSideDrawer());
     }
+    actions.dragAndDropBy(webDriver.findElement(tableDetails.lineageNode()), 100, 200).perform();
   }
 
   @Test
   @Order(10)
-  void checkBreadCrumb() throws Exception {
+  void checkBreadCrumb() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     List<WebElement> br = tableDetails.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
     for (WebElement link : br) {
       try {
         link.click();
-        Thread.sleep(waitTime);
         Assert.assertTrue(link.isDisplayed());
       } catch (StaleElementReferenceException ex) {
         webDriver.navigate().back();
-        Thread.sleep(waitTime);
         Events.click(webDriver, By.xpath(xpath));
-        Thread.sleep(waitTime);
         Assert.assertTrue(webDriver.findElement(By.xpath(xpath)).isDisplayed());
         break;
       }
@@ -290,12 +284,11 @@ class TableDetailsPageTest {
 
   @Test
   @Order(11)
-  void checkVersion() throws InterruptedException {
+  void checkVersion() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, tableDetails.version());
-    Thread.sleep(1000);
     List<WebElement> versionGrid = tableDetails.versionDetailsGrid();
     List<WebElement> versionRadioButton = tableDetails.versionRadioButton();
     for (WebElement e : versionRadioButton) {
@@ -303,18 +296,16 @@ class TableDetailsPageTest {
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, tableDetails.version());
-    Thread.sleep(1000);
     Events.click(webDriver, myDataPage.openWhatsNew());
   }
 
   @Test
   @Order(12)
-  void checkFrequentlyJoinedTables() throws InterruptedException {
+  void checkFrequentlyJoinedTables() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
     Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
-    Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedTables());
     } catch (NoSuchElementException | TimeoutException e) {
@@ -324,12 +315,11 @@ class TableDetailsPageTest {
 
   @Test
   @Order(13)
-  void checkFrequentlyJoinedColumns() throws InterruptedException {
+  void checkFrequentlyJoinedColumns() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, myDataPage.searchBox(), "dim_location");
     Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
-    Thread.sleep(2000);
     try {
       Events.click(webDriver, tableDetails.joinedColumns());
     } catch (NoSuchElementException | TimeoutException e) {

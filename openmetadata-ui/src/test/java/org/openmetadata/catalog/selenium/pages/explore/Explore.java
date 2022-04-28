@@ -5,10 +5,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
@@ -18,17 +15,18 @@ import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
 import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Order(9)
 class Explore {
   static WebDriver webDriver;
@@ -48,6 +46,7 @@ class Explore {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   Integer[] check;
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -67,6 +66,11 @@ class Explore {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -87,7 +91,7 @@ class Explore {
   void checkTableCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    WebElement tabCount = webDriver.findElement(explorePage.tableCount());
+    WebElement tabCount = fluentWait.until(webDriver1 -> webDriver.findElement(explorePage.tableCount()));
     int tableCount = Integer.parseInt(tabCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -109,12 +113,11 @@ class Explore {
 
   @Test
   @Order(3)
-  void checkTopicCount() throws InterruptedException {
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+  void checkTopicCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
+    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.kafka())));
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
-    Thread.sleep(waitTime);
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -136,12 +139,12 @@ class Explore {
 
   @Test
   @Order(4)
-  void checkDashboardCount() throws InterruptedException {
+  void checkDashboardCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
+    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.superset())));
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
-    Thread.sleep(waitTime);
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -163,12 +166,12 @@ class Explore {
 
   @Test
   @Order(5)
-  void checkPipelineCount() throws InterruptedException {
+  void checkPipelineCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
+    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.airflow())));
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
-    Thread.sleep(waitTime);
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -212,22 +215,22 @@ class Explore {
 
   @Test
   @Order(7)
-  void checkLastUpdatedSort() throws InterruptedException {
+  void checkLastUpdatedSort() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String sendKeys = faker.address().toString();
     openExplorePage();
     // Adding description to check last updated sort
+    String tableName = webDriver.findElement(common.selectTableLink(1)).getText();
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
-    Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
     webDriver.navigate().refresh();
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Events.click(webDriver, explorePage.lastUpdatedSort());
-    Thread.sleep(2000);
+    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(common.containsText(tableName))));
     try {
       String descriptionCheck = webDriver.findElement(explorePage.updatedDescription()).getText();
       Assert.assertEquals(descriptionCheck, sendKeys);
@@ -280,7 +283,7 @@ class Explore {
 
   @Test
   @Order(10)
-  void checkRandomDashboardCount() throws InterruptedException {
+  void checkRandomDashboardCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
@@ -301,7 +304,7 @@ class Explore {
 
   @Test
   @Order(11)
-  void checkRandomPipelineCount() throws InterruptedException {
+  void checkRandomPipelineCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
@@ -322,7 +325,7 @@ class Explore {
 
   @Test
   @Order(12)
-  void checkSearchBarInvalidValue() throws InterruptedException {
+  void checkSearchBarInvalidValue() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());

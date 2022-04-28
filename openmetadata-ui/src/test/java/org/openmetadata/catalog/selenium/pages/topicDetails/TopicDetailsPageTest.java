@@ -30,15 +30,13 @@ import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
 import org.openmetadata.catalog.selenium.objectRepository.TopicDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.StaleElementReferenceException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -52,7 +50,6 @@ class TopicDetailsPageTest {
   static Actions actions;
   static WebDriverWait wait;
   static String topic = "orders";
-  Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   Common common;
@@ -62,6 +59,7 @@ class TopicDetailsPageTest {
   int counter = 2;
   String xpath = "//li[@data-testid='breadcrumb-link'][" + counter + "]";
   String description = "Test@1234";
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -79,15 +77,19 @@ class TopicDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(30))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
-  void openExplorePage() throws InterruptedException {
+  void openExplorePage() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    Thread.sleep(3000);
-    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
+    if (fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.tableCount())).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -96,7 +98,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(2)
-  void checkTabs() throws InterruptedException {
+  void checkTabs() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, common.searchBox(), topic);
@@ -107,7 +109,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(3)
-  void checkFollow() throws InterruptedException {
+  void checkFollow() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.sendKeys(webDriver, common.searchBox(), topic);
@@ -129,7 +131,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(4)
-  void addTags() throws InterruptedException {
+  void addTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -139,19 +141,16 @@ class TopicDetailsPageTest {
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     Assert.assertEquals(tagCount, 3);
   }
 
   @Test
   @Order(5)
-  void removeTags() throws InterruptedException {
+  void removeTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -164,9 +163,7 @@ class TopicDetailsPageTest {
       Assert.fail("Tag not found");
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
     Object updatedCount = webDriver.findElements(topicDetails.breadCrumbTags()).size();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
@@ -177,7 +174,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(6)
-  void editDescription() throws InterruptedException {
+  void editDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
@@ -185,17 +182,12 @@ class TopicDetailsPageTest {
     Events.click(webDriver, explorePage.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
-    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
     String checkDescription = webDriver.findElement(topicDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
@@ -206,13 +198,10 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(7)
-  void checkManage() throws InterruptedException {
+  void checkManage() {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     Events.click(webDriver, common.selectTableLink(2));
-    Thread.sleep(waitTime);
-    actions.perform();
-    actions.click();
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
@@ -226,7 +215,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(8)
-  void checkBreadCrumb() throws Exception {
+  void checkBreadCrumb() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -247,7 +236,7 @@ class TopicDetailsPageTest {
 
   @Test
   @Order(9)
-  void checkVersion() throws InterruptedException {
+  void checkVersion() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -261,7 +250,6 @@ class TopicDetailsPageTest {
         break;
       }
       e.click();
-      Thread.sleep(waitTime);
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

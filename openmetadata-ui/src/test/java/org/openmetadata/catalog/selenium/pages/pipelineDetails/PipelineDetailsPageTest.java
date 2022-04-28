@@ -29,14 +29,13 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.objectRepository.PipelineDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.StaleElementReferenceException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -46,7 +45,6 @@ import org.testng.Assert;
 class PipelineDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
-  Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
   static Actions actions;
   static WebDriverWait wait;
@@ -57,6 +55,7 @@ class PipelineDetailsPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String description = "Test@1234";
   String xpath = "//div[@data-testid='description']/div/span";
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -72,25 +71,29 @@ class PipelineDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(30))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
-  void openExplorePage() throws InterruptedException {
+  void openExplorePage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    Thread.sleep(2000);
-    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
+    if (fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.tableCount())).isDisplayed()) {
       LOG.info("Passed");
     } else {
-      Assert.fail("No such element found");
+      Assert.fail();
     }
   }
 
   @Test
   @Order(2)
-  void editDescription() throws InterruptedException {
+  void editDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
@@ -98,17 +101,14 @@ class PipelineDetailsPageTest {
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    String checkDescription = webDriver.findElement(pipelineDetails.descriptionContainer()).getText();
+    String checkDescription =
+        fluentWait.until(ExpectedConditions.presenceOfElementLocated(pipelineDetails.descriptionContainer())).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -118,7 +118,7 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(3)
-  void addTag() throws InterruptedException {
+  void addTag() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -127,19 +127,16 @@ class PipelineDetailsPageTest {
     for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(common.breadCrumbTags()).size();
     Assert.assertEquals(tagCount, 2);
   }
 
   @Test
   @Order(4)
-  void removeTag() throws InterruptedException {
+  void removeTag() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -147,11 +144,8 @@ class PipelineDetailsPageTest {
     Object count = webDriver.findElements(common.breadCrumbTags()).size();
     Events.click(webDriver, common.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object updatedCount = webDriver.findElements(common.breadCrumbTags());
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
@@ -162,7 +156,7 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(5)
-  void editTaskDescription() throws InterruptedException {
+  void editTaskDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
@@ -171,20 +165,15 @@ class PipelineDetailsPageTest {
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
-    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(2000);
     webDriver.navigate().refresh();
-    Thread.sleep(2000);
-    String checkDescription = pipelineDetails.getDescriptionBox().getText();
+    String checkDescription =
+        fluentWait.until(ExpectedConditions.visibilityOf(pipelineDetails.getDescriptionBox())).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -194,7 +183,7 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(9)
-  void checkLineage() throws InterruptedException {
+  void checkLineage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -209,7 +198,7 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(7)
-  void checkManage() throws InterruptedException {
+  void checkManage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -224,18 +213,17 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(8)
-  void checkBreadCrumb() throws Exception {
+  void checkBreadCrumb() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
-    // Since after navigating back we are facing StaleElementException using try catch block.
+    // Since after navtgating back we are facing StaleElementException using try catch block.
     for (int i = 0; i < br.size() - 1; i++) {
       try {
         br.get(i).click();
-        Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {
         WebElement breadcrumb_link = webDriver.findElement(By.xpath(xpath));
@@ -246,7 +234,7 @@ class PipelineDetailsPageTest {
 
   @Test
   @Order(9)
-  void checkVersion() throws InterruptedException {
+  void checkVersion() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -260,7 +248,6 @@ class PipelineDetailsPageTest {
         break;
       }
       e.click();
-      Thread.sleep(waitTime);
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

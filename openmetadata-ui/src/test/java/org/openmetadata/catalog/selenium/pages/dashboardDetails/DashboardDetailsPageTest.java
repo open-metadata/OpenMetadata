@@ -29,15 +29,13 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DashboardDetails;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.StaleElementReferenceException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -47,13 +45,10 @@ import org.testng.Assert;
 class DashboardDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
-  Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  String dashboardName = "Misc Charts";
   Common common;
   DashboardDetails dashboardDetails;
   ExplorePage explorePage;
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   String webDriverInstance = Property.getInstance().getWebDriver();
@@ -61,6 +56,7 @@ class DashboardDetailsPageTest {
   String description = "Test@1234";
   String updatedDescription = "Updated Description";
   String xpath = "//div[@data-testid='description']/div/span";
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -76,16 +72,20 @@ class DashboardDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(30))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
-  void openExplorePage() throws InterruptedException {
+  void openExplorePage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    Thread.sleep(waitTime);
-    if (webDriver.findElement(common.tableCount()).isDisplayed()) {
+    if (fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.tableCount())).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -94,7 +94,7 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(2)
-  void editDescription() throws InterruptedException {
+  void editDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -102,46 +102,41 @@ class DashboardDetailsPageTest {
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
-    String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
+    String checkDescription =
+        fluentWait
+            .until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.dashboardDescriptionBox()))
+            .getText();
     Assert.assertEquals(checkDescription, updatedDescription);
   }
 
   @Test
   @Order(4)
-  void addTags() throws InterruptedException {
+  void addTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, common.selectTableLink(1));
+    Events.click(webDriver, common.selectTableLink(2));
     Events.click(webDriver, common.addTag());
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(dashboardDetails.breadCrumbTags()).size();
     Assert.assertEquals(tagCount, 3);
   }
 
   @Test
   @Order(5)
-  void removeTags() throws InterruptedException {
+  void removeTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -149,11 +144,8 @@ class DashboardDetailsPageTest {
     Object count = webDriver.findElements(common.breadCrumbTags()).size();
     Events.click(webDriver, common.addTag());
     Events.click(webDriver, common.removeAssociatedTag());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object updatedCount = webDriver.findElements(dashboardDetails.breadCrumbTags()).size();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
@@ -164,7 +156,7 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(5)
-  void editChartDescription() throws InterruptedException {
+  void editChartDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String updatedDescription = faker.address().toString();
     openExplorePage();
@@ -173,19 +165,15 @@ class DashboardDetailsPageTest {
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     actions.moveToElement(webDriver.findElement(dashboardDetails.editChartDescription()));
     Events.click(webDriver, dashboardDetails.editChartDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
-    String checkDescription = webDriver.findElement(dashboardDetails.descriptionBox()).getText();
+    String checkDescription =
+        fluentWait.until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.descriptionBox())).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -195,29 +183,25 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(6)
-  void addChartTags() throws InterruptedException {
+  void addChartTags() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTableLink(3));
-    Thread.sleep(waitTime);
     Events.click(webDriver, dashboardDetails.addChartTag());
     for (int i = 0; i < 3; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
       Events.click(webDriver, common.tagListItem());
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     Object tagCount = webDriver.findElements(dashboardDetails.chartTags()).size();
     Assert.assertEquals(tagCount, 3);
   }
 
   @Test
   @Order(7)
-  void removeChartTag() throws InterruptedException {
+  void removeChartTag() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -225,12 +209,10 @@ class DashboardDetailsPageTest {
     Object count = webDriver.findElements(dashboardDetails.chartTags()).size();
     Events.click(webDriver, dashboardDetails.addChartTag());
     Events.click(webDriver, common.removeAssociatedTag());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.saveAssociatedTag());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
-    Object updatedCount = webDriver.findElements(dashboardDetails.chartTags()).size();
+    Object updatedCount =
+        fluentWait.until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.chartTags())).getSize();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {
@@ -240,11 +222,11 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(8)
-  void checkManage() throws InterruptedException {
+  void checkManage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
-    Events.click(webDriver, explorePage.selectTable());
+    Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
@@ -255,7 +237,7 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(9)
-  void checkBreadCrumb() throws Exception {
+  void checkBreadCrumb() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, dashboardDetails.dashboard());
@@ -266,7 +248,6 @@ class DashboardDetailsPageTest {
     for (int i = 0; i < br.size() - 1; i++) {
       try {
         br.get(i).click();
-        Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {
         WebElement breadcrumb_link = webDriver.findElement(By.xpath(xpath));
@@ -277,7 +258,7 @@ class DashboardDetailsPageTest {
 
   @Test
   @Order(10)
-  void checkVersion() throws InterruptedException {
+  void checkVersion() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -291,7 +272,6 @@ class DashboardDetailsPageTest {
         break;
       }
       e.click();
-      Thread.sleep(waitTime);
       ((JavascriptExecutor) webDriver).executeScript("arguments[0].scrollIntoView(true);", e);
     }
     Events.click(webDriver, common.version());

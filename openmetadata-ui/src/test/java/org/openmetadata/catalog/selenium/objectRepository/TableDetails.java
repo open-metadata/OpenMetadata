@@ -85,6 +85,8 @@ public class TableDetails {
   By openTagConversationThread = By.cssSelector("[data-testid='tag-thread']");
   By startTagConversation = By.cssSelector("[data-testid='start-tag-thread']");
   By selectTier = By.cssSelector("[data-testid='select-tier-buuton']");
+  By tableName = By.cssSelector("[data-testid='inactive-link']");
+  By closeSideDrawer = By.cssSelector("[data-testid='closeDrawer']");
 
   public List<WebElement> versionDetailsGrid() {
     return webDriver.findElements(versionDetailsGrid);
