@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Metadata source module"""
 
-import logging
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
@@ -29,8 +28,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 @dataclass

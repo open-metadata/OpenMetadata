@@ -10,15 +10,15 @@
 #  limitations under the License.
 
 import importlib
-import logging
 from typing import Any, Iterable, Iterator, Optional, Union
 
 import neo4j
 from neo4j import GraphDatabase
 
 from metadata.config.common import ConfigModel
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class Neo4JConfig(ConfigModel):

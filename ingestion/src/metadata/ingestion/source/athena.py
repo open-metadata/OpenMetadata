@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 from typing import Iterable
 
 from sqlalchemy.inspection import inspect
@@ -31,8 +30,9 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class AthenaSource(SQLSource):

@@ -31,8 +31,9 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class TrinoSource(SQLSource):
