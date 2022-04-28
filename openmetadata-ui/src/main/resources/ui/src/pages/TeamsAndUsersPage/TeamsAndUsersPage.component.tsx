@@ -227,6 +227,7 @@ const TeamsAndUsersPage = () => {
           if (!teamAndUser && res.data.data.length > 0) {
             getCurrentTeamUsers(res.data.data[0].name);
             setCurrentTeam(res.data.data[0]);
+            setIsRightPannelLoading(false);
           }
           setTeams(res.data.data);
           AppState.updateUserTeam(res.data.data);
