@@ -45,8 +45,8 @@ This is a sample config for Glue:
         "config": {
           "type": "Glue",
           "awsConfig": {
-            "awsAccessKeyId": "AKIA6OMJII2Q3XBAXMOL",
-            "awsSecretAccessKey": "b7FqxXEiK7PV3rSDWKoSseSlNdPdjW1izZDdsVwB",
+            "awsAccessKeyId": "KEY",
+            "awsSecretAccessKey": "SECRET",
             "awsRegion": "us-east-2",
             "endPointURL": "https://glue.us-east-2.amazonaws.com/"
           },

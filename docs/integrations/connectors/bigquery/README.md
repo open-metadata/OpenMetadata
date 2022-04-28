@@ -78,6 +78,10 @@ Once the credentials have been added, click on **Test Connection** and _Save_ th
 
 ![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1).png>)
 
+<details>
+
+<summary>Connection Options</summary>
+
 #### Host and Port
 
 This is the BigQuery APIs URL.
@@ -136,6 +140,8 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
+</details>
+
 ![Service has been saved](<../../../.gitbook/assets/image (13) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
@@ -143,6 +149,10 @@ In case you authenticate with SSO using an external browser popup, then add the 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
+
+<details>
+
+<summary>Metadata Ingestion Options</summary>
 
 #### Include (Table Filter Pattern)
 
@@ -182,6 +192,8 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
+</details>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -191,6 +203,10 @@ Review your configuration settings. If they match what you intended, click _Depl
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+
+<details>
+
+<summary><strong>Scheduling Options</strong></summary>
 
 **Every**
 
@@ -221,6 +237,8 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
+
+</details>
 
 ### 8. View the Ingestion Pipeline
 
@@ -260,6 +278,10 @@ Here you can enter the Usage Ingestion details:
 
 ![Configure the Usage Ingestion](<../../../.gitbook/assets/image (36).png>)
 
+<details>
+
+<summary>Usage Options</summary>
+
 #### Query Log Duration
 
 Specify the duration in days for which the profiler should capture usage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture usage information for 48 hours prior to when the ingestion workflow is run.
@@ -271,6 +293,8 @@ Mention the absolute file path of the temporary file name to store the query log
 #### &#x20;Result Limit
 
 Set the limit for the query log results to be run at a time.
+
+</details>
 
 ### 3. Schedule and Deploy
 
@@ -304,6 +328,10 @@ Here you can enter the Profiler Ingestion details.
 
 ![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
+<details>
+
+<summary>Profiler Options</summary>
+
 #### Name
 
 Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
@@ -317,6 +345,8 @@ Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tab
 #### Description
 
 Give the Ingestion Pipeline a description to show what type of data we are profiling.
+
+</details>
 
 ### 3. Schedule and Deploy
 
