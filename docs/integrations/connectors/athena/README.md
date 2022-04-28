@@ -6,7 +6,7 @@ description: >-
 
 # Athena
 
-Configure and schedule Athena **metadata**,  and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Athena **metadata**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -64,9 +64,7 @@ Provide a description for your Athena service that enables other users to determ
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
-![](../../../.gitbook/assets/athena-connection-config.jpg)
-
-
+![Service Connection Options](../../../.gitbook/assets/athena-connection-config.jpg)
 
 ![Service has been saved](<../../../.gitbook/assets/image (17) (3).png>)
 
@@ -136,8 +134,70 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+## Data Profiler and Quality Tests
+
+After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+
+This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
+
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
+
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
+
+You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
+
+### 1. Add a Profiler Ingestion
+
+From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
+
+![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
+
+If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
+
+### 2. Configure the Profiler Ingestion
+
+Here you can enter the Profiler Ingestion details.
+
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
+
+<details>
+
+<summary>Profiler Options</summary>
+
+#### Name
+
+Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
+
+As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
+
+#### FQN Filter Pattern
+
+Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
+
+#### Description
+
+Give the Ingestion Pipeline a description to show what type of data we are profiling.
+
+</details>
+
+### 3. Schedule and Deploy
+
+After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
+
+## Run using Airflow SDK
+
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](../bigquery/run-bigquery-connector-using-airflow-sdk.md).
+
+## One-time ingestion with the CLI
+
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../bigquery/run-bigquery-connector-with-the-cli.md).
 
 ##

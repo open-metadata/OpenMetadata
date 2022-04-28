@@ -51,7 +51,7 @@
   * [MySQL](integrations/connectors/mysql/README.md)
     * [Run MySQL Connector with the Airflow SDK](integrations/connectors/mysql/run-mysql-connector-with-the-airflow-sdk.md)
     * [Run MySQL Connector with the CLI](integrations/connectors/mysql/run-mysql-connector-with-the-cli.md)
-  * [Postgres](integrations/connectors/snowflake/README.md)
+  * [Postgres](<integrations/connectors/snowflake/README (1).md>)
     * [Run Postgres Connector with the Airflow SDK](integrations/connectors/snowflake/run-postgres-connector-with-the-airflow-sdk.md)
     * [Run Postgres Connector with the CLI](integrations/connectors/snowflake/run-postgres-connector-with-the-cli.md)
   * [Oracle](integrations/connectors/mysql-1/README.md)
@@ -64,9 +64,9 @@
     * [Run Redshift Connector with the CLI](integrations/connectors/redshift/redshift-usage.md)
   * [Salesforce](integrations/connectors/salesforce.md)
   * [SingleStore](integrations/connectors/singlestore.md)
-  * [Snowflake](integrations/connectors/snowflake-1/README.md)
-    * [Run Snowflake Connector with the Airflow SDK](integrations/connectors/snowflake-1/run-snowflake-connector-with-the-airflow-sdk.md)
-    * [Run Snowflake Connector with the CLI](integrations/connectors/snowflake-1/run-snowflake-connector-with-the-cli.md)
+  * [Snowflake](integrations/connectors/snowflake/README.md)
+    * [Run Snowflake Connector with the Airflow SDK](integrations/connectors/snowflake/run-snowflake-connector-with-the-airflow-sdk.md)
+    * [Run Snowflake Connector with the CLI](integrations/connectors/snowflake/run-snowflake-connector-with-the-cli.md)
   * [Superset](integrations/connectors/superset.md)
   * [Tableau](integrations/connectors/tableau.md)
   * [Trino](integrations/connectors/trino/README.md)
@@ -215,6 +215,7 @@
 * [Lineage Ingestion](data-lineage/lineage-ingestion.md)
 * [Edit Data Lineage Manually](data-lineage/edit-data-lineage-manually.md)
 * [DBT Integration](data-lineage/dbt-integration.md)
+* [Usage Workflow](data-lineage/usage-workflow.md)
 
 ## 📗 Controlled Vocabulary
 
@@ -225,6 +226,7 @@
 * [Data Quality Overview](../data-quality/data-quality-overview/README.md)
   * [Metrics](../data-quality/data-quality-overview/metrics.md)
   * [Tests](../data-quality/data-quality-overview/tests.md)
+* [Profiler Workflow](data-quality/profiler-workflow.md)
 
 ## 🔢 Metadata Versioning
 

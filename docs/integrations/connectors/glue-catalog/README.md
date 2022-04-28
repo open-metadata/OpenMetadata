@@ -164,7 +164,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -258,7 +258,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../snowflake-1/run-snowflake-connector-with-the-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances [here](../snowflake/run-snowflake-connector-with-the-airflow-sdk.md).
 
 ## One-time ingestion with the CLI
 

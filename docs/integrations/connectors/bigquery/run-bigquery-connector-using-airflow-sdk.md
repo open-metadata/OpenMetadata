@@ -504,7 +504,7 @@ with DAG(
     ingest_task = PythonOperator(
         task_id="profile_and_test_using_recipe",
         python_callable=metadata_ingestion_workflow,
-    )pytho
+    )
 ```
 
 ## DBT Integration
