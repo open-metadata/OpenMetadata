@@ -112,6 +112,10 @@ public class Common {
     return By.xpath("//*[text()[contains(.,'" + matchingText + "')]] ");
   }
 
+  public By textEquals(String matchingText) {
+    return By.xpath("//*[text()='" + matchingText + "']");
+  }
+
   public By serviceType(String serviceType) {
     return By.cssSelector("[data-testid='" + serviceType + "']");
   }
