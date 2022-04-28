@@ -32,6 +32,7 @@ class WebhooksPageTest {
   static Webhooks webhooks;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
+  static String name = faker.name().firstName();
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
@@ -65,7 +66,6 @@ class WebhooksPageTest {
   @Test
   @Order(2)
   void addWebHook() throws InterruptedException {
-    String name = faker.name().name();
     openWebHookPage();
     Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.addWebhook());
@@ -90,24 +90,7 @@ class WebhooksPageTest {
   @Test
   @Order(3)
   void checkDuplicateWebhookName() throws InterruptedException {
-    String name = faker.name().name();
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
-    Thread.sleep(waitTime);
-    Events.click(webDriver, webhooks.addWebhook());
-    Events.sendKeys(webDriver, webhooks.name(), name);
-    Events.click(webDriver, webhooks.descriptionBox());
-    Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
-    Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
-    ((JavascriptExecutor) webDriver)
-        .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
-    Events.click(webDriver, webhooks.checkbox());
-    Events.click(webDriver, webhooks.entityCreatedMenu());
-    Events.click(webDriver, webhooks.allEntities());
-    Events.click(webDriver, webhooks.clickToCloseDropdown());
-    Events.click(webDriver, common.saveWebhook());
-    Events.click(webDriver, common.headerSettings()); // Setting
-    Events.click(webDriver, webhooks.webhookLink());
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
