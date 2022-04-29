@@ -71,6 +71,9 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 openmetadata-ui/src/main/resources/ui/src/test
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
+#UI - Dereferenced Schemas
+openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
+
 #vscode
 */.vscode/*
 
@@ -84,3 +87,9 @@ ingestion/venv2/**
 # MLFlow
 mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
+
+# Antlr
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.interp
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens

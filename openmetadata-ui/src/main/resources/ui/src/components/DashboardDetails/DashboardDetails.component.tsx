@@ -18,7 +18,7 @@ import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -34,6 +34,7 @@ import {
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
+  pluralize,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -200,7 +201,7 @@ const DashboardDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -386,6 +387,14 @@ const DashboardDetails = ({
 
   const onThreadPanelClose = () => {
     setThreadLink('');
+  };
+
+  const getDeleteEntityMessage = () => {
+    return `Deleting this ${EntityType.DASHBOARD} will also delete ${pluralize(
+      charts.length,
+      'chart',
+      's'
+    )}`;
   };
 
   const getLoader = () => {
@@ -663,9 +672,15 @@ const DashboardDetails = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  deletEntityMessage={getDeleteEntityMessage()}
+                  entityId={dashboardDetails.id}
+                  entityName={dashboardDetails.name}
+                  entityType={EntityType.DASHBOARD}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.DASHBOARD}
                   onSave={onSettingsUpdate}
                 />
               </div>

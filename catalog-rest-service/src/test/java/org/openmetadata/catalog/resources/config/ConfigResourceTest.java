@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.util.TestUtils;
@@ -61,5 +62,12 @@ class ConfigResourceTest extends CatalogApplicationTest {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth = TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(config.getAuthorizerConfiguration().toString(), auth.toString());
+  }
+
+  @Test
+  void get_airflow_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("airflow");
+    AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
+    assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 }

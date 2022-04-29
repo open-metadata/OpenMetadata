@@ -1,7 +1,7 @@
 FROM python:3.9-slim as base
 ENV AIRFLOW_HOME=/airflow
 RUN apt-get update && \
-    apt-get install -y gcc libsasl2-dev curl build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev libevent-dev wget --no-install-recommends && \
+    apt-get install -y gcc libsasl2-modules libsasl2-dev curl build-essential libssl-dev libffi-dev librdkafka-dev unixodbc-dev python3.9-dev openjdk-11-jre  libevent-dev wget --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 # RUN wget https://github.com/open-metadata/openmetadata-airflow-apis/releases/download/0.1/openmetadata-airflow-apis-plugin.tar.gz
 # RUN tar zxvf openmetadata-airflow-apis-plugin.tar.gz
@@ -27,6 +27,7 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 RUN pip install ".[all]"
+
 
 RUN airflow db init
 RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg

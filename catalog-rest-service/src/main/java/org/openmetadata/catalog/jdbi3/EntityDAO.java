@@ -14,6 +14,8 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -27,8 +29,10 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public interface EntityDAO<T> {
@@ -42,10 +46,14 @@ public interface EntityDAO<T> {
   EntityReference getEntityReference(T entity);
 
   /** Common queries for all entities implemented here. Do not override. */
-  @SqlUpdate("INSERT INTO <table> (json) VALUES (:json)")
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json :: jsonb)", connectionType = POSTGRES)
   void insert(@Define("table") String table, @Bind("json") String json);
 
-  @SqlUpdate("UPDATE <table> SET  json = :json WHERE id = :id")
+  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
+      connectionType = POSTGRES)
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
@@ -65,9 +73,9 @@ public interface EntityDAO<T> {
       "SELECT json FROM ("
           + "SELECT <nameColumn>, json FROM <table> <cond> AND "
           + "<nameColumn> < :before "
-          + // Pagination by chart fullyQualifiedName
+          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
           "ORDER BY <nameColumn> DESC "
-          + // Pagination ordering by chart fullyQualifiedName
+          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
           "LIMIT :limit"
           + ") last_rows_subquery ORDER BY <nameColumn>")
   List<String> listBefore(
@@ -106,10 +114,10 @@ public interface EntityDAO<T> {
 
   default String getCondition(Include include) {
     if (include == null || include == Include.NON_DELETED) {
-      return "AND deleted = false";
+      return "AND deleted = FALSE";
     }
     if (include == Include.DELETED) {
-      return " AND deleted = true";
+      return " AND deleted = TRUE";
     }
     return "";
   }
@@ -180,11 +188,14 @@ public interface EntityDAO<T> {
   }
 
   default List<String> listBefore(ListFilter filter, int limit, String before) {
-
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    before = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(before) : before;
     return listBefore(getTableName(), getNameColumn(), filter.getCondition(), limit, before);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, String after) {
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    after = getNameColumn().equals("name") ? FullyQualifiedName.unquoteName(after) : after;
     return listAfter(getTableName(), getNameColumn(), filter.getCondition(), limit, after);
   }
 

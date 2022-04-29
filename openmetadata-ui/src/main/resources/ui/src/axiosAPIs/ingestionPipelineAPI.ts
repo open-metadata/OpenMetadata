@@ -13,10 +13,50 @@
 
 import { AxiosResponse } from 'axios';
 import { CreateIngestionPipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const addIngestionPipeline = (
   data: CreateIngestionPipeline
 ): Promise<AxiosResponse> => {
   return APIClient.post('/services/ingestionPipelines', data);
+};
+
+export const getIngestionPipelineByFqn = (
+  fqn: string
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/services/ingestionPipelines/name/${fqn}`);
+};
+
+export const getIngestionPipelines = (
+  arrQueryFields: Array<string>,
+  serviceFilter?: string,
+  paging?: string
+): Promise<AxiosResponse> => {
+  const service = serviceFilter ? `service=${serviceFilter}` : '';
+  const url = `${getURLWithQueryFields(
+    '/services/ingestionPipelines',
+    arrQueryFields,
+    service
+  )}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};
+
+export const triggerIngestionPipelineById = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.post(`/services/ingestionPipelines/trigger/${id}`);
+};
+
+export const deleteIngestionPipelineById = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.delete(`/services/ingestionPipelines/${id}?hardDelete=true`);
+};
+
+export const updateIngestionPipeline = (
+  data: CreateIngestionPipeline
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/services/ingestionPipelines`, data);
 };

@@ -30,6 +30,7 @@ from openmetadata.api.utils import import_path
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.ingestion.models.encoders import show_secrets_encoder
 
 
 class DeployDagException(Exception):
@@ -65,7 +66,7 @@ class DagDeployer:
 
         logging.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
-            outfile.write(self.ingestion_pipeline.json())
+            outfile.write(self.ingestion_pipeline.json(encoder=show_secrets_encoder))
 
         return {"workflow_config_file": str(dag_config_file_path)}
 

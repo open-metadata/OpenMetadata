@@ -30,18 +30,20 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DashboardServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @Slf4j
 @Order(9)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DashboardServiceTestPage {
+class DashboardServiceTestPage {
   static WebDriver webDriver;
   static Common common;
   static DashboardServicePage dashboardServicePage;
@@ -71,7 +73,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(1)
-  public void openDashboardServicePage() throws InterruptedException {
+  void openDashboardServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
@@ -81,7 +83,7 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(2)
-  public void addDashboardService() throws InterruptedException {
+  void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
@@ -94,46 +96,61 @@ public class DashboardServiceTestPage {
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, common.serviceName(), serviceName);
     Events.click(webDriver, common.descriptionBoldButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionItalicButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendEnter(webDriver, common.addDescriptionString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
+    Events.click(webDriver, common.focusedDescriptionBox());
+    Events.sendEnter(webDriver, common.focusedDescriptionBox());
     Events.click(webDriver, common.descriptionLinkButton());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.urlLink(), "www.google.com");
+    Events.sendKeys(webDriver, common.linkText(), "Looker");
+    Events.click(webDriver, common.okButton());
     Events.click(webDriver, common.nextButton());
-    Events.sendKeys(webDriver, dashboardServicePage.addDashboardServiceUrl(), "localhost:8080");
     Events.sendKeys(webDriver, common.serviceUsername(), "openmetadata_user");
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
-    Events.click(webDriver, common.nextButton());
+    Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "localhost:8080");
     Events.click(webDriver, common.saveServiceButton());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, common.addIngestion());
+    Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.deployButton());
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsMenu("Services"));
+    Events.click(webDriver, common.selectServiceTab(3));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.getPageSource().contains(serviceName)) {
+        LOG.info("Success");
+      }
+    } catch (NoSuchElementException | TimeoutException r) {
+      Assert.fail("Service not added");
+    }
   }
 
   @Test
   @Order(3)
-  public void checkDashboardServiceDetails() throws InterruptedException {
+  void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
-    Events.click(webDriver, common.addDescriptionString());
-    Events.sendKeys(webDriver, common.addDescriptionString(), faker.address().toString());
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.editDescriptionSaveButton());
   }
 
   @Test
   @Order(4)
-  public void checkConnectionConfigTab() throws InterruptedException, IOException {
+  void checkConnectionConfigTab() throws InterruptedException, IOException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
-    Events.sendKeys(webDriver, dashboardServicePage.editDashboardServiceUrl(), "1");
-    Events.sendKeys(webDriver, common.serviceUsername(), "1");
-    Events.sendKeys(webDriver, common.servicePassword(), "1");
-    Events.click(webDriver, common.saveConnectionConfig());
+    Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "test");
+    Events.sendKeys(webDriver, common.serviceUsername(), "test");
+    Events.sendKeys(webDriver, common.servicePassword(), "test");
+    Events.click(webDriver, common.saveServiceButton());
     Thread.sleep(2000);
     try {
       WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
@@ -147,11 +164,26 @@ public class DashboardServiceTestPage {
 
   @Test
   @Order(5)
-  public void deleteDashboardService() throws InterruptedException {
+  void deleteDashboardService() throws InterruptedException {
     openDashboardServicePage();
-    Thread.sleep(2000);
-    Events.click(webDriver, common.deleteServiceButton(serviceName));
-    Events.click(webDriver, common.saveEditedService());
+    Events.click(webDriver, common.containsText(serviceName));
+    Events.click(webDriver, common.manage());
+    Events.click(webDriver, dashboardServicePage.deleteDashboard());
+    Events.sendKeys(webDriver, dashboardServicePage.confirmationDeleteText(), "DELETE");
+    Events.click(webDriver, common.confirmButton());
+    Thread.sleep(waitTime);
+    wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
+    Events.click(webDriver, common.headerSettings());
+    Events.click(webDriver, common.headerSettingsServices());
+    Events.click(webDriver, common.selectServiceTab(3));
+    Thread.sleep(waitTime);
+    try {
+      if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
+        Assert.fail("Service not deleted");
+      }
+    } catch (NoSuchElementException | TimeoutException e) {
+      LOG.info("Success");
+    }
   }
 
   @AfterEach

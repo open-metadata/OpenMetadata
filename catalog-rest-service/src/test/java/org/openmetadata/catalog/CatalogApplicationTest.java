@@ -13,55 +13,98 @@
 
 package org.openmetadata.catalog;
 
+import static java.lang.String.format;
+
+import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
+import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.CollectionRegistry;
-import org.openmetadata.catalog.resources.EmbeddedMySqlSupport;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource;
+import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
-@ExtendWith(EmbeddedMySqlSupport.class)
-@ExtendWith(DropwizardExtensionsSupport.class)
 public abstract class CatalogApplicationTest {
-  protected static final String CONFIG_PATH;
-  public static final DropwizardAppExtension<CatalogApplicationConfig> APP;
-  private static final Client client;
+  protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
+  private static JdbcDatabaseContainer<?> SQL_CONTAINER;
+  public static DropwizardAppExtension<CatalogApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
   public static final String FERNET_KEY_1 = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ";
-  public static final String FERNET_KEY_2 = "0cDdxg2rlodhcsjtmuFsOOvWpRRTW9ZJ";
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
-    CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
-    APP = new DropwizardAppExtension<>(CatalogApplication.class, CONFIG_PATH);
-    client = ClientBuilder.newClient();
-    client.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    client.property(ClientProperties.READ_TIMEOUT, 0);
-    client.property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
   }
 
+  @BeforeAll
+  public static void createApplication() throws Exception {
+    // The system properties are provided by maven-surefire for testing with mysql and postgres
+    final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
+    final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+
+    SQL_CONTAINER =
+        (JdbcDatabaseContainer<?>)
+            Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+    SQL_CONTAINER.withReuse(true);
+    SQL_CONTAINER.withStartupTimeoutSeconds(240);
+    SQL_CONTAINER.withConnectTimeoutSeconds(240);
+    SQL_CONTAINER.start();
+
+    final String migrationScripsLocation =
+        ResourceHelpers.resourceFilePath("db/sql/" + SQL_CONTAINER.getDriverClassName());
+    Flyway flyway =
+        Flyway.configure()
+            .dataSource(SQL_CONTAINER.getJdbcUrl(), SQL_CONTAINER.getUsername(), SQL_CONTAINER.getPassword())
+            .table("DATABASE_CHANGE_LOG")
+            .locations("filesystem:" + migrationScripsLocation)
+            .sqlMigrationPrefix("v")
+            .load();
+    flyway.clean();
+    flyway.migrate();
+
+    APP =
+        new DropwizardAppExtension<>(
+            CatalogApplication.class,
+            CONFIG_PATH,
+            // Database overrides
+            ConfigOverride.config("database.driverClass", SQL_CONTAINER.getDriverClassName()),
+            ConfigOverride.config("database.url", SQL_CONTAINER.getJdbcUrl()),
+            ConfigOverride.config("database.user", SQL_CONTAINER.getUsername()),
+            ConfigOverride.config("database.password", SQL_CONTAINER.getPassword()),
+            // Migration overrides
+            ConfigOverride.config("migrationConfiguration.path", migrationScripsLocation));
+    APP.before();
+  }
+
+  @AfterAll
+  public static void stopApplication() {
+    // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
+    // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
+    if (APP != null) {
+      APP.after();
+    }
+  }
+
+  public static Client getClient() {
+    return APP.client()
+        .property(ClientProperties.CONNECT_TIMEOUT, 0)
+        .property(ClientProperties.READ_TIMEOUT, 0)
+        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+  }
+
   public static WebTarget getResource(String collection) {
-    String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/" + collection;
-    return client.target(targetURI);
+    return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
   }
 
   public static WebTarget getConfigResource(String resource) {
-    String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/config/" + resource;
-    return APP.client().target(targetURI);
-  }
-
-  public static WebTarget getOperationsResource(String collection) {
-    String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/services/ingestionPipelines/";
-    return APP.client().target(targetURI);
+    return getClient().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
   }
 }

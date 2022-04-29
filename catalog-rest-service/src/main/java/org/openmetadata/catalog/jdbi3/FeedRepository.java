@@ -15,7 +15,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -70,21 +69,15 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread) throws IOException {
+  public Thread create(Thread thread, UUID entityId, EntityReference entityOwner, EntityLink about) throws IOException {
+
     String createdBy = thread.getCreatedBy();
 
     // Validate user creating thread
     User createdByUser = dao.userDAO().findEntityByName(createdBy);
 
-    // Validate about data entity is valid
-    EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-
-    // Get owner for the addressed to Entity
-    EntityReference owner = Entity.getOwner(aboutRef);
-
     // Add entity id to thread
-    thread.withEntityId(aboutRef.getId());
+    thread.withEntityId(entityId);
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
@@ -109,13 +102,13 @@ public class FeedRepository {
             Relationship.IS_ABOUT.ordinal());
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
-    if (owner != null) {
+    if (entityOwner != null) {
       dao.relationshipDAO()
           .insert(
               thread.getId().toString(),
-              owner.getId().toString(),
+              entityOwner.getId().toString(),
               Entity.THREAD,
-              owner.getType(),
+              entityOwner.getType(),
               Relationship.ADDRESSED_TO.ordinal());
     }
 
@@ -123,6 +116,20 @@ public class FeedRepository {
     storeMentions(thread, thread.getMessage());
 
     return thread;
+  }
+
+  @Transaction
+  public Thread create(Thread thread) throws IOException {
+    // Validate about data entity is valid
+    EntityLink about = EntityLink.parse(thread.getAbout());
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+
+    // Get owner for the addressed to Entity
+    EntityReference owner = Entity.getOwner(aboutRef);
+
+    UUID entityId = aboutRef.getId();
+
+    return create(thread, entityId, owner, about);
   }
 
   public Thread get(String id) throws IOException {
@@ -210,7 +217,7 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
-  public EntityReference getOwnerOfPost(Post post) throws IOException {
+  public EntityReference getOwnerOfPost(Post post) {
     User fromUser = dao.userDAO().findEntityByName(post.getFrom());
     return Entity.getEntityReference(fromUser);
   }
@@ -266,21 +273,7 @@ public class FeedRepository {
     return thread.getPosts();
   }
 
-  /**
-   * List threads based on the filters and limits in the order of the updated timestamp.
-   *
-   * @param link entity link filter
-   * @param limitPosts the number of posts to limit per thread
-   * @param userId UUID of the user. Enables UserId filter
-   * @param filterType Type of the filter to be applied with userId filter
-   * @param limit the number of threads to limit in the response
-   * @param pageMarker the before/after updatedTime to be used as pagination marker for queries
-   * @param isResolved whether the thread is resolved or open
-   * @param paginationType before or after
-   * @return a list of threads as ResultList
-   * @throws IOException on error
-   * @throws ParseException on error
-   */
+  /** List threads based on the filters and limits in the order of the updated timestamp. */
   @Transaction
   public final ResultList<Thread> list(
       String link,
@@ -432,15 +425,10 @@ public class FeedRepository {
 
   private boolean fieldsChanged(Thread original, Thread updated) {
     // Patch supports only isResolved and message for now
-    return original.getResolved() != updated.getResolved() || !original.getMessage().equals(updated.getMessage());
+    return !original.getResolved().equals(updated.getResolved()) || !original.getMessage().equals(updated.getMessage());
   }
 
-  /**
-   * Limit the number of posts within each thread.
-   *
-   * @param threads list of threads
-   * @param limitPosts the number of posts to limit per thread
-   */
+  /** Limit the number of posts within each thread. */
   private void limitPostsInThreads(List<Thread> threads, int limitPosts) {
     for (Thread t : threads) {
       List<Post> posts = t.getPosts();
@@ -456,14 +444,6 @@ public class FeedRepository {
   /**
    * Return the threads associated with user/team owned entities and the threads that were created by or replied to by
    * the user.
-   *
-   * @param userId UUID of the user
-   * @param limit number of threads to limit
-   * @param time updatedTime before/after which the results should be filtered for pagination
-   * @param isResolved whether the thread is resolved or open
-   * @param paginationType before or after
-   * @return a list of threads and the total count of threads
-   * @throws IOException on error
    */
   private FilteredThreads getThreadsByOwner(
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
@@ -481,12 +461,7 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
-  /**
-   * Get a list of team ids that the given user is a part of.
-   *
-   * @param userId UUID of the user.
-   * @return list of team ids.
-   */
+  /** Get a list of team ids that the given user is a part of. */
   private List<String> getTeamIds(String userId) {
     List<String> teamIds = dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
     if (teamIds.isEmpty()) {
@@ -494,17 +469,7 @@ public class FeedRepository {
     }
     return teamIds;
   }
-  /**
-   * Returns the threads where the user or the team they belong to were mentioned by other users with @mention.
-   *
-   * @param userId UUID of the user
-   * @param limit number of threads to limit
-   * @param time updatedTime before/after which the results should be filtered for pagination
-   * @param isResolved whether the thread is resolved or open
-   * @param paginationType before or after
-   * @return a list of threads and the total count of threads
-   * @throws IOException on error
-   */
+  /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<EntityReference> teams =
@@ -536,17 +501,7 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
-  /**
-   * Returns the threads that are associated with the entities followed by the user.
-   *
-   * @param userId UUID of the user
-   * @param limit number of threads to limit
-   * @param time updatedTime before/after which the results should be filtered for pagination
-   * @param isResolved whether the thread is resolved or open
-   * @param paginationType before or after
-   * @return a list of threads and the total count of threads
-   * @throws IOException on error
-   */
+  /** Returns the threads that are associated with the entities followed by the user. */
   private FilteredThreads getThreadsByFollows(
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<String> jsons;

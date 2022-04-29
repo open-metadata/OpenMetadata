@@ -20,6 +20,10 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
+import static org.openmetadata.catalog.Entity.GLOSSARY;
+import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -73,6 +77,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         "glossaryTerms",
         GlossaryTermResource.FIELDS);
     supportsAuthorizedMetadataOperations = false; // TODO why?
+    supportsEmptyDescription = false;
   }
 
   @Order(0)
@@ -198,7 +203,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  public void patch_addDeleteTags(TestInfo test) throws IOException {
+  void patch_addDeleteTags(TestInfo test) throws IOException {
     // Create glossary term1 in glossary g1
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
@@ -211,7 +216,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Apply tags to term11
     String json = JsonUtils.pojoToJson(term11);
     ChangeDescription change = new ChangeDescription();
-    change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(PERSONAL_DATA_TAG_LABEL)));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(PERSONAL_DATA_TAG_LABEL)));
     term11.setTags(List.of(PERSONAL_DATA_TAG_LABEL));
     patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(term11.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
@@ -227,6 +232,55 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(term1.getTags().get(0).getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN());
+  }
+
+  @Test
+  void delete_recursive(TestInfo test) throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(getEntityName(test), "", "", null);
+    Glossary g1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    EntityReference g1Ref = glossaryResourceTest.getEntityInterface(g1).getEntityReference();
+
+    // Create glossary term t1 in glossary g1
+    CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1Ref);
+    GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference tRef1 = new GlossaryTermEntityInterface(t1).getEntityReference();
+
+    // Create glossary term t11 under t1
+    create = createRequest("t11", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
+    GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference tRef11 = new GlossaryTermEntityInterface(t11).getEntityReference();
+
+    // Create glossary term t111 under t11
+    create = createRequest("t111", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef11);
+    GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    //
+    // Glossary that has terms and glossary terms that have children CAN'T BE DELETED without recursive flag
+    //
+
+    // g1 glossary is not empty and can't be deleted
+    assertResponse(
+        () -> glossaryResourceTest.deleteEntity(g1.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        entityIsNotEmpty(GLOSSARY));
+
+    // t1 is not empty and can't be deleted
+    assertResponse(() -> deleteEntity(t1.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
+
+    // t11 is not empty and can't be deleted
+    assertResponse(() -> deleteEntity(t11.getId(), ADMIN_AUTH_HEADERS), BAD_REQUEST, entityIsNotEmpty(GLOSSARY_TERM));
+
+    //
+    // Glossary that has terms and glossary terms that have children CAN BE DELETED recursive flag
+    //
+    deleteAndCheckEntity(t11, true, true, ADMIN_AUTH_HEADERS); // Delete both t11 and the child t11
+    assertEntityDeleted(t11.getId(), true);
+    assertEntityDeleted(t111.getId(), true);
+
+    glossaryResourceTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS); // Delete the entire glossary
+    glossaryResourceTest.assertEntityDeleted(g1.getId(), true);
+    assertEntityDeleted(t1.getId(), true);
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws HttpResponseException {
@@ -251,6 +305,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertEntityReferenceList(expected.getReviewers(), actual.getReviewers());
       TestUtils.validateTags(expected.getTags(), actual.getTags());
     }
+    TestUtils.validateAlphabeticalOrdering(actualTerms, EntityUtil.compareGlossaryTerm);
   }
 
   @Override
@@ -362,7 +417,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
           break;
         }
       case "status":
-        @SuppressWarnings("unchecked")
         Status expectedStatus = (Status) expected;
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);

@@ -12,23 +12,46 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
+import { observer } from 'mobx-react';
+import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getUserByName } from '../../axiosAPIs/userAPI';
+import AppState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
+import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
+import { UserDetails } from '../../components/Users/Users.interface';
+import {
+  onErrorText,
+  onUpdatedConversastionError,
+} from '../../constants/feed.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>();
+  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const fetchUserData = () => {
+    setUserData({} as User);
     getUserByName(username, 'profile,roles,teams,follows,owns')
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -53,31 +76,165 @@ const UserPage = () => {
         className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
-          No user available with{' '}
+          No user available with name{' '}
           <span className="tw-font-medium" data-testid="username">
             {username}
           </span>{' '}
-          username.
         </p>
       </div>
     );
+  };
+
+  const feedFilterHandler = (filter: FeedFilter) => {
+    setFeedFilter(filter);
+  };
+
+  const getFeedData = (filterType: FeedFilter, after?: string) => {
+    setIsFeedLoading(true);
+    getFeedsWithFilter(userData.id, filterType, after)
+      .then((res: AxiosResponse) => {
+        const { data, paging: pagingObj } = res.data;
+        setPaging(pagingObj);
+
+        setEntityThread((prevData) => [...prevData, ...data]);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-activity-feed-error']
+        );
+      })
+      .finally(() => {
+        setIsFeedLoading(false);
+      });
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+
+    const data = {
+      message: value,
+      from: currentUser,
+    };
+    postFeedById(id, data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { id, posts } = res.data;
+          setEntityThread((pre) => {
+            return pre.map((thread) => {
+              if (thread.id === id) {
+                return { ...res.data, posts: posts.slice(-3) };
+              } else {
+                return thread;
+              }
+            });
+          });
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err, jsonData['api-error-messages']['feed-post-error']);
+      });
+  };
+
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId)
+      .then(() => {
+        getUpdatedThread(threadId)
+          .then((data) => {
+            setEntityThread((pre) => {
+              return pre.map((thread) => {
+                if (thread.id === data.id) {
+                  return {
+                    ...thread,
+                    posts: data.posts.slice(-3),
+                    postsCount: data.postsCount,
+                  };
+                } else {
+                  return thread;
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            const message = error?.message;
+            showErrorToast(message ?? onUpdatedConversastionError);
+          });
+      })
+      .catch((error) => {
+        const message = error?.message;
+        showErrorToast(message ?? onErrorText);
+      });
+  };
+
+  const updateUserDetails = (data: UserDetails) => {
+    const updatedDetails = { ...userData, ...data };
+    const jsonPatch = compare(userData, updatedDetails);
+    updateUserDetail(userData.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setUserData((prevData) => ({ ...prevData, ...data }));
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
+  const isLoggedinUser = (userName: string) => {
+    return userName === AppState.getCurrentUserDetails()?.name;
+  };
+
+  const getUserComponent = () => {
+    if (!isError && !isEmpty(userData)) {
+      return (
+        <Users
+          deletePostHandler={deletePostHandler}
+          feedData={entityThread || []}
+          feedFilter={feedFilter as FeedFilter}
+          feedFilterHandler={feedFilterHandler}
+          fetchFeedHandler={getFeedData}
+          isAdminUser={Boolean(isAdminUser)}
+          isAuthDisabled={Boolean(isAuthDisabled)}
+          isFeedLoading={isFeedLoading}
+          isLoggedinUser={isLoggedinUser(username)}
+          paging={paging}
+          postFeedHandler={postFeedHandler}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+        />
+      );
+    } else {
+      return <ErrorPlaceholder />;
+    }
   };
 
   useEffect(() => {
     fetchUserData();
   }, [username]);
 
+  useEffect(() => {
+    setEntityThread([]);
+  }, [feedFilter, username]);
+
+  useEffect(() => {
+    setFeedFilter(
+      isLoggedinUser(username) ? FeedFilter.MENTIONS : FeedFilter.OWNER
+    );
+  }, [username, AppState.userDetails, AppState.nonSecureUserDetails]);
+
+  useEffect(() => {
+    if (!isUndefined(feedFilter) && userData.id) {
+      getFeedData(feedFilter);
+    }
+  }, [feedFilter, userData]);
+
   return (
     <PageContainerV1 className="tw-pt-4">
-      {isLoading ? (
-        <Loader />
-      ) : !isError ? (
-        <Users userData={userData} />
-      ) : (
-        <ErrorPlaceholder />
-      )}
+      {isLoading ? <Loader /> : getUserComponent()}
     </PageContainerV1>
   );
 };
 
-export default UserPage;
+export default observer(UserPage);

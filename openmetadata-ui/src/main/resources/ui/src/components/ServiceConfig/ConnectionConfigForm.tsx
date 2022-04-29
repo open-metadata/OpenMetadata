@@ -14,7 +14,8 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent } from 'react';
+import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
   DashboardConnection,
@@ -30,23 +31,31 @@ import {
 } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
+import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
+  okText?: string;
+  cancelText?: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
+  onCancel?: () => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
+  okText = 'Save',
+  cancelText = 'Cancel',
   serviceCategory,
   status,
+  onCancel,
   onSave,
 }: Props) => {
   const config = !isNil(data)
@@ -55,7 +64,54 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       ? ((data as DatabaseService | MessagingService | DashboardService)
           .connection.config as ConfigData)
       : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
-    : {};
+    : ({} as ConfigData);
+
+  const escapeBackwardSlashChar = (formData: ConfigData) => {
+    for (const key in formData) {
+      if (typeof formData[key as keyof ConfigData] === 'object') {
+        escapeBackwardSlashChar(
+          formData[key as keyof ConfigData] as ConfigData
+        );
+      } else {
+        const data = formData[key as keyof ConfigData];
+        if (typeof data === 'string') {
+          formData[key as keyof ConfigData] = data.replace(/\\n/g, '\n');
+        }
+      }
+    }
+
+    return formData;
+  };
+
+  const handleSave = (data: ISubmitEvent<ConfigData>) => {
+    const updatedFormData = escapeBackwardSlashChar(data.formData);
+    onSave({ ...data, formData: updatedFormData });
+  };
+
+  const handleTestConnection = (formData: ConfigData) => {
+    const updatedFormData = escapeBackwardSlashChar(formData);
+
+    return new Promise<void>((resolve, reject) => {
+      TestConnection(updatedFormData, 'Database')
+        .then((res) => {
+          // This api only responds with status 200 on success
+          // No data sent on api success
+          if (res.status === 200) {
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['test-connection-error']
+          );
+          reject(err);
+        });
+    });
+  };
+
   const getDatabaseFields = () => {
     let connSch = {
       schema: {},
@@ -101,16 +157,20 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     return (
       <FormBuilder
+        cancelText={cancelText}
         formData={validConfig}
+        okText={okText}
         schema={connSch.schema}
         status={status}
         uiSchema={connSch.uiSchema}
-        onSubmit={onSave}
+        onCancel={onCancel}
+        onSubmit={handleSave}
+        onTestConnection={handleTestConnection}
       />
     );
   };
 
-  return <>{getDatabaseFields()}</>;
+  return <Fragment>{getDatabaseFields()}</Fragment>;
 };
 
 export default ConnectionConfigForm;

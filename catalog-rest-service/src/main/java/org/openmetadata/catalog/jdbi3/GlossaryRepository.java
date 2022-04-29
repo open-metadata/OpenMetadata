@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -54,7 +55,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public Glossary setFields(Glossary glossary, Fields fields) throws IOException {
     glossary.setOwner(fields.contains(FIELD_OWNER) ? getOwner(glossary) : null);
-    glossary.setTags(fields.contains("tags") ? getTags(glossary.getName()) : null);
+    glossary.setTags(fields.contains(FIELD_TAGS) ? getTags(glossary.getName()) : null);
     glossary.setReviewers(fields.contains("reviewers") ? getReviewers(glossary) : null);
     return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : null);
   }

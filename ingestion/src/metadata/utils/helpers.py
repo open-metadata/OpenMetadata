@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
@@ -37,8 +36,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import utils_logger
 
-logger = logging.getLogger(__name__)
+logger = utils_logger()
 
 
 def get_start_and_end(duration):
@@ -154,7 +154,6 @@ def get_dashboard_service_or_create(
         return service
     else:
         dashboard_config = {"config": config}
-        print(dashboard_config)
         created_service = metadata.create_or_update(
             CreateDashboardServiceRequest(
                 name=service_name,
@@ -193,25 +192,11 @@ def get_storage_service_or_create(service_json, metadata_config) -> StorageServi
         return created_service
 
 
-def get_database_service_or_create_v2(service_json, metadata_config) -> DatabaseService:
-    metadata = OpenMetadata(metadata_config)
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqdn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreateDatabaseServiceRequest(**service_json)
-        )
-    return created_service
-
-
 def datetime_to_ts(date: datetime) -> int:
     """
-    Convert a given date to a timestamp as an Int
+    Convert a given date to a timestamp as an Int in milliseconds
     """
-    return int(date.timestamp())
+    return int(date.timestamp() * 1_000)
 
 
 def _get_formmated_table_name(table_name):

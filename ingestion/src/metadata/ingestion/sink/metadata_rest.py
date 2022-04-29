@@ -14,6 +14,7 @@ import traceback
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
+from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -52,8 +53,9 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
@@ -226,11 +228,13 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if db_schema_and_table.table.viewDefinition is not None:
-                self.metadata.ingest_lineage_by_query(
+                lineage_status = self.metadata.ingest_lineage_by_query(
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
                     database=db_schema_and_table.database.name.__root__,
                 )
+                if not lineage_status:
+                    self.create_lineage_via_es(db_schema_and_table, db_schema, db)
 
             logger.info(
                 "Successfully ingested table {}.{}".format(
@@ -530,6 +534,25 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.debug(traceback.print_exc())
             logger.error(err)
+
+    def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
+        try:
+            parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
+            to_table_name = db_schema_and_table.table.name.__root__
+
+            for from_table_name in parser.tables:
+                if "." not in from_table_name:
+                    from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
+                self.metadata._create_lineage_by_table_name(
+                    from_table_name,
+                    f"{db_schema.name.__root__}.{to_table_name}",
+                    db.service.name,
+                    db_schema_and_table.database.name.__root__,
+                )
+        except Exception as e:
+            logger.error("Failed to create view lineage")
+            logger.debug(f"Query : {db_schema_and_table.table.viewDefinition.__root__}")
+            logger.debug(traceback.format_exc())
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
         """

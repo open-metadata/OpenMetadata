@@ -65,8 +65,6 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     }
   }
 
-  // TODO delete
-
   // Populate TagCategory with children details
   private TagCategory populateCategoryTags(TagCategory category, Fields fields) throws IOException {
     // Get tags under that match category prefix

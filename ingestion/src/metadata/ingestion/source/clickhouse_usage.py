@@ -18,45 +18,22 @@ from typing import Any, Dict, Iterable
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.sql_alchemy_helper import (
-    SQLAlchemyHelper,
-    SQLSourceStatus,
-)
-from metadata.utils.helpers import get_raw_extract_iter, get_start_and_end
+from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
 
 class ClickhouseUsageSource(Source[TableQuery]):
-    """
-    Clickhouse Usage source
-
-    Args:
-        config:
-        metadata_config:
-        ctx:
-
-    Attributes:
-        config:
-        analysis_date:
-        sql_stmt:
-        alchemy_helper:
-        report:
-    """
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__()
         self.config = config
         self.connection = config.serviceConnection.__root__.config
@@ -65,16 +42,11 @@ class ClickhouseUsageSource(Source[TableQuery]):
         self.sql_stmt = CLICKHOUSE_SQL_USAGE_STATEMENT.format(
             start_time=start, end_time=end
         )
-        self.alchemy_helper = SQLAlchemyHelper(
-            self.connection,
-            metadata_config,
-            DatabaseServiceType.ClickHouse.value,
-            self.sql_stmt,
-        )
         self.report = SQLSourceStatus()
+        self.engine = get_connection(self.connection)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata_config: WorkflowConfig):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, ClickhouseConnection):
@@ -88,11 +60,8 @@ class ClickhouseUsageSource(Source[TableQuery]):
         return super().prepare()
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-        """
-        Provides iterator of result row from SQLAlchemy helper
-        :return:
-        """
-        rows = self.alchemy_helper.execute_query()
+
+        rows = self.engine.execute(self.sql_stmt)
         for row in rows:
             yield row
 
@@ -102,7 +71,7 @@ class ClickhouseUsageSource(Source[TableQuery]):
         it groups to table and yields TableMetadata
         :return:
         """
-        for row in get_raw_extract_iter(self.alchemy_helper):
+        for row in self._get_raw_extract_iter():
             database = "default"
             if row["database_name"]:
                 database_list = ast.literal_eval(row["database_name"])
@@ -130,7 +99,10 @@ class ClickhouseUsageSource(Source[TableQuery]):
         return self.report
 
     def close(self):
-        self.alchemy_helper.close()
+        pass
 
     def get_status(self) -> SourceStatus:
         return self.report
+
+    def test_connection(self) -> None:
+        test_connection(self.engine)

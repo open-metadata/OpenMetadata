@@ -51,12 +51,13 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
   topicDetailsTabs,
@@ -219,13 +220,14 @@ const TopicDetailsPage: FunctionComponent = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TOPIC,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -409,9 +411,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
@@ -459,8 +458,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(

@@ -13,7 +13,6 @@ Interface definition for an Auth provider
 """
 import http.client
 import json
-import logging
 import sys
 import traceback
 from abc import ABCMeta, abstractmethod
@@ -39,8 +38,9 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
     OktaSSOClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.utils import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 ACCESS_TOKEN = "access_token"
 EXPIRY = "expires_in"

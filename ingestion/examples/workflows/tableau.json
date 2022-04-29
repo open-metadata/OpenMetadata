@@ -8,7 +8,7 @@
         "username": "username",
         "password": "password",
         "env": "tableau_prod",
-        "hostPort": "localhost",
+        "hostPort": "http://localhost",
         "siteName": "site_name",
         "apiVersion": "api_version",
         "personalAccessTokenName": "personal_access_token_name",

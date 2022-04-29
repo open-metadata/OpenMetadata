@@ -40,6 +40,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
+  getUserPath,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -619,6 +620,14 @@ const GlossaryPageV1 = () => {
   };
 
   /**
+   * Redirects user to profile page.
+   * @param name user name
+   */
+  const handleUserRedirection = (name: string) => {
+    history.push(getUserPath(name));
+  };
+
+  /**
    * To redirct to add glossary term page
    */
   const handleAddGlossaryTermClick = () => {
@@ -666,6 +675,20 @@ const GlossaryPageV1 = () => {
     }
   };
 
+  const afterDeleteAction = () => {
+    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
   useEffect(() => {
     fetchGlossaryTermAssets(
       (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
@@ -686,6 +709,7 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
+          afterDeleteAction={afterDeleteAction}
           assetData={assetData}
           currentPage={assetData.currPage}
           deleteStatus={deleteStatus}
@@ -698,6 +722,7 @@ const GlossaryPageV1 = () => {
           handleGlossaryTermUpdate={handleGlossaryTermUpdate}
           handleSearchText={handleSearchText}
           handleSelectedData={handleSelectedData}
+          handleUserRedirection={handleUserRedirection}
           isChildLoading={isChildLoading}
           isGlossaryActive={isGlossaryActive}
           isHasAccess={!isAdminUser && !isAuthDisabled}

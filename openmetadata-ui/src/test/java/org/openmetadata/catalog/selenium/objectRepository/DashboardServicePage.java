@@ -13,4 +13,7 @@ public class DashboardServicePage {
 
   By addDashboardServiceUrl = By.cssSelector("[data-testid='dashboard-url']");
   By editDashboardServiceUrl = By.cssSelector("[data-testid='dashboardUrl']");
+  By hostPort = By.cssSelector("[id='root_hostPort']");
+  By deleteDashboard = By.cssSelector("[data-testid='delete-button']");
+  By confirmationDeleteText = By.cssSelector("[data-testid='confirmation-text-input']");
 }

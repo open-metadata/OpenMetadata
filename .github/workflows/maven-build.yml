@@ -23,6 +23,9 @@ on:
       - "catalog-rest-service/**"
       - "openmetadata-ui/**"
 
+concurrency: 
+  group: maven-build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ${{matrix.os}}
@@ -32,7 +35,7 @@ jobs:
         os:
           - ubuntu-latest
         node-version:
-          - 12.x
+          - 16.x
 
     steps:
       - name: install libssl
@@ -57,6 +60,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
+          echo 'testcontainers.reuse.enable=true' >> ~/.testcontainers.properties
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.head_ref }} \

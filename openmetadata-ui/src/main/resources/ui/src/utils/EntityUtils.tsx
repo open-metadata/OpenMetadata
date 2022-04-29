@@ -12,7 +12,14 @@
  */
 
 import classNames from 'classnames';
-import { isEmpty, isNil, isString, isUndefined } from 'lodash';
+import {
+  camelCase,
+  isEmpty,
+  isNil,
+  isString,
+  isUndefined,
+  startCase,
+} from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -21,10 +28,10 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
 } from '../constants/constants';
 import { ColumnTestType } from '../enums/columnTest.enum';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -92,7 +99,7 @@ export const getEntityOverview = (
         entityDetail;
       const [service, database] = getPartialNameFromTableFQN(
         fullyQualifiedName ?? '',
-        ['service', 'database'],
+        [FqnPart.Service, FqnPart.Database],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
       const ownerValue = getOwnerFromId(owner?.id);
@@ -118,7 +125,7 @@ export const getEntityOverview = (
           url: getDatabaseDetailsPath(
             getPartialNameFromTableFQN(
               fullyQualifiedName ?? '',
-              ['service', 'database'],
+              [FqnPart.Service, FqnPart.Database],
               FQN_SEPARATOR_CHAR
             )
           ),
@@ -127,12 +134,8 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -205,12 +208,8 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -253,12 +252,8 @@ export const getEntityOverview = (
         {
           name: 'Owner',
           value: ownerValue?.displayName || ownerValue?.name || '--',
-          url: getTeamDetailsPath(owner?.name || ''),
-          isLink: ownerValue
-            ? ownerValue.type === 'team'
-              ? true
-              : false
-            : false,
+          url: getTeamAndUserDetailsPath(owner?.name || ''),
+          isLink: ownerValue ? ownerValue.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -542,4 +537,8 @@ export const isColumnTestSupported = (dataType: string) => {
   return supportedType.includes(
     getDataTypeString(dataType) as PrimaryTableDataTypes
   );
+};
+
+export const getTitleCase = (text?: string) => {
+  return text ? startCase(camelCase(text)) : '';
 };

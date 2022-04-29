@@ -11,5 +11,7 @@ import org.openqa.selenium.WebDriver;
 public class PipelineServicePage {
   @Nonnull WebDriver webDriver;
 
-  By pipelineServiceUrl = By.cssSelector("[data-testid='pipeline-url']");
+  By pipelineServiceUrl = By.cssSelector("[id='root_pipelineUrl']");
+  By deletePipeline = By.cssSelector("[data-testid='delete-button']");
+  By confirmationDeleteText = By.cssSelector("[data-testid='confirmation-text-input']");
 }

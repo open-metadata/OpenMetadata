@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.topics;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
@@ -85,12 +86,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List topics by filtering on service name and ensure right topics in the response
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
         assertEquals(service.getName(), topic.getService().getName());
@@ -130,7 +128,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     ChangeDescription change = getChangeDescription(topic.getVersion());
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("owner").withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
     change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
@@ -185,7 +183,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     ChangeDescription change = getChangeDescription(topic.getVersion());
     change
         .getFieldsUpdated()
-        .add(new FieldChange().withName("owner").withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
+        .add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1).withNewValue(TEAM_OWNER1));
     change.getFieldsUpdated().add(new FieldChange().withName("maximumMessageSize").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
@@ -203,11 +201,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .getFieldsAdded()
         .add(new FieldChange().withName("cleanupPolicies").withNewValue(List.of(CleanupPolicy.DELETE)));
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_nonEmptyTopic_4xx() {
-    // TODO
   }
 
   @Override

@@ -1,10 +1,16 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.pipelineDetails;
 
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
@@ -20,7 +26,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PipelineDetailsUIErrorHandlingTest {
+class PipelineDetailsUIErrorHandlingTest {
   static ChromeDriver webDriver;
   static Common common;
   static TableDetails tableDetails;
@@ -33,7 +39,7 @@ public class PipelineDetailsUIErrorHandlingTest {
   static String serviceName = faker.name().firstName();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  static By toastMessage = By.cssSelector("[data-testid='toast']");
+  static By toastMessage = By.xpath("(//div[@class='Toastify__toast-body']/div)[2]");
   List<WebElement> checkTabs = new ArrayList<>();
   WebElement explore;
   WebElement headerSettings;
@@ -41,7 +47,7 @@ public class PipelineDetailsUIErrorHandlingTest {
   WebElement follow;
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -276,7 +282,7 @@ public class PipelineDetailsUIErrorHandlingTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {
@@ -288,3 +294,4 @@ public class PipelineDetailsUIErrorHandlingTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/

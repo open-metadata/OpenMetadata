@@ -31,7 +31,7 @@ interface Props {
   hasEditAccess?: boolean;
   blurWithBodyBG?: boolean;
   removeBlur?: boolean;
-  description: string;
+  description?: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
   entityType?: string;
@@ -125,7 +125,7 @@ const Description = ({
             onEntityFieldSelect &&
             !description?.trim() ? (
               <button
-                className="focus:tw-outline-none tw-ml-2 tw-opacity-0 hover:tw-opacity-100 tw--mt-6"
+                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
                 data-testid="request-description"
                 onClick={() => onEntityFieldSelect?.('description')}>
                 <PopOver
@@ -134,8 +134,8 @@ const Description = ({
                   trigger="mouseenter">
                   <SVGIcons
                     alt="request-description"
+                    className="tw-mt-2"
                     icon={Icons.REQUEST}
-                    width="22px"
                   />
                 </PopOver>
               </button>

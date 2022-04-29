@@ -15,31 +15,38 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/lookerType",
       "default": "Looker"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect  to the Looker. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password to connect  to the Looker.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "URL to Looker instance.",
       "type": "string",
       "format": "uri"
     },
     "env": {
+      "title": "Looker Environment",
       "description": "Looker Environment",
       "type": "string"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort", "username"]
 }

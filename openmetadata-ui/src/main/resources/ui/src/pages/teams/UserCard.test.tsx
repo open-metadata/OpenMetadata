@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import UserCard from './UserCard';
@@ -100,5 +100,26 @@ describe('Test userCard component', () => {
 
     expect(svgIcon).toBeInTheDocument();
     expect(datasetLink).toBeInTheDocument();
+  });
+
+  it('If isOwner is passed it should allow delete action', async () => {
+    const { container } = render(
+      <UserCard
+        isActionVisible
+        isOwner
+        item={mockItem}
+        onRemove={mockRemove}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const remove = await findByTestId(container, 'remove');
+
+    fireEvent.click(remove);
+
+    expect(remove).toBeInTheDocument();
+    expect(mockRemove).toBeCalled();
   });
 });

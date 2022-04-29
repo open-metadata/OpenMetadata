@@ -15,20 +15,25 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/sampleDataType"
+      "$ref": "#/definitions/sampleDataType",
+      "default": "SampleData"
     },
     "sampleDataFolder": {
       "description": "Sample Data File Path",
       "type": "string"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
     "supportsUsageExtraction": {

@@ -9,14 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.utils.logger import ingestion_logger
+
 T = TypeVar("T")
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 Entity = TypeVar("Entity", bound=BaseModel)

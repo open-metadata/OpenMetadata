@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -55,6 +56,7 @@ import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeli
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.catalog.metadataIngestion.FilterPattern;
+import org.openmetadata.catalog.metadataIngestion.LogLevels;
 import org.openmetadata.catalog.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -88,6 +90,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         IngestionPipelineResource.IngestionPipelineList.class,
         "services/ingestionPipelines",
         IngestionPipelineResource.FIELDS);
+    this.supportsEmptyDescription = false;
   }
 
   @BeforeAll
@@ -248,7 +251,8 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    assertEquals(LogLevels.INFO, ingestion.getLoggerLevel());
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
   }
 
@@ -286,7 +290,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
   }
 
@@ -318,7 +322,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline()
@@ -332,6 +336,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         updateIngestionPipeline(
             request
                 .withSourceConfig(updatedSourceConfig)
+                .withLoggerLevel(LogLevels.ERROR)
                 .withAirflowConfig(
                     new AirflowConfig()
                         .withConcurrency(pipelineConcurrency)
@@ -343,6 +348,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+
+    assertEquals(LogLevels.ERROR, updatedIngestion.getLoggerLevel());
+
     validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
   }
 
@@ -375,7 +383,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     DashboardServiceMetadataPipeline dashboardServiceMetadataPipeline =
         new DashboardServiceMetadataPipeline()
@@ -429,7 +437,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     MessagingServiceMetadataPipeline messagingServiceMetadataPipeline =
         new MessagingServiceMetadataPipeline()
@@ -489,7 +497,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
-    ingestion = getEntity(ingestion.getId(), "owner", ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
     // Update and connector orgs and options to database connection
@@ -566,12 +574,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate("2021-11-21"));
     IngestionPipeline IngestionPipeline3 = createAndCheckEntity(requestPipeline_3, ADMIN_AUTH_HEADERS);
     // List charts by filtering on service name and ensure right charts in the response
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("service", bigqueryRef.getName());
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", bigqueryRef.getName());
+
     Predicate<IngestionPipeline> isPipelineBigquery1 = p -> p.getId().equals(pipelineBigquery1.getId());
     Predicate<IngestionPipeline> isPipelineBigquery2 = u -> u.getId().equals(pipelineBigquery2.getId());
     Predicate<IngestionPipeline> isPipelineBigquery3 = u -> u.getId().equals(IngestionPipeline3.getId());
@@ -579,12 +584,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(2, actualBigqueryPipelines.size());
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery1));
     assertTrue(actualBigqueryPipelines.stream().anyMatch(isPipelineBigquery2));
-    queryParams =
-        new HashMap<>() {
-          {
-            put("service", snowflakeRef.getName());
-          }
-        };
+    queryParams = new HashMap<>();
+    queryParams.put("service", snowflakeRef.getName());
+
     List<IngestionPipeline> actualSnowflakePipelines = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
     assertEquals(1, actualSnowflakePipelines.size());
     assertTrue(actualSnowflakePipelines.stream().anyMatch(isPipelineBigquery3));
@@ -599,14 +601,9 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-    change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwner(USER_OWNER1), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-  }
-
-  @Test
-  void delete_nonEmptyPipeline_4xx() {
-    // TODO
   }
 
   private IngestionPipeline updateIngestionPipeline(
@@ -625,7 +622,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertListNotNull(ingestion.getService());
     assertListNull(ingestion.getOwner());
 
-    fields = "owner";
+    fields = FIELD_OWNER;
     ingestion =
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

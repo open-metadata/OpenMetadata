@@ -10,7 +10,6 @@
 #  limitations under the License.
 """PowerBI source module"""
 
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -23,9 +22,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -33,10 +30,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class PowerbiSource(Source[Entity]):
@@ -63,13 +61,14 @@ class PowerbiSource(Source[Entity]):
         self.source_config = self.config.sourceConfig.config
         self.service_connection_config = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
         self.status = SourceStatus()
-        self.dashboard_service = get_dashboard_service_or_create(
-            self.config.serviceName,
-            DashboardServiceType.PowerBI.name,
-            self.service_connection_config.dict(),
-            metadata_config,
+
+        self.dashboard_service = self.metadata.get_service_or_create(
+            entity=DashboardService, config=config
         )
+
         self.client = PowerBiClient(
             client_id=self.service_connection_config.clientId,
             client_secret=self.service_connection_config.clientSecret.get_secret_value(),
@@ -111,7 +110,7 @@ class PowerbiSource(Source[Entity]):
                 if not filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
-                    self.status.failures(
+                    self.status.failure(
                         chart["title"], "Filtered out using Chart filter pattern"
                     )
                     continue
@@ -131,7 +130,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.print_exc())
                 logger.error(repr(err))
-                self.status.failures(chart["title"], err)
+                self.status.failure(chart["title"], err)
 
     def get_dashboards(self):
         """Get dashboard method"""
@@ -145,7 +144,7 @@ class PowerbiSource(Source[Entity]):
                     self.source_config.dashboardFilterPattern,
                     dashboard_details["displayName"],
                 ):
-                    self.status.failures(
+                    self.status.failure(
                         dashboard_details["displayName"],
                         "Filtered out using Chart filter pattern",
                     )
@@ -168,7 +167,7 @@ class PowerbiSource(Source[Entity]):
             except Exception as err:
                 logger.debug(traceback.print_exc())
                 logger.error(err)
-                self.status.failures(dashboard_details["displayName"], err)
+                self.status.failure(dashboard_details["displayName"], err)
 
     def get_status(self) -> SourceStatus:
         return self.status

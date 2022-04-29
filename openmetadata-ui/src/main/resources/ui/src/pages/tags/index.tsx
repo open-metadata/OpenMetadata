@@ -15,8 +15,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
-import { EntityTags, FormErrorData, LoadingState } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { FormErrorData, LoadingState } from 'Models';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
@@ -39,8 +39,6 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../components/tags-container/tags-container';
-import Tags from '../../components/tags/tags';
 import {
   getExplorePathWithSearch,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -61,11 +59,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import {
-  getTagCategories,
-  getTaglist,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
+import { getTagCategories } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Form from './Form';
 
@@ -100,14 +94,6 @@ const TagsPage = () => {
     data: undefined,
     state: false,
   });
-
-  const getTags = useCallback(() => {
-    const filteredTags = getTaglist(categories).filter(
-      (tag) => editTag?.fullyQualifiedName !== tag
-    );
-
-    return getTagOptionsFromFQN(filteredTags);
-  }, [currentCategory, editTag]);
 
   const fetchCategories = () => {
     setIsLoading(true);
@@ -393,32 +379,6 @@ const TagsPage = () => {
       });
   };
 
-  const handleTagSelection = (tags?: Array<EntityTags>) => {
-    const newTags = tags?.map((tag) => tag.tagFQN);
-    if (newTags && editTag) {
-      updateTag(currentCategory?.name, editTag?.name, {
-        description: editTag?.description,
-        name: editTag?.name,
-        associatedTags: newTags,
-      })
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            fetchCurrentCategory(currentCategory?.name as string, true);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-tags-error']
-          );
-        });
-    }
-
-    setEditTag(undefined);
-  };
-
   const getUsageCountLink = (tagFQN: string) => {
     if (tagFQN.startsWith('Tier')) {
       return `${getExplorePathWithSearch()}?tier=${tagFQN}`;
@@ -576,11 +536,6 @@ const TagsPage = () => {
                           Description
                         </th>
                         <th
-                          className="tableHead-cell tw-w-60"
-                          data-testid="heading-associated-tags">
-                          Associated tags
-                        </th>
-                        <th
                           className="tableHead-cell tw-w-10"
                           data-testid="heading-actions">
                           Actions
@@ -654,53 +609,6 @@ const TagsPage = () => {
                                       </span>
                                     )}
                                   </div>
-                                </td>
-                                <td
-                                  className="tw-group tableBody-cell"
-                                  onClick={() => {
-                                    setEditTag(tag);
-                                  }}>
-                                  <NonAdminAction
-                                    permission={Operation.UpdateTags}
-                                    position="left"
-                                    title={TITLE_FOR_NON_ADMIN_ACTION}
-                                    trigger="click">
-                                    <TagsContainer
-                                      editable={
-                                        editTag?.name === tag.name && !isEditTag
-                                      }
-                                      selectedTags={
-                                        tag.associatedTags?.map((tag) => ({
-                                          tagFQN: tag,
-                                        })) || []
-                                      }
-                                      tagList={getTags()}
-                                      onCancel={() => {
-                                        handleTagSelection();
-                                      }}
-                                      onSelectionChange={(tags) => {
-                                        handleTagSelection(tags);
-                                      }}>
-                                      {tag.associatedTags?.length ? (
-                                        <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                          <SVGIcons
-                                            alt="edit"
-                                            icon="icon-edit"
-                                            title="Edit"
-                                            width="10px"
-                                          />
-                                        </button>
-                                      ) : (
-                                        <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                          <Tags
-                                            startWith="+ "
-                                            tag="Add tag"
-                                            type="outlined"
-                                          />
-                                        </span>
-                                      )}
-                                    </TagsContainer>
-                                  </NonAdminAction>
                                 </td>
                                 <td className="tableBody-cell">
                                   <div className="tw-text-center">

@@ -45,6 +45,7 @@ import {
   mockSupersetService,
   mockTableauService,
 } from '../../mocks/Service.mock';
+import { getAddServicePath } from '../../utils/RouterUtils';
 import ServicesPage from './index';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
@@ -58,6 +59,10 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
     })),
   };
 });
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getAddServicePath: jest.fn(),
+}));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   deleteService: jest.fn(),
@@ -112,6 +117,8 @@ jest.mock('../../components/Modals/AddServiceModal/AddServiceModal', () => ({
     .mockReturnValue(<p data-testid="add-service-modal">AddServiceModal</p>),
 }));
 
+const mockGetAddServicePath = jest.fn();
+
 describe('Test Service page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<ServicesPage />, {
@@ -160,15 +167,16 @@ describe('Test Service page', () => {
   });
 
   it('OnClick of add service, AddServiceModal should open', async () => {
+    (getAddServicePath as jest.Mock).mockImplementationOnce(
+      mockGetAddServicePath
+    );
     const { container } = render(<ServicesPage />, {
       wrapper: MemoryRouter,
     });
     const addService = await findByTestId(container, 'add-new-service-button');
     fireEvent.click(addService);
 
-    expect(
-      await findByTestId(container, 'add-service-modal')
-    ).toBeInTheDocument();
+    expect(mockGetAddServicePath).toBeCalled();
   });
 
   it('Card details should be display properly', async () => {
@@ -183,10 +191,7 @@ describe('Test Service page', () => {
       'service-description'
     );
     const type = await findAllByTestId(container, 'service-type');
-    const deleteIcon = await findAllByTestId(
-      container,
-      'delete-icon-container'
-    );
+
     const icon = await findAllByTestId(container, 'service-icon');
 
     expect(tabs[0]).toHaveClass('activeCategory');
@@ -195,7 +200,6 @@ describe('Test Service page', () => {
       mockDatabaseService.data.data.length
     );
     expect(type.length).toBe(mockDatabaseService.data.data.length);
-    expect(deleteIcon.length).toBe(mockDatabaseService.data.data.length);
     expect(icon.length).toBe(mockDatabaseService.data.data.length);
   });
 });

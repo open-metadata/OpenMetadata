@@ -11,9 +11,9 @@
 
 import csv
 import json
-import logging
 import os
 import random
+import sys
 import traceback
 import uuid
 from collections import namedtuple
@@ -35,12 +35,16 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -59,15 +63,12 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import (
-    get_dashboard_service_or_create,
-    get_database_service_or_create,
-    get_database_service_or_create_v2,
-    get_messaging_service_or_create,
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 COLUMN_NAME = "Column"
 KEY_TYPE = "Key type"
@@ -184,6 +185,8 @@ class SampleDataSource(Source[Entity]):
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
+        self.list_policies = []
+
         self.storage_service_json = json.load(
             open(
                 self.service_connection.sampleDataFolder + "/locations/service.json",
@@ -225,9 +228,9 @@ class SampleDataSource(Source[Entity]):
         self.glue_tables = json.load(
             open(self.service_connection.sampleDataFolder + "/glue/tables.json", "r")
         )
-        self.glue_database_service = get_database_service_or_create_v2(
-            service_json=self.glue_database_service_json,
-            metadata_config=metadata_config,
+        self.glue_database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=WorkflowSource(**self.glue_database_service_json),
         )
         self.glue_storage_service = get_storage_service_or_create(
             self.glue_storage_service_json,
@@ -261,10 +264,8 @@ class SampleDataSource(Source[Entity]):
                 self.service_connection.sampleDataFolder + "/datasets/service.json", "r"
             )
         )
-
-        self.database_service = get_database_service_or_create(
-            config=WorkflowSource(**self.database_service_json),
-            metadata_config=self.metadata_config,
+        self.database_service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=WorkflowSource(**self.database_service_json)
         )
 
         self.kafka_service_json = json.load(
@@ -273,22 +274,11 @@ class SampleDataSource(Source[Entity]):
         self.topics = json.load(
             open(self.service_connection.sampleDataFolder + "/topics/topics.json", "r")
         )
-        kafka_config = {
-            "config": {
-                "bootstrapServers": self.kafka_service_json["config"]["connection"][
-                    "bootstrapServers"
-                ],
-                "schemaRegistryURL": self.kafka_service_json["config"]["connection"][
-                    "schemaRegistry"
-                ],
-            }
-        }
-        self.kafka_service = get_messaging_service_or_create(
-            service_name=self.kafka_service_json.get("name"),
-            message_service_type=self.kafka_service_json.get("serviceType"),
-            config=kafka_config,
-            metadata_config=self.metadata_config,
+
+        self.kafka_service = self.metadata.get_service_or_create(
+            entity=MessagingService, config=WorkflowSource(**self.kafka_service_json)
         )
+
         self.dashboard_service_json = json.load(
             open(
                 self.service_connection.sampleDataFolder + "/dashboards/service.json",
@@ -308,12 +298,11 @@ class SampleDataSource(Source[Entity]):
                 "r",
             )
         )
-        self.dashboard_service = get_dashboard_service_or_create(
-            service_name=self.dashboard_service_json.get("name"),
-            dashboard_service_type=self.dashboard_service_json.get("serviceType"),
-            config=self.dashboard_service_json.get("connection"),
-            metadata_config=metadata_config,
+        self.dashboard_service = self.metadata.get_service_or_create(
+            entity=DashboardService,
+            config=WorkflowSource(**self.dashboard_service_json),
         )
+
         self.pipeline_service_json = json.load(
             open(
                 self.service_connection.sampleDataFolder + "/pipelines/service.json",
@@ -468,10 +457,13 @@ class SampleDataSource(Source[Entity]):
         )
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
+        user_entity_len = min(len(self.user_entity), 5)
         for table in self.tables["tables"]:
             try:
                 for sql_object in table["tableQueries"]:
-                    user_entity = self.user_entity[random.choice(range(5))]
+                    user_entity = self.user_entity[
+                        random.choice(range(user_entity_len))
+                    ]
                     user_dict = {
                         "id": user_entity.id.__root__,
                         "name": user_entity.name.__root__,
@@ -610,11 +602,15 @@ class SampleDataSource(Source[Entity]):
                         description=f"This is {user['teams']} description.",
                     )
                 ]
+                if not self.list_policies:
+                    self.list_policies = self.metadata.list_entities(entity=Policy)
+                    role_ref_id = self.list_policies.entities[0].id.__root__
                 roles = (
                     [
                         CreateRoleRequest(
                             name=role,
                             description=f"This is {role} description.",
+                            policies=[EntityReference(id=role_ref_id, type="policies")],
                         )
                         for role in user["roles"]
                     ]
@@ -630,6 +626,8 @@ class SampleDataSource(Source[Entity]):
                 yield OMetaUserProfile(user=user_metadata, teams=teams, roles=roles)
         except Exception as err:
             logger.error(err)
+            logger.debug(traceback.format_exc())
+            logger.debug(sys.exc_info()[2])
 
     def ingest_table_tests(self) -> Iterable[OMetaTableTest]:
         """

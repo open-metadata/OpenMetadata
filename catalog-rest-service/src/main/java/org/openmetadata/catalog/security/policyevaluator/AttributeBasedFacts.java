@@ -22,9 +22,7 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.jeasy.rules.api.Facts;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -32,8 +30,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 @Slf4j
 @Builder(setterPrefix = "with")
 class AttributeBasedFacts {
-
-  private User user;
   private MetadataOperation operation;
   private Object entity; // Entity can be null in some cases, where the operation may not be on a specific entity.
   private boolean checkOperation;
@@ -43,12 +39,11 @@ class AttributeBasedFacts {
   private final Facts facts = new Facts();
 
   /**
-   * Creates {@link Facts} with the operation, user (subject) and entity (object) attributes so that it is recognizable
-   * by {@link org.jeasy.rules.api.RulesEngine}
+   * Creates {@link Facts} with the operation, and entity (object) attributes so that it is recognizable by {@link
+   * org.jeasy.rules.api.RulesEngine}
    */
   public Facts getFacts() {
     // Facts to be taken into consideration by RuleCondition.
-    facts.put(CommonFields.USER_ROLES, getUserRoles(user));
     facts.put(CommonFields.ENTITY_TAGS, getEntityTags(entity));
     facts.put(CommonFields.ENTITY_TYPE, getEntityType(entity));
     if (checkOperation) {
@@ -69,10 +64,6 @@ class AttributeBasedFacts {
 
   public List<MetadataOperation> getAllowedOperations() {
     return new ArrayList<>(facts.get(CommonFields.ALLOWED_OPERATIONS));
-  }
-
-  private List<String> getUserRoles(User user) {
-    return user.getRoles().stream().map(EntityReference::getName).collect(Collectors.toList());
   }
 
   private List<String> getEntityTags(Object entity) {

@@ -43,11 +43,11 @@ export interface Role {
   id: string;
   name: string;
   /**
-   * Policy that is attached to this role.
+   * Policies that is attached to this role.
    */
-  policy?: EntityReference;
+  policies?: EntityReference[];
   /**
-   * Teams that have this role assigned.
+   * Teams that have this role assigned to them.
    */
   teams?: EntityReference[];
   /**
@@ -60,7 +60,7 @@ export interface Role {
    */
   updatedBy?: string;
   /**
-   * Users that have this role assigned.
+   * Users that have this role assigned to them.
    */
   users?: EntityReference[];
   /**
@@ -111,14 +111,12 @@ export interface FieldChange {
 }
 
 /**
- * Policy that is attached to this role.
+ * Policies that is attached to this role.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Teams that have this role assigned.
  */
 export interface EntityReference {
   /**

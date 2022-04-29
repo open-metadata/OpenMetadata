@@ -23,12 +23,18 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   getUserPath,
   navLinkSettings,
   ROUTES,
+  TERM_ADMIN,
+  TERM_USER,
 } from '../../constants/constants';
-import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
+import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
@@ -75,21 +81,22 @@ const Appbar: React.FC = (): JSX.Element => {
     {
       name: (
         <span>
-          <SVGIcons
-            alt="API icon"
-            className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-            icon={Icons.VERSION_BLACK}
-            width="12"
-          />{' '}
           <span className="tw-text-grey-muted">{`Version ${
             (version ? version : '?').split('-')[0]
           }`}</span>
         </span>
       ),
-      to: '',
+      to: urlGithubRepo,
+      isOpenNewTab: true,
       disabled: false,
-      icon: <></>,
-      isText: true,
+      icon: (
+        <SVGIcons
+          alt="Version icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          icon={Icons.VERSION_BLACK}
+          width="12"
+        />
+      ),
     },
     {
       name: `Docs`,
@@ -139,7 +146,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ? appState.users[0]
       : appState.userDetails;
 
-    return currentUser?.displayName || currentUser?.name || 'User';
+    return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
 
   const getUserData = () => {
@@ -147,9 +154,11 @@ const Appbar: React.FC = (): JSX.Element => {
       ? appState.users[0]
       : appState.userDetails;
 
-    const name = currentUser?.displayName || currentUser?.name || 'User';
+    const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
-    const roles = currentUser?.roles;
+    const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+
+    currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
     const teams = getNonDeletedTeams(currentUser?.teams ?? []);
 
@@ -160,12 +169,12 @@ const Appbar: React.FC = (): JSX.Element => {
           <span className="tw-font-medium tw-cursor-pointer">{name}</span>
         </Link>
         <hr className="tw-my-1.5" />
-        {(roles?.length ?? 0) > 0 ? (
+        {roles.length > 0 ? (
           <div>
             <div className="tw-font-medium tw-text-xs">Roles</div>
-            {roles?.map((r, i) => (
+            {roles.map((r, i) => (
               <p className="tw-text-grey-muted" key={i}>
-                {r.displayName}
+                {r}
               </p>
             ))}
             <hr className="tw-my-1.5" />
@@ -176,7 +185,7 @@ const Appbar: React.FC = (): JSX.Element => {
             <span className="tw-font-medium tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
-                <Link to={getTeamDetailsPath(t.name as string)}>
+                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName}
                 </Link>
               </p>

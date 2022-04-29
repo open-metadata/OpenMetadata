@@ -11,87 +11,193 @@
  *  limitations under the License.
  */
 
-import React, { useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import { LoadingState } from 'Models';
+import React, { useMemo, useState } from 'react';
 import {
   INGESTION_SCHEDULER_INITIAL_VALUE,
   INITIAL_FILTER_PATTERN,
   STEPS_FOR_ADD_INGESTION,
 } from '../../constants/ingestion.constant';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
+import { FormSubmitType } from '../../enums/form.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
+  ConfigClass,
   CreateIngestionPipeline,
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  ConfigType,
+  FilterPattern,
+  IngestionPipeline,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
-import { AddIngestionProps, PatternType } from './addIngestion.interface';
+import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
+  activeIngestionStep,
+  heading,
+  status,
+  pipelineType,
+  data,
   serviceData,
   serviceCategory,
+  showSuccessScreen = true,
+  setActiveIngestionStep,
+  onUpdateIngestion,
+  onSuccessSave,
   onAddIngestionSave,
-  handleAddIngestion,
+  handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
-  const [activeStepperStep, setActiveStepperStep] = useState(1);
-  const [ingestionName] = useState(
-    `${serviceData.name}_${PipelineType.Metadata}`
-  );
-  const [repeatFrequency, setRepeatFrequency] = useState(
-    INGESTION_SCHEDULER_INITIAL_VALUE
-  );
-  const [startDate, setStartDate] = useState(getCurrentDate());
-  const [endDate, setEndDate] = useState('');
+  const isDatabaseService = useMemo(() => {
+    return serviceCategory === ServiceCategory.DATABASE_SERVICES;
+  }, [serviceCategory]);
 
-  const [showDashboardFilter, setShowDashboardFilter] = useState(false);
-  const [showSchemaFilter, setShowSchemaFilter] = useState(false);
-  const [showTableFilter, setShowTableFilter] = useState(false);
-  const [showTopicFilter, setShowTopicFilter] = useState(false);
-  const [showChartFilter, setShowChartFilter] = useState(false);
-  const [includeView, setIncludeView] = useState(false);
-  const [enableDataProfiler, setEnableDataProfiler] = useState(true);
-  const [ingestSampleData, setIngestSampleData] = useState(true);
+  const [saveState, setSaveState] = useState<LoadingState>('initial');
+  const [ingestionName, setIngestionName] = useState(
+    data?.name ?? getIngestionName(serviceData.name, pipelineType)
+  );
+  const [description, setDescription] = useState(data?.description ?? '');
+  const [repeatFrequency, setRepeatFrequency] = useState(
+    data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
+  );
+  const [startDate, setStartDate] = useState(
+    data?.airflowConfig.startDate ?? getCurrentDate()
+  );
+  const [endDate, setEndDate] = useState(data?.airflowConfig?.endDate ?? '');
+
+  const [showDashboardFilter, setShowDashboardFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
+    )
+  );
+  const [showSchemaFilter, setShowSchemaFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern
+    )
+  );
+  const [showTableFilter, setShowTableFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern
+    )
+  );
+  const [showTopicFilter, setShowTopicFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern
+    )
+  );
+  const [showChartFilter, setShowChartFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern
+    )
+  );
+  const [showFqnFilter, setShowFqnFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern
+    )
+  );
+  const [includeView, setIncludeView] = useState(
+    Boolean((data?.source.sourceConfig.config as ConfigClass)?.includeViews)
+  );
+  const [enableDataProfiler, setEnableDataProfiler] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
+      true
+  );
+  const [ingestSampleData, setIngestSampleData] = useState(
+    (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
+      true
+  );
+  const [markDeletedTables, setMarkDeletedTables] = useState(
+    isDatabaseService
+      ? Boolean(
+          (data?.source.sourceConfig.config as ConfigClass)
+            ?.markDeletedTables ?? true
+        )
+      : undefined
+  );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
-    useState<PatternType>(INITIAL_FILTER_PATTERN);
-  const [schemaFilterPattern, setSchemaFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+    useState<FilterPattern>(
+      (data?.source.sourceConfig.config as ConfigClass)
+        ?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN
+    );
+  const [schemaFilterPattern, setSchemaFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [tableFilterPattern, setTableFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [tableFilterPattern, setTableFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [topicFilterPattern, setTopicFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [topicFilterPattern, setTopicFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
-  const [chartFilterPattern, setChartFilterPattern] = useState<PatternType>(
-    INITIAL_FILTER_PATTERN
+  const [chartFilterPattern, setChartFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
+      INITIAL_FILTER_PATTERN
   );
+  const [fqnFilterPattern, setFqnFilterPattern] = useState<FilterPattern>(
+    (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
+      INITIAL_FILTER_PATTERN
+  );
+
+  const [queryLogDuration, setQueryLogDuration] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
+  );
+  const [stageFileLocation, setStageFileLocation] = useState<string>(
+    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ??
+      '/tmp/query_log'
+  );
+  const [resultLimit, setResultLimit] = useState<number>(
+    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+  );
+  const usageIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.DatabaseUsage
+    );
+  }, [data]);
+  const profilerIngestionType = useMemo(() => {
+    return (
+      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      ConfigType.Profiler
+    );
+  }, [data]);
 
   const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
     switch (type) {
       case FilterPatternEnum.DASHBOARD:
         setDashboardFilterPattern({
           ...dashboardFilterPattern,
-          include: value,
+          includes: value,
         });
 
         break;
       case FilterPatternEnum.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, include: value });
+        setSchemaFilterPattern({ ...schemaFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, include: value });
+        setTableFilterPattern({ ...tableFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.TOPIC:
-        setTopicFilterPattern({ ...topicFilterPattern, include: value });
+        setTopicFilterPattern({ ...topicFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, include: value });
+        setChartFilterPattern({ ...topicFilterPattern, includes: value });
+
+        break;
+      case FilterPatternEnum.FQN:
+        setFqnFilterPattern({ ...fqnFilterPattern, includes: value });
 
         break;
     }
@@ -101,24 +207,28 @@ const AddIngestion = ({
       case FilterPatternEnum.DASHBOARD:
         setDashboardFilterPattern({
           ...dashboardFilterPattern,
-          exclude: value,
+          excludes: value,
         });
 
         break;
       case FilterPatternEnum.SCHEMA:
-        setSchemaFilterPattern({ ...schemaFilterPattern, exclude: value });
+        setSchemaFilterPattern({ ...schemaFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.TABLE:
-        setTableFilterPattern({ ...tableFilterPattern, exclude: value });
+        setTableFilterPattern({ ...tableFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.TOPIC:
-        setTopicFilterPattern({ ...topicFilterPattern, exclude: value });
+        setTopicFilterPattern({ ...topicFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, exclude: value });
+        setChartFilterPattern({ ...topicFilterPattern, excludes: value });
+
+        break;
+      case FilterPatternEnum.FQN:
+        setFqnFilterPattern({ ...fqnFilterPattern, excludes: value });
 
         break;
     }
@@ -146,37 +256,78 @@ const AddIngestion = ({
         setShowChartFilter(value);
 
         break;
+      case FilterPatternEnum.FQN:
+        setShowFqnFilter(value);
+
+        break;
     }
   };
 
   const handleConfigureIngestionCancelClick = () => {
-    handleAddIngestion(false);
+    handleCancelClick();
   };
 
   const handleConfigureIngestionNextClick = () => {
-    setActiveStepperStep(2);
+    setActiveIngestionStep(2);
   };
 
   const handleScheduleIntervalBackClick = () => {
-    setActiveStepperStep(1);
+    setActiveIngestionStep(1);
   };
 
-  const getFilterPatternData = (data: PatternType) => {
-    const { include, exclude } = data;
+  const getFilterPatternData = (data: FilterPattern) => {
+    const { includes, excludes } = data;
 
-    return include.length === 0 && exclude.length === 0
-      ? undefined
-      : {
-          includes: include.length > 0 ? include : undefined,
-          excludes: exclude.length > 0 ? exclude : undefined,
+    const filterPattern =
+      (!isUndefined(includes) && includes.length) ||
+      (!isUndefined(excludes) && excludes.length)
+        ? {
+            includes: includes && includes.length > 0 ? includes : undefined,
+            excludes: excludes && excludes.length > 0 ? excludes : undefined,
+          }
+        : undefined;
+
+    return filterPattern;
+  };
+
+  const getConfigData = (type: PipelineType): ConfigClass => {
+    switch (type) {
+      case PipelineType.Usage: {
+        return {
+          queryLogDuration,
+          resultLimit,
+          stageFileLocation,
+          type: usageIngestionType,
         };
+      }
+      case PipelineType.Profiler: {
+        return {
+          fqnFilterPattern: getFilterPatternData(fqnFilterPattern),
+          type: profilerIngestionType,
+        };
+      }
+      case PipelineType.Metadata:
+      default: {
+        return {
+          enableDataProfiler: enableDataProfiler,
+          generateSampleData: ingestSampleData,
+          includeViews: includeView,
+          markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
+          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
+          tableFilterPattern: getFilterPatternData(tableFilterPattern),
+          chartFilterPattern: getFilterPatternData(chartFilterPattern),
+          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
+          topicFilterPattern: getFilterPatternData(topicFilterPattern),
+        };
+      }
+    }
   };
 
-  const handleScheduleIntervalDeployClick = () => {
+  const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
         startDate: startDate as unknown as Date,
-        endDate: startDate as unknown as Date,
+        endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
         forceDeploy: true,
       },
@@ -186,65 +337,130 @@ const AddIngestion = ({
         id: getCurrentUserId(),
         type: 'user',
       },
-      pipelineType: PipelineType.Metadata,
+      pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
-          includeViews: includeView,
-          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-          tableFilterPattern: getFilterPatternData(tableFilterPattern),
-          chartFilterPattern: getFilterPatternData(chartFilterPattern),
-          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
-          topicFilterPattern: getFilterPatternData(topicFilterPattern),
-        },
+        config: getConfigData(pipelineType),
       },
     };
 
-    onAddIngestionSave(ingestionDetails).then(() => {
-      setActiveStepperStep(3);
-    });
+    if (onAddIngestionSave) {
+      setSaveState('waiting');
+      onAddIngestionSave(ingestionDetails)
+        .then(() => {
+          setSaveState('success');
+          if (showSuccessScreen) {
+            setActiveIngestionStep(3);
+          } else {
+            onSuccessSave?.();
+          }
+        })
+        .catch(() => {
+          // ignore since error is displayed in toast in the parent promise
+        })
+        .finally(() => {
+          setTimeout(() => setSaveState('initial'), 500);
+        });
+    }
+  };
+
+  const updateIngestion = () => {
+    if (data) {
+      const updatedData: IngestionPipeline = {
+        ...data,
+        airflowConfig: {
+          ...data.airflowConfig,
+          startDate: startDate as unknown as Date,
+          endDate: (endDate as unknown as Date) || null,
+          scheduleInterval: repeatFrequency,
+        },
+        source: {
+          ...data.source,
+          sourceConfig: {
+            config: {
+              ...(data.source.sourceConfig.config as ConfigClass),
+              ...getConfigData(pipelineType),
+            },
+          },
+        },
+      };
+
+      if (onUpdateIngestion) {
+        setSaveState('waiting');
+        onUpdateIngestion(updatedData, data, data.id as string, data.name)
+          .then(() => {
+            setSaveState('success');
+            if (showSuccessScreen) {
+              setActiveIngestionStep(3);
+            } else {
+              onSuccessSave?.();
+            }
+          })
+          .finally(() => setTimeout(() => setSaveState('initial'), 500));
+      }
+    }
+  };
+
+  const handleScheduleIntervalDeployClick = () => {
+    if (status === FormSubmitType.ADD) {
+      createNewIngestion();
+    } else {
+      updateIngestion();
+    }
   };
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">Add New Ingestion</h6>
+      <h6 className="tw-heading tw-text-base">{heading}</h6>
 
       <IngestionStepper
-        activeStep={activeStepperStep}
+        activeStep={activeIngestionStep}
         className="tw-justify-between tw-w-10/12 tw-mx-auto"
         stepperLineClassName="add-ingestion-line"
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
       <div className="tw-pt-7">
-        {activeStepperStep === 1 && (
+        {activeIngestionStep === 1 && (
           <ConfigureIngestion
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
+            description={description}
             enableDataProfiler={enableDataProfiler}
+            fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
+            handleDescription={(val) => setDescription(val)}
             handleEnableDataProfiler={() =>
               setEnableDataProfiler((pre) => !pre)
             }
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
+            handleIngestionName={(val) => setIngestionName(val)}
+            handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
+            handleQueryLogDuration={(val) => setQueryLogDuration(val)}
+            handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
+            handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
+            markDeletedTables={markDeletedTables}
+            pipelineType={pipelineType}
+            queryLogDuration={queryLogDuration}
+            resultLimit={resultLimit}
             schemaFilterPattern={schemaFilterPattern}
             serviceCategory={serviceCategory}
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
+            showFqnFilter={showFqnFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
             showTopicFilter={showTopicFilter}
+            stageFileLocation={stageFileLocation}
             tableFilterPattern={tableFilterPattern}
             topicFilterPattern={topicFilterPattern}
             onCancel={handleConfigureIngestionCancelClick}
@@ -252,22 +468,23 @@ const AddIngestion = ({
           />
         )}
 
-        {activeStepperStep === 2 && (
+        {activeIngestionStep === 2 && (
           <ScheduleInterval
-            endDate={endDate}
+            endDate={endDate as string}
             handleEndDateChange={(value: string) => setEndDate(value)}
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
             }
             handleStartDateChange={(value: string) => setStartDate(value)}
             repeatFrequency={repeatFrequency}
-            startDate={startDate}
+            startDate={startDate as string}
+            status={saveState}
             onBack={handleScheduleIntervalBackClick}
-            onDeloy={handleScheduleIntervalDeployClick}
+            onDeploy={handleScheduleIntervalDeployClick}
           />
         )}
 
-        {activeStepperStep > 2 && (
+        {activeIngestionStep > 2 && handleViewServiceClick && (
           <SuccessScreen
             handleViewServiceClick={handleViewServiceClick}
             name={ingestionName}

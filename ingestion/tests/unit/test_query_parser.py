@@ -25,7 +25,7 @@ config = """
     "serviceConnection": {
       "config": {
         "type": "SampleData",
-        "sampleDataFolder": "./examples/sample_data"
+        "sampleDataFolder": "ingestion/examples/sample_data"
       }
     },
     "sourceConfig": {}

@@ -62,7 +62,7 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
 
       break;
     }
-    case DatabaseServiceType.ClickHouse: {
+    case DatabaseServiceType.Clickhouse: {
       schema = clickhouseConnection;
 
       break;
@@ -112,7 +112,7 @@ export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
 
       break;
     }
-    case DatabaseServiceType.MySQL: {
+    case DatabaseServiceType.Mysql: {
       schema = mysqlConnection;
 
       break;

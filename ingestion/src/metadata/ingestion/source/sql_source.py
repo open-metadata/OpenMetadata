@@ -11,8 +11,7 @@
 """
 Generic source to build SQL connectors.
 """
-import json
-import logging
+
 import re
 import traceback
 import uuid
@@ -44,6 +43,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -59,15 +59,20 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.engines import create_and_bind_session, get_engine, test_connection
+from metadata.utils.connections import (
+    create_and_bind_session,
+    get_connection,
+    test_connection,
+)
+from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
-from metadata.utils.helpers import get_database_service_or_create
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 @dataclass
@@ -125,11 +130,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             self.config.sourceConfig.config
         )
 
-        self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(config, metadata_config)
-        self.metadata = OpenMetadata(metadata_config)
         self.status = SQLSourceStatus()
-        self.engine = get_engine(service_connection=self.config.serviceConnection)
+
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
+        )
+        self.engine = get_connection(self.service_connection)
         self.test_connection()
 
         self._session = None  # We will instantiate this just if needed
@@ -138,16 +147,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        if self.source_config.dbtCatalogFilePath:
-            with open(
-                self.source_config.dbtCatalogFilePath, "r", encoding="utf-8"
-            ) as catalog:
-                self.dbt_catalog = json.load(catalog)
-        if self.source_config.dbtManifestFilePath:
-            with open(
-                self.source_config.dbtManifestFilePath, "r", encoding="utf-8"
-            ) as manifest:
-                self.dbt_manifest = json.load(manifest)
+        dbt_details = get_dbt_details(self.config.sourceConfig.config.dbtConfigSource)
+        self.dbt_catalog = dbt_details[0] if dbt_details else None
+        self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.profile_date = datetime.now()
 
     def test_connection(self) -> None:
@@ -237,7 +239,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.error(f"Failed to generate sample data for {table} - {err}")
         return None
 
@@ -279,7 +281,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     if self.source_config.includeViews:
                         yield from self.fetch_views(inspector, schema)
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{schema}"
+                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
                         yield from self.delete_tables(schema_fqdn)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -414,6 +416,15 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
+
+                try:
+                    if self.source_config.enableDataProfiler:
+                        profile = self.run_profiler(table=table, schema=schema)
+                        table.tableProfile = [profile] if profile else None
+                # Catch any errors during the profile runner and continue
+                except Exception as err:
+                    logger.error(err)
+
                 # table.dataModel = self._get_data_model(schema, view_name)
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
@@ -446,8 +457,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Get all the DBT information and feed it to the Table Entity
         """
         if (
-            self.source_config.dbtManifestFilePath
-            and self.source_config.dbtCatalogFilePath
+            self.source_config.dbtConfigSource
+            and self.dbt_manifest
+            and self.dbt_catalog
         ):
             logger.info("Parsing Data Models")
             manifest_entities = {
@@ -487,10 +499,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         upstream=upstream_nodes,
                     )
                     model_fqdn = f"{schema}.{model_name}".lower()
+                    self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.print_exc())
                     logger.error(err)
-                self.data_models[model_fqdn] = model
 
     def _parse_data_model_upstream(self, mnode):
         upstream_nodes = []
@@ -501,7 +513,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     table_fqn = get_fqdn(
                         Table,
                         service_name=self.config.serviceName,
-                        dashboard_name=database,
                         table_name=table,
                     ).lower()
                     upstream_nodes.append(table_fqn)
@@ -549,7 +560,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
         return columns
 
-    def _get_database(self, database: str) -> Database:
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = "default"
         return Database(
@@ -616,7 +627,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 unique_columns.extend(constraint.get("column_names"))
 
         table_columns = []
-        columns = inspector.get_columns(table, schema)
+        columns = inspector.get_columns(
+            table, schema, db_name=self.service_connection.database
+        )
         try:
             for column in columns:
                 try:
@@ -734,19 +747,22 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                 and column["policy_tags"]
                             ):
                                 self.metadata.create_primary_tag(
-                                    category_name=self.config.tag_category_name,
+                                    category_name=self.service_connection.tagCategoryName,
                                     primary_tag_body=CreateTagRequest(
                                         name=column["policy_tags"],
                                         description="Bigquery Policy Tag",
                                     ),
                                 )
                         except APIError:
-                            if column["policy_tags"] and self.config.enable_policy_tags:
+                            if (
+                                column["policy_tags"]
+                                and self.service_connection.enablePolicyTagImport
+                            ):
                                 col_dict.tags = [
                                     TagLabel(
                                         tagFQN=get_fqdn(
                                             Tag,
-                                            self.config.tag_category_name,
+                                            self.service_connection.tagCategoryName,
                                             column["policy_tags"],
                                         ),
                                         labelType="Automated",

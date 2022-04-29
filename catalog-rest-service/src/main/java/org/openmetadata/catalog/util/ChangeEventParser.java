@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.util;
 
+import static org.openmetadata.catalog.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.catalog.Entity.FIELD_NAME;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
 import java.util.ArrayList;
@@ -81,59 +86,53 @@ public final class ChangeEventParser {
   }
 
   private static String getFieldValue(Object fieldValue) {
-    if (fieldValue != null && !fieldValue.toString().isEmpty()) {
-      try {
-        // Check if field value is a json string
-        JsonValue json = JsonUtils.readJson(fieldValue.toString());
-        if (json.getValueType() == ValueType.ARRAY) {
-          JsonArray jsonArray = json.asJsonArray();
-          List<String> labels = new ArrayList<>();
-          for (var item : jsonArray) {
-            if (item.getValueType() == ValueType.OBJECT) {
-              Set<String> keys = item.asJsonObject().keySet();
-              if (keys.contains("tagFQN")) {
-                labels.add(item.asJsonObject().getString("tagFQN"));
-              } else if (keys.contains("displayName")) {
-                // Entity Reference will have a displayName
-                labels.add(item.asJsonObject().getString("displayName"));
-              } else if (keys.contains("name")) {
-                // Glossary term references have only "name" field
-                labels.add(item.asJsonObject().getString("name"));
-              }
-            } else if (item.getValueType() == ValueType.STRING) {
-              // The string might be enclosed with double quotes
-              // Check if has double quotes and strip trailing whitespaces
-              String label = item.toString().replaceAll("(?:^\\\")|(?:\\\"$)", "");
-              labels.add(label.strip());
+    if (fieldValue == null || fieldValue.toString().isEmpty()) {
+      return StringUtils.EMPTY;
+    }
+
+    try {
+      // Check if field value is a json string
+      JsonValue json = JsonUtils.readJson(fieldValue.toString());
+      if (json.getValueType() == ValueType.ARRAY) {
+        JsonArray jsonArray = json.asJsonArray();
+        List<String> labels = new ArrayList<>();
+        for (var item : jsonArray) {
+          if (item.getValueType() == ValueType.OBJECT) {
+            Set<String> keys = item.asJsonObject().keySet();
+            if (keys.contains("tagFQN")) {
+              labels.add(item.asJsonObject().getString("tagFQN"));
+            } else if (keys.contains(FIELD_DISPLAY_NAME)) {
+              // Entity Reference will have a displayName
+              labels.add(item.asJsonObject().getString(FIELD_DISPLAY_NAME));
+            } else if (keys.contains(FIELD_NAME)) {
+              // Glossary term references have only "name" field
+              labels.add(item.asJsonObject().getString(FIELD_NAME));
             }
-          }
-          return String.join(", ", labels);
-        } else if (json.getValueType() == ValueType.OBJECT) {
-          JsonObject jsonObject = json.asJsonObject();
-          // Entity Reference will have a displayName
-          Set<String> keys = jsonObject.asJsonObject().keySet();
-          if (keys.contains("displayName")) {
-            return jsonObject.asJsonObject().getString("displayName");
-          } else if (keys.contains("name")) {
-            return jsonObject.asJsonObject().getString("name");
+          } else if (item.getValueType() == ValueType.STRING) {
+            // The string might be enclosed with double quotes
+            // Check if string has double quotes and strip trailing whitespaces
+            String label = item.toString().replaceAll("^\"|\"$", "");
+            labels.add(label.strip());
           }
         }
-      } catch (JsonParsingException ex) {
-        // If unable to parse json, just return the string
+        return String.join(", ", labels);
+      } else if (json.getValueType() == ValueType.OBJECT) {
+        JsonObject jsonObject = json.asJsonObject();
+        // Entity Reference will have a displayName
+        Set<String> keys = jsonObject.asJsonObject().keySet();
+        if (keys.contains(FIELD_DISPLAY_NAME)) {
+          return jsonObject.asJsonObject().getString(FIELD_DISPLAY_NAME);
+        } else if (keys.contains(FIELD_NAME)) {
+          return jsonObject.asJsonObject().getString(FIELD_NAME);
+        }
       }
-      return fieldValue.toString();
+    } catch (JsonParsingException ex) {
+      // If unable to parse json, just return the string
     }
-    return StringUtils.EMPTY;
+    return fieldValue.toString();
   }
 
-  /**
-   * Tries to merge additions and deletions into updates and returns a map of formatted messages.
-   *
-   * @param entity Entity object.
-   * @param addedFields Fields that were added as part of the change event.
-   * @param deletedFields Fields that were deleted as part of the change event.
-   * @return A map of entity link -> formatted message.
-   */
+  /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
   private static Map<EntityLink, String> getFormattedMessages(
       Object entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB
@@ -179,7 +178,7 @@ public final class ChangeEventParser {
   private static EntityLink getEntityLink(String fieldName, Object entity) {
     EntityReference entityReference = Entity.getEntityReference(entity);
     String entityType = entityReference.getType();
-    String entityFQN = entityReference.getName();
+    String entityFQN = entityReference.getFullyQualifiedName();
     String arrayFieldName = null;
     String arrayFieldValue = null;
 
@@ -214,7 +213,9 @@ public final class ChangeEventParser {
     switch (changeType) {
       case ADD:
         String fieldValue = getFieldValue(newFieldValue);
-        if (fieldValue != null && !fieldValue.isEmpty()) {
+        if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
+          message = String.format("Started to follow **%s** `%s`", link.getEntityType(), link.getEntityFQN());
+        } else if (fieldValue != null && !fieldValue.isEmpty()) {
           message = String.format("Added **%s**: `%s`", updatedField, fieldValue);
         }
         break;
@@ -222,7 +223,11 @@ public final class ChangeEventParser {
         message = getUpdateMessage(updatedField, oldFieldValue, newFieldValue);
         break;
       case DELETE:
-        message = String.format("Deleted **%s**", updatedField);
+        if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
+          message = String.format("Stopped following %s `%s`", link.getEntityType(), link.getEntityFQN());
+        } else {
+          message = String.format("Deleted **%s**", updatedField);
+        }
         break;
       default:
         break;
@@ -233,9 +238,7 @@ public final class ChangeEventParser {
   private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(oldValue, newValue);
-    return diff == null || diff.isEmpty()
-        ? StringUtils.EMPTY
-        : String.format("Updated **%s** : %s", updatedField, diff);
+    return nullOrEmpty(diff) ? StringUtils.EMPTY : String.format("Updated **%s**: %s", updatedField, diff);
   }
 
   private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {
@@ -253,7 +256,7 @@ public final class ChangeEventParser {
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    return String.format("Updated **%s** : <br/> %s", updatedField, updates);
+    return String.format("Updated **%s**: <br/> %s", updatedField, updates);
   }
 
   private static String getUpdateMessage(String updatedField, Object oldValue, Object newValue) {
@@ -264,7 +267,7 @@ public final class ChangeEventParser {
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
       return String.format("Updated **%s** to %s", updatedField, getFieldValue(newValue));
-    } else if (updatedField.contains("tags") || updatedField.contains("owner")) {
+    } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
       return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }
     // if old value is not empty, and is of type array or object, the updates can be across multiple keys
@@ -320,13 +323,13 @@ public final class ChangeEventParser {
     // compute the differences
     List<DiffRow> rows = generator.generateDiffRows(List.of(oldValue), List.of(newValue));
 
-    // merge rows by \n for new line
+    // merge rows by %n for new line
     String diff = null;
     for (var row : rows) {
       if (diff == null) {
         diff = row.getOldLine();
       } else {
-        diff = String.format("%s\n%s", diff, row.getOldLine());
+        diff = String.format("%s%n%s", diff, row.getOldLine());
       }
     }
 

@@ -1,5 +1,4 @@
 import json
-import logging
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,8 +27,9 @@ from metadata.utils.helpers import (
     get_database_service_or_create,
     get_messaging_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 @dataclass
@@ -62,6 +62,7 @@ class AtlasSource(Source):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.status = AtlasSourceStatus()
+        # TODO: use metadata.get_service_or_create
         self.service = get_database_service_or_create(config, metadata_config)
 
         schema_registry_url = "http://localhost:8081"

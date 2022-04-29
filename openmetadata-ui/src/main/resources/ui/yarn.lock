@@ -2413,6 +2413,13 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-table@^7.7.10":
+  version "7.7.10"
+  resolved "https://registry.yarnpkg.com/@types/react-table/-/react-table-7.7.10.tgz#ca8bb5420bfeae964ff61682f31f1cadfcfee726"
+  integrity sha512-yt7FHv/2cFsucStSWLBOB3OmsRZF08DvVHzz8Zg41B4tzRL6pQ+5VYvmhaR1dKS//tDG4UOJ1RQJPEINHYoRtg==
+  dependencies:
+    "@types/react" "*"
+
 "@types/react-test-renderer@>=16.9.0", "@types/react-test-renderer@^17.0.0":
   version "17.0.1"
   resolved "https://registry.yarnpkg.com/@types/react-test-renderer/-/react-test-renderer-17.0.1.tgz#3120f7d1c157fba9df0118dae20cb0297ee0e06b"
@@ -3007,6 +3014,11 @@ ansi-styles@^4.0.0, ansi-styles@^4.1.0:
   integrity sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==
   dependencies:
     color-convert "^2.0.1"
+
+antlr4@4.9.2:
+  version "4.9.2"
+  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.9.2.tgz#abbc53d275954b1b6f4d8b3468b4a2cb258121fc"
+  integrity sha512-UjMSlenUORL+a+6g4RNZxRh5LcFWybRi2g0ASDBpgXBY6nlavg0BRVAVEQF0dz8jH6SyX3lV7uP5y/krJzc+Hw==
 
 anymatch@^2.0.0:
   version "2.0.0"
@@ -6264,6 +6276,15 @@ fs-extra@^10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.0.0.tgz#9ff61b655dde53fb34a82df84bb214ce802e17c1"
   integrity sha512-C5owb14u9eJwizKGdchcDUQeFtlSHHthBk8pbX9Vc1PFZrLombudjDnNns88aYslCyF6IY5SUw3Roz6xShcEIQ==
+  dependencies:
+    graceful-fs "^4.2.0"
+    jsonfile "^6.0.1"
+    universalify "^2.0.0"
+
+fs-extra@^10.1.0:
+  version "10.1.0"
+  resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.1.0.tgz#02873cfbc4084dde127eaa5f9905eef2325d1abf"
+  integrity sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==
   dependencies:
     graceful-fs "^4.2.0"
     jsonfile "^6.0.1"

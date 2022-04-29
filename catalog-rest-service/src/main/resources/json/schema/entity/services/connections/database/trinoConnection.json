@@ -21,53 +21,79 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/trinoType",
       "default": "Trino"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/trinoScheme",
       "default": "trino"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
       "type": "string"
     },
     "password": {
-      "description": "password to connect  to the Trino.",
+      "title": "Password",
+      "description": "password to connect to the Trino.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Host and port of the data source.",
       "type": "string"
     },
     "catalog": {
+      "title": "Catalog",
       "description": "Catalog of the data source.",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in the selected catalog in Trino.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases in the selected catalog.",
       "type": "string"
     },
+    "proxies": {
+      "title": "Proxies",
+      "description": "Proxies for the connection to Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "params": {
+      "title": "URL Parameters",
+      "description": "URL parameters for connection to the Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "proxies": {
-      "description": "Proxies for the connection to Trino data source",
-      "type": "object"
-    },
-    "params": {
-      "description": "URL parameters for connection to the Trino data source",
-      "type": "object"
-    },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

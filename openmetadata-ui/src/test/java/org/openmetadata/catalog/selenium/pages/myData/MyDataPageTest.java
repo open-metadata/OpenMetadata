@@ -23,9 +23,19 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
+import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
+import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -36,26 +46,26 @@ import org.testng.Assert;
 @Slf4j
 @Order(1)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MyDataPageTest {
+class MyDataPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   static Actions actions;
   static WebDriverWait wait;
   static String table = "dim_address";
+  static String searchSuggestion = "sample_dataecommerce_dbshopifydim_address";
   Integer waitTime = Property.getInstance().getSleepTime();
   MyDataPage myDataPage;
   TagsPage tagsPage;
   TeamsPage teamsPage;
   UserListPage userListPage;
   TableDetails tableDetails;
-  DatabaseServicePage databaseService;
   ExplorePage explorePage;
   Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -76,7 +86,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(1)
-  public void checkWhatsNew() {
+  void checkWhatsNew() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.openWhatsNew());
     Events.click(webDriver, myDataPage.page2());
@@ -118,22 +128,22 @@ public class MyDataPageTest {
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.users());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/user-list");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users/users");
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.teams());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/teams");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users");
   }
 
   @Test
   @Order(3)
-  public void checkSearchBar() throws InterruptedException {
+  void checkSearchBar() throws InterruptedException {
     String sendkeys = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
     wait.until(ExpectedConditions.elementToBeClickable(myDataPage.searchBox())); // Search bar/dim
     Events.sendKeys(webDriver, myDataPage.searchBox(), sendkeys); // Search bar/dim
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
-    Thread.sleep(1000);
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
+    Thread.sleep(waitTime);
     WebElement tableName =
         tableDetails
             .breadCrumb()
@@ -168,25 +178,13 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.settings());
     Events.click(webDriver, common.headerSettingsTeams());
     url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/teams");
+    Assert.assertEquals(url, "http://localhost:8585/teams-and-users");
     try {
       if (teamsPage.heading().isDisplayed()) {
         LOG.info("Teams Heading is displayed");
       }
     } catch (NoSuchElementException e) {
       Assert.fail("Teams heading not displayed");
-    }
-    webDriver.navigate().back();
-    Events.click(webDriver, myDataPage.settings());
-    Events.click(webDriver, common.headerSettingsMenu("Users"));
-    url = webDriver.getCurrentUrl();
-    Assert.assertEquals(url, "http://localhost:8585/user-list");
-    try {
-      if (userListPage.allUsers().isDisplayed()) {
-        LOG.info("All users is displayed");
-      }
-    } catch (NoSuchElementException e) {
-      Assert.fail("Users not displayed");
     }
     webDriver.navigate().back();
     Events.click(webDriver, myDataPage.settings());
@@ -217,17 +215,16 @@ public class MyDataPageTest {
 
   @Test
   @Order(6)
-  public void checkMyDataTab() {
+  void checkMyDataTab() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Events.click(webDriver, tableDetails.manage());
     Events.click(webDriver, tableDetails.owner()); // Owner
     Events.click(webDriver, tableDetails.users());
     Events.click(webDriver, tableDetails.selectUser());
-    Events.click(webDriver, tableDetails.saveManage());
     Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     try {
@@ -248,7 +245,7 @@ public class MyDataPageTest {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.follow());
@@ -277,7 +274,7 @@ public class MyDataPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch("bigquery_gcp:shopify:dim_address"));
+    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
     Events.click(webDriver, myDataPage.home());
     webDriver.navigate().refresh();
     String table = webDriver.findElement(myDataPage.recentlyViewed()).getText();
@@ -286,7 +283,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(8)
-  public void checkRecentlySearched() {
+  void checkRecentlySearched() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "dim";
     Events.click(webDriver, myDataPage.closeWhatsNew());
@@ -305,7 +302,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(9)
-  public void checkRecentSearchWithSpaces() {
+  void checkRecentSearchWithSpaces() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.sendKeys(webDriver, myDataPage.searchBox(), " ");
@@ -323,7 +320,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(10)
-  public void checkHelp() throws InterruptedException {
+  void checkHelp() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     ArrayList<String> tabs = new ArrayList<String>(webDriver.getWindowHandles());
     Events.click(webDriver, myDataPage.closeWhatsNew());
@@ -343,7 +340,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(11)
-  public void checkLogout() {
+  void checkLogout() {
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.profile());
     Events.click(webDriver, myDataPage.userName());
@@ -351,7 +348,7 @@ public class MyDataPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

@@ -12,12 +12,15 @@
 Metadata DAG common functions
 """
 import json
-from datetime import datetime
-from typing import Any, Dict
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, Optional
 
 from airflow import DAG
 
 from metadata.generated.schema.type import basic
+from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 try:
     from airflow.operators.python import PythonOperator
@@ -32,7 +35,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
 
@@ -42,11 +47,13 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     Task that creates and runs the ingestion workflow.
 
     The workflow_config gets cooked form the incoming
-    airflow_pipeline.
+    ingestionPipeline.
 
     This is the callable used to create the PythonOperator
     """
-    config = json.loads(workflow_config.json())
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = Workflow.create(config)
     workflow.execute()
@@ -55,14 +62,51 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     workflow.stop()
 
 
-def get_start_date(ingestion_pipeline: IngestionPipeline) -> datetime:
+def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     """
-    Prepare the DAG start_date based on the incoming
-    airflowPipeline payload from the OM server
-    """
-    basic_date: basic.Date = ingestion_pipeline.airflowConfig.startDate
+    Task that creates and runs the profiler workflow.
 
-    return datetime.strptime(str(basic_date.__root__), "%Y-%m-%d")
+    The workflow_config gets cooked form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+    """
+
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+    workflow = ProfilerWorkflow.create(config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+def date_to_datetime(
+    date: Optional[basic.Date], date_format: str = "%Y-%m-%d"
+) -> Optional[datetime]:
+    """
+    Format a basic.Date to datetime
+    """
+    if date is None:
+        return
+
+    return datetime.strptime(str(date.__root__), date_format)
+
+
+def build_workflow_config_property(
+    ingestion_pipeline: IngestionPipeline,
+) -> WorkflowConfig:
+    """
+    Prepare the workflow config with logLevels and openMetadataServerConfig
+    :param ingestion_pipeline: Received payload from REST
+    :return: WorkflowConfig
+    """
+    return WorkflowConfig(
+        loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
+        openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
+    )
 
 
 def build_default_args() -> Dict[str, Any]:
@@ -78,28 +122,50 @@ def build_default_args() -> Dict[str, Any]:
     }
 
 
-def build_ingestion_dag(
+def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
+    """
+    Prepare kwargs to send to DAG
+    :param ingestion_pipeline: pipeline configs
+    :return: dict to use as kwargs
+    """
+    return {
+        "dag_id": ingestion_pipeline.name.__root__,
+        "description": ingestion_pipeline.description,
+        "default_args": build_default_args(),
+        "start_date": date_to_datetime(ingestion_pipeline.airflowConfig.startDate),
+        "end_date": date_to_datetime(ingestion_pipeline.airflowConfig.endDate),
+        "concurrency": ingestion_pipeline.airflowConfig.concurrency,
+        "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
+        "default_view": ingestion_pipeline.airflowConfig.workflowDefaultView,
+        "orientation": ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation,
+        "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
+        if ingestion_pipeline.airflowConfig.workflowTimeout
+        else None,
+        "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline
+        or False,
+        "catchup": ingestion_pipeline.airflowConfig.pipelineCatchup or False,
+        "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
+    }
+
+
+def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: Dict[str, Any],
+    workflow_config: OpenMetadataWorkflowConfig,
+    workflow_fn: Callable,
 ) -> DAG:
     """
     Build a simple metadata workflow DAG
     """
 
-    with DAG(
-        dag_id=ingestion_pipeline.name.__root__,
-        default_args=build_default_args(),
-        description=ingestion_pipeline.description,
-        start_date=get_start_date(ingestion_pipeline),
-        is_paused_upon_creation=ingestion_pipeline.airflowConfig.pausePipeline or False,
-        catchup=ingestion_pipeline.airflowConfig.pipelineCatchup or False,
-    ) as dag:
+    with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
 
         PythonOperator(
             task_id=task_name,
-            python_callable=metadata_ingestion_workflow,
+            python_callable=workflow_fn,
             op_kwargs={"workflow_config": workflow_config},
+            retries=ingestion_pipeline.airflowConfig.retries,
+            retry_delay=ingestion_pipeline.airflowConfig.retryDelay,
         )
 
         return dag

@@ -26,6 +26,9 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/**'
       - 'openmetadata-ui/src/test/java/org/openmetadata/catalog/selenium/pagesWithoutData/**'
 
+concurrency: 
+  group: selenium-noIngestion-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   build:
 

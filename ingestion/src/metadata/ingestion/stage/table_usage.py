@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 import pathlib
 
 from metadata.generated.schema.entity.data.table import SqlQuery
@@ -25,8 +24,9 @@ from metadata.ingestion.models.table_queries import (
     TableUsageCount,
 )
 from metadata.ingestion.stage.file import FileStageConfig
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 def get_table_column_join(table, table_aliases, joins, database):
@@ -58,7 +58,6 @@ def get_table_column_join(table, table_aliases, joins, database):
                 )
         except ValueError as err:
             logger.error("Error in parsing sql query joins {}".format(err))
-            pass
     return TableColumnJoin(table_column=table_column, joined_with=joined_with)
 
 

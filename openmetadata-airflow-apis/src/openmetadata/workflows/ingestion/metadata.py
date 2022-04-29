@@ -13,7 +13,11 @@ Metadata DAG function builder
 """
 
 from airflow import DAG
-from openmetadata.workflows.ingestion.common import build_ingestion_dag
+from openmetadata.workflows.ingestion.common import (
+    build_dag,
+    build_workflow_config_property,
+    metadata_ingestion_workflow,
+)
 
 try:
     from airflow.operators.python import PythonOperator
@@ -26,7 +30,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
-    WorkflowConfig,
 )
 
 
@@ -40,10 +43,9 @@ def build_metadata_workflow_config(
         source=ingestion_pipeline.source,
         sink=Sink(
             type="metadata-rest",
+            config={},
         ),
-        workflowConfig=WorkflowConfig(
-            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
-        ),
+        workflowConfig=build_workflow_config_property(ingestion_pipeline),
     )
 
     return workflow_config
@@ -54,10 +56,11 @@ def build_metadata_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
     Build a simple metadata workflow DAG
     """
     workflow_config = build_metadata_workflow_config(ingestion_pipeline)
-    dag = build_ingestion_dag(
+    dag = build_dag(
         task_name="ingestion_task",
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
+        workflow_fn=metadata_ingestion_workflow,
     )
 
     return dag

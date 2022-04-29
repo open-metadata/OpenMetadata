@@ -7,7 +7,7 @@
         "type": "Metabase",
         "username": "username",
         "password": "password",
-        "hostPort": "hostPort",
+        "hostPort": "http://hostPort",
         "dbServiceName": "Database Service Name to create Lineage"
       }
     },

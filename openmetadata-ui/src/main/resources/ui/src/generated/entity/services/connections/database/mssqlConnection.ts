@@ -16,8 +16,8 @@
  * Mssql Database Connection Config
  */
 export interface MssqlConnection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -27,7 +27,7 @@ export interface MssqlConnection {
   /**
    * Host and port of the MsSQL.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
    * password to connect  to the MsSQL.
    */
@@ -36,10 +36,7 @@ export interface MssqlConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: MssqlScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -52,18 +49,7 @@ export interface MssqlConnection {
    * username to connect  to the MsSQL. This user should have privileges to read all the
    * metadata in MsSQL.
    */
-  username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
+  username: string;
 }
 
 /**
@@ -81,5 +67,5 @@ export enum MssqlScheme {
  * Service type.
  */
 export enum MssqlType {
-  Mssql = 'MSSQL',
+  Mssql = 'Mssql',
 }

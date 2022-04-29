@@ -5,9 +5,18 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.catalog.selenium.events.Events;
-import org.openmetadata.catalog.selenium.objectRepository.*;
+import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
+import org.openmetadata.catalog.selenium.objectRepository.MyDataPage;
+import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
+import org.openmetadata.catalog.selenium.objectRepository.TeamsPage;
+import org.openmetadata.catalog.selenium.objectRepository.UserListPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.NoSuchElementException;
@@ -41,7 +50,7 @@ class Explore {
   Integer[] check;
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -86,7 +95,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_data")) {
         break;
       }
     }
@@ -105,6 +114,7 @@ class Explore {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
+    Thread.sleep(waitTime);
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -112,7 +122,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_kafka")) {
         break;
       }
     }
@@ -126,11 +136,12 @@ class Explore {
 
   @Test
   @Order(4)
-  void checkDashboardCount() {
+  void checkDashboardCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
+    Thread.sleep(waitTime);
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -138,7 +149,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_superset")) {
         break;
       }
     }
@@ -152,11 +163,12 @@ class Explore {
 
   @Test
   @Order(5)
-  void checkPipelineCount() {
+  void checkPipelineCount() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
+    Thread.sleep(waitTime);
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -164,7 +176,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("Tier1")) {
+      if (Names.contains("sample_airflow")) {
         break;
       }
     }
@@ -181,15 +193,6 @@ class Explore {
   void checkBasics() throws Exception {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    // Doing add tags first to get Tags checkbox in the left panel
-    Events.click(webDriver, explorePage.selectTable());
-    Events.click(webDriver, explorePage.addTag());
-    Events.click(webDriver, tableDetails.addTagTextBox());
-    Events.sendKeys(webDriver, tableDetails.addTagTextBox(), "P");
-    Events.click(webDriver, tableDetails.selectTag());
-    Events.click(webDriver, tableDetails.saveTag());
-    webDriver.navigate().back();
-    Events.click(webDriver, explorePage.explore());
     try {
       webDriver.findElement(explorePage.serviceText());
     } catch (NoSuchElementException noSuchElementException) {
@@ -216,8 +219,8 @@ class Explore {
     // Adding description to check last updated sort
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), Keys.CONTROL + "A");
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), sendKeys);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
     Events.click(webDriver, explorePage.explore());
@@ -256,7 +259,7 @@ class Explore {
 
   @Test
   @Order(9)
-  public void checkRandomTopicCount() {
+  void checkRandomTopicCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
@@ -334,7 +337,7 @@ class Explore {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

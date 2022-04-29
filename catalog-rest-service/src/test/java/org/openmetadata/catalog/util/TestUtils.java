@@ -25,10 +25,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.Entity;
@@ -42,7 +43,9 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
@@ -132,7 +135,7 @@ public final class TestUtils {
           new DashboardConnection()
               .withConfig(
                   new SupersetConnection()
-                      .withSupersetURL(new URI("http://localhost:8080"))
+                      .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {
@@ -291,6 +294,7 @@ public final class TestUtils {
       assertListNotEmpty(list);
     }
     listOrEmpty(list).forEach(TestUtils::validateEntityReference);
+    validateAlphabeticalOrdering(list, EntityUtil.compareEntityReference);
   }
 
   public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
@@ -298,30 +302,44 @@ public final class TestUtils {
       return;
     }
     actualList = listOrEmpty(actualList);
+    actualList.forEach(TestUtils::validateTagLabel);
+
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
+    List<TagLabel> updatedExpectedList = new ArrayList<>();
+    EntityUtil.mergeTags(updatedExpectedList, expectedList);
+
     for (TagLabel expected : expectedList) {
-      if (expected.getSource() != Source.TAG) {
-        continue; // TODO similar test for glossary
+      if (expected.getSource() == Source.GLOSSARY) {
+        GlossaryTerm glossaryTerm =
+            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), "tags", ADMIN_AUTH_HEADERS);
+        List<TagLabel> derived = new ArrayList<>();
+        for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
+          Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
+          derived.add(
+              new TagLabel()
+                  .withTagFQN(tag.getTagFQN())
+                  .withState(expected.getState())
+                  .withDescription(associatedTag.getDescription())
+                  .withLabelType(TagLabel.LabelType.DERIVED));
+        }
+        EntityUtil.mergeTags(updatedExpectedList, derived);
       }
-      Tag tag = TagResourceTest.getTag(expected.getTagFQN(), ADMIN_AUTH_HEADERS);
-      List<TagLabel> derived = new ArrayList<>();
-      for (String fqn : listOrEmpty(tag.getAssociatedTags())) {
-        Tag associatedTag = TagResourceTest.getTag(fqn, ADMIN_AUTH_HEADERS);
-        derived.add(
-            new TagLabel()
-                .withTagFQN(fqn)
-                .withState(expected.getState())
-                .withDescription(associatedTag.getDescription())
-                .withLabelType(TagLabel.LabelType.DERIVED));
-      }
-      updatedExpectedList.addAll(derived);
     }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
     updatedExpectedList.sort(EntityUtil.compareTagLabel);
     actualList.sort(EntityUtil.compareTagLabel);
+    assertEquals(updatedExpectedList.size(), actualList.size());
     assertEquals(updatedExpectedList, actualList);
+  }
+
+  public static void validateTagLabel(TagLabel label) {
+    assertNotNull(label.getTagFQN(), label.getTagFQN());
+    assertNotNull(label.getDescription(), label.getTagFQN());
+    assertNotNull(label.getLabelType(), label.getTagFQN());
+    assertNotNull(label.getSource(), label.getTagFQN());
+    assertNotNull(label.getState(), label.getTagFQN());
+    // TODO
+    // assertNotNull(label.getHref());
   }
 
   public static void checkUserFollowing(
@@ -359,13 +377,13 @@ public final class TestUtils {
     if (expected == actual) { // Take care of both being null
       return;
     }
-    validateEntityReferences(actual);
     if (expected != null) {
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
+    validateEntityReferences(actual);
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -402,11 +420,27 @@ public final class TestUtils {
     }
   }
 
-  public static void assertListNotEmpty(List... values) {
+  public static void assertListNotEmpty(List<?>... values) {
     int index = 0;
-    for (List value : values) {
+    for (List<?> value : values) {
       Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
       index++;
     }
+  }
+
+  public static <T> boolean validateAlphabeticalOrdering(List<T> list, Comparator<T> comparator) {
+    Iterator<T> iterator = listOrEmpty(list).iterator();
+    if (!iterator.hasNext()) {
+      return true;
+    }
+    T prev = iterator.next();
+    while (iterator.hasNext()) {
+      T next = iterator.next();
+      if (comparator.compare(prev, next) > 0) {
+        return false;
+      }
+      prev = next;
+    }
+    return true;
   }
 }

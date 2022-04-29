@@ -12,7 +12,7 @@
  */
 
 import { StepperStepType } from 'Models';
-import { PatternType } from '../components/AddIngestion/addIngestion.interface';
+import { FilterPattern } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   { name: 'Configure Ingestion', step: 1 },
@@ -21,7 +21,7 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
 
 export const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
 
-export const INITIAL_FILTER_PATTERN: PatternType = {
-  include: [],
-  exclude: [],
+export const INITIAL_FILTER_PATTERN: FilterPattern = {
+  includes: [],
+  excludes: [],
 };

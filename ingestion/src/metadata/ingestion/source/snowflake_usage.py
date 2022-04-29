@@ -11,7 +11,7 @@
 """
 Snowflake usage module
 """
-import logging
+
 import traceback
 from datetime import timedelta
 from typing import Any, Dict, Iterable, Iterator, Union
@@ -19,53 +19,27 @@ from typing import Any, Dict, Iterable, Iterator, Union
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.sql_alchemy_helper import (
-    SQLAlchemyHelper,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class SnowflakeUsageSource(Source[TableQuery]):
-    """
-    Snowflake Usage source
-
-    Args:
-        config:
-        metadata_config:
-
-    Attributes:
-        config:
-        analysis_date:
-        sql_stmt:
-        alchemy_helper:
-        _extract_iter:
-        _database:
-        report:
-        SQL_STATEMENT (str):
-        WHERE_CLAUSE_SUFFIX_KEY (str):
-        CLUSTER_SOURCE (str):
-        USE_CATALOG_AS_CLUSTER_NAME (str):
-        DATABASE_KEY (str):
-        SERVICE_TYPE (str):
-        DEFAULT_CLUSTER_SOURCE (str):
-    """
 
     # SELECT statement from mysql information_schema
     # to extract table and column metadata
@@ -80,7 +54,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
     SERVICE_TYPE = DatabaseServiceType.Snowflake.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -93,15 +67,13 @@ class SnowflakeUsageSource(Source[TableQuery]):
             end_date=end,
             result_limit=self.config.sourceConfig.config.resultLimit,
         )
-        self.alchemy_helper = SQLAlchemyHelper(
-            self.service_connection, metadata_config, "Snowflake", self.sql_stmt
-        )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
         self.report = SQLSourceStatus()
+        self.engine = get_connection(self.service_connection)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata_config: WorkflowConfig):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
@@ -114,11 +86,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
         pass
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-        """
-        Provides iterator of result row from SQLAlchemy helper
-        :return:
-        """
-        rows = self.alchemy_helper.execute_query()
+
+        rows = self.engine.execute(self.sql_stmt)
         for row in rows:
             yield row
 
@@ -141,6 +110,8 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
+                if not row["database_name"] and self.service_connection.database:
+                    TableQuery.database = self.service_connection.database
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
@@ -159,8 +130,11 @@ class SnowflakeUsageSource(Source[TableQuery]):
         """
         return self.report
 
+    def test_connection(self) -> None:
+        test_connection(self.engine)
+
     def close(self):
-        self.alchemy_helper.close()
+        pass
 
     def get_status(self) -> SourceStatus:
         return self.report

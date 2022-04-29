@@ -16,13 +16,21 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
     DatabricksScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidConnection,
+    DruidScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveConnection,
     HiveScheme,
-    HiveSQLConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
     TrinoScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
+    VerticaConnection,
+    VerticaScheme,
 )
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
@@ -53,14 +61,14 @@ class SouceConnectionTest(TestCase):
 
     def test_hive_url(self):
         expected_result = "hive://localhost:10000/default"
-        databricks_conn_obj = HiveSQLConnection(
+        databricks_conn_obj = HiveConnection(
             scheme=HiveScheme.hive, hostPort="localhost:10000", database="default"
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url_auth(self):
         expected_result = "hive://localhost:10000/default;auth=CUSTOM"
-        databricks_conn_obj = HiveSQLConnection(
+        databricks_conn_obj = HiveConnection(
             scheme=HiveScheme.hive,
             hostPort="localhost:10000",
             database="default",
@@ -105,3 +113,23 @@ class SouceConnectionTest(TestCase):
             test_proxies
             == get_connection_args(trino_conn_obj).get("http_session").proxies
         )
+
+    def test_vertica_url(self):
+        expected_url = (
+            "vertica+vertica_python://username:password@localhost:5443/database"
+        )
+        vertica_conn_obj = VerticaConnection(
+            scheme=VerticaScheme.vertica_vertica_python,
+            hostPort="localhost:5443",
+            username="username",
+            password="password",
+            database="database",
+        )
+        assert expected_url == get_connection_url(vertica_conn_obj)
+
+    def test_druid_url(self):
+        expected_url = "druid://localhost:8082/druid/v2/sql"
+        druid_conn_obj = DruidConnection(
+            scheme=DruidScheme.druid, hostPort="localhost:8082"
+        )
+        assert expected_url == get_connection_url(druid_conn_obj)

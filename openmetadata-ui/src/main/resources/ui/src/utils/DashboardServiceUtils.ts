@@ -27,16 +27,6 @@ import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   let retVal: string | undefined;
   switch (config?.type) {
-    case DashboardServiceType.Looker: {
-      retVal = config.url;
-
-      break;
-    }
-    case DashboardServiceType.Metabase: {
-      retVal = config.hostPort;
-
-      break;
-    }
     case DashboardServiceType.PowerBI: {
       retVal = config.dashboardURL;
 
@@ -47,13 +37,11 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
 
       break;
     }
-    case DashboardServiceType.Superset: {
-      retVal = config.supersetURL;
-
-      break;
-    }
+    case DashboardServiceType.Looker:
+    case DashboardServiceType.Metabase:
+    case DashboardServiceType.Superset:
     case DashboardServiceType.Tableau: {
-      retVal = config.siteURL;
+      retVal = config.hostPort;
 
       break;
     }

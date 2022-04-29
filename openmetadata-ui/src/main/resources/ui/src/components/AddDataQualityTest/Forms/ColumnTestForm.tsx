@@ -17,7 +17,6 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { ColumnTestType } from '../../../enums/columnTest.enum';
-import { TestCaseExecutionFrequency } from '../../../generated/api/tests/createTableTest';
 import { Table } from '../../../generated/entity/data/table';
 import {
   ColumnTest,
@@ -79,9 +78,6 @@ const ColumnTestForm = ({
     data?.testCase?.config?.maxValue
   );
 
-  const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
-    data?.executionFrequency || TestCaseExecutionFrequency.Daily
-  );
   const [forbiddenValues, setForbiddenValues] = useState<(string | number)[]>(
     data?.testCase?.config?.forbiddenValues || ['']
   );
@@ -284,7 +280,6 @@ const ColumnTestForm = ({
       const columnTestObj: ColumnTest = {
         columnName: columnName,
         description: markdownRef.current?.getEditorContent() || undefined,
-        executionFrequency: frequency,
         testCase: {
           config: getTestConfi(),
           columnTestType: columnTest,
@@ -341,11 +336,6 @@ const ColumnTestForm = ({
 
         break;
       }
-
-      case 'frequency':
-        setFrequency(value as TestCaseExecutionFrequency);
-
-        break;
 
       case 'columnName': {
         const selectedColumn = column.find((d) => d.name === value);
@@ -665,25 +655,6 @@ const ColumnTestForm = ({
           </Field>
 
           {getColumnTestConfig()}
-
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="frequency">
-              Frequency of Test Run:
-            </label>
-            <select
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="frequency"
-              id="frequency"
-              name="frequency"
-              value={frequency}
-              onChange={handleValidation}>
-              {Object.values(TestCaseExecutionFrequency).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
         <Field>
           <Field className="tw-flex tw-justify-end">
@@ -693,7 +664,7 @@ const ColumnTestForm = ({
               theme="primary"
               variant="text"
               onClick={onFormCancel}>
-              Discard
+              Cancel
             </Button>
             <Button
               className="tw-w-16 tw-h-10"

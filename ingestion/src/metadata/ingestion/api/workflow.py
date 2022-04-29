@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import importlib
-import logging
 from typing import Type, TypeVar
 
 import click
@@ -27,8 +26,9 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 T = TypeVar("T")
 
@@ -44,7 +44,7 @@ class Workflow:
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
-        source_type = self.config.source.type
+        source_type = self.config.source.type.lower()
         source_class = self.get(
             "metadata.ingestion.source.{}.{}Source".format(
                 self.typeClassFetch(source_type, True),

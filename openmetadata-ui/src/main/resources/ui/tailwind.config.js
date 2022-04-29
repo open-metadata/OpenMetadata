@@ -28,6 +28,7 @@ const idealBG = '#C4C4C440';
 const success = '#008376';
 const successBG = '#00837640';
 const error = '#E54937';
+const error_70 = '#E5493770';
 const errorBG = '#E5493740';
 const info = '#1890FF';
 const infoBG = '#1890FF40';
@@ -60,7 +61,11 @@ const textDark = '#000000';
 const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
 
 module.exports = {
-  purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+  purge: [
+    './src/**/*.{js,jsx,ts,tsx}',
+    './src/styles/tailwind.css',
+    './public/index.html',
+  ],
   darkMode: false,
   prefix: 'tw-',
   theme: {
@@ -107,6 +112,7 @@ module.exports = {
         'success-lite': successBG,
         error: error,
         'error-lite': errorBG,
+        'error-70': error_70,
         warning: warning,
         'warning-lite': warningBG,
         info: info,
@@ -166,6 +172,7 @@ module.exports = {
       },
       maxHeight: {
         32: '8rem',
+        '80vh': '80vh',
         '90vh': '90vh',
       },
       minHeight: {

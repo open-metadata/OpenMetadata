@@ -19,7 +19,7 @@ import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
@@ -58,6 +58,7 @@ import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import PipelineStatusList from '../PipelineStatusList/PipelineStatusList.component';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
@@ -102,6 +103,8 @@ const PipelineDetails = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  pipelineStatus,
+  isPipelineStatusLoading,
 }: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -163,6 +166,17 @@ const PipelineDetails = ({
       count: feedCount,
     },
     {
+      name: 'Executions',
+      icon: {
+        alt: 'execution',
+        name: 'execution',
+        title: 'Execution',
+        selectedName: 'execution-color',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -171,7 +185,7 @@ const PipelineDetails = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Manage',
@@ -184,7 +198,7 @@ const PipelineDetails = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
 
@@ -193,7 +207,7 @@ const PipelineDetails = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -471,7 +485,7 @@ const PipelineDetails = ({
                                           alt="edit"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="12px"
                                         />
                                       </button>
                                     </NonAdminAction>
@@ -502,8 +516,8 @@ const PipelineDetails = ({
                                           trigger="mouseenter">
                                           <SVGIcons
                                             alt="request-description"
+                                            className="tw-mt-2.5"
                                             icon={Icons.REQUEST}
-                                            width="22px"
                                           />
                                         </PopOver>
                                       </button>
@@ -556,6 +570,12 @@ const PipelineDetails = ({
               </div>
             )}
             {activeTab === 3 && (
+              <PipelineStatusList
+                isLoading={isPipelineStatusLoading}
+                pipelineStatus={pipelineStatus}
+              />
+            )}
+            {activeTab === 4 && (
               <div className="tw-h-full">
                 <Entitylineage
                   addLineageHandler={addLineageHandler}
@@ -571,12 +591,17 @@ const PipelineDetails = ({
                 />
               </div>
             )}
-            {activeTab === 4 && !deleted && (
+            {activeTab === 5 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={pipelineDetails.id}
+                  entityName={pipelineDetails.name}
+                  entityType={EntityType.PIPELINE}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.PIPELINE}
                   onSave={onSettingsUpdate}
                 />
               </div>

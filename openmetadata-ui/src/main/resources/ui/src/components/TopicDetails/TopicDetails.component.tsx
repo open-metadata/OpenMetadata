@@ -15,7 +15,7 @@ import { EntityTags } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -198,7 +198,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       key: 'Owner',
       value:
         owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
+          ? getTeamAndUserDetailsPath(owner?.name || '')
           : getEntityName(owner),
       placeholderText: getEntityPlaceHolder(
         getEntityName(owner),
@@ -433,9 +433,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             {activeTab === 4 && !deleted && (
               <div>
                 <ManageTabComponent
+                  allowDelete
                   currentTier={tier?.tagFQN}
                   currentUser={owner?.id}
+                  entityId={topicDetails.id}
+                  entityName={topicDetails.name}
+                  entityType={EntityType.TOPIC}
                   hasEditAccess={hasEditAccess()}
+                  manageSectionType={EntityType.TOPIC}
                   onSave={onSettingsUpdate}
                 />
               </div>

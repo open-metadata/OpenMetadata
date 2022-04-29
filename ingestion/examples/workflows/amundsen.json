@@ -19,7 +19,6 @@
   "sink": {
     "type": "metadata-rest",
     "config": {
-      "api_endpoint": "http://localhost:8585/api"
     }
   },
   "workflowConfig": { 

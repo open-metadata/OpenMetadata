@@ -52,12 +52,16 @@ public final class Entity {
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
-  // Entity class to entity repository map
-  private static final Map<Class<?>, EntityRepository<?>> CLASS_ENTITY_REPOSITORY_MAP = new HashMap<>();
-
   // Common field names
   public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
+  public static final String FIELD_SERVICE = "service";
+  public static final String FIELD_FOLLOWERS = "followers";
+  public static final String FIELD_TAGS = "tags";
+  public static final String FIELD_DELETED = "deleted";
+  public static final String FIELD_PIPELINE_STATUSES = "pipelineStatuses";
+  public static final String FIELD_DISPLAY_NAME = "displayName";
 
   //
   // Services
@@ -133,7 +137,6 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
-    CLASS_ENTITY_REPOSITORY_MAP.put(clazz, entityRepository);
     LOG.info(
         "Registering entity {} {} {} {}",
         clazz,

@@ -21,10 +21,6 @@ export interface Rule {
    */
   actions: LifecycleEAction[];
   /**
-   * Is the rule enabled.
-   */
-  enabled?: boolean;
-  /**
    * Name that identifies this Rule.
    */
   name?: string;

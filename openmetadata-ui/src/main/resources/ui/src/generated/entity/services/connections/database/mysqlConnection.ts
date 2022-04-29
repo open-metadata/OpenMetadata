@@ -16,8 +16,8 @@
  * Mysql Database Connection Config
  */
 export interface MysqlConnection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -36,10 +36,7 @@ export interface MysqlConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: MySQLScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
@@ -49,17 +46,6 @@ export interface MysqlConnection {
    * metadata in SingleStore.
    */
   username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**
@@ -75,5 +61,5 @@ export enum MySQLScheme {
  * Service type.
  */
 export enum MySQLType {
-  MySQL = 'MySQL',
+  Mysql = 'Mysql',
 }

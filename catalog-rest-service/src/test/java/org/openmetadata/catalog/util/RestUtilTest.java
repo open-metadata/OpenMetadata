@@ -14,46 +14,47 @@
 package org.openmetadata.catalog.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Arrays;
-import java.util.List;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.UUID;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.teams.User;
+import org.mockito.Mockito;
 
 @Slf4j
 class RestUtilTest {
   @Test
-  void testFields() {
-    // Anonymous class with JsonProperties to extract
-    Object entity =
-        new Object() {
-          @JsonProperty("attribute1")
-          public int attribute1;
+  void hrefTests() throws URISyntaxException {
+    URI baseUri = URI.create("http://base");
+    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
+    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash
+    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path/")); // Removing trailing slash
+    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
 
-          @JsonProperty("attribute2")
-          public String attribute2;
+    UriInfo uriInfo = mockUriInfo("http://base/");
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection/"));
+    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection/"));
 
-          @JsonProperty("relationship1")
-          public User relationship1; // User is an entity class
+    UUID id = UUID.randomUUID();
+    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection", id));
+    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection", id));
+    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection/", id));
+    assertEquals(URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection/", id));
 
-          @JsonProperty("relationship2")
-          public Table relationship2; // Table is an entity class
-        };
+    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection", "path"));
+    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection", "/path"));
+    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection/", "path/"));
+    assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection/", "/path/"));
+  }
 
-    // Get attributes (that are fields with types that are not entity classes)
-    List<String> attributes = RestUtil.getAttributes(entity.getClass());
-    List<String> expectedAttributes = Arrays.asList("attribute1", "attribute2");
-    assertEquals(expectedAttributes.size(), attributes.size());
-    assertTrue(attributes.containsAll(expectedAttributes) && expectedAttributes.containsAll(attributes));
-
-    // Get relationships (that are fields with types that are entity classes)
-    List<String> relationships = RestUtil.getRelationships(entity.getClass());
-    List<String> expectedRelationships = Arrays.asList("relationship1", "relationship2");
-    assertEquals(expectedRelationships.size(), relationships.size());
-    assertTrue(relationships.containsAll(expectedRelationships) && expectedRelationships.containsAll(relationships));
+  private UriInfo mockUriInfo(String uri) throws URISyntaxException {
+    UriInfo uriInfo = Mockito.mock(UriInfo.class);
+    URI uriObject = new URI(uri);
+    Mockito.when(uriInfo.getBaseUri()).thenReturn(uriObject);
+    return uriInfo;
   }
 }

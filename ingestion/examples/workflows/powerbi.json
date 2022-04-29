@@ -7,7 +7,7 @@
         "clientId": "client_id",
         "clientSecret": "client_secret",
         "redirectURI": "http://localhost:8585/callback",
-        "dashboardURL": "https://analysis.windows.net/powerbi",
+        "hostPort": "https://analysis.windows.net/powerbi",
         "scope": [
           "scope",
           "https://analysis.windows.net/powerbi/api/App.Read.All"

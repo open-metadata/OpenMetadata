@@ -66,6 +66,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
@@ -76,7 +77,7 @@ import {
 } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
@@ -89,6 +90,8 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [isPipelineStatusLoading, setIsPipelineStatusLoading] =
+    useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -126,6 +129,10 @@ const PipelineDetailsPage = () => {
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [pipeLineStatus, setPipelineStatus] = useState<
+    Pipeline['pipelineStatus']
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -215,6 +222,28 @@ const PipelineDetailsPage = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
+  const getPipeLineStatus = () => {
+    setIsPipelineStatusLoading(true);
+    getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          const { pipelineStatus: status } = res.data;
+          setPipelineStatus(status);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-pipeline-status-error']
+        );
+      })
+      .finally(() => {
+        setIsPipelineStatusLoading(false);
+      });
+  };
+
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
@@ -258,14 +287,14 @@ const PipelineDetailsPage = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: displayName,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName,
+            displayName: getEntityName(res.data),
             entityType: EntityType.PIPELINE,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -308,6 +337,11 @@ const PipelineDetailsPage = () => {
       }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
+
+        break;
+      }
+      case TabSpecificField.PIPELINE_STATUS: {
+        getPipeLineStatus();
 
         break;
       }
@@ -556,9 +590,6 @@ const PipelineDetailsPage = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['unexpected-server-response']
@@ -604,8 +635,6 @@ const PipelineDetailsPage = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
@@ -660,6 +689,7 @@ const PipelineDetailsPage = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
+          isPipelineStatusLoading={isPipelineStatusLoading}
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
@@ -667,6 +697,7 @@ const PipelineDetailsPage = () => {
           paging={paging}
           pipelineDetails={pipelineDetails}
           pipelineFQN={pipelineFQN}
+          pipelineStatus={pipeLineStatus}
           pipelineTags={tags}
           pipelineUrl={pipelineUrl}
           postFeedHandler={postFeedHandler}

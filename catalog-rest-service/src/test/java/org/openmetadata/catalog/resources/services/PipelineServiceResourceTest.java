@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
+import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -67,6 +68,26 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         "owner");
     this.supportsPatch = false;
     this.supportsAuthorizedMetadataOperations = false;
+  }
+
+  public void setupPipelineServices() throws URISyntaxException, HttpResponseException {
+    // Create Airflow pipeline service
+    PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createPipeline =
+        pipelineServiceResourceTest
+            .createRequest("airflow", "", "", null)
+            .withServiceType(PipelineServiceType.Airflow)
+            .withPipelineUrl(new URI("http://localhost:0"));
+    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+
+    // Create Prefect pipeline service
+    createPipeline
+        .withName("prefect")
+        .withServiceType(PipelineServiceType.Prefect)
+        .withPipelineUrl(new URI("http://localhost:0"));
+    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+    PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
   }
 
   @BeforeAll

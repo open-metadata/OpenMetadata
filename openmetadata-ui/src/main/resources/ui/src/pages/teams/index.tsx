@@ -40,7 +40,7 @@ import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import {
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -95,7 +95,7 @@ const TeamsPage = () => {
       key: 'Owner',
       value:
         currentTeam?.owner?.type === 'team'
-          ? getTeamDetailsPath(
+          ? getTeamAndUserDetailsPath(
               currentTeam?.owner?.displayName || currentTeam?.owner?.name || ''
             )
           : currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
@@ -149,7 +149,7 @@ const TeamsPage = () => {
 
   const goToTeams = () => {
     if (team) {
-      history.push(getTeamDetailsPath());
+      history.push(getTeamAndUserDetailsPath());
     } else {
       fetchTeams();
       setCurrentTab(1);
@@ -375,7 +375,7 @@ const TeamsPage = () => {
    * @param name - team name
    */
   const changeCurrentTeam = (name: string) => {
-    history.push(getTeamDetailsPath(name));
+    history.push(getTeamAndUserDetailsPath(name));
   };
 
   const Tabs = () => {
@@ -439,6 +439,7 @@ const TeamsPage = () => {
           <p>There are no users added yet.</p>
           {isAdminUser ||
           isAuthDisabled ||
+          isOwner() ||
           userPermissions[Operation.UpdateTeam] ? (
             <>
               <p>Would like to start adding some?</p>
@@ -476,6 +477,7 @@ const TeamsPage = () => {
               <UserCard
                 isActionVisible
                 isIconVisible
+                isOwner={isOwner()}
                 item={User}
                 key={index}
                 onRemove={deleteUserHandler}

@@ -17,9 +17,9 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.orm_profiler.metrics.core import CACHE
 from metadata.orm_profiler.orm.registry import Dialects
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class LenFn(FunctionElement):
@@ -33,8 +33,12 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
-@compiles(LenFn, Dialects.Hive)  # For some reason hive's dialect is in bytes...
+@compiles(LenFn, Dialects.Hive)
 @compiles(LenFn, Dialects.Postgres)
 @compiles(LenFn, Dialects.Databricks)
+@compiles(LenFn, Dialects.MySQL)
+@compiles(LenFn, Dialects.MariaDB)
+@compiles(LenFn, Dialects.Athena)
+@compiles(LenFn, Dialects.Trino)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

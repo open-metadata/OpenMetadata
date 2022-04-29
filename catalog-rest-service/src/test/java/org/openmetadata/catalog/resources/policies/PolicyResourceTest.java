@@ -15,11 +15,9 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -31,9 +29,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,6 +41,7 @@ import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
@@ -141,40 +138,32 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.UpdateDescription, true, 0));
+    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_AccessControlPolicyWithInvalidRules_400_error(TestInfo test) {
+    // Adding a rule without operation should be disallowed
+    String policyName = getEntityName(test);
+    String ruleName = "rule21";
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule("rule21", null, null, null, MetadataOperation.UpdateDescription, true, 0, true));
-    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
-    assertResponseContains(
+    rules.add(PolicyUtils.accessControlRule(ruleName, null, null, null, true, 0));
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
+    assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format(
-            "Found invalid rule rule21 within policy %s. Please ensure that at least one among the user "
-                + "(subject) and entity (object) attributes is specified",
-            getEntityName(test)));
+        CatalogExceptionMessage.invalidPolicyOperationNull(ruleName, policyName));
   }
 
   @Test
   void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
     List<Rule> rules = new ArrayList<>();
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule1", null, null, "DataConsumer", MetadataOperation.UpdateDescription, true, 0, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule2", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
-    rules.add(
-        PolicyUtils.accessControlRule(
-            "rule3", null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1, true));
+    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.UpdateDescription, true, 0));
+    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.UpdateTags, true, 1));
+    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.UpdateTags, true, 1));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
@@ -183,90 +172,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
             "Found multiple rules with operation UpdateTags within policy %s. "
                 + "Please ensure that operation across all rules within the policy are distinct",
             getEntityName(test)));
-  }
-
-  @Test
-  void get_PolicyListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    assertResponse(
-        () -> listPolicies(null, -1, null, null, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[query param limit must be greater than or equal to 0]");
-
-    assertResponse(
-        () -> listPolicies(null, 1000001, null, null, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  void get_PolicyListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    assertResponse(
-        () -> listPolicies(null, 1, "", "", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  void get_PolicyListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of Policies
-    int maxPolicies = 40;
-    for (int i = 0; i < maxPolicies; i++) {
-      createEntity(createRequest(test, i), ADMIN_AUTH_HEADERS);
-    }
-
-    // List all Policies
-    PolicyList allPolicies = listPolicies(null, 1000000, null, null, ADMIN_AUTH_HEADERS);
-    int totalRecords = allPolicies.getData().size();
-    printPolicies(allPolicies);
-
-    // List limit number Policies at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxPolicies; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllPolicies = 0;
-      PolicyList forwardPage;
-      PolicyList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listPolicies(null, limit, null, after, ADMIN_AUTH_HEADERS);
-        printPolicies(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allPolicies.getData(), forwardPage, limit, indexInAllPolicies);
-
-        if (pageCount == 0) { // CASE 0 - First page is being returned. Therefore, before cursor is null
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listPolicies(null, limit, before, null, ADMIN_AUTH_HEADERS);
-          assertEntityPagination(allPolicies.getData(), backwardPage, limit, (indexInAllPolicies - limit));
-        }
-
-        indexInAllPolicies += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllPolicies = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listPolicies(null, limit, before, null, ADMIN_AUTH_HEADERS);
-        printPolicies(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allPolicies.getData(), forwardPage, limit, indexInAllPolicies);
-        pageCount++;
-        indexInAllPolicies -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printPolicies(PolicyList list) {
-    list.getData().forEach(Policy -> LOG.info("DB {}", Policy.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test
@@ -306,55 +211,26 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
-  @Test
-  void delete_nonEmptyPolicy_4xx() {
-    // TODO
-  }
-
   @Override
   public EntityInterface<Policy> validateGetWithDifferentFields(Policy policy, boolean byName)
       throws HttpResponseException {
     String fields = "";
     policy =
         byName
-            ? getPolicyByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
+            ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(policy.getOwner(), policy.getLocation());
 
     // .../policies?fields=owner,displayName,policyUrl
     fields = "owner,location";
     policy =
         byName
-            ? getPolicyByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getPolicy(policy.getId(), fields, ADMIN_AUTH_HEADERS);
+            ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     // Field location is set during creation - tested elsewhere
     assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
     // Checks for other owner, tags, and followers is done in the base class
     return getEntityInterface(policy);
-  }
-
-  public static Policy getPolicy(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("policies/" + id);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Policy.class, authHeaders);
-  }
-
-  public static Policy getPolicyByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("policies/name/" + fqn);
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, Policy.class, authHeaders);
-  }
-
-  public static PolicyList listPolicies(
-      String fields, Integer limitParam, String before, String after, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("policies");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = limitParam != null ? target.queryParam("limit", limitParam) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, PolicyList.class, authHeaders);
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {

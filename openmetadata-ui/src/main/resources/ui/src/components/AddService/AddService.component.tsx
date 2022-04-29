@@ -11,34 +11,34 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
-import { DynamicFormFieldType } from 'Models';
+import { capitalize, isUndefined } from 'lodash';
+import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import {
-  getAddServicePath,
-  getServiceDetailsPath,
-  ONLY_NUMBER_REGEX,
-  ROUTES,
-} from '../../constants/constants';
+import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
+import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
-import { MessagingServiceType } from '../../generated/entity/services/messagingService';
-import { DataObj } from '../../interface/service.interface';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  getKeyValueObject,
+  ConfigData,
+  DataObj,
+  DataService,
+} from '../../interface/service.interface';
+import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getAddServicePath } from '../../utils/RouterUtils';
+import {
+  getServiceIngestionStepGuide,
   isIngestionSupported,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
+import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
-import ConnectionDetails from './Steps/ConnectionDetails';
 import SelectServiceType from './Steps/SelectServiceType';
 
 const AddService = ({
@@ -54,35 +54,22 @@ const AddService = ({
     name: false,
     duplicateName: false,
   });
-  const [activeStepperStep, setActiveStepperStep] = useState(1);
+  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
   const [serviceName, setServiceName] = useState('');
   const [description, setDescription] = useState('');
-  const [url, setUrl] = useState('');
-  const [port, setPort] = useState('');
-  const [database, setDatabase] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [warehouse, setWarehouse] = useState('');
-  const [account, setAccount] = useState('');
-  const [connectionOptions, setConnectionOptions] = useState<
-    DynamicFormFieldType[]
-  >([]);
-  const [connectionArguments, setConnectionArguments] = useState<
-    DynamicFormFieldType[]
-  >([]);
-  const [brokers, setBrokers] = useState('');
-  const [schemaRegistry, setSchemaRegistry] = useState('');
-  const [pipelineUrl, setPipelineUrl] = useState('');
-  const [dashboardUrl, setDashboardUrl] = useState('');
-  const [env, setEnv] = useState('');
-  const [apiVersion, setApiVersion] = useState('');
-  const [server, setServer] = useState('');
-  const [siteName, setSiteName] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [saveServiceState, setSaveServiceState] =
+    useState<LoadingState>('initial');
+
+  const resetServiceData = () => {
+    setServiceName('');
+    setDescription('');
+  };
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    resetServiceData();
     setSelectServiceType(type);
   };
 
@@ -98,20 +85,20 @@ const AddService = ({
 
   const handleSelectServiceNextClick = () => {
     if (selectServiceType) {
-      setActiveStepperStep(2);
+      setActiveServiceStep(2);
     } else {
       setShowErrorMessage({ ...showErrorMessage, serviceType: true });
     }
   };
 
   const handleConfigureServiceBackClick = () => {
-    setActiveStepperStep(1);
+    setActiveServiceStep(1);
   };
 
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
     setDescription(descriptionValue);
     if (serviceName.trim()) {
-      setActiveStepperStep(3);
+      setActiveServiceStep(3);
     } else {
       setShowErrorMessage({ ...showErrorMessage, name: true });
     }
@@ -121,171 +108,45 @@ const AddService = ({
     setAddIngestion(value);
   };
 
-  const handleSubmit = () => {
-    let dataObj: DataObj = {
-      description: description,
+  const handleConfigUpdate = (
+    oData: ConfigData,
+    serviceCat: ServiceCategory
+  ) => {
+    const data = {
       name: serviceName,
       serviceType: selectServiceType,
-    };
-
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-        {
-          dataObj = {
-            ...dataObj,
-            databaseConnection: {
-              hostPort: `${url}:${port}`,
-              connectionArguments: getKeyValueObject(connectionArguments),
-              connectionOptions: getKeyValueObject(connectionOptions),
-              database: database,
-              password: password,
-              username: username,
-            },
-          };
-        }
-
-        break;
-      case ServiceCategory.MESSAGING_SERVICES:
-        {
-          dataObj = {
-            ...dataObj,
-            brokers:
-              selectServiceType === MessagingServiceType.Pulsar
-                ? [brokers]
-                : brokers.split(',').map((broker) => broker.trim()),
-            schemaRegistry: schemaRegistry,
-          };
-        }
-
-        break;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        {
-          switch (selectServiceType) {
-            case DashboardServiceType.Redash:
-              {
-                dataObj = {
-                  ...dataObj,
-                  dashboardUrl: dashboardUrl,
-                  // eslint-disable-next-line @typescript-eslint/camelcase
-                  api_key: apiKey,
-                };
-              }
-
-              break;
-            case DashboardServiceType.Tableau:
-              {
-                dataObj = {
-                  ...dataObj,
-                  dashboardUrl: dashboardUrl,
-                  // eslint-disable-next-line @typescript-eslint/camelcase
-                  site_name: siteName,
-                  username: username,
-                  password: password,
-                  // eslint-disable-next-line @typescript-eslint/camelcase
-                  api_version: apiVersion,
-                  server: server,
-                };
-              }
-
-              break;
-            default:
-              {
-                dataObj = {
-                  ...dataObj,
-                  dashboardUrl: dashboardUrl,
-                  username: username,
-                  password: password,
-                };
-              }
-
-              break;
-          }
-        }
-
-        break;
-      case ServiceCategory.PIPELINE_SERVICES:
-        {
-          dataObj = {
-            ...dataObj,
-            pipelineUrl: pipelineUrl,
-          };
-        }
-
-        break;
-      default:
-        break;
-    }
-    // TODO:- need to replace mockdata with actual data.
-    // mockdata to create service for mySQL
-    const mockData = {
       description: description,
-      name: serviceName,
-      connection: {
-        config: {
-          type: 'MySQL',
-          hostPort: 'localhost:3306',
-        },
-      },
       owner: {
         id: getCurrentUserId(),
         type: 'user',
       },
-      serviceType: 'MySQL',
     };
+    const configData =
+      serviceCat === ServiceCategory.PIPELINE_SERVICES
+        ? { ...data, pipelineUrl: oData.pipelineUrl }
+        : {
+            ...data,
+            connection: {
+              config: oData,
+            },
+          };
 
-    onAddServiceSave(mockData).then(() => {
-      setActiveStepperStep(4);
+    return new Promise<void>((resolve, reject) => {
+      setSaveServiceState('waiting');
+      onAddServiceSave(configData)
+        .then(() => {
+          setActiveServiceStep(4);
+          resolve();
+        })
+        .catch((err) => {
+          reject(err);
+        })
+        .finally(() => setSaveServiceState('initial'));
     });
   };
 
-  const handleConnectionDetailsSubmitClick = () => {
-    // validation will go here
-
-    handleSubmit();
-  };
-
   const handleConnectionDetailsBackClick = () => {
-    setActiveStepperStep(2);
-  };
-
-  const addConnectionOptionFields = () => {
-    setConnectionOptions([...connectionOptions, { key: '', value: '' }]);
-  };
-
-  const removeConnectionOptionFields = (i: number) => {
-    const newFormValues = [...connectionOptions];
-    newFormValues.splice(i, 1);
-    setConnectionOptions(newFormValues);
-  };
-
-  const handleConnectionOptionFieldsChange = (
-    i: number,
-    field: keyof DynamicFormFieldType,
-    value: string
-  ) => {
-    const newFormValues = [...connectionOptions];
-    newFormValues[i][field] = value;
-    setConnectionOptions(newFormValues);
-  };
-
-  const addConnectionArgumentFields = () => {
-    setConnectionArguments([...connectionArguments, { key: '', value: '' }]);
-  };
-
-  const removeConnectionArgumentFields = (i: number) => {
-    const newFormValues = [...connectionArguments];
-    newFormValues.splice(i, 1);
-    setConnectionArguments(newFormValues);
-  };
-
-  const handleConnectionArgumentFieldsChange = (
-    i: number,
-    field: keyof DynamicFormFieldType,
-    value: string
-  ) => {
-    const newFormValues = [...connectionArguments];
-    newFormValues[i][field] = value;
-    setConnectionArguments(newFormValues);
+    setActiveServiceStep(2);
   };
 
   const handleViewServiceClick = () => {
@@ -297,97 +158,10 @@ const AddService = ({
   const handleValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const value = event.target.value;
-    const name = event.target.name;
-
-    switch (name) {
-      case 'serviceName':
-        setServiceName(value.trim());
-        setShowErrorMessage({ ...showErrorMessage, name: false });
-
-        break;
-
-      case 'url':
-        setUrl(value);
-
-        break;
-
-      case 'port':
-        if (ONLY_NUMBER_REGEX.test(value) || value === '') {
-          setPort(value);
-        }
-
-        break;
-
-      case 'database':
-        setDatabase(value);
-
-        break;
-
-      case 'username':
-        setUsername(value);
-
-        break;
-
-      case 'password':
-        setPassword(value);
-
-        break;
-
-      case 'warehouse':
-        setWarehouse(value);
-
-        break;
-
-      case 'account':
-        setAccount(value);
-
-        break;
-
-      case 'brokers':
-        setBrokers(value);
-
-        break;
-
-      case 'schemaRegistry':
-        setSchemaRegistry(value);
-
-        break;
-
-      case 'pipelineUrl':
-        setPipelineUrl(value);
-
-        break;
-
-      case 'dashboardUrl':
-        setDashboardUrl(value);
-
-        break;
-
-      case 'env':
-        setEnv(value);
-
-        break;
-
-      case 'apiVersion':
-        setApiVersion(value);
-
-        break;
-
-      case 'server':
-        setServer(value);
-
-        break;
-
-      case 'siteName':
-        setSiteName(value);
-
-        break;
-
-      case 'apiKey':
-        setApiKey(value);
-
-        break;
+    const value = event.target.value.trim();
+    setServiceName(value);
+    if (value) {
+      setShowErrorMessage({ ...showErrorMessage, name: false });
     }
   };
 
@@ -398,12 +172,12 @@ const AddService = ({
           Add New Service
         </h6>
         <IngestionStepper
-          activeStep={activeStepperStep}
+          activeStep={activeServiceStep}
           stepperLineClassName="add-service-line"
           steps={STEPS_FOR_ADD_SERVICE}
         />
         <div className="tw-pt-5">
-          {activeStepperStep === 1 && (
+          {activeServiceStep === 1 && (
             <SelectServiceType
               handleServiceTypeClick={handleServiceTypeClick}
               selectServiceType={selectServiceType}
@@ -415,7 +189,7 @@ const AddService = ({
             />
           )}
 
-          {activeStepperStep === 2 && (
+          {activeServiceStep === 2 && (
             <ConfigureService
               description={description}
               handleValidation={handleValidation}
@@ -429,45 +203,26 @@ const AddService = ({
             />
           )}
 
-          {activeStepperStep === 3 && (
-            <ConnectionDetails
-              account={account}
-              addConnectionArgumentFields={addConnectionArgumentFields}
-              addConnectionOptionFields={addConnectionOptionFields}
-              apiKey={apiKey}
-              apiVersion={apiVersion}
-              brokers={brokers}
-              connectionArguments={connectionArguments}
-              connectionOptions={connectionOptions}
-              dashboardUrl={dashboardUrl}
-              database={database}
-              env={env}
-              handleConnectionArgumentFieldsChange={
-                handleConnectionArgumentFieldsChange
+          {activeServiceStep === 3 && (
+            <ConnectionConfigForm
+              cancelText="Back"
+              data={
+                (serviceCategory !== ServiceCategory.PIPELINE_SERVICES
+                  ? {
+                      connection: { config: { type: selectServiceType } },
+                    }
+                  : {}) as DataService
               }
-              handleConnectionOptionFieldsChange={
-                handleConnectionOptionFieldsChange
-              }
-              handleValidation={handleValidation}
-              password={password}
-              pipelineUrl={pipelineUrl}
-              port={port}
-              removeConnectionArgumentFields={removeConnectionArgumentFields}
-              removeConnectionOptionFields={removeConnectionOptionFields}
-              schemaRegistry={schemaRegistry}
-              selectedService={selectServiceType}
-              server={server}
               serviceCategory={serviceCategory}
-              siteName={siteName}
-              url={url}
-              username={username}
-              warehouse={warehouse}
-              onBack={handleConnectionDetailsBackClick}
-              onSubmit={handleConnectionDetailsSubmitClick}
+              status={saveServiceState}
+              onCancel={handleConnectionDetailsBackClick}
+              onSave={(e) => {
+                handleConfigUpdate(e.formData, serviceCategory);
+              }}
             />
           )}
 
-          {activeStepperStep > 3 && (
+          {activeServiceStep > 3 && (
             <SuccessScreen
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
@@ -481,20 +236,14 @@ const AddService = ({
   };
 
   const fetchRightPanel = () => {
-    return (
-      <>
-        <h6 className="tw-heading tw-text-base">
-          {addIngestion ? 'Configure Ingestion' : 'Configure Service'}
-        </h6>
-        <div className="tw-mb-5">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Facilis eum
-          eveniet est? Aperiam perspiciatis est quis saepe optio fugiat
-          necessitatibus libero, consectetur, vitae rerum ex! Lorem ipsum dolor
-          sit amet consectetur adipisicing elit. Facilis eum eveniet est?
-          Aperiam perspiciatis est quis saepe optio fugiat necessitatibus
-          libero, consectetur, vitae rerum ex!
-        </div>
-      </>
+    const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
+
+    return getServiceIngestionStepGuide(
+      stepData,
+      addIngestion,
+      `${serviceName}_${PipelineType.Metadata}`,
+      serviceName,
+      PipelineType.Metadata
     );
   };
 
@@ -506,10 +255,15 @@ const AddService = ({
       <div className="tw-form-container">
         {addIngestion ? (
           <AddIngestion
-            handleAddIngestion={handleAddIngestion}
+            activeIngestionStep={activeIngestionStep}
+            handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
+            heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+            pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
             serviceData={newServiceData as DataObj}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
           />
         ) : (

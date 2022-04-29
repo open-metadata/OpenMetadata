@@ -13,7 +13,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -94,8 +96,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setService(getService(topic));
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
-    topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
-    topic.setTags(fields.contains("tags") ? getTags(topic.getFullyQualifiedName()) : null);
+    topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
+    topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
     return topic;
   }
 

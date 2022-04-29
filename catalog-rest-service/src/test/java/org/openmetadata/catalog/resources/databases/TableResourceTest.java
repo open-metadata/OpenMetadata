@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidColumnFQN;
@@ -30,6 +32,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.DATE;
+import static org.openmetadata.catalog.type.ColumnDataType.DECIMAL;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRING;
@@ -76,6 +79,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.tests.CreateColumnTest;
@@ -85,6 +90,8 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
@@ -151,6 +158,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     super.setup(test);
   }
 
+  public void setupDatabaseSchemas(TestInfo test) throws IOException {
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
+    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+
+    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
+    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
+
+    COLUMNS =
+        Arrays.asList(
+            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
+  }
+
   @Test
   void post_tableWithoutColumnDataLength_400(TestInfo test) {
     List<Column> columns = singletonList(getColumn("c1", BIGINT, null).withOrdinalPosition(1));
@@ -166,6 +191,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
           BAD_REQUEST,
           "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
+  }
+
+  @Test
+  void post_tableInvalidPrecisionScale_400(TestInfo test) {
+    // No precision set but only column
+    final List<Column> columns = singletonList(getColumn("c1", DECIMAL, null).withScale(1));
+    final CreateTable create = createRequest(test).withColumns(columns);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale is set but precision is not set for the column c1");
+
+    // Scale (decimal digits) larger than precision (total number of digits)
+    columns.get(0).withScale(2).withPrecision(1);
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Scale can't be greater than the precision for the column c1");
   }
 
   @Test
@@ -437,15 +480,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     //
     // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only
-    // tags and
-    // description can be changed
+    // tags and description can be changed
     //
     String tableJson = JsonUtils.pojoToJson(table1);
     c1 = table1.getColumns().get(0);
     c1.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c1 tag changed
 
     c2 = table1.getColumns().get(1);
-    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL)); // c2 new tag added
+    c2.getTags().add(USER_ADDRESS_TAG_LABEL); // c2 new tag added
 
     c2_a = c2.getChildren().get(0);
     c2_a.withTags(singletonList(GLOSSARY1_TERM1_LABEL)); // c2.a tag changed
@@ -559,7 +601,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_updateColumns_200(TestInfo test) throws IOException {
-    int tagCategoryUsageCount = getTagCategoryUsageCount("user", TEST_AUTH_HEADERS);
+    int tagCategoryUsageCount = getTagCategoryUsageCount("User", TEST_AUTH_HEADERS);
     int addressTagUsageCount = getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
     int glossaryTermUsageCount = getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS);
 
@@ -577,7 +619,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.get(0).setFullyQualifiedName(table.getFullyQualifiedName() + ".c1");
 
     // Ensure tag category and tag usage counts are updated
-    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("User", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
     assertEquals(
         glossaryTermUsageCount, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
@@ -597,7 +639,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated
-    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("User", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
     assertEquals(
         glossaryTermUsageCount + 1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
@@ -612,7 +654,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Ensure tag usage counts are updated - column c2 added both address
-    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("User", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 2, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
     assertEquals(
         glossaryTermUsageCount + 2, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
@@ -646,7 +688,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, table.getColumns().size());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
-    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("user", TEST_AUTH_HEADERS));
+    assertEquals(tagCategoryUsageCount + 1, getTagCategoryUsageCount("User", TEST_AUTH_HEADERS));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
     assertEquals(
         glossaryTermUsageCount + 1, getGlossaryTermUsageCount(GLOSSARY1_TERM1_LABEL.getTagFQN(), TEST_AUTH_HEADERS));
@@ -1305,7 +1347,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Total 3 user tags  - 1 table tag + 2 column tags
-    assertEquals(3, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
+    assertEquals(3, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
     assertEquals(1, getGlossaryUsageCount("g1", ADMIN_AUTH_HEADERS));
@@ -1329,7 +1371,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Additional 2 user tags - 2 column tags
-    assertEquals(5, getTagCategoryUsageCount("user", ADMIN_AUTH_HEADERS));
+    assertEquals(5, getTagCategoryUsageCount("User", ADMIN_AUTH_HEADERS));
     // Additional 2 USER_ADDRESS tags - 2 column tags
     assertEquals(5, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
     // Additional 1 glossary tag - 1 column tags
@@ -1472,18 +1514,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getFieldsUpdated()
         .add(new FieldChange().withName(build("columns", "c2", "description")).withNewValue("new1").withOldValue("c2"));
 
-    columns.get(2).withTags(new ArrayList<>()); // Remove tag
-    // Column c3 tags were removed
+    columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
+    // Column c3 tags were removed and precision and scale were added
     change
         .getFieldsDeleted()
         .add(
             new FieldChange()
                 .withName(build("columns", "\"c.3\"", "tags"))
                 .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withNewValue(10));
+    change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withNewValue(3));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the precision and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withOldValue(10).withNewValue(7));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(3); // Precision change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    assertColumns(columns, table.getColumns());
+
+    // Now reduce the scale and make sure it is a backward incompatible change
+    change = getChangeDescription(table.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withOldValue(3).withNewValue(1));
+
+    originalJson = JsonUtils.pojoToJson(table);
+
+    columns = table.getColumns();
+    columns.get(2).withPrecision(7).withScale(1); // Scale change from 10 to 7. Scale remains the same
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
     assertColumns(columns, table.getColumns());
   }
 
@@ -1495,13 +1567,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Add a primary tag and derived tag both. The tag list must include derived tags only once.
     String json = JsonUtils.pojoToJson(table);
-    table.getColumns().get(0).withTags(List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+    table.getColumns().get(0).withTags(List.of(GLOSSARY1_TERM1_LABEL, PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
     Table updatedTable = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
 
-    // Ensure only three tag labels are found - Manual tags PersonalData.Personal, User.Address
-    // and a derived tag PII.Sensitive
+    // Ensure only 4 tag labels are found - Manual tags PersonalData.Personal, User.Address, glossaryTerm1
+    // and a derived tag PII.Sensitive from glossary term1
     List<TagLabel> updateTags = updatedTable.getColumns().get(0).getTags();
-    assertEquals(3, updateTags.size());
+    assertEquals(4, updateTags.size());
+
+    TagLabel glossaryTerm1 =
+        updateTags.stream().filter(t -> tagLabelMatch.test(t, GLOSSARY1_TERM1_LABEL)).findAny().orElse(null);
+    assertNotNull(glossaryTerm1);
+    assertEquals(LabelType.MANUAL, glossaryTerm1.getLabelType());
 
     TagLabel userAddress =
         updateTags.stream().filter(t -> tagLabelMatch.test(t, USER_ADDRESS_TAG_LABEL)).findAny().orElse(null);
@@ -1542,12 +1619,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "all");
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "all");
+
     table = getEntity(table.getId(), queryParams, "location", ADMIN_AUTH_HEADERS);
     assertNotNull(table.getLocation(), "The location is missing");
     assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
@@ -1589,14 +1663,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains("owner")) {
+    if (fields.contains(FIELD_OWNER)) {
       assertNotNull(table.getOwner());
     } else {
       assertNull(table.getOwner());
     }
     if (fields.contains("columns")) {
       assertNotNull(table.getColumns());
-      if (fields.contains("tags")) {
+      if (fields.contains(FIELD_TAGS)) {
         table.getColumns().forEach(column -> assertNotNull(column.getTags()));
       } else {
         table.getColumns().forEach(column -> assertNull(column.getTags()));
@@ -1609,7 +1683,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getTableConstraints());
     }
-    if (fields.contains("tags")) {
+    if (fields.contains(FIELD_TAGS)) {
       assertNotNull(table.getTags());
     } else {
       assertNull(table.getTags());
@@ -2073,7 +2147,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
-    } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
+    } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS) && !fieldName.endsWith("description")) {
       @SuppressWarnings("unchecked")
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

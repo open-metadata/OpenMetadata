@@ -1,7 +1,0 @@
-{
-  "fromFQN": "DataConsumer",
-  "fromEntity": "role",
-  "toFQN": "DataConsumerRoleAccessControlPolicy",
-  "toEntity": "policy",
-  "relationshipType": "contains"
-}

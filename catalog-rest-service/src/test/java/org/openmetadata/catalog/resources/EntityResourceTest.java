@@ -13,6 +13,7 @@
 
 package org.openmetadata.catalog.resources;
 
+import static java.lang.String.format;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -25,14 +26,17 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.Entity.FIELD_DELETED;
+import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
-import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -54,7 +58,6 @@ import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,23 +84,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateChart;
-import org.openmetadata.catalog.api.data.CreateDatabase;
-import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
-import org.openmetadata.catalog.api.data.CreateGlossary;
-import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.api.data.TermReference;
-import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
-import org.openmetadata.catalog.api.services.CreateMessagingService;
-import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
-import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
-import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.api.teams.CreateTeam;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
@@ -111,54 +99,31 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
-import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
-import org.openmetadata.catalog.resources.charts.ChartResourceTest;
-import org.openmetadata.catalog.resources.databases.DatabaseResourceTest;
-import org.openmetadata.catalog.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
-import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MessagingConnection;
-import org.openmetadata.catalog.type.StorageServiceType;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -179,6 +144,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected boolean supportsSoftDelete = true;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
+  protected boolean supportsEmptyDescription = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -260,15 +226,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.allFields = fields;
 
     List<String> allowedFields = Entity.getEntityFields(entityClass);
-    this.supportsFollowers = allowedFields.contains("followers");
-    this.supportsOwner = allowedFields.contains("owner");
-    this.supportsTags = allowedFields.contains("tags");
+    this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
+    this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    this.supportsTags = allowedFields.contains(FIELD_TAGS);
     ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
   }
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
@@ -276,206 +241,20 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       webhookResourceTest.startWebhookSubscription();
       webhookResourceTest.startWebhookEntitySubscriptions(entityType);
     }
-    RoleResourceTest roleResourceTest = new RoleResourceTest();
-    DATA_CONSUMER_ROLE =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
-    UserResourceTest userResourceTest = new UserResourceTest();
-    USER1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
 
-    USER2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
+    new RoleResourceTest().setupRoles(test);
+    new UserResourceTest().setupUsers(test);
 
-    DATA_STEWARD_ROLE =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
-    USER_WITH_DATA_STEWARD_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-steward", "", "", null)
-                .withRoles(List.of(DATA_STEWARD_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    new TagResourceTest().setupTags();
+    new GlossaryResourceTest().setupGlossaries();
 
-    USER_WITH_DATA_CONSUMER_ROLE =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("user-data-consumer", "", "", null)
-                .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
-            ADMIN_AUTH_HEADERS);
+    new DatabaseServiceResourceTest().setupDatabaseServices(test);
+    new MessagingServiceResourceTest().setupMessagingServices();
+    new PipelineServiceResourceTest().setupPipelineServices();
+    new StorageServiceResourceTest().setupStorageServices();
+    new DashboardServiceResourceTest().setupDashboardServices(test);
 
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
-
-    ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
-
-    // Create snowflake database service
-    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
-    CreateDatabaseService createDatabaseService =
-        databaseServiceResourceTest
-            .createRequest(test, 1)
-            .withServiceType(DatabaseServiceType.Snowflake)
-            .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
-    DatabaseService databaseService =
-        new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("redshiftDB")
-        .withServiceType(DatabaseServiceType.Redshift)
-        .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("bigQueryDB")
-        .withServiceType(DatabaseServiceType.BigQuery)
-        .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    createDatabaseService
-        .withName("mysqlDB")
-        .withServiceType(DatabaseServiceType.MySQL)
-        .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
-    databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
-
-    // Create Kafka messaging service
-    MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessaging =
-        new CreateMessagingService()
-            .withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka)
-            .withConnection(TestUtils.KAFKA_CONNECTION);
-    MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
-
-    // Create Pulsar messaging service
-    createMessaging
-        .withName("pulsar")
-        .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
-
-    messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
-
-    // Create Airflow pipeline service
-    PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
-    CreatePipelineService createPipeline =
-        pipelineServiceResourceTest
-            .createRequest("airflow", "", "", null)
-            .withServiceType(PipelineServiceType.Airflow)
-            .withPipelineUrl(new URI("http://localhost:0"));
-    PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
-
-    // Create Prefect pipeline service
-    createPipeline
-        .withName("prefect")
-        .withServiceType(PipelineServiceType.Prefect)
-        .withPipelineUrl(new URI("http://localhost:0"));
-    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
-
-    // Create AWS storage service, S3
-    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
-    CreateStorageService createService =
-        new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
-    StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    AWS_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
-
-    // Create GCP storage service, GCS
-    createService.withName("gs").withServiceType(StorageServiceType.GCS);
-    service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
-
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add("User", "Address"));
-    PERSONAL_DATA_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PersonalData", "Personal"));
-    PII_SENSITIVE_TAG_LABEL = getTagLabel(FullyQualifiedName.add("PII", "Sensitive"));
-    TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
-    TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
-
-    DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService =
-        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Superset);
-
-    DashboardService dashboardService =
-        new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
-
-    createDashboardService.withName("looker").withServiceType(DashboardServiceType.Looker);
-    dashboardService = new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    LOOKER_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
-    CHART_REFERENCES = new ArrayList<>();
-    ChartResourceTest chartResourceTest = new ChartResourceTest();
-    for (int i = 0; i < 3; i++) {
-      CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
-      Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
-      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
-    }
-
-    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
-    DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
-
-    DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
-    CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
-    DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
-
-    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
-    CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
-    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_REF = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
-
-    createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
-    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_REF = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
-
-    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
-    CreateGlossaryTerm createGlossaryTerm =
-        glossaryTermResourceTest
-            .createRequest("g1t1", null, "", null)
-            .withRelatedTerms(null)
-            .withGlossary(GLOSSARY1_REF);
-    GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY1_TERM1).getEntityReference();
-    GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
-
-    createGlossaryTerm =
-        glossaryTermResourceTest
-            .createRequest("g2t1", null, "", null)
-            .withRelatedTerms(null)
-            .withGlossary(GLOSSARY2_REF);
-    GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY2_TERM1).getEntityReference();
-    GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
-
-    COLUMNS =
-        Arrays.asList(
-            getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
-            getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-            getColumn("\"c.3\"", BIGINT, GLOSSARY1_TERM1_LABEL));
-  }
-
-  private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
-    return new TagLabel().withTagFQN(tag.getFullyQualifiedName()).withDescription(tag.getDescription());
-  }
-
-  private TagLabel getTagLabel(GlossaryTerm term) {
-    return new TagLabel()
-        .withTagFQN(term.getFullyQualifiedName())
-        .withDescription(term.getDescription())
-        .withSource(Source.GLOSSARY);
+    new TableResourceTest().setupDatabaseSchemas(test);
   }
 
   @AfterAll
@@ -494,11 +273,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public K createRequest(TestInfo test) {
-    return createRequest(getEntityName(test), null, null, null);
+    return createRequest(getEntityName(test), "", null, null);
   }
 
   public K createRequest(TestInfo test, int index) {
-    return createRequest(getEntityName(test, index), null, null, null);
+    return createRequest(getEntityName(test, index), "", null, null);
   }
 
   public abstract K createRequest(String name, String description, String displayName, EntityReference owner);
@@ -598,11 +377,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(createEntity(createRequest(getEntityName(test, i), null, null, null), ADMIN_AUTH_HEADERS))
+          getEntityInterface(
+                  createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS))
               .getId());
     }
 
-    T entity = createEntity(createRequest(getEntityName(test, -1), null, null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> deleted = getEntityInterface(entity);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
@@ -613,22 +393,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         };
 
     // Test listing entities that include deleted, non-deleted, and all the entities
+    Random random = new Random();
     for (String include : List.of("non-deleted", "all", "deleted")) {
       if (!supportsSoftDelete && include.equals("deleted")) {
         continue;
       }
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", include);
-      ;
 
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with "limit" set from 1 to maxTables size
+      // List entity with "limit" set from 1 to maxTables size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
-      for (int limit = 1; limit < maxEntities; limit++) {
+      for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
         String before;
         int pageCount = 0;
@@ -637,7 +417,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         ResultList<T> backwardPage;
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-          LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          LOG.debug("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
           forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           after = forwardPage.getPaging().getAfter();
@@ -668,7 +448,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         indexInAllTables = totalRecords - limit - forwardPage.getData().size();
         foundDeleted = false;
         do {
-          LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+          LOG.debug("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
           forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           printEntities(forwardPage);
@@ -713,7 +493,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
-          container.getType() + " is not empty");
+          entityIsNotEmpty(container.getType()));
 
       // Now soft-delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
@@ -910,7 +690,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Delete team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entityInterface.getId(), "owner", ADMIN_AUTH_HEADERS);
+    entity = getEntity(entityInterface.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
     assertTrue(entityInterface.getOwner().getDeleted());
   }
@@ -930,14 +710,27 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   @Test
-  void post_entityWithDots_200(TestInfo test) throws HttpResponseException {
-    String name = String.format("%s_%s_foo.bar", entityType, test.getDisplayName());
-    final K request = createRequest(name, null, null, null);
+  void post_entityWithDots_200() throws HttpResponseException {
+    // Entity without "." should not have quoted fullyQualifiedName
+    String name = format("%s_foo_bar", entityType);
+    K request = createRequest(name, "", null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    String[] split = entityInterface.getFullyQualifiedName().split("/");
-    String actualName = split[split.length - 1];
-    assertTrue(actualName.contains("foo.bar"));
+    assertFalse(entityInterface.getFullyQualifiedName().contains("\""));
+
+    // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
+    name = String.format("%s_foo.bar", entityType);
+    request = createRequest(name, "", null, null);
+    entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    entityInterface = getEntityInterface(entity);
+
+    // The FQN has quote delimited parts if the FQN is hierarchical.
+    // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
+    // team, webhook and the entity names that are at the root for FQN like services, TagCategory, and Glossary etc.)
+    // No delimiter is expected.
+    boolean noHierarchicalName = entityInterface.getFullyQualifiedName().equals(entityInterface.getName());
+    assertTrue(noHierarchicalName || entityInterface.getFullyQualifiedName().contains("\""));
+    assertEquals(name, entityInterface.getName());
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -969,15 +762,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    K request = createRequest(getEntityName(test), null, null, USER_OWNER1);
+    K request = createRequest(getEntityName(test), "", null, USER_OWNER1);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update the entity as USER_OWNER1
     request = createRequest(getEntityName(test), "newDescription", null, USER_OWNER1);
-    FieldChange fieldChange = new FieldChange().withName("description").withNewValue("newDescription");
+    FieldChange fieldChange = new FieldChange().withName("description").withOldValue("").withNewValue("newDescription");
     ChangeDescription change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+        getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
@@ -992,7 +785,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    FieldChange fieldChange = new FieldChange().withName("owner").withNewValue(TEAM_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
     request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
     ChangeDescription change =
         getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
@@ -1002,7 +795,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    fieldChange = new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
     change =
         getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1042,6 +835,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void put_entityNullDescriptionUpdate_200(TestInfo test) throws IOException {
+    if (!supportsEmptyDescription) {
+      return;
+    }
     // Create entity with null description
     K request = createRequest(getEntityName(test), null, "displayName", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
@@ -1144,14 +940,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
-    Map<String, String> queryParams =
-        new HashMap<>() {
-          {
-            put("include", "deleted");
-          }
-        };
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "deleted");
     EntityInterface<T> entityInterface =
-        getEntityInterface(getEntity(entityId, queryParams, "followers", ADMIN_AUTH_HEADERS));
+        getEntityInterface(getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS));
     TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
   }
 
@@ -1204,7 +996,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Set the owner for the table.
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
+    change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
     entityInterface.setOwner(USER_OWNER1);
     entity =
         patchEntityAndCheck(
@@ -1227,9 +1019,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       return;
     }
     // Create entity without description, owner
-    T entity = createEntity(createRequest(getEntityName(test), null, null, null), ADMIN_AUTH_HEADERS);
+    T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertListNull(entityInterface.getDescription(), entityInterface.getOwner());
+    // user will always have the same user assigned as the owner
+    if (!entityInterface.getEntityType().equals(Entity.USER)) {
+      assertListNull(entityInterface.getOwner());
+    }
 
     entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
@@ -1246,10 +1041,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Field changes
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    change
+        .getFieldsUpdated()
+        .add(new FieldChange().withName("description").withOldValue("").withNewValue("description"));
     if (supportsOwner) {
       entityInterface.setOwner(TEAM_OWNER1);
-      change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(TEAM_OWNER1));
+      change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1));
     }
     if (supportsTags) {
       entityInterface.setTags(new ArrayList<>());
@@ -1259,7 +1056,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       change
           .getFieldsAdded()
-          .add(new FieldChange().withName("tags").withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
+          .add(
+              new FieldChange()
+                  .withName(FIELD_TAGS)
+                  .withNewValue(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL)));
     }
     change
         .getFieldsAdded()
@@ -1289,12 +1089,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       entityInterface.setOwner(USER_OWNER1);
       change
           .getFieldsUpdated()
-          .add(new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
+          .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
     }
 
     if (supportsTags) {
       entityInterface.getTags().add(TIER1_TAG_LABEL);
-      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(TIER1_TAG_LABEL)));
+      change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(TIER1_TAG_LABEL)));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1314,10 +1114,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     change = getChangeDescription(entityInterface.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
     if (supportsOwner) {
-      change.getFieldsDeleted().add(new FieldChange().withName("owner").withOldValue(USER_OWNER1));
+      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1));
     }
     if (supportsTags) {
-      change.getFieldsDeleted().add(new FieldChange().withName("tags").withOldValue(removedTags));
+      change.getFieldsDeleted().add(new FieldChange().withName(FIELD_TAGS).withOldValue(removedTags));
     }
 
     patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1336,7 +1136,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertResponse(
         () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        readOnlyAttribute(entityType, "deleted"));
+        readOnlyAttribute(entityType, FIELD_DELETED));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1379,7 +1179,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
-      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withNewValue(false).withOldValue(true));
+      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withNewValue(false).withOldValue(true));
       updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     } else {
       assertEntityDeleted(entityInterface, true);
@@ -1506,17 +1306,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
 
       // Validate that the entity version is updated after soft delete
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("include", Include.DELETED.value());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", Include.DELETED.value());
+
       T getEntity = getEntity(id, queryParams, allFields, authHeaders);
       EntityInterface<T> getEntityInterface = getEntityInterface(getEntity);
       assertEquals(expectedVersion, getEntityInterface.getVersion());
       ChangeDescription change = getChangeDescription(entityInterface.getVersion());
-      change.getFieldsUpdated().add(new FieldChange().withName("deleted").withOldValue(false).withNewValue(true));
+      change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withOldValue(false).withNewValue(true));
       assertEquals(change, getEntityInterface.getChangeDescription());
     } else { // Hard delete
       validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entityInterface.getVersion(), authHeaders);
@@ -1533,7 +1330,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
-    assertResponse(() -> getEntity(id, authHeaders), NOT_FOUND, entityNotFound(entityType, id));
+    assertEntityDeleted(id, hardDelete);
     return entity;
   }
 
@@ -1541,14 +1338,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return createAndCheckEntity(create, authHeaders, create);
   }
 
-  /**
-   * Helper function to create an entity, submit POST API request and validate response.
-   *
-   * @param create entity to be created
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param created expected response from POST API after entity has been created
-   * @return entity response from the POST API
-   */
+  /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
@@ -1646,17 +1436,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
   }
 
-  /**
-   * Helper function to generate JSON PATCH, submit PATCH API request and validate response.
-   *
-   * @param updated entity to compare with response from PATCH API
-   * @param originalJson JSON representation of entity before the update
-   * @param authHeaders auth headers to be used for the PATCH API request
-   * @param updateType type of update, see {@link TestUtils.UpdateType}
-   * @param expectedChange change description that is expected from the PATCH API response
-   * @param update entity used to diff against originalJson to generate JSON PATCH for PATCH API test
-   * @return entity response from the PATCH API
-   */
+  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,
@@ -1697,7 +1477,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     String originalDescription = entityInterface.getDescription();
-    String newDescription = String.format("Description added by %s", userName);
+    String newDescription = format("Description added by %s", userName);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion());
     change
         .getFieldsUpdated()
@@ -1913,11 +1693,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (expected == actual) {
       return;
     }
-    if (fieldName.endsWith("owner")) {
+    if (fieldName.endsWith(FIELD_OWNER)) {
       EntityReference expectedRef = (EntityReference) expected;
       EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
       assertEquals(expectedRef.getId(), actualRef.getId());
-    } else if (fieldName.endsWith("tags")) {
+    } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
       List<TagLabel> expectedTags = (List<TagLabel>) expected;
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
@@ -2040,8 +1820,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   private void printEntities(ResultList<T> list) {
-    list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
+    LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {
@@ -2105,10 +1885,31 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   public final String getEntityName(TestInfo test) {
-    return String.format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format("%s_%s", entityType, test.getDisplayName().replaceAll("\\(.*\\)", ""));
   }
 
+  /**
+   * Generates and entity name by adding a char from a-z to ensure alphanumeric ordering In alphanumeric ordering using
+   * numbers can be counterintuitive (e.g :entity_0_test < entity_10_test < entity_1_test is the correct ordering of
+   * these 3 strings)
+   */
   public final String getEntityName(TestInfo test, int index) {
-    return String.format("%s_%d_%s", entityType, index, test.getDisplayName().replaceAll("\\(.*\\)", ""));
+    return format(
+        "%s_%s_%s", entityType, getNthAlphanumericString(index), test.getDisplayName().replaceAll("\\(.*\\)", ""));
+  }
+
+  /**
+   * Transforms a positive integer to base 26 using digits a...z Alphanumeric ordering of results is equivalent to
+   * ordering of inputs
+   */
+  private String getNthAlphanumericString(int index) {
+    final int N_LETTERS = 26;
+    if (index < 0) {
+      throw new IllegalArgumentException(format("Index must be positive, cannot be %d", index));
+    }
+    if (index < 26) {
+      return String.valueOf((char) ('a' + index));
+    }
+    return getNthAlphanumericString(index / N_LETTERS) + (char) ('a' + (index % N_LETTERS));
   }
 }

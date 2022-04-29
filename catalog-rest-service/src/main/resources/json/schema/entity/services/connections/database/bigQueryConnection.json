@@ -21,69 +21,93 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/bigqueryType",
       "default": "BigQuery"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/bigqueryScheme",
       "default": "bigquery"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "BigQuery APIs URL",
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
     "username": {
-      "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Athena.",
+      "title": "Username",
+      "description": "username to connect to the Bigquery. This user should have privileges to read all the metadata in Bigquery.",
       "type": "string"
     },
-    "projectID": {
-      "description": "Google BigQuery project id.",
+    "projectId": {
+      "title": "Project ID",
+      "description": "BigQuery project ID. Only required if using credentials path instead of values.",
       "type": "string"
+    },
+    "credentials": {
+      "title": "GCS Credentials",
+      "description": "GCS Credentials",
+      "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
     "enablePolicyTagImport": {
+      "title": "Enable Policy Tag Import",
       "description": "Enable importing policy tags of BigQuery into OpenMetadata",
       "type": "boolean",
       "default": true
     },
     "tagCategoryName": {
+      "title": "Tag Category Name",
       "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
       "type": "string",
       "default": "BigqueryPolicyTags"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Athena.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
     "partitionQueryDuration": {
-      "description": "Duration for partitioning bigquery tables",
+      "title": "Partition Query Duration",
+      "description": "Duration for partitioning BigQuery tables.",
       "type": "integer",
       "default": 1
     },
     "partitionQuery": {
-      "description": "Partitioning query for bigquery tables",
+      "title": "Partition Query",
+      "description": "Partitioning query for BigQuery tables.",
       "type": "string",
       "default": "select * from {}.{} WHERE {} = \"{}\" LIMIT 1000"
     },
     "partitionField": {
-      "description": "Column name on which bigquery table will be partitioned",
+      "title": "Partition Field",
+      "description": "Column name on which the BigQuery table will be partitioned.",
       "type": "string",
       "default": "_PARTITIONTIME"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["credentials"]
 }

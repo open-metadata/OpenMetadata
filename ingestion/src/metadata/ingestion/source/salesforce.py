@@ -9,12 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List
 
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 from simple_salesforce import Salesforce
 
 from metadata.generated.schema.entity.data.database import Database
@@ -31,15 +30,18 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connections import get_connection
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 @dataclass
@@ -64,15 +66,14 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
     def __init__(self, config, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
-        self.service = get_database_service_or_create(
-            config=config, metadata_config=metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SalesforceSourceStatus()
-        self.sf = Salesforce(
-            username=self.config.serviceConnection.__root__.config.username,
-            password=self.config.serviceConnection.__root__.config.password.get_secret_value(),
-            security_token=self.config.serviceConnection.__root__.config.securityToken,
-        )
+        self.salesforce_connection = get_connection(self.service_connection)
+        self.sf = self.salesforce_connection.client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -127,9 +128,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
             row_order = 1
             table_columns = []
             md = self.sf.restful(
-                "sobjects/{}/describe/".format(
-                    self.config.serviceConnection.__root__.config.sobjectName
-                ),
+                "sobjects/{}/describe/".format(self.service_connection.sobjectName),
                 params=None,
             )
 
@@ -153,20 +152,18 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                     )
                 )
                 row_order += 1
-            table_data = self.fetch_sample_data(
-                self.config.serviceConnection.__root__.config.sobjectName
-            )
+            table_data = self.fetch_sample_data(self.service_connection.sobjectName)
             logger.info("Successfully Ingested the sample data")
             table_entity = Table(
                 id=uuid.uuid4(),
-                name=self.config.serviceConnection.__root__.config.sobjectName,
+                name=self.service_connection.sobjectName,
                 tableType="Regular",
                 description=" ",
                 columns=table_columns,
                 sampleData=table_data,
             )
             self.status.scanned(
-                f"{self.config.serviceConnection.__root__.config.scheme}.{self.config.serviceConnection.__root__.config.sobjectName}"
+                f"{self.service_connection.scheme}.{self.service_connection.sobjectName}"
             )
 
             database_entity = Database(
@@ -176,7 +173,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
             )
             schema_entity = DatabaseSchema(
                 id=uuid.uuid4(),
-                name=self.config.serviceConnection.__root__.config.scheme.name,
+                name=self.service_connection.scheme.name,
                 database=EntityReference(id=database_entity.id, type="databaseSchema"),
                 service=EntityReference(id=self.service.id, type="databaseService"),
             )
@@ -191,7 +188,7 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
         except ValidationError as err:
             logger.error(err)
             self.status.failure(
-                "{}".format(self.config.serviceConnection.__root__.config.sobjectName),
+                "{}".format(self.service_connection.sobjectName),
                 err,
             )
 

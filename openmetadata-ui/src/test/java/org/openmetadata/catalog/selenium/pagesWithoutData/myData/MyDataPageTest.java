@@ -17,7 +17,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
-public class MyDataPageTest {
+class MyDataPageTest {
 
   static WebDriver webDriver;
   static Common common;
@@ -28,7 +28,7 @@ public class MyDataPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -43,7 +43,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(1)
-  public void checkWhatsNew() {
+  void checkWhatsNew() {
     Events.click(webDriver, common.whatsNewDotButtons(2)); // What's new page 2
     Events.click(webDriver, common.whatsNewModalChangeLogs()); // Change Logs
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
@@ -51,7 +51,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(2)
-  public void checkOverview() {
+  void checkOverview() {
     checkWhatsNew();
     String tablesCount = webDriver.findElement(common.overviewFilterCount("tables")).getText();
     Assert.assertEquals(tablesCount, "0");
@@ -77,7 +77,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(3)
-  public void checkRecentViews() throws Exception {
+  void checkRecentViews() throws Exception {
     checkWhatsNew();
     WebElement recentViews = webDriver.findElement(common.containsText("No recently viewed data."));
     if (!recentViews.isDisplayed()) {
@@ -87,7 +87,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(4)
-  public void checkRecentSearch() throws Exception {
+  void checkRecentSearch() throws Exception {
     checkWhatsNew();
     WebElement recentSearch = webDriver.findElement(common.containsText("No searched terms."));
     if (!recentSearch.isDisplayed()) {
@@ -97,7 +97,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(5)
-  public void checkMyDataTab() throws Exception {
+  void checkMyDataTab() throws Exception {
     checkWhatsNew();
     WebElement myDataResults = webDriver.findElement(common.containsText("You have not owned anything yet."));
     if (!myDataResults.isDisplayed()) {
@@ -107,7 +107,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(6)
-  public void checkFollowingTab() throws Exception {
+  void checkFollowingTab() throws Exception {
     checkWhatsNew();
     WebElement followResults = webDriver.findElement(common.containsText("You have not followed anything yet."));
     if (!followResults.isDisplayed()) {
@@ -117,7 +117,7 @@ public class MyDataPageTest {
 
   @Test
   @Order(7)
-  public void checkSearchResults() throws Exception {
+  void checkSearchResults() throws Exception {
     checkWhatsNew();
     Events.sendEnter(webDriver, common.searchBar());
     Thread.sleep(2000);
@@ -126,7 +126,7 @@ public class MyDataPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

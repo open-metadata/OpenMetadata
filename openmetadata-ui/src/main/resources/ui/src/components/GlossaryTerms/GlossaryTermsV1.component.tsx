@@ -23,6 +23,7 @@ import {
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import {
   GlossaryTerm,
   TermReference,
@@ -41,6 +42,7 @@ import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import TabsPane from '../common/TabsPane/TabsPane';
+import ManageTabComponent from '../ManageTab/ManageTab.component';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -57,6 +59,8 @@ type Props = {
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
+  handleUserRedirection?: (name: string) => void;
+  afterDeleteAction?: () => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -66,6 +70,8 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermUpdate,
   onAssetPaginate,
   onRelatedTermClick,
+  afterDeleteAction,
+  handleUserRedirection,
   currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -98,7 +104,7 @@ const GlossaryTermsV1 = ({
       position: 2,
     },
     {
-      name: 'Reviewers',
+      name: 'Manage',
       isProtected: false,
       position: 3,
     },
@@ -315,7 +321,7 @@ const GlossaryTermsV1 = ({
           data-testid="add-new-reviewer"
           size="small"
           theme="primary"
-          variant="contained"
+          variant="outlined"
           onClick={() => setShowRevieweModal(true)}>
           Add Reviewer
         </Button>
@@ -342,28 +348,38 @@ const GlossaryTermsV1 = ({
   };
 
   const getReviewerTabData = () => {
-    return glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 ? (
-      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-        {glossaryTerm.reviewers?.map((term) => (
-          <UserCard
-            isActionVisible
-            isIconVisible
-            item={{
-              fqn: term.fullyQualifiedName || '',
-              displayName: term.displayName || term.name || '',
-              id: term.id,
-              type: term.type,
-              name: term.name,
-            }}
-            key={term.name}
-            onRemove={handleRemoveReviewer}
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main">
-        <p className="tw-mb-3">No reviewers assigned</p>
-        <p>{AddReviewerButton()}</p>
+    return (
+      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
+        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
+          <div className="tw-w-10/12">
+            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Add users as reviewer
+            </p>
+          </div>
+
+          {AddReviewerButton()}
+        </div>
+        {glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 && (
+          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
+            {glossaryTerm.reviewers?.map((term) => (
+              <UserCard
+                isActionVisible
+                isIconVisible
+                item={{
+                  fqn: term.fullyQualifiedName || '',
+                  displayName: term.displayName || term.name || '',
+                  id: term.id,
+                  type: term.type,
+                  name: term.name,
+                }}
+                key={term.name}
+                onRemove={handleRemoveReviewer}
+                onTitleClick={handleUserRedirection}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -611,7 +627,28 @@ const GlossaryTermsV1 = ({
               onAssetPaginate={onAssetPaginate}
             />
           )}
-          {activeTab === 3 && getReviewerTabData()}
+          {activeTab === 3 && (
+            <div
+              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
+              data-testid="manage-glossary-term">
+              <div className="tw-max-w-3xl tw-mx-auto">
+                {getReviewerTabData()}
+              </div>
+              <div className="tw--mt-1">
+                <ManageTabComponent
+                  allowDelete
+                  hideOwner
+                  hideTier
+                  isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
+                  entityId={glossaryTerm.id}
+                  entityName={glossaryTerm?.name}
+                  entityType={EntityType.GLOSSARY_TERM}
+                  hasEditAccess={false}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {showRelatedTermsModal && (

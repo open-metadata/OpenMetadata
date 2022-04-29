@@ -16,8 +16,8 @@
  * Google BigQuery Connection Config
  */
 export interface BigQueryConnection {
-  connectionArguments?: ConnectionArguments;
-  connectionOptions?: { [key: string]: any };
+  connectionArguments?: { [key: string]: string };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -33,6 +33,18 @@ export interface BigQueryConnection {
    */
   hostPort?: string;
   /**
+   * Column name on which bigquery table will be partitioned
+   */
+  partitionField?: string;
+  /**
+   * Partitioning query for bigquery tables
+   */
+  partitionQuery?: string;
+  /**
+   * Duration for partitioning bigquery tables
+   */
+  partitionQueryDuration?: number;
+  /**
    * Google BigQuery project id.
    */
   projectID?: string;
@@ -40,10 +52,8 @@ export interface BigQueryConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: BigqueryScheme;
-  /**
-   * Supported Metadata Extraction Pipelines.
-   */
-  supportedPipelineTypes?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
    */
@@ -57,17 +67,6 @@ export interface BigQueryConnection {
    * metadata in Athena.
    */
   username?: string;
-}
-
-/**
- * Additional connection arguments such as security or protocol configs that can be sent to
- * service during connection.
- */
-export interface ConnectionArguments {
-  /**
-   * HTTP path of databricks cluster
-   */
-  http_path?: string;
 }
 
 /**

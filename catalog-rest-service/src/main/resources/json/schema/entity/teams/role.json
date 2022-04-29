@@ -50,12 +50,8 @@
       "type": "boolean",
       "default": false
     },
-    "policy": {
-      "description": "Policy that is attached to this role.",
-      "$ref": "../../type/entityReference.json"
-    },
-    "users": {
-      "description": "Users that have this role assigned.",
+    "policies": {
+      "description": "Policies that is attached to this role.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "defaultRole": {
@@ -63,8 +59,12 @@
       "type": "boolean",
       "default": false
     },
+    "users": {
+      "description": "Users that have this role assigned to them.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
     "teams": {
-      "description": "Teams that have this role assigned.",
+      "description": "Teams that have this role assigned to them.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

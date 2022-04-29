@@ -14,6 +14,7 @@
 import { findAllByText, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigureIngestionProps } from '../addIngestion.interface';
 import ConfigureIngestion from './ConfigureIngestion';
 
@@ -30,36 +31,51 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
   dashboardFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   chartFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   schemaFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   tableFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
   },
   topicFilterPattern: {
-    include: [],
-    exclude: [],
+    includes: [],
+    excludes: [],
+  },
+  fqnFilterPattern: {
+    includes: [],
+    excludes: [],
   },
   includeView: false,
+  pipelineType: PipelineType.Metadata,
+  queryLogDuration: 1,
+  resultLimit: 100,
+  stageFileLocation: '',
   enableDataProfiler: false,
   ingestSampleData: false,
+  markDeletedTables: false,
   showDashboardFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
   showTopicFilter: false,
   showChartFilter: false,
+  showFqnFilter: false,
   handleIncludeView: jest.fn(),
+  handleIngestionName: jest.fn(),
   handleEnableDataProfiler: jest.fn(),
   handleIngestSampleData: jest.fn(),
+  handleQueryLogDuration: jest.fn(),
+  handleResultLimit: jest.fn(),
+  handleStageFileLocation: jest.fn(),
+  handleMarkDeletedTables: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),
@@ -94,6 +110,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(2);
-    expect(toggleSwitchs.length).toBe(3);
+    expect(toggleSwitchs.length).toBe(4);
   });
 });

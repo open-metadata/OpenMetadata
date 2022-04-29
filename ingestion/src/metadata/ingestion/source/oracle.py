@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from typing import Optional
 
 import cx_Oracle  # noqa: F401
 import pydantic
@@ -47,7 +48,7 @@ class OracleSource(SQLSource):
             )
         return cls(config, metadata_config)
 
-    def _get_database(self, database: str) -> Database:
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = self.service_connection.oracleServiceName
         return Database(

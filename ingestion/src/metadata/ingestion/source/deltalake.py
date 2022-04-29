@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -26,13 +27,14 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
-
+logger = ingestion_logger()
 
 DEFAULT_DATABASE = "default"
 
@@ -53,34 +55,17 @@ class DeltalakeSource(Source[Entity]):
     ):
         super().__init__()
         self.config = config
-        self.connection_config = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
-        self.service = get_database_service_or_create(
-            config=config,
-            metadata_config=metadata_config,
-            service_name=config.serviceName,
+        self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service = self.metadata.get_service_or_create(
+            entity=DatabaseService, config=config
         )
+        self.connection = get_connection(self.service_connection)
+
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
-        builder = (
-            pyspark.sql.SparkSession.builder.appName(self.connection_config.appName)
-            .enableHiveSupport()
-            .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-            .config(
-                "spark.sql.catalog.spark_catalog",
-                "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-            )
-        )
-        if self.connection_config.metastoreHostPort:
-            builder.config(
-                "hive.metastore.uris",
-                f"thrift://{self.connection_config.metastoreHostPort}",
-            )
-        elif self.connection_config.metastoreFilePath:
-            builder.config(
-                "spark.sql.warehouse.dir", f"{self.connection_config.metastoreFilePath}"
-            )
-        self.spark = configure_spark_with_delta_pip(builder).getOrCreate()
+        self.spark = self.connection.client
         self.table_type_map = {
             TableType.External.value.lower(): TableType.External.value,
             TableType.View.value.lower(): TableType.View.value,
@@ -175,7 +160,7 @@ class DeltalakeSource(Source[Entity]):
             id=uuid.uuid4(),
             name=DEFAULT_DATABASE,
             service=EntityReference(
-                id=self.service.id, type=self.connection_config.type.value
+                id=self.service.id, type=self.service_connection.type.value
             ),
         )
 
@@ -183,7 +168,7 @@ class DeltalakeSource(Source[Entity]):
         return DatabaseSchema(
             name=schema,
             service=EntityReference(
-                id=self.service.id, type=self.connection_config.type.value
+                id=self.service.id, type=self.service_connection.type.value
             ),
             database=EntityReference(id=database.id, type="database"),
         )

@@ -29,6 +29,11 @@
       "description": "Supports Usage Extraction.",
       "type": "boolean",
       "default": true
+    },
+    "supportsProfiler": {
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
     }
   }
 }

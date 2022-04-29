@@ -22,7 +22,7 @@ import appState from '../../AppState';
 import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
-  getTeamDetailsPath,
+  getTeamAndUserDetailsPath,
   navLinkSettings,
   ROUTES,
 } from '../../constants/constants';
@@ -166,7 +166,7 @@ const Appbar: React.FC = (): JSX.Element => {
             <span className="tw-font-medium tw-text-xs">Teams</span>
             {teams?.map((t, i) => (
               <p key={i}>
-                <Link to={getTeamDetailsPath(t.name as string)}>
+                <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName}
                 </Link>
               </p>

@@ -9,34 +9,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Any, Optional
+from typing import Any
 
 from boto3 import Session
-from pydantic import SecretStr
 
-from metadata.config.common import ConfigModel
-
-
-class AWSClientConfigModel(ConfigModel):
-    """
-    AWSClientConfigModel holds all config parameters required to instantiate an AWSClient.
-    """
-
-    awsAccessKeyId: Optional[str]
-    awsSecretAccessKey: Optional[SecretStr]
-    awsSessionToken: Optional[str]
-    endPointURL: Optional[str]
-    awsRegion: Optional[str]
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.utils.connection_clients import DynamoClient, GlueClient
 
 
 class AWSClient:
     """
-    AWSClient creates a boto3 Session client based on AWSClientConfigModel.
+    AWSClient creates a boto3 Session client based on AWSCredentials.
     """
 
-    config: AWSClientConfigModel
+    config: AWSCredentials
 
-    def __init__(self, config: AWSClientConfigModel):
+    def __init__(self, config: AWSCredentials):
 
         self.config = config
 
@@ -77,3 +65,9 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.resource(service_name=service_name)
+
+    def get_dynomo_client(self) -> DynamoClient:
+        return DynamoClient(self.get_resource("dynamodb"))
+
+    def get_glue_client(self) -> GlueClient:
+        return GlueClient(self.get_client("glue"))

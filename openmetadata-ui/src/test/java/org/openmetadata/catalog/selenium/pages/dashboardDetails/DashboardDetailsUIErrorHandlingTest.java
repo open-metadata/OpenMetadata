@@ -1,10 +1,16 @@
+/* DO NOT DELETE
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.TableDetails;
@@ -20,7 +26,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DashboardDetailsUIErrorHandlingTest {
+class DashboardDetailsUIErrorHandlingTest {
   static ChromeDriver webDriver;
   static Common common;
   static TableDetails tableDetails;
@@ -33,7 +39,7 @@ public class DashboardDetailsUIErrorHandlingTest {
   static String serviceName = faker.name().firstName();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  static By toastMessage = By.cssSelector("[data-testid='toast']");
+  static By toastMessage = By.xpath("(//div[@class='Toastify__toast-body']/div)[2]");
   List<WebElement> checkTabs = new ArrayList<>();
   WebElement explore;
   WebElement headerSettings;
@@ -178,7 +184,7 @@ public class DashboardDetailsUIErrorHandlingTest {
     Events.click(webDriver, common.dashboard());
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, tableDetails.editDescriptionBox(), "updatedDescription");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), "updatedDescription");
     interceptor.interceptor("/api/v1/dashboards", "/api/v1/test");
     Events.click(webDriver, tableDetails.saveTableDescription());
     Thread.sleep(2000);
@@ -288,3 +294,4 @@ public class DashboardDetailsUIErrorHandlingTest {
     webDriver.switchTo().window(tabs.get(0)).close();
   }
 }
+*/

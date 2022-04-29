@@ -67,6 +67,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
 } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -78,7 +79,7 @@ import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 type ChartType = {
   displayName: string;
@@ -333,14 +334,14 @@ const DashboardDetailsPage = () => {
               imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
-              name: displayName,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
           ]);
 
           addToRecentViewed({
-            displayName,
+            displayName: getEntityName(res.data),
             entityType: EntityType.DASHBOARD,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -637,9 +638,6 @@ const DashboardDetailsPage = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['unexpected-server-response']
@@ -685,8 +683,6 @@ const DashboardDetailsPage = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(

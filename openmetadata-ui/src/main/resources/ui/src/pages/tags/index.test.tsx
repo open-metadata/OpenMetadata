@@ -425,17 +425,12 @@ describe('Test TagsPage page', () => {
     const name = await findByTestId(container, 'heading-name');
     const description = await findByTestId(container, 'heading-description');
     const actions = await findByTestId(container, 'heading-actions');
-    const associatedTags = await findByTestId(
-      container,
-      'heading-associated-tags'
-    );
     const tableBody = await findByTestId(container, 'table-body');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(associatedTags).toBeInTheDocument();
     expect(tableBody).toBeInTheDocument();
   });
 

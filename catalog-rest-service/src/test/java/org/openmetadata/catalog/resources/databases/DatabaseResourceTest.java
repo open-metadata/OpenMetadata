@@ -98,22 +98,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List databases by filtering on service name and ensure right databases in the response
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Database> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Database db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
       }
     }
-  }
-
-  @Test
-  void delete_nonEmptyDatabase_4xx() {
-    // TODO
   }
 
   @Override

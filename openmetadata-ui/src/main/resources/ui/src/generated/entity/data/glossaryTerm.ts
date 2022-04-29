@@ -31,7 +31,7 @@ export interface GlossaryTerm {
   /**
    * Description of the glossary term.
    */
-  description?: string;
+  description: string;
   /**
    * Display Name that identifies this glossary.
    */
@@ -83,7 +83,11 @@ export interface GlossaryTerm {
    */
   synonyms?: string[];
   /**
-   * Tags for this glossary term.
+   * Tags associated with this glossary term. These tags captures relationship of a glossary
+   * term with a tag automatically. As an example a glossary term 'User.PhoneNumber' might
+   * have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in
+   * a table, 'PII.Sensitive' label is also applied automatically due to Associated tag
+   * relationship.
    */
   tags?: TagLabel[];
   /**

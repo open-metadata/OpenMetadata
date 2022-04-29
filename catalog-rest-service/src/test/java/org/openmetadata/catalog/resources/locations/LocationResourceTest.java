@@ -174,12 +174,9 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List locations by filtering on service name and ensure right locations are returned
-      Map<String, String> queryParams =
-          new HashMap<>() {
-            {
-              put("service", service.getName());
-            }
-          };
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", service.getName());
+
       ResultList<Location> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Location location : list.getData()) {
         assertEquals(service.getName(), location.getService().getName());

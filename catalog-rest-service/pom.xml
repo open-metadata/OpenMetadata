@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.openmetadata</groupId>
-    <version>0.9.1-SNAPSHOT</version>
+    <version>0.11.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -50,6 +50,10 @@
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
     </dependency>
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
@@ -213,7 +217,7 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
-      <version>2.17.1</version>
+      <version>2.17.2</version>
     </dependency>
 
     <!-- Diff util to compute diffs in plain text -->
@@ -242,6 +246,11 @@
       <artifactId>dropwizard-client</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-testing</artifactId>
     </dependency>
@@ -257,6 +266,30 @@
     <dependency>
       <groupId>com.wix</groupId>
       <artifactId>wix-embedded-mysql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.16.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>1.16.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>1.16.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mysql</artifactId>
+      <version>1.16.3</version>
       <scope>test</scope>
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
@@ -279,7 +312,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20211205</version>
+      <version>20220320</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
@@ -294,14 +327,14 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>3.19.0</version>
+      <version>3.19.1</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/com.auth0/jwks-rsa -->
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
-      <version>0.21.0</version>
+      <version>0.21.1</version>
     </dependency>
 
 
@@ -449,6 +482,60 @@
             <goals>
               <goal>generate</goal>
             </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire.version}</version>
+        <executions>
+          <execution>
+            <id>default-test</id>
+            <configuration>
+              <skip>true</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <id>unit-tests</id>
+            <configuration>
+              <excludes>**/*ResourceTest.java</excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <id>postgres-integration-tests</id>
+            <phase>test</phase>
+            <configuration>
+              <includes>
+                <include>**/*ResourceTest.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+          <execution>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <id>mysql-integration-tests</id>
+            <phase>test</phase>
+            <configuration>
+              <includes>
+                <include>**/*ResourceTest.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                <jdbcContainerImage>mysql:8</jdbcContainerImage>
+              </systemPropertyVariables>
+            </configuration>
           </execution>
         </executions>
       </plugin>

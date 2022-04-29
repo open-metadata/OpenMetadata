@@ -1,10 +1,10 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/db2Connection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DB2Connection",
-  "description": "DB2 Connection Config",
+  "title": "Db2Connection",
+  "description": "Db2 Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DB2Connection",
+  "javaType": "org.openmetadata.catalog.services.connections.database.Db2Connection",
   "definitions": {
     "db2Type": {
       "description": "Service type.",
@@ -21,41 +21,58 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/db2Type",
       "default": "Db2"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/db2Scheme",
       "default": "db2+ibm_db"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect  to the DB2. This user should have privileges to read all the metadata in DB2.",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password to connect to the DB2.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Host and port of the DB2",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in DB2.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

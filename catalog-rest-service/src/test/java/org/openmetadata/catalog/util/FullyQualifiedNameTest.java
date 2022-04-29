@@ -67,4 +67,10 @@ class FullyQualifiedNameTest {
         IllegalArgumentException.class,
         () -> FullyQualifiedName.quoteName("a\"b")); // Error when invalid quote is present in the middle of the string
   }
+
+  @Test
+  void test_unquoteName() {
+    assertEquals("a", FullyQualifiedName.unquoteName("a")); // Unquoted name remains unquoted
+    assertEquals("a.b", FullyQualifiedName.unquoteName("\"a.b\"")); // Leave existing valid quotes
+  }
 }

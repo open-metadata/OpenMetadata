@@ -29,7 +29,11 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.ExplorePage;
 import org.openmetadata.catalog.selenium.objectRepository.PipelineDetails;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -39,13 +43,11 @@ import org.testng.Assert;
 @Slf4j
 @Order(6)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class PipelineDetailsPageTest {
+class PipelineDetailsPageTest {
   static WebDriver webDriver;
   static String url = Property.getInstance().getURL();
   Integer waitTime = Property.getInstance().getSleepTime();
   static Faker faker = new Faker();
-  String pipelineName = "dim_product etl";
-  static String enterDescription = "//div[@data-testid='enterDescription']/div/div[2]/div/div/div/div/div/div";
   static Actions actions;
   static WebDriverWait wait;
   Common common;
@@ -57,7 +59,7 @@ public class PipelineDetailsPageTest {
   String xpath = "//div[@data-testid='description']/div/span";
 
   @BeforeEach
-  public void openMetadataWindow() {
+  void openMetadataWindow() {
     System.setProperty(webDriverInstance, webDriverPath);
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
@@ -95,18 +97,18 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
-    Thread.sleep(2000);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
+    Thread.sleep(waitTime);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    String checkDescription = webDriver.findElement(common.descriptionContainer()).getText();
+    String checkDescription = webDriver.findElement(pipelineDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -116,7 +118,7 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(3)
-  public void addTag() throws InterruptedException {
+  void addTag() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
@@ -168,7 +170,7 @@ public class PipelineDetailsPageTest {
     Events.click(webDriver, common.selectTableLink(1));
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), description);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -176,7 +178,7 @@ public class PipelineDetailsPageTest {
     Thread.sleep(2000);
     actions.moveToElement(webDriver.findElement(pipelineDetails.editTaskDescription())).perform();
     Events.click(webDriver, pipelineDetails.editTaskDescription());
-    Events.sendKeys(webDriver, common.editDescriptionBox(), updatedDescription);
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Thread.sleep(2000);
     Events.click(webDriver, common.editDescriptionSaveButton());
     Thread.sleep(2000);
@@ -207,18 +209,17 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(7)
-  public void checkManage() throws InterruptedException {
+  void checkManage() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, pipelineDetails.pipelines());
     Events.click(webDriver, explorePage.selectTable());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.ownerDropdown());
     Events.click(webDriver, common.users());
     Events.click(webDriver, common.selectUser());
     Events.click(webDriver, common.selectTier1());
-    Events.click(webDriver, common.saveManage());
+    Events.click(webDriver, pipelineDetails.selectTier());
   }
 
   @Test
@@ -231,9 +232,9 @@ public class PipelineDetailsPageTest {
     List<WebElement> br = common.breadCrumb();
     // Using for loop to check breadcrumb links
     // Since after navigating back we are facing StaleElementException using try catch block.
-    for (WebElement link : br) {
+    for (int i = 0; i < br.size() - 1; i++) {
       try {
-        link.click();
+        br.get(i).click();
         Thread.sleep(waitTime);
         webDriver.navigate().back();
       } catch (StaleElementReferenceException ex) {
@@ -245,7 +246,7 @@ public class PipelineDetailsPageTest {
 
   @Test
   @Order(9)
-  public void checkVersion() throws InterruptedException {
+  void checkVersion() throws InterruptedException {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     int counter = 1;
@@ -266,7 +267,7 @@ public class PipelineDetailsPageTest {
   }
 
   @AfterEach
-  public void closeTabs() {
+  void closeTabs() {
     ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
     String originalHandle = webDriver.getWindowHandle();
     for (String handle : webDriver.getWindowHandles()) {

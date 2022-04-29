@@ -11,113 +11,53 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { getEntityName, getUserTeams } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Button } from '../buttons/Button/Button';
-import CardListItem from '../card-list/CardListItem/CardWithListItems';
-import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
+import CardListItem from '../cardlist/CardListItem/CardWithListItem';
+import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItem.interface';
+import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import DropDownList from '../dropdown/DropDownList';
+import OwnerWidget from '../common/OwnerWidget/OwnerWidget';
 import Loader from '../Loader/Loader';
+import { ManageProps, Status } from './ManageTab.interface';
 
-type Props = {
-  currentTier?: string;
-  currentUser?: string;
-  hideTier?: boolean;
-  isJoinable?: boolean;
-  onSave: (
-    owner: TableDetail['owner'],
-    tier: TableDetail['tier'],
-    isJoinable?: boolean
-  ) => Promise<void>;
-  hasEditAccess: boolean;
-  allowTeamOwner?: boolean;
-};
-
-const ManageTab: FunctionComponent<Props> = ({
+const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
   currentUser = '',
   hideTier = false,
+  hideOwner = false,
   onSave,
   hasEditAccess,
   allowTeamOwner = true,
   isJoinable,
-}: Props) => {
+  allowDelete,
+  entityName,
+  entityType,
+  entityId,
+  allowSoftDelete,
+  isRecursiveDelete,
+  deletEntityMessage,
+  handleIsJoinable,
+  afterDeleteAction,
+}: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const getOwnerList = () => {
-    const user = !isEmpty(appState.userDetails)
-      ? appState.userDetails
-      : appState.users.length
-      ? appState.users[0]
-      : undefined;
-    const teams = getUserTeams().map((team) => ({
-      name: team?.displayName || team.name || '',
-      value: team.id,
-      group: 'Teams',
-      type: 'team',
-    }));
 
-    if (user?.isAdmin) {
-      const users = appState.users
-        .map((user) => ({
-          name: getEntityName(user as unknown as EntityReference),
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        }))
-        .filter((u) => u.value != user.id);
-      const teams = appState.userTeams.map((team) => ({
-        name: team.displayName || team.name || '',
-        value: team.id,
-        group: 'Teams',
-        type: 'team',
-      }));
-
-      return [
-        {
-          name: getEntityName(user as unknown as EntityReference),
-          value: user.id,
-          group: 'Users',
-          type: 'user',
-        },
-        ...users,
-        ...teams,
-      ];
-    } else {
-      return user
-        ? [
-            {
-              name: user.displayName || user.name,
-              value: user.id,
-              group: 'Users',
-              type: 'user',
-            },
-            ...teams,
-          ]
-        : teams;
-    }
-  };
-  const [loading, setLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
-    'initial'
-  );
+  const [statusOwner, setStatusOwner] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<Status>('initial');
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
   const [teamJoinable, setTeamJoinable] = useState(isJoinable);
@@ -131,8 +71,65 @@ const ManageTab: FunctionComponent<Props> = ({
     return listOwners.find((item) => item.value === owner)?.name || '';
   };
 
-  const getOwnerGroup = () => {
-    return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
+  const setInitialOwnerLoadingState = () => {
+    setStatusOwner('initial');
+  };
+
+  const setInitialTierLoadingState = () => {
+    setStatusTier('initial');
+  };
+
+  const prepareOwner = (updatedOwner: string) => {
+    return updatedOwner !== currentUser
+      ? {
+          id: updatedOwner,
+          type: listOwners.find((item) => item.value === updatedOwner)?.type as
+            | 'user'
+            | 'team',
+        }
+      : undefined;
+  };
+
+  const prepareTier = (updatedTier: string) => {
+    return updatedTier !== currentTier ? updatedTier : undefined;
+  };
+
+  const handleOwnerSave = (updatedOwner: string, updatedTier: string) => {
+    setStatusOwner('waiting');
+    const newOwner: TableDetail['owner'] = prepareOwner(updatedOwner);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialOwnerLoadingState();
+        });
+      } else {
+        setInitialOwnerLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialOwnerLoadingState();
+      });
+    }
+  };
+
+  const handleTierSave = (updatedTier: string) => {
+    setStatusTier('waiting');
+    const newOwner: TableDetail['owner'] = prepareOwner(currentUser);
+    if (hideTier) {
+      if (newOwner || !isUndefined(teamJoinable)) {
+        onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
+          setInitialTierLoadingState();
+        });
+      } else {
+        setInitialTierLoadingState();
+      }
+    } else {
+      const newTier = prepareTier(updatedTier);
+      onSave?.(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
+        setInitialTierLoadingState();
+      });
+    }
   };
 
   const handleOwnerSelection = (
@@ -143,6 +140,7 @@ const ManageTab: FunctionComponent<Props> = ({
       const newOwner = listOwners.find((item) => item.value === value);
       if (newOwner) {
         setOwner(newOwner.value);
+        handleOwnerSave(newOwner.value, activeTier);
       }
     }
     setListVisible(false);
@@ -152,45 +150,80 @@ const ManageTab: FunctionComponent<Props> = ({
     setActiveTier(cardId);
   };
 
-  const setInitialLoadingState = () => {
-    setStatus('initial');
-    setLoading(false);
+  const getDeleteEntityWidget = () => {
+    return allowDelete && entityId && entityName && entityType ? (
+      <div className="tw-mt-1" data-testid="danger-zone">
+        <DeleteWidget
+          afterDeleteAction={afterDeleteAction}
+          allowSoftDelete={allowSoftDelete}
+          deletEntityMessage={deletEntityMessage}
+          entityId={entityId}
+          entityName={entityName}
+          entityType={entityType}
+          hasPermission={isAdminUser || isAuthDisabled}
+          isAdminUser={isAdminUser}
+          isRecursiveDelete={isRecursiveDelete}
+        />
+      </div>
+    ) : null;
   };
 
-  const handleSave = () => {
-    setLoading(true);
-    setStatus('waiting');
-    // Save API call goes here...
-    const newOwner: TableDetail['owner'] =
-      owner !== currentUser
-        ? {
-            id: owner,
-            type: listOwners.find((item) => item.value === owner)?.type as
-              | 'user'
-              | 'team',
-          }
-        : undefined;
+  const getTierCards = () => {
+    return (
+      <div className="tw-flex tw-flex-col tw-mb-7" data-testid="cards">
+        {tierData.map((card, i) => (
+          <NonAdminAction
+            html={
+              <Fragment>
+                <p>You need to be owner to perform this action</p>
+                <p>Claim ownership from above </p>
+              </Fragment>
+            }
+            isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+            key={i}
+            permission={Operation.UpdateTags}
+            position="left">
+            <CardListItem
+              card={card}
+              className={classNames(
+                'tw-mb-0 tw-shadow',
+                {
+                  'tw-rounded-t-md': i === 0,
+                },
+                {
+                  'tw-rounded-b-md ': i === tierData.length - 1,
+                }
+              )}
+              isActive={activeTier === card.id}
+              isSelected={card.id === currentTier}
+              tierStatus={statusTier}
+              onCardSelect={handleCardSelection}
+              onSave={handleTierSave}
+            />
+          </NonAdminAction>
+        ))}
+      </div>
+    );
+  };
+
+  const getTierWidget = () => {
     if (hideTier) {
-      if (newOwner || !isUndefined(teamJoinable)) {
-        onSave(newOwner, '', Boolean(teamJoinable)).catch(() => {
-          setInitialLoadingState();
-        });
-      } else {
-        setInitialLoadingState();
-      }
+      return null;
     } else {
-      const newTier = activeTier !== currentTier ? activeTier : undefined;
-      onSave(newOwner, newTier, Boolean(teamJoinable)).catch(() => {
-        setInitialLoadingState();
-      });
+      return isLoadingTierData ? <Loader /> : getTierCards();
     }
   };
 
-  const handleCancel = () => {
-    setActiveTier(currentTier);
-    setOwner(currentUser);
+  const isJoinableActionAllowed = () => {
+    return (
+      isAdminUser ||
+      isAuthDisabled ||
+      userPermissions[Operation.UpdateTeam] ||
+      !hasEditAccess
+    );
   };
 
+  const ownerName = getOwnerById();
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
@@ -211,10 +244,8 @@ const ManageTab: FunctionComponent<Props> = ({
           );
 
           setTierData(tierData);
-          setIsLoadingTierData(false);
         } else {
           setTierData([]);
-          setIsLoadingTierData(false);
         }
       })
       .catch((err: AxiosError) => {
@@ -222,10 +253,11 @@ const ManageTab: FunctionComponent<Props> = ({
           err,
           jsonData['api-error-messages']['fetch-tiers-error']
         );
+      })
+      .finally(() => {
+        setIsLoadingTierData(false);
       });
   };
-
-  const ownerName = getOwnerById();
 
   useEffect(() => {
     if (!hideTier) {
@@ -242,16 +274,22 @@ const ManageTab: FunctionComponent<Props> = ({
   }, [currentUser]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-    if (status === 'waiting') {
-      setStatus('success');
+    if (statusOwner === 'waiting') {
+      setStatusOwner('success');
       setTimeout(() => {
-        setStatus('initial');
+        setInitialOwnerLoadingState();
       }, 3000);
     }
-  }, [currentTier, currentUser]);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (statusTier === 'waiting') {
+      setStatusTier('success');
+      setTimeout(() => {
+        setInitialTierLoadingState();
+      }, 3000);
+    }
+  }, [currentTier]);
 
   useEffect(() => {
     setListOwners(getOwnerList());
@@ -266,155 +304,33 @@ const ManageTab: FunctionComponent<Props> = ({
       className="tw-max-w-3xl tw-mx-auto"
       data-testid="manage-tab"
       id="manageTabDetails">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator ">
-        <div>
-          <span className="tw-mr-2">Owner:</span>
-          <span className="tw-relative">
-            <NonAdminAction
-              html={
-                <>
-                  <p>You do not have permissions to update the owner.</p>
-                </>
-              }
-              isOwner={hasEditAccess}
-              permission={Operation.UpdateOwner}
-              position="left">
-              <Button
-                className={classNames('tw-underline', {
-                  'tw-opacity-40':
-                    !userPermissions[Operation.UpdateOwner] &&
-                    !isAuthDisabled &&
-                    !hasEditAccess,
-                })}
-                data-testid="owner-dropdown"
-                disabled={
-                  !userPermissions[Operation.UpdateOwner] &&
-                  !isAuthDisabled &&
-                  !hasEditAccess
-                }
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => setListVisible((visible) => !visible)}>
-                {ownerName ? (
-                  <span
-                    className={classNames('tw-truncate', {
-                      'tw-w-52': ownerName.length > 32,
-                    })}
-                    title={ownerName}>
-                    {ownerName}
-                  </span>
-                ) : (
-                  'Select Owner'
-                )}
-                <SVGIcons
-                  alt="edit"
-                  className="tw-ml-1"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </Button>
-            </NonAdminAction>
-            {listVisible && (
-              <DropDownList
-                showSearchBar
-                dropDownList={listOwners}
-                groupType="tab"
-                listGroups={getOwnerGroup()}
-                value={owner}
-                onSelect={handleOwnerSelection}
-              />
-            )}
-          </span>
-        </div>
-        {!isUndefined(isJoinable) ? (
-          <div className="tw-mt-3 tw-mb-1">
-            {isAdminUser ||
-            isAuthDisabled ||
-            userPermissions[Operation.UpdateTeam] ||
-            !hasEditAccess ? (
-              <div className="tw-flex">
-                <label htmlFor="join-team">Allow users to join this team</label>
-                <div
-                  className={classNames(
-                    'toggle-switch ',
-                    teamJoinable ? 'open' : null
-                  )}
-                  data-testid="team-isJoinable-switch"
-                  id="join-team"
-                  onClick={() => setTeamJoinable((prev) => !prev)}>
-                  <div className="switch" />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-      {!hideTier &&
-        (isLoadingTierData ? (
-          <Loader />
-        ) : (
-          <div className="tw-flex tw-flex-col" data-testid="cards">
-            {tierData.map((card, i) => (
-              <NonAdminAction
-                html={
-                  <>
-                    <p>You need to be owner to perform this action</p>
-                    <p>Claim ownership from above </p>
-                  </>
-                }
-                isOwner={hasEditAccess || Boolean(owner && !currentUser)}
-                key={i}
-                permission={Operation.UpdateTags}
-                position="left">
-                <CardListItem
-                  card={card}
-                  isActive={activeTier === card.id}
-                  onSelect={handleCardSelection}
-                />
-              </NonAdminAction>
-            ))}
-          </div>
-        ))}
-      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
-        <Button
-          size="regular"
-          theme="primary"
-          variant="text"
-          onClick={handleCancel}>
-          Discard
-        </Button>
-        {loading ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : status === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className="tw-w-16 tw-h-10"
-            data-testid="saveManageTab"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            Save
-          </Button>
+      <div
+        className={classNames('tw-mt-2 tw-pb-4', {
+          'tw-mb-3': !hideTier,
+        })}>
+        {!hideOwner && (
+          <OwnerWidget
+            allowTeamOwner={allowTeamOwner}
+            entityType={entityType}
+            handleIsJoinable={handleIsJoinable}
+            handleOwnerSelection={handleOwnerSelection}
+            handleSelectOwnerDropdown={() =>
+              setListVisible((visible) => !visible)
+            }
+            hasEditAccess={hasEditAccess}
+            isAuthDisabled={isAuthDisabled}
+            isJoinableActionAllowed={isJoinableActionAllowed()}
+            listOwners={listOwners}
+            listVisible={listVisible}
+            owner={owner}
+            ownerName={ownerName}
+            statusOwner={statusOwner}
+            teamJoinable={teamJoinable}
+          />
         )}
       </div>
+      {getTierWidget()}
+      {getDeleteEntityWidget()}
     </div>
   );
 };

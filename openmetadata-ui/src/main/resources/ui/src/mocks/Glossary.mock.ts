@@ -67,6 +67,7 @@ export const mockedGlossaries = [
     children: mockedGlossaryTerms,
     deleted: false,
     displayName: 'Mocked Glossary',
+    description: '',
     id: 'mocked-glossary-id',
     name: 'Mock Glossary',
     owner: {

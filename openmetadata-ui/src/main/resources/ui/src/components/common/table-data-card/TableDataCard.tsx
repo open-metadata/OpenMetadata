@@ -13,7 +13,7 @@
 
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isString, isUndefined, startCase, uniqueId } from 'lodash';
+import { isNil, isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -27,6 +27,7 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -52,22 +53,21 @@ type Props = {
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  name,
   owner = '',
   description,
   id,
   tier = '',
   usage,
-  service,
   serviceType,
   fullyQualifiedName,
   tags,
   indexType,
   matches,
-  database,
-  databaseSchema,
   tableType,
   deleted = false,
+  name,
+  database,
+  databaseSchema,
 }: Props) => {
   const location = useLocation();
   const history = useHistory();
@@ -99,33 +99,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       showLabel: true,
     });
   }
-  OtherDetails.push({
-    key: 'Service Type',
-    value: serviceType,
-    showLabel: true,
-  });
-  if (service) {
-    OtherDetails.push({
-      key: 'Service',
-      value: service,
-      showLabel: true,
-    });
-  }
 
-  if (database) {
-    OtherDetails.push({
-      key: 'Database',
-      value: database,
-      showLabel: true,
-    });
-  }
-  if (databaseSchema) {
-    OtherDetails.push({
-      key: 'Schema',
-      value: databaseSchema,
-      showLabel: true,
-    });
-  }
   const getAssetTags = () => {
     const assetTags = [...(tags as Array<TagLabel>)];
     if (tier && !isUndefined(tier)) {
@@ -143,12 +117,25 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
+  const getTableMetaInfo = () => {
+    if (!isNil(database) && !isNil(databaseSchema)) {
+      return (
+        <span
+          className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+          data-testid="database-schema">{`${database}${FQN_SEPARATOR_CHAR}${databaseSchema}`}</span>
+      );
+    } else {
+      return null;
+    }
+  };
+
   return (
     <div
       className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="table-data-card"
       id={id}>
       <div>
+        {getTableMetaInfo()}
         <div className="tw-flex tw-items-center">
           <img
             alt=""

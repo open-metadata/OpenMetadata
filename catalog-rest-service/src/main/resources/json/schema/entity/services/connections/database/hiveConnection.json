@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/hiveSQLConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/hiveConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HiveSQLConnection",
+  "title": "HiveConnection",
   "description": "Hive SQL Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.HiveSQLConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.database.HiveConnection",
   "definitions": {
     "hiveType": {
       "description": "Service type.",
@@ -21,45 +21,60 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/hiveType",
       "default": "Hive"
     },
     "scheme": {
+      "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/hiveScheme",
       "default": "hive"
     },
     "username": {
+      "title": "Username",
       "description": "username to connect  to the Athena. This user should have privileges to read all the metadata in Hive.",
       "type": "string"
     },
     "password": {
+      "title": "Password",
       "description": "password to connect  to the Hive.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
+      "title": "Host and Port",
       "description": "Host and port of the Hive.",
       "type": "string"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Hive.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
     },
     "authOptions": {
+      "title": "URL Authentication Options",
       "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
       "type": "string"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["hostPort"]
 }

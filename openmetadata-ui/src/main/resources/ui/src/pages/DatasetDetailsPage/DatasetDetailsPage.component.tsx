@@ -61,7 +61,7 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { ColumnTestType } from '../../enums/columnTest.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
@@ -88,6 +88,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  getEntityName,
   getFields,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -154,7 +155,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromTableFQN(
       datasetFQN,
-      ['service', 'database', 'schema', 'table'],
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
       FQN_SEPARATOR_CHAR
     )
   );
@@ -311,21 +312,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
             },
             {
               name: getPartialNameFromTableFQN(database.fullyQualifiedName, [
-                'database',
+                FqnPart.Database,
               ]),
               url: getDatabaseDetailsPath(database.fullyQualifiedName),
             },
             {
               name: getPartialNameFromTableFQN(
                 databaseSchema.fullyQualifiedName,
-                ['schema']
+                [FqnPart.Schema]
               ),
               url: getDatabaseSchemaDetailsPath(
                 databaseSchema.fullyQualifiedName
               ),
             },
             {
-              name: name,
+              name: getEntityName(res.data),
               url: '',
               activeTitle: true,
             },
@@ -336,6 +337,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           }
 
           addToRecentViewed({
+            displayName: getEntityName(res.data),
             entityType: EntityType.TABLE,
             fqn: fullyQualifiedName,
             serviceType: serviceType,
@@ -742,9 +744,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         if (res.data) {
           setEntityThread((pre) => [...pre, res.data]);
           getEntityFeedCount();
-          showSuccessToast(
-            jsonData['api-success-messages']['create-conversation']
-          );
         } else {
           showErrorToast(
             jsonData['api-error-messages']['create-conversation-error']
@@ -929,8 +928,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               jsonData['api-error-messages']['fetch-updated-conversation-error']
             );
           });
-
-        showSuccessToast(jsonData['api-success-messages']['delete-message']);
       })
       .catch((error: AxiosError) => {
         showErrorToast(
@@ -949,7 +946,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     setTableFQN(
       getPartialNameFromTableFQN(
         datasetFQN,
-        ['service', 'database', 'schema', 'table'],
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
         FQN_SEPARATOR_CHAR
       )
     );

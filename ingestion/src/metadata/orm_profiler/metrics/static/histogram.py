@@ -20,9 +20,9 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class Histogram(QueryMetric):
@@ -86,17 +86,18 @@ class Histogram(QueryMetric):
 
         hist = (
             session.query(
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "boundaries"
-                ),
+                ConcatFn(
+                    str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)
+                ).label("boundaries"),
                 func.count().label("frequencies"),
             )
+            .select_from(ranges_cte)
             .group_by(
                 ranges_cte.c.bin_floor,
                 ranges_cte.c.bin_ceil,
-                ConcatFn(ranges_cte.c.bin_floor, " to ", ranges_cte.c.bin_ceil).label(
-                    "boundaries"
-                ),
+                ConcatFn(
+                    str(ranges_cte.c.bin_floor), " to ", str(ranges_cte.c.bin_ceil)
+                ).label("boundaries"),
             )
             .order_by("boundaries")
         )

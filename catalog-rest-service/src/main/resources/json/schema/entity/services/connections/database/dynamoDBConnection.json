@@ -15,49 +15,40 @@
   },
   "properties": {
     "type": {
+      "title": "Service Type",
       "description": "Service Type",
       "$ref": "#/definitions/dynamoDBType",
       "default": "DynamoDB"
     },
-    "hostPort": {
-      "description": "Host and port of the DynamoDB",
-      "type": "string"
-    },
-    "endPointURL": {
-      "description": "EndPoint URL for the Dynamo DB",
-      "type": "string"
-    },
-    "awsAccessKeyId": {
-      "description": "AWS Access key ID.",
-      "typ": "string"
-    },
-    "awsSecretAccessKey": {
-      "description": "AWS Secret Access Key.",
-      "type": "string",
-      "format": "password"
-    },
-    "awsSessionToken": {
-      "description": "AWS Session Token.",
-      "type": "string"
-    },
-    "awsRegion": {
-      "description": "AWS Region Name.",
-      "type": "string"
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
     },
     "database": {
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Druid.",
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string",
       "default": "DynamoDB"
     },
     "connectionOptions": {
+      "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },
     "connectionArguments": {
+      "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": [
+    "awsConfig"
+  ]
 }

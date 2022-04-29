@@ -46,6 +46,7 @@ import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.events.EventPubSub;
@@ -53,6 +54,7 @@ import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
 import org.openmetadata.catalog.fernet.Fernet;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
@@ -62,6 +64,8 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
+import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
+import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 
@@ -74,9 +78,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException, SQLException {
-
-    final JdbiFactory factory = new JdbiFactory();
-    final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
+    final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -96,11 +98,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
+    // Set the Database type for choosing correct queries from annotations
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
+
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
 
     // Register Authorizer
-    registerAuthorizer(catalogConfig, environment, jdbi);
+    registerAuthorizer(catalogConfig, environment);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -118,6 +124,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
     registerResources(catalogConfig, environment, jdbi);
+    RoleEvaluator.getInstance().load();
+    PolicyEvaluator.getInstance().load();
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -126,6 +134,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+    // start authorizer after event publishers
+    // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
+    authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
   }
 
   @SneakyThrows
@@ -149,7 +160,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
-    // bootstrap.addBundle(new CatalogJdbiExceptionsBundle());
     super.initialize(bootstrap);
   }
 
@@ -159,29 +169,25 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     String maxMigration = Migration.lastMigrationFile(conf);
 
     if (lastMigrated.isEmpty()) {
-      System.out.println(
-          "Could not validate Flyway migrations in MySQL."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
-      System.exit(1);
+      throw new IllegalStateException(
+          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
     }
     if (lastMigrated.get().compareTo(maxMigration) < 0) {
-      System.out.println(
-          "There are pending migrations to be run on MySQL."
+      throw new IllegalStateException(
+          "There are pending migrations to be run on the database."
               + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/install/upgrade-openmetadata");
-      System.exit(1);
     }
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
+  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException, IOException {
+          InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
       authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
-      authorizer.init(authorizerConf, jdbi);
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
@@ -195,7 +201,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = NoopAuthorizer.class.getConstructor().newInstance();
-      authorizer.init(null, jdbi);
       ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
       environment.jersey().register(filter);
     }

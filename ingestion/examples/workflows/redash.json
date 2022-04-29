@@ -5,8 +5,9 @@
     "serviceConnection": {
       "config": {
         "type": "Redash",
-        "redashURL": "http://localhost:5000",
-        "apiKey": "api_key"
+        "hostPort": "http://localhost:5000",
+        "apiKey": "api_key",
+        "username": "random"
       }
     },
     "sourceConfig": {

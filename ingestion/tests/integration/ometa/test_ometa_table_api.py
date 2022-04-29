@@ -86,7 +86,7 @@ class OMetaTableTest(TestCase):
 
     service = CreateDatabaseServiceRequest(
         name="test-service-table",
-        serviceType=DatabaseServiceType.MySQL,
+        serviceType=DatabaseServiceType.Mysql,
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
