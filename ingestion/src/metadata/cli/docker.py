@@ -17,8 +17,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import cli_logger
 
-logger = logging.getLogger(__name__)
+logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 

@@ -166,6 +166,10 @@
       },
       "default": null
     },
+    "loggerLevel": {
+      "description": "Set the logging level for the workflow.",
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
+    },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
       "type": "boolean"

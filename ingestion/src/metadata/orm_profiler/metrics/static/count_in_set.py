@@ -12,13 +12,12 @@
 """
 CountInSet Metric definition
 """
-
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class CountInSet(StaticMetric):

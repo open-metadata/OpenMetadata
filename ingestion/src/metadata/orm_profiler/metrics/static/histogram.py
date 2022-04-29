@@ -20,9 +20,9 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.orm_profiler.metrics.core import QueryMetric
 from metadata.orm_profiler.orm.functions.concat import ConcatFn
 from metadata.orm_profiler.orm.registry import is_quantifiable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class Histogram(QueryMetric):

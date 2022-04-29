@@ -19,9 +19,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
     TableColumnCountToEqual,
 )
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def table_column_count_to_equal(

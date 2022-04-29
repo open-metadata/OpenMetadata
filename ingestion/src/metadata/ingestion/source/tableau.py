@@ -12,7 +12,6 @@
 Tableau source module
 """
 
-import logging
 import traceback
 import uuid
 from typing import Iterable, List
@@ -48,8 +47,9 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class TableauSource(Source[Entity]):

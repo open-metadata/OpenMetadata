@@ -18,9 +18,9 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.registry import Dialects, is_quantifiable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class StdDevFn(FunctionElement):
