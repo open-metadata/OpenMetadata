@@ -41,7 +41,6 @@ public abstract class CatalogApplicationTest {
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
-
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
   }
 
@@ -54,6 +53,9 @@ public abstract class CatalogApplicationTest {
     SQL_CONTAINER =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+    SQL_CONTAINER.withReuse(true);
+    SQL_CONTAINER.withStartupTimeoutSeconds(240);
+    SQL_CONTAINER.withConnectTimeoutSeconds(240);
     SQL_CONTAINER.start();
 
     final String migrationScripsLocation =
@@ -84,11 +86,8 @@ public abstract class CatalogApplicationTest {
 
   @AfterAll
   public static void stopApplication() {
-    // If beforeAll causes and exception AfterAll still gets called before that exception is thrown.
+    // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
     // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
-    if (SQL_CONTAINER != null) {
-      SQL_CONTAINER.stop();
-    }
     if (APP != null) {
       APP.after();
     }

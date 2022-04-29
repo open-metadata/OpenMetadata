@@ -393,6 +393,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         };
 
     // Test listing entities that include deleted, non-deleted, and all the entities
+    Random random = new Random();
     for (String include : List.of("non-deleted", "all", "deleted")) {
       if (!supportsSoftDelete && include.equals("deleted")) {
         continue;
@@ -405,9 +406,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       int totalRecords = allEntities.getData().size();
       printEntities(allEntities);
 
-      // List entity with "limit" set from 1 to maxTables size
+      // List entity with "limit" set from 1 to maxTables size with random jumps (to reduce the test time)
       // Each time compare the returned list with allTables list to make sure right results are returned
-      for (int limit = 1; limit < maxEntities; limit++) {
+      for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
         String after = null;
         String before;
         int pageCount = 0;
@@ -416,7 +417,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         ResultList<T> backwardPage;
         boolean foundDeleted = false;
         do { // For each limit (or page size) - forward scroll till the end
-          LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+          LOG.debug("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
           forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           after = forwardPage.getPaging().getAfter();
@@ -447,7 +448,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         indexInAllTables = totalRecords - limit - forwardPage.getData().size();
         foundDeleted = false;
         do {
-          LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+          LOG.debug("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
           forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
           foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
           printEntities(forwardPage);
@@ -1819,8 +1820,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   private void printEntities(ResultList<T> list) {
-    list.getData().forEach(e -> LOG.info("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
+    LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {

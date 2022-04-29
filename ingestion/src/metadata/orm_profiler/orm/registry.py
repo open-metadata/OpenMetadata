@@ -44,7 +44,7 @@ class Dialects(Enum):
     Oracle = "oracle"
     Athena = "awsathena"
     Presto = "presto"
-    Trino = "Trino"
+    Trino = "trino"
     Vertica = "vertica"
     Glue = "glue"
     MariaDB = "mariadb"

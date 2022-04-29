@@ -10,7 +10,6 @@
 #  limitations under the License.
 """gc source module"""
 
-import logging
 import uuid
 from typing import Iterable, List, Optional, Union
 
@@ -35,8 +34,9 @@ from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.utils.helpers import get_storage_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class GcsSourceConfig(ConfigModel):

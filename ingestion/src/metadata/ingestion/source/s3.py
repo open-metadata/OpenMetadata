@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import uuid
 from typing import Iterable, List, Union
 
@@ -35,8 +34,9 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.helpers import get_storage_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class S3SourceConfig(AWSCredentials):

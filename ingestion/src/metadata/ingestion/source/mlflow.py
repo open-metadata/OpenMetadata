@@ -28,8 +28,9 @@ from metadata.generated.schema.entity.data.mlmodel import (
 )
 from metadata.ingestion.api.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 @dataclass
