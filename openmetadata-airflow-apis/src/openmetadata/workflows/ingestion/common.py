@@ -35,8 +35,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
-    WorkflowConfig, LogLevels,
+    WorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
 
