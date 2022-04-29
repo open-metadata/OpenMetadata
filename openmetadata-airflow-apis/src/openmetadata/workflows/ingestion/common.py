@@ -36,7 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
-    WorkflowConfig,
+    WorkflowConfig, LogLevels,
 )
 from metadata.ingestion.api.workflow import Workflow
 
@@ -103,7 +103,7 @@ def build_workflow_config_property(
     :return: WorkflowConfig
     """
     return WorkflowConfig(
-        loggerLevel=ingestion_pipeline.loggerLevel,
+        loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
         openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
     )
 
