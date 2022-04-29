@@ -22,15 +22,22 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.bulk_sink import BulkSink
+from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import ingestion_logger, set_loggers_level
 
 logger = ingestion_logger()
 
 T = TypeVar("T")
+
+
+class InvalidWorkflowJSONException(Exception):
+    """
+    Raised when we cannot properly parse the workflow
+    """
 
 
 class Workflow:
@@ -44,6 +51,9 @@ class Workflow:
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config
+
+        set_loggers_level(config.workflowConfig.loggerLevel.value)
+
         source_type = self.config.source.type.lower()
         source_class = self.get(
             "metadata.ingestion.source.{}.{}Source".format(
@@ -134,7 +144,7 @@ class Workflow:
 
     @classmethod
     def create(cls, config_dict: dict) -> "Workflow":
-        config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
+        config = parse_workflow_config_gracefully(config_dict)
         return cls(config)
 
     def execute(self):

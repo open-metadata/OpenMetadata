@@ -219,6 +219,12 @@ class REST_API(AppBuilderBaseView):
         """
         dag_id: str = self.get_request_arg(request, "dag_id")
 
+        if not dag_id:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Missing dag_id argument in the request",
+            )
+
         try:
             return status(dag_id)
 
