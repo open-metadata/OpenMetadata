@@ -20,9 +20,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.column.columnValuesLengthsToBeBetween import (
     ColumnValueLengthsToBeBetween,
 )
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def column_value_length_to_be_between(

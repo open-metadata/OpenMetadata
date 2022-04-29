@@ -18,9 +18,9 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.orm_profiler.api.models import ProfilerResponse
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class FileSinkConfig(ConfigModel):

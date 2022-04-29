@@ -34,11 +34,11 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.utils import logger
 from metadata.utils.constants import TEN_MIN
+from metadata.utils.logger import profiler_logger
 from metadata.utils.timeout import cls_timeout
 
-logger = logger()
+logger = profiler_logger()
 
 
 class MissingMetricException(Exception):
