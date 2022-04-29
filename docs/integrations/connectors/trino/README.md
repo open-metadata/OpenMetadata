@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -69,7 +69,7 @@ Provide a description for your Trino service that enables other users to determi
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 

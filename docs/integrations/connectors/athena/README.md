@@ -46,7 +46,7 @@ Select Athena as the service type and click _Next_.
 
 ![](../../../.gitbook/assets/athena-select-service.jpg)
 
-### 4.Name and Describe your Service
+### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
@@ -54,17 +54,71 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Athena services that you might be ingesting metadata from.
 
-#### Description
-
-Provide a description for your Athena service that enables other users to determine whether it might provide data of interest to them.
-
 ![](../../../.gitbook/assets/create-service.jpg)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Athena service as desired.
 
 ![Service Connection Options](../../../.gitbook/assets/athena-connection-config.jpg)
+
+<details>
+
+<summary>Connection Options</summary>
+
+#### AWS Access Key ID&#x20;
+
+Enter your secure access key ID for your Athena connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+
+#### AWS Secret Access Key
+
+Enter the Secret Access Key (the passcode key pair to the key ID from above).
+
+#### AWS Region
+
+Enter the location of the amazon cluster that your data and account are associated with.&#x20;
+
+#### AWS Session Token (optional)
+
+The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.&#x20;
+
+#### Endpoint URL (optional)
+
+Your Athena connector will automatically determine the AWS Athena endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
+
+#### Host and Port (optional)
+
+The host and port of the data source are optional parameters. This is the Athena APIs URL.
+
+#### Database (optional)
+
+The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+
+#### S3 Staging Directory (optional)
+
+The S3 staging directory is an optional parameter. Enter a staging dirrectory to override the default staging directory for AWS Athena.
+
+#### Athena Workgroup (optional)
+
+The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.&#x20;
+
+#### Connection Options (Optional)
+
+Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+
+#### Connection Arguments (Optional)
+
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+
+In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "sso_login_url"`
+
+In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "externalbrowser"`
+
+</details>
 
 ![Service has been saved](<../../../.gitbook/assets/image (17) (3).png>)
 
@@ -73,6 +127,10 @@ In this step, we will configure the connection settings required for this connec
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
+
+<details>
+
+<summary>Metadata Ingestion Options</summary>
 
 #### Include (Table Filter Pattern)
 
@@ -112,6 +170,8 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data to_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
+</details>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -121,6 +181,42 @@ Review your configuration settings. If they match what you intended, click _Depl
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+
+<details>
+
+<summary>Scheduling Options</summary>
+
+**Every**
+
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
+
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
+
+**Day**
+
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
+
+**Minute**
+
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
+
+**Time**
+
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
+
+**Start date (UTC)**
+
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
+
+**End date (UTC)**
+
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
+
+</details>
+
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
 ### 8. View the Ingestion Pipeline
 
@@ -140,64 +236,34 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 ## Data Profiler and Quality Tests
 
-After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
-
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
-
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
-
-You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
-
-### 1. Add a Profiler Ingestion
-
-From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
-
-![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
-
-If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
-
-### 2. Configure the Profiler Ingestion
-
-Here you can enter the Profiler Ingestion details.
-
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
-
-<details>
-
-<summary>Profiler Options</summary>
-
-#### Name
-
-Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
-
-As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
-
-#### FQN Filter Pattern
-
-Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
-
-#### Description
-
-Give the Ingestion Pipeline a description to show what type of data we are profiling.
-
-</details>
-
-### 3. Schedule and Deploy
-
-After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+{% content-ref url="../../../data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% endcontent-ref %}
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
+You can learn more about how to ingest DBT models' definitions and their lineage below:
+
+{% content-ref url="../../../data-lineage/dbt-integration.md" %}
+[dbt-integration.md](../../../data-lineage/dbt-integration.md)
+{% endcontent-ref %}
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../bigquery/run-bigquery-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="run-athena-connector-using-airflow-sdk.md" %}
+[run-athena-connector-using-airflow-sdk.md](run-athena-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../bigquery/run-bigquery-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
+
+{% content-ref url="run-athena-connector-with-the-cli.md" %}
+[run-athena-connector-with-the-cli.md](run-athena-connector-with-the-cli.md)
+{% endcontent-ref %}
 
 ##

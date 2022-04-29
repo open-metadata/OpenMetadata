@@ -107,7 +107,7 @@ Enter the details for any additional connection arguments such as security or pr
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -209,7 +209,7 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Data Profiler tab of a Table Entity](<../../../.gitbook/assets/image (54) (1).png>)
+![Data Profiler tab of a Table Entity](<../../../.gitbook/assets/image (54).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
@@ -219,7 +219,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../.
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion (on the right)_.
 
-![Add Profiler Ingestion from Page](<../../../.gitbook/assets/image (5) (1).png>)
+![Add Profiler Ingestion from Page](<../../../.gitbook/assets/image (5).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
