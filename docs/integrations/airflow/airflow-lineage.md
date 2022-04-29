@@ -82,7 +82,7 @@ t1 >> [t2, t3]
 
 Will capture this information as well, therefore showing how the DAG contains three tasks `t1`, `t2` and `t3`; and `t1` having `t2` and `t3` as downstream tasks.
 
-![Pipeline and Tasks example](<../../.gitbook/assets/image (13) (1) (1) (1).png>)
+![Pipeline and Tasks example](<../../.gitbook/assets/image (13) (1) (1) (1) (1) (1).png>)
 
 ### Adding Lineage
 

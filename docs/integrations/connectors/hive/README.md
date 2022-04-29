@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -55,7 +55,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -117,7 +117,7 @@ Enter the details for any additional connection options that can be sent to Snow
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
-![Service has been saved](<../../../.gitbook/assets/image (4) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
@@ -240,7 +240,7 @@ From the Service Page, go to the _Ingestions_ tab to add a new ingestion and cli
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (2).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (1) (1).png>)
 
 #### Name
 
