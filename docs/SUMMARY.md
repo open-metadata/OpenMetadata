@@ -47,6 +47,7 @@
     * [MLflow Metadata Extraction](integrations/connectors/mlflow/mlflow-metadata-extraction.md)
   * [MSSQL](integrations/connectors/mssql/README.md)
     * [Run MSSQL Connector with the Airflow SDK](integrations/connectors/mssql/run-mssql-connector-with-the-airflow-sdk.md)
+    * [MSSQL Usage](integrations/connectors/mssql/mssql-usage.md)
     * [Run MSSQL Connector with the CLI](integrations/connectors/mssql/run-mssql-connector-with-the-cli.md)
   * [MySQL](integrations/connectors/mysql/README.md)
     * [Run MySQL Connector with the Airflow SDK](integrations/connectors/mysql/run-mysql-connector-with-the-airflow-sdk.md)
