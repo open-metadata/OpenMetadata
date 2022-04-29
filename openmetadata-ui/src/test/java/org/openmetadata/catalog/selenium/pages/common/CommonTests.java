@@ -52,7 +52,7 @@ class CommonTests {
   static String url = Property.getInstance().getURL();
   static String urlTag = "/api/v1/tags/";
   Integer waitTime = Property.getInstance().getSleepTime();
-  String tableName = "dim_address";
+  String tableName = "fact_line_item";
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -76,10 +76,6 @@ class CommonTests {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-  }
-
-  void openHomePage() throws InterruptedException {
-    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
   }
 
   @Test
@@ -298,8 +294,8 @@ class CommonTests {
     Events.click(webDriver, common.closeWhatsNew());
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
-    Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
     pause(waitTime);
+    Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
     String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
   }

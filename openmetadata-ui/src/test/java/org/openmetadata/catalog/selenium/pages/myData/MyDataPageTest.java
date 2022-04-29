@@ -15,6 +15,7 @@ package org.openmetadata.catalog.selenium.pages.myData;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -100,6 +101,14 @@ class MyDataPageTest {
       Assert.assertTrue(version.isDisplayed());
     } catch (Exception e) {
       Assert.fail();
+    }
+  }
+
+  public void pause(Integer milliseconds) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
   }
 
@@ -256,6 +265,7 @@ class MyDataPageTest {
     Events.click(webDriver, myDataPage.home());
     fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(myDataPage.tables())));
     try {
+      pause(waitTime);
       Events.click(webDriver, common.followingTable(table));
     } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Following data not present");
