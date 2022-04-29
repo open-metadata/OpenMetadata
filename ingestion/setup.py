@@ -129,6 +129,7 @@ plugins: Dict[str, Set[str]] = {
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
     "deltalake": {"delta-spark~=1.1.0"},
+    "great-expectations": {"great-expectations~=0.15.0"},
 }
 dev = {
     "boto3==1.20.14",
@@ -190,7 +191,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow-container-1.10.15", "db2"}
+                    if plugin not in {"airflow-container-1.10.15", "db2", "great-expectations"}
                 ]
             )
         ),
