@@ -134,6 +134,7 @@ const TeamsAndUsersPage = () => {
           break;
       }
     }
+    setIsRightPannelLoading(false);
     setIsUsersLoading(false);
   };
 
