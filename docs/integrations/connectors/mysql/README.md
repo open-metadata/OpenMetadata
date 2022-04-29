@@ -61,10 +61,6 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MySQL services that you might be ingesting metadata from.
 
-#### Description
-
-Provide a description for your MySQL service that enables other users to determine whether it might provide data of interest to them.
-
 ![](<../../../.gitbook/assets/image (32).png>)
 
 ### 5. Configure the Service Connection
@@ -72,6 +68,10 @@ Provide a description for your MySQL service that enables other users to determi
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
 ![Configure the Service connection](<../../../.gitbook/assets/image (18) (1).png>)
+
+<details>
+
+<summary>Connection Options</summary>
 
 #### Username
 
@@ -97,6 +97,8 @@ Enter the details for any additional connection options that can be sent to MySQ
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
+</details>
+
 ![Service has been saved](<../../../.gitbook/assets/image (13).png>)
 
 ### 6. Configure the Metadata Ingestion
@@ -104,6 +106,10 @@ Enter the details for any additional connection arguments such as security or pr
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1).png>)
+
+<details>
+
+<summary>Metadata Ingestion Options</summary>
 
 #### Include (Table Filter Pattern)
 
@@ -143,6 +149,8 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
+</details>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -152,6 +160,10 @@ Review your configuration settings. If they match what you intended, click _Depl
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20).png>)
+
+<details>
+
+<summary><strong>Scheduling Options</strong></summary>
 
 **Every**
 
@@ -181,6 +193,8 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
+</details>
+
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
 ### 8. View the Ingestion Pipeline
@@ -201,62 +215,32 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 ## Data Profiler and Quality Tests
 
-After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
-
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (21).png>)
-
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (8) (1).png>)
-
-You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
-
-
-
-### 1. Add a Profiler Ingestion
-
-From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
-
-![Add Ingestion](<../../../.gitbook/assets/image (43).png>)
-
-If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
-
-### 2. Configure the Profiler Ingestion
-
-Here you can enter the Profiler Ingestion details.
-
-![Profiler Workflow Details](<../../../.gitbook/assets/image (17) (2).png>)
-
-#### Name
-
-Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
-
-As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
-
-#### FQN Filter Pattern
-
-Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
-
-#### Description
-
-Give the Ingestion Pipeline a description to show what type of data we are profiling.
-
-### 3. Schedule and Deploy
-
-After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+{% content-ref url="../../../data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% endcontent-ref %}
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
+You can learn more about how to ingest DBT models' definitions and their lineage below:
+
+{% content-ref url="../../../data-lineage/dbt-integration.md" %}
+[dbt-integration.md](../../../data-lineage/dbt-integration.md)
+{% endcontent-ref %}
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-mysql-connector-with-the-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-mysql-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-
-
-####
+{% content-ref url="run-mysql-connector-with-the-cli.md" %}
+[run-mysql-connector-with-the-cli.md](run-mysql-connector-with-the-cli.md)
+{% endcontent-ref %}

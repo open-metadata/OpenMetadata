@@ -52,7 +52,7 @@ This is a sample config for Glue:
           },
           "database": "local_glue_db",
           "storageServiceName":"storage_name",
-	          "pipelineServiceName":"local_glue_pipeline"
+	      "pipelineServiceName":"local_glue_pipeline"
         }
       },
       "sourceConfig": {
@@ -138,6 +138,129 @@ metadata ingest -c <path-to-json>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
+
+## Data Profiler and Quality Tests
+
+The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
+
+### 1. Define the JSON Configuration
+
+This is a sample config for the profiler:
+
+```json
+{
+    "source": {
+        "type": "glue",
+        "serviceName": "<service name>",
+        "serviceConnection": {
+            "config": {
+              "type": "Glue",
+              "awsConfig": {
+                "awsAccessKeyId": "KEY",
+                "awsSecretAccessKey": "SECRET",
+                "awsRegion": "us-east-2",
+                "endPointURL": "https://glue.us-east-2.amazonaws.com/"
+              },
+              "database": "local_glue_db",
+              "storageServiceName":"storage_name",
+    	      "pipelineServiceName":"local_glue_pipeline"
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "fqnFilterPattern": "<table FQN filtering regex>"
+            }
+        }
+    },
+    "processor": {
+        "type": "orm-profiler",
+        "config": {}
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {}
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "<OpenMetadata host and port>",
+            "authProvider": "<OpenMetadata auth provider>"
+        }
+    }
+}
+```
+
+#### Source Configuration
+
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json).
+* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
+
+Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+
+```
+"fqnFilterPattern": {
+  "includes": ["service.database.schema.*"]
+}
+```
+
+#### Processor
+
+To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
+
+```json
+ "processor": {
+    "type": "orm-profiler",
+    "config": {
+        "test_suite": {
+            "name": "<Test Suite name>",
+            "tests": [
+                {
+                    "table": "<Table FQN>",
+                    "table_tests": [
+                        {
+                            "testCase": {
+                                "config": {
+                                    "value": 100
+                                },
+                                "tableTestType": "tableRowCountToEqual"
+                            }
+                        }
+                    ],
+                    "column_tests": [
+                        {
+                            "columnName": "<Column Name>",
+                            "testCase": {
+                                "config": {
+                                    "minValue": 0,
+                                    "maxValue": 99
+                                },
+                                "columnTestType": "columnValuesToBeBetween"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+     }
+  },
+```
+
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference).
+
+#### Workflow Configuration
+
+The same as the [metadata](run-glue-connector-with-the-cli.md#workflow-configuration) ingestion.
+
+### 2. Run with the CLI
+
+Again, we will start by saving the JSON file.
+
+Then, we can run the workflow as:
+
+```
+metadata profile -c <path-to-json>
+```
+
+Note how instead of running `ingest`, we are using the `profile` command to select the `Profiler` workflow.
 
 ## DBT Integration
 

@@ -232,9 +232,9 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-After configuring the workflow, you can click on _Deploy_ to create the pipeline.
-
 </details>
+
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
 ### 8. View the Ingestion Pipeline
 

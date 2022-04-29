@@ -20,7 +20,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
 * [MSSQL](mssql/)
-* [MSSQL Usage](mssql/mssql-usage.md)
+* [MSSQL Usage](broken-reference)
 * [MySQL](mysql/)
 * [Oracle](mysql-1/)
 * [Postgres](<snowflake/README (1).md>)

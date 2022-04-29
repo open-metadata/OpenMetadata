@@ -341,7 +341,7 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 
 ### 1. Define the JSON configuration
 
-This is a sample config for a BigQuery profiler:
+This is a sample config for the profiler:
 
 ```json
 {

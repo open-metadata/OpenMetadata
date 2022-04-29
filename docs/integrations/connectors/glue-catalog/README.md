@@ -234,14 +234,6 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-## Query Usage and Lineage Ingestion
-
-You can learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI below:
-
-{% content-ref url="../../../data-lineage/usage-workflow.md" %}
-[usage-workflow.md](../../../data-lineage/usage-workflow.md)
-{% endcontent-ref %}
-
 ## Data Profiler and Quality Tests
 
 You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
