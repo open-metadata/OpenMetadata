@@ -25,7 +25,7 @@ The Lineage Backend can be directly installed to the Airflow instances as part o
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install "openmetadata-ingestion[airflow-container]"
+pip install 'openmetadata-ingestion[airflow-container]'
 ```
 {% endtab %}
 {% endtabs %}
