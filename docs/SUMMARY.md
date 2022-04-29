@@ -27,7 +27,6 @@
     * [ClickHouse Metadata Extraction](integrations/connectors/clickhouse/clickhouse-metadata-extraction.md)
     * [ClickHouse Usage](integrations/connectors/clickhouse/clickhouse-usage.md)
   * [Databricks](integrations/connectors/databricks.md)
-  * [DBT](integrations/connectors/dbt.md)
   * [Delta Lake](integrations/connectors/delta-lake.md)
   * [DynamoDB](integrations/connectors/dynamodb.md)
   * [Elasticsearch](integrations/connectors/elastic-search.md)
