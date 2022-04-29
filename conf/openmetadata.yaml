@@ -90,6 +90,7 @@ logging:
   level: INFO
   loggers:
     org.openmetadata.catalog.events: DEBUG
+    io.swagger: ERROR
   appenders:
     - type: file
       filterFactories:
@@ -108,7 +109,7 @@ logging:
       logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
       currentLogFilename: ./logs/audit.log
       archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 7
+      archivedFileCount: 25
       timeZone: UTC
       maxFileSize: 50MB
 
