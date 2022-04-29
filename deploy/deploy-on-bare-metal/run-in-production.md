@@ -78,6 +78,8 @@ tar -zxvf openmetadata-0.10.0.tar.gz
 cd openmetadata-0.10.0
 ```
 
+Review and update the `openmetadata.yaml` configurations to match your environment. Specifically, consider aspects such as the connection to the MySQL database or ElasticSearch. You can find more information about these configurations [here](../reference/configuration.md).
+
 ### 4. Prepare OpenMetadata Database
 
 ```
