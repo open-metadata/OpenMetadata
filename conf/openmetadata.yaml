@@ -89,14 +89,25 @@ server:
 logging:
   level: INFO
   loggers:
-    org.openmetadata.catalog.common: DEBUG
-    io.swagger: ERROR
+    org.openmetadata.catalog.events: DEBUG
   appenders:
     - type: file
+      filterFactories:
+        - type: audit-exclude-filter-factory
       threshold: TRACE
       logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 7
+      timeZone: UTC
+      maxFileSize: 50MB
+    - type: file
+      filterFactories:
+        - type: audit-only-filter-factory
+      threshold: TRACE
+      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      currentLogFilename: ./logs/audit.log
+      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
       timeZone: UTC
       maxFileSize: 50MB
