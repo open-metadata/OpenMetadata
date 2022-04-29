@@ -30,6 +30,8 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -42,6 +44,7 @@ import org.openmetadata.catalog.type.TagLabel.State;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.JsonUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)

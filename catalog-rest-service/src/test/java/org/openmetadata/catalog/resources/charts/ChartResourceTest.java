@@ -30,6 +30,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
@@ -42,6 +44,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 

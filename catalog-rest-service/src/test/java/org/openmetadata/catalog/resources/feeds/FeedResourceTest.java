@@ -54,6 +54,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -83,6 +85,7 @@ import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FeedResourceTest extends CatalogApplicationTest {

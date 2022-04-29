@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
@@ -34,6 +36,7 @@ import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {

@@ -36,6 +36,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
@@ -48,6 +50,7 @@ import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class LocationResourceTest extends EntityResourceTest<Location, CreateLocation> {
   public LocationResourceTest() {

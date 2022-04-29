@@ -39,6 +39,8 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
@@ -57,6 +59,7 @@ import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LineageResourceTest extends CatalogApplicationTest {

@@ -591,6 +591,9 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${maven-surefire.version}</version>
           <configuration>
+            <forkCount>4</forkCount>
+            <reuseForks>false</reuseForks>
+            <parallel>classes</parallel>
             <includes>
               <include>org.openmetadata.catalog.resources.**.*.java</include>
               <include>org.openmetadata.catalog.util.*.java</include>

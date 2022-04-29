@@ -25,6 +25,8 @@ import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -38,6 +40,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PermissionsResourceTest extends CatalogApplicationTest {
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";

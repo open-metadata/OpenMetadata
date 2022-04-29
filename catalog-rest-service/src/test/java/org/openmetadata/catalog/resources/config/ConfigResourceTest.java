@@ -28,6 +28,8 @@ import javax.ws.rs.client.WebTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
@@ -35,6 +37,7 @@ import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.util.TestUtils;
 
+@Execution(ExecutionMode.CONCURRENT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ConfigResourceTest extends CatalogApplicationTest {
 

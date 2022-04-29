@@ -31,6 +31,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
@@ -47,6 +49,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
+@Execution(ExecutionMode.CONCURRENT)
 @Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
   public static URI PIPELINE_SERVICE_URL;
