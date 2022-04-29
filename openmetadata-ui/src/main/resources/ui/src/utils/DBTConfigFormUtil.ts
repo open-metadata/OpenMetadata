@@ -41,6 +41,7 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../generated/metadataIngestion/databaseServiceMetadataPipeline';
+import { FormValidationRules } from '../interface/genericForm.interface';
 import jsonData from '../jsons/en';
 import { isValidEmail, isValidUrl } from './CommonUtils';
 
@@ -122,6 +123,58 @@ export const validateDbtGCSCredsConfig = (
   return { isValid, errors };
 };
 
+function getInvalidEmailErrors<
+  Type,
+  Keys extends Array<keyof Type>,
+  Errors extends Partial<Record<keyof Type, string>>
+>(
+  data: Type,
+  errors: Errors,
+  ruleFields: Record<
+    keyof Pick<FormValidationRules, FormValidationRulesType.email>,
+    Keys
+  >,
+  rule: FormValidationRulesType.email
+) {
+  let isValid = true;
+  for (const field of ruleFields[rule]) {
+    if (!isValidEmail(data[field] as unknown as string)) {
+      isValid = false;
+      errors[field] = jsonData['form-error-messages'][
+        'invalid-email'
+      ] as Errors[keyof Type];
+    }
+  }
+
+  return isValid;
+}
+
+function getInvalidUrlErrors<
+  Type,
+  Keys extends Array<keyof Type>,
+  Errors extends Partial<Record<keyof Type, string>>
+>(
+  data: Type,
+  errors: Errors,
+  ruleFields: Record<
+    keyof Pick<FormValidationRules, FormValidationRulesType.url>,
+    Keys
+  >,
+  rule: FormValidationRulesType.url
+) {
+  let isValid = true;
+  for (const field of ruleFields[rule]) {
+    if (!isValidUrl(data[field] as unknown as string)) {
+      isValid = false;
+      errors[field] = jsonData['form-error-messages'][
+        'invalid-url'
+      ] as Errors[keyof Type];
+    }
+  }
+
+  return isValid;
+}
+
 export const checkDbtS3CredsConfigRules = (
   data: SCredentials,
   ruleFields = rulesDBTS3CredsFields
@@ -130,12 +183,9 @@ export const checkDbtS3CredsConfigRules = (
   const errors = {} as ErrorDbtS3;
   for (const rule in ruleFields) {
     if (rule === FormValidationRulesType.url) {
-      for (const field of ruleFields[rule]) {
-        if (!isValidUrl(data[field] || '')) {
-          isValid = false;
-          errors[field] = jsonData['form-error-messages']['invalid-url'];
-        }
-      }
+      // Need to update `errors` object for each rule
+      // even if isValid is already false
+      isValid = getInvalidUrlErrors(data, errors, ruleFields, rule) && isValid;
     }
   }
 
@@ -151,16 +201,19 @@ export const checkDbtGCSCredsConfigRules = (
   for (const rule in ruleFields) {
     switch (rule) {
       case FormValidationRulesType.email: {
-        for (const field of ruleFields[rule]) {
-          if (!isValidEmail(data[field] || '')) {
-            isValid = false;
-            errors[field] = jsonData['form-error-messages']['invalid-email'];
-          }
-        }
+        // Need to update `errors` object for each rule
+        // even if isValid is already false
+        isValid =
+          getInvalidEmailErrors(data, errors, ruleFields, rule) && isValid;
 
         break;
       }
       case FormValidationRulesType.url: {
+        // Need to update `errors` object for each rule
+        // even if isValid is already false
+        isValid =
+          getInvalidUrlErrors(data, errors, ruleFields, rule) && isValid;
+
         for (const field of ruleFields[rule]) {
           if (!isValidUrl(data[field] || '')) {
             isValid = false;
@@ -184,7 +237,7 @@ export const getSourceTypeFromConfig = (
   let sourceType = '' as DBT_SOURCES;
   let gcsType = undefined;
   if (data) {
-    if (data && !isNil(data.dbtSecurityConfig)) {
+    if (!isNil(data.dbtSecurityConfig)) {
       if (!isNil(data.dbtSecurityConfig.gcsConfig)) {
         sourceType = DBT_SOURCES.gcs;
         gcsType = isString(data.dbtSecurityConfig.gcsConfig)

@@ -447,7 +447,7 @@ export const getSvgArrow = (isActive: boolean) => {
   );
 };
 
-export const isValidUrl = (href: string) => {
+export const isValidUrl = (href?: string) => {
   if (!href) {
     return false;
   }
@@ -465,10 +465,10 @@ export const isValidUrl = (href: string) => {
  * @param email - email address string
  * @returns - True|False
  */
-export const isValidEmail = (email: string) => {
-  let isValid = true;
-  if (!email.match(validEmailRegEx)) {
-    isValid = false;
+export const isValidEmail = (email?: string) => {
+  let isValid = false;
+  if (email && email.match(validEmailRegEx)) {
+    isValid = true;
   }
 
   return isValid;
