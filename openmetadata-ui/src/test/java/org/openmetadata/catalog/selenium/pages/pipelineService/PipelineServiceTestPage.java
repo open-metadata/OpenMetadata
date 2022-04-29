@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,19 +71,21 @@ class PipelineServiceTestPage {
     webDriver.get(url);
   }
 
-  @Test
-  @Order(1)
-  void openPipelineServicePage() throws InterruptedException {
-    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Events.click(webDriver, common.headerSettings()); // Setting
-    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
-    Events.click(webDriver, common.selectServiceTab(4));
+  public void pause(Integer milliseconds) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
   @Order(2)
-  void addPipelineService() throws InterruptedException {
-    openPipelineServicePage();
+  void addPipelineService() {
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, common.selectServiceTab(4));
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
       Events.click(webDriver, common.noServicesAddServiceButton());
@@ -118,7 +121,10 @@ class PipelineServiceTestPage {
   @Test
   @Order(3)
   void checkPipelineServiceDetails() throws InterruptedException {
-    openPipelineServicePage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, common.selectServiceTab(4));
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.click(webDriver, common.focusedDescriptionBox());
@@ -129,7 +135,10 @@ class PipelineServiceTestPage {
   @Test
   @Order(4)
   void checkConnectionConfig() throws InterruptedException {
-    openPipelineServicePage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, common.selectServiceTab(4));
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "test");
@@ -139,7 +148,10 @@ class PipelineServiceTestPage {
   @Test
   @Order(5)
   void deletePipelineService() throws InterruptedException {
-    openPipelineServicePage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
+    Events.click(webDriver, common.selectServiceTab(4));
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, pipelineServicePage.deletePipeline());
