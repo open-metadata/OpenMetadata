@@ -87,7 +87,7 @@ Provide a description for your Snowflake service that enables other users to det
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17) (2).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1).png>)
 
 #### Username
 
@@ -117,7 +117,7 @@ Enter the details for any additional connection options that can be sent to Snow
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
-![Service has been saved](<../../../.gitbook/assets/image (4) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (4) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
@@ -207,7 +207,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
@@ -240,7 +240,7 @@ From the Service Page, go to the _Ingestions_ tab to add a new ingestion and cli
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (1).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (2).png>)
 
 #### Name
 

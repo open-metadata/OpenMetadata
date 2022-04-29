@@ -69,7 +69,7 @@ Provide a description for your Trino service that enables other users to determi
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
