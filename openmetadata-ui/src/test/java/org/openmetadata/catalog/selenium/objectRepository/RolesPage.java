@@ -27,6 +27,7 @@ public class RolesPage {
   By listItem = By.xpath("//*[@id='react-select-2-listbox']");
   By descriptionContainer = By.cssSelector("[data-testid='viewer-container']");
   By ruleName = By.xpath("(//td[@class='tableBody-cell']/p)[1]");
+  By usersTab = By.cssSelector("[data-testid='users']");
 
   public By selectOperation(String operation) {
     return By.cssSelector("[value='" + operation + "']");

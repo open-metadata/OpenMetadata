@@ -26,6 +26,7 @@ public class UserPage {
   By editRole = By.cssSelector("[data-testid='edit-roles']");
   By saveRole = By.cssSelector("[data-testid='save-roles']");
   By removeRole = By.xpath("(//div[@class='css-xb97g8'])[2]");
+  By addUser = By.cssSelector("[data-testid='add-teams']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");

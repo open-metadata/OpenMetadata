@@ -23,9 +23,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.Select;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.*;
 import org.testng.Assert;
 
 @Slf4j
@@ -44,6 +42,7 @@ class RolesPageTest {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String xpath = "//p[@title = '" + roleDisplayName + "']";
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -58,20 +57,24 @@ class RolesPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
-  void openRolesPage() throws InterruptedException {
+  void openRolesPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Roles"));
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
-  void addRole() throws InterruptedException {
+  void addRole() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
@@ -87,7 +90,6 @@ class RolesPageTest {
     Events.click(webDriver, common.descriptionItalicButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     try {
       wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
@@ -98,7 +100,7 @@ class RolesPageTest {
 
   @Test
   @Order(3)
-  void editDescription() throws InterruptedException {
+  void editDescription() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String description = faker.address().toString();
     String roleName = "Data Consumer";
@@ -110,14 +112,13 @@ class RolesPageTest {
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.containsText(roleName));
-    Thread.sleep(waitTime);
     String updatedDescription = webDriver.findElement(rolesPage.descriptionContainer()).getText();
     Assert.assertEquals(updatedDescription, description);
   }
 
   @Test
   @Order(4)
-  void addRules() throws InterruptedException {
+  void addRules() {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
@@ -127,7 +128,6 @@ class RolesPageTest {
     Events.click(webDriver, rolesPage.listAccess());
     Events.click(webDriver, rolesPage.selectAccess("allow"));
     Events.click(webDriver, common.descriptionSaveButton());
-    Thread.sleep(1000);
     try {
       webDriver.findElement(rolesPage.operation());
       webDriver.findElement(rolesPage.access());
@@ -138,15 +138,16 @@ class RolesPageTest {
 
   @Test
   @Order(5)
-  void editRule() throws InterruptedException {
+  void editRule() {
     openRolesPage();
     Events.click(webDriver, common.containsText("Data Consumer"));
     Events.click(webDriver, rolesPage.editRuleButton());
     Select se = new Select(webDriver.findElement(rolesPage.listAccess()));
     se.selectByVisibleText("DENY");
     Events.click(webDriver, common.descriptionSaveButton());
-    Thread.sleep(waitTime);
-    String access = webDriver.findElement(rolesPage.accessValue()).getAttribute("innerHTML");
+    fluentWait.until(ExpectedConditions.elementToBeClickable(rolesPage.usersTab()));
+    String access =
+        fluentWait.until(ExpectedConditions.elementToBeClickable(rolesPage.accessValue())).getAttribute("innerHTML");
     Assert.assertEquals(access, "DENY");
   }
 
@@ -158,7 +159,6 @@ class RolesPageTest {
     String ruleName = webDriver.findElement(rolesPage.ruleName()).getText();
     Events.click(webDriver, rolesPage.deleteRuleButton());
     Events.click(webDriver, common.saveEditedService());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     try {
       if (webDriver.findElement(common.containsText(ruleName)).isDisplayed()) {
@@ -171,7 +171,7 @@ class RolesPageTest {
 
   @Test
   @Order(7)
-  void checkBlankName() throws InterruptedException {
+  void checkBlankName() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
@@ -193,7 +193,7 @@ class RolesPageTest {
 
   @Test
   @Order(8)
-  void checkBlankDisplayName() throws InterruptedException {
+  void checkBlankDisplayName() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
@@ -215,7 +215,7 @@ class RolesPageTest {
 
   @Test
   @Order(9)
-  void checkDuplicateRoleName() throws InterruptedException {
+  void checkDuplicateRoleName() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String firstName = faker.name().firstName();
     openRolesPage();
@@ -228,7 +228,6 @@ class RolesPageTest {
     Events.click(webDriver, common.descriptionBox());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
@@ -249,7 +248,7 @@ class RolesPageTest {
 
   @Test
   @Order(10)
-  void addRuleWithoutOperation() throws InterruptedException {
+  void addRuleWithoutOperation() {
     openRolesPage();
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());

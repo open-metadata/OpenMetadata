@@ -103,6 +103,7 @@ public class Common {
   By addIngestion = By.cssSelector("[data-testid='add-ingestion-button']");
   By deployButton = By.cssSelector("[data-testid='deploy-button']");
   By confirmButton = By.cssSelector("[data-testid='confirm-button']");
+  By tables = By.xpath("(//button[@data-testid='tab'])[1]");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

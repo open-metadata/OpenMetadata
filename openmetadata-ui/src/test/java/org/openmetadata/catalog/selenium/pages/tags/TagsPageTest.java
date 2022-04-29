@@ -16,6 +16,7 @@ package org.openmetadata.catalog.selenium.pages.tags;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -51,6 +54,7 @@ class TagsPageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -65,20 +69,32 @@ class TagsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
+  }
+
+  public void pause(Integer milliseconds) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
   @Order(1)
-  void openTagsPage() throws InterruptedException {
+  void openTagsPage() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
-  void addTagCategory() throws InterruptedException {
+  void addTagCategory() {
     openTagsPage();
     Events.click(webDriver, common.addTagCategory());
     Events.sendKeys(webDriver, common.displayName(), tagCategoryDisplayName);
@@ -94,7 +110,7 @@ class TagsPageTest {
 
   @Test
   @Order(3)
-  void editTagCategoryDescription() throws InterruptedException {
+  void editTagCategoryDescription() {
     openTagsPage();
     Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Events.click(webDriver, common.editTagCategoryDescription());
@@ -104,7 +120,7 @@ class TagsPageTest {
 
   @Test
   @Order(4)
-  void addTag() throws InterruptedException {
+  void addTag() {
     openTagsPage();
     Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
     Events.click(webDriver, common.addTagButton());
@@ -121,10 +137,10 @@ class TagsPageTest {
 
   @Test
   @Order(5)
-  void changeTagDescription() throws InterruptedException {
+  void changeTagDescription() {
     openTagsPage();
     Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
-    Thread.sleep(waitTime);
+    pause(waitTime);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -133,13 +149,12 @@ class TagsPageTest {
 
   @Test
   @Order(8)
-  void addTagToTableColumn() throws InterruptedException {
+  void addTagToTableColumn() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, tagsPage.sortBy());
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, tagsPage.lastTableLink());
-    Thread.sleep(waitTime);
     Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), tagCategoryDisplayName + "." + tagDisplayName);
@@ -215,11 +230,10 @@ class TagsPageTest {
 
   @Test
   @Order(11)
-  void TagUsageCheck() throws InterruptedException {
+  void TagUsageCheck() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
     Events.click(webDriver, tagsPage.lastTableLink());
-    Thread.sleep(waitTime);
     Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
@@ -229,11 +243,18 @@ class TagsPageTest {
     Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.textEquals("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(1));
-    Thread.sleep(2000);
-    String beforeFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
-    Events.click(webDriver, common.entityTabIndex(2));
-    Events.click(webDriver, common.entityTabIndex(1));
-    String afterFilterCount = webDriver.findElement(tagsPage.tagFilterCount(1)).getAttribute("innerHTML");
+    fluentWait.until(ExpectedConditions.elementToBeClickable(common.explore()));
+    String beforeFilterCount =
+        fluentWait
+            .until(ExpectedConditions.visibilityOfElementLocated(tagsPage.tagFilterCount(1)))
+            .getAttribute("innerHTML");
+    Events.click(webDriver, common.topics());
+    pause(waitTime);
+    Events.click(webDriver, common.tables());
+    String afterFilterCount =
+        fluentWait
+            .until(ExpectedConditions.visibilityOfElementLocated(tagsPage.tagFilterCount(1)))
+            .getAttribute("innerHTML");
     Assert.assertEquals(afterFilterCount, beforeFilterCount);
   }
 

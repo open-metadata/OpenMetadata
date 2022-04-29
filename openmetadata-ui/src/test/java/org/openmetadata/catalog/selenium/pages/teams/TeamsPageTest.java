@@ -17,6 +17,7 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -37,6 +38,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -58,6 +61,7 @@ class TeamsPageTest {
   MyDataPage myDataPage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -74,20 +78,33 @@ class TeamsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(URL);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
+  }
+
+  public void pause(Integer milliseconds) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
   @Order(1)
-  void openTeamsPage() throws InterruptedException {
+  void openTeamsPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams()); // Setting/Teams
-    Thread.sleep(waitTime);
+    fluentWait.until(ExpectedConditions.visibilityOfElementLocated(teamsPage.addTeam()));
     Assert.assertTrue(teamsPage.heading().isDisplayed());
   }
 
   @Test
   @Order(2)
-  void createTeam() throws InterruptedException {
+  void createTeam() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams());
@@ -97,9 +114,7 @@ class TeamsPageTest {
     Events.click(webDriver, common.descriptionBox());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-    Thread.sleep(waitTime);
     try {
       Events.click(webDriver, common.containsText(teamDisplayName));
     } catch (NoSuchElementException e) {
@@ -109,7 +124,7 @@ class TeamsPageTest {
 
   @Test
   @Order(3)
-  void addUser() throws InterruptedException {
+  void addUser() {
     int counter = 1;
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
@@ -125,12 +140,9 @@ class TeamsPageTest {
       if (counter == 10) {
         break;
       }
-      Thread.sleep(waitTime);
     }
     Events.click(webDriver, teamsPage.saveUser());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
-
     List<WebElement> checkUser = webDriver.findElements(teamsPage.selectedUser());
     List<String> getUser = new ArrayList<>();
     for (WebElement c : checkUser) {
@@ -157,7 +169,6 @@ class TeamsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, teamsPage.saveDescription());
     String description = webDriver.findElement(teamsPage.descriptionContainer()).getText();
-    Thread.sleep(2000);
     Assert.assertEquals(description, sendKeys);
   }
 
@@ -174,7 +185,6 @@ class TeamsPageTest {
     webDriver.navigate().refresh();
     Events.click(webDriver, common.manage()); // Manage
     Events.click(webDriver, common.ownerDropdown()); // Owner
-    Thread.sleep(waitTime);
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
     Events.click(webDriver, common.selectUser()); // Select User/Team
     Events.click(webDriver, myDataPage.home());
@@ -200,7 +210,6 @@ class TeamsPageTest {
     Events.click(webDriver, teamsPage.ownerDropdown());
     String ownerName = webDriver.findElement(teamsPage.selectOwner()).getText();
     Events.click(webDriver, teamsPage.selectOwner());
-    Thread.sleep(waitTime);
     webDriver.navigate().refresh();
     if (!webDriver.findElement(teamsPage.ownerName(ownerName)).isDisplayed()) {
       Assert.fail("Owner not added");
@@ -222,7 +231,7 @@ class TeamsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Events.click(webDriver, myDataPage.home());
-    Thread.sleep(waitTime);
+    pause(waitTime);
     String updatedCount = webDriver.findElement(teamsPage.myDataTeamsCount()).getText();
     if (updatedCount.equals(myDataTeamsCount)) {
       Assert.fail("Team filter not updated");

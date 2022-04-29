@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.pages.Webhooks;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -54,20 +55,26 @@ class WebhooksPageTest {
     webDriver.get(url);
   }
 
+  public void pause(Integer milliseconds) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
   @Test
   @Order(1)
   void openWebHookPage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, webhooks.webhookLink());
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
   void addWebHook() throws InterruptedException {
     openWebHookPage();
-    Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.addWebhook());
     Events.sendKeys(webDriver, webhooks.name(), name);
     Events.click(webDriver, webhooks.descriptionBox());
@@ -80,9 +87,7 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
-    Thread.sleep(waitTime);
     WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook(name)));
-    Thread.sleep(waitTime);
     Assert.assertTrue(checkName.isDisplayed());
     Assert.assertEquals(checkName.getText(), name);
   }
@@ -103,7 +108,7 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
-    Thread.sleep(waitTime);
+    pause(waitTime);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");
@@ -122,7 +127,6 @@ class WebhooksPageTest {
     ((JavascriptExecutor) webDriver)
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, webhooks.checkbox());
-    Thread.sleep(waitTime);
     Events.click(webDriver, webhooks.entityCreatedMenu());
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
