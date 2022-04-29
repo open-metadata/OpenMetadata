@@ -27,17 +27,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import cli_logger, ingestion_logger, set_loggers_level
 
-logger = logging.getLogger(__name__)
-
-logging.getLogger("urllib3").setLevel(logging.WARN)
-# Configure logger.
-BASE_LOGGING_FORMAT = (
-    "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
-)
-logging.basicConfig(format=BASE_LOGGING_FORMAT)
+logger = cli_logger()
 
 
 @click.group()
@@ -59,17 +52,11 @@ def check() -> None:
 )
 def metadata(debug: bool, log_level: str) -> None:
     if debug:
-        logging.getLogger().setLevel(logging.INFO)
-        logging.getLogger("metadata").setLevel(logging.DEBUG)
-        logging.getLogger("ORM Profiler Workflow").setLevel(logging.DEBUG)
-        logging.getLogger("Profiler").setLevel(logging.DEBUG)
+        set_loggers_level(logging.DEBUG)
     elif log_level:
-        logging.getLogger().setLevel(log_level)
+        set_loggers_level(log_level)
     else:
-        logging.getLogger().setLevel(logging.WARNING)
-        logging.getLogger("metadata").setLevel(logging.INFO)
-        logging.getLogger("ORM Profiler Workflow").setLevel(logging.INFO)
-        logging.getLogger("Profiler").setLevel(logging.INFO)
+        set_loggers_level(logging.INFO)
 
 
 @metadata.command()
@@ -81,13 +68,16 @@ def metadata(debug: bool, log_level: str) -> None:
     required=True,
 )
 def ingest(config: str) -> None:
-    """Main command for ingesting metadata into Metadata"""
+    """
+    Main command for ingesting metadata into Metadata.
+    Logging is controlled via the JSON config
+    """
     config_file = pathlib.Path(config)
     workflow_config = OpenMetadataWorkflowConfig.parse_obj(
         load_config_file(config_file)
     )
-    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
-    logger.setLevel(workflow_config.workflowConfig.loggerLevel.value)
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = Workflow.create(workflow_config)

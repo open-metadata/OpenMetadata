@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -53,13 +52,14 @@ from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
     NEO4J_AMUNDSEN_TABLE_QUERY,
     NEO4J_AMUNDSEN_USER_QUERY,
 )
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class AmundsenConfig(ConfigModel):

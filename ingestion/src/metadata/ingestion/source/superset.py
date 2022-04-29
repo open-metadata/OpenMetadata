@@ -13,7 +13,6 @@ Superset source module
 """
 
 import json
-import logging
 import traceback
 from typing import Iterable
 
@@ -45,8 +44,9 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 def get_metric_name(metric):

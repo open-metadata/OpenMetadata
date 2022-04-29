@@ -12,7 +12,6 @@
 Metadata DAG common functions
 """
 import json
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional
 
@@ -21,6 +20,7 @@ from airflow import DAG
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 try:
     from airflow.operators.python import PythonOperator
@@ -50,8 +50,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
-
-    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
@@ -72,7 +71,7 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     This is the callable used to create the PythonOperator
     """
 
-    logging.getLogger().setLevel(workflow_config.workflowConfig.loggerLevel.value)
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 

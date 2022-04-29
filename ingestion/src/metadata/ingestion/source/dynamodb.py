@@ -1,4 +1,3 @@
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -25,8 +24,9 @@ from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class DynamodbSource(Source[Entity]):

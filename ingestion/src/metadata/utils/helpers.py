@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable
 
@@ -37,8 +36,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import utils_logger
 
-logger = logging.getLogger(__name__)
+logger = utils_logger()
 
 
 def get_start_and_end(duration):
