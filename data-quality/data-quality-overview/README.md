@@ -107,7 +107,7 @@ Adding a Table Test will show us the following view:
 
 Adding a Column Test will have a similar view:
 
-![Add Column Test](<../../docs/.gitbook/assets/image (52).png>)
+![Add Column Test](<../../docs/.gitbook/assets/image (52) (2).png>)
 
 The Column Test form will be similar to the Table Test one. The only difference is the **Column Name** field, where we need to select the column we will be targeting for the test.
 

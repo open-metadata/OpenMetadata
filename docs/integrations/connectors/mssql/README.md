@@ -38,7 +38,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -272,7 +272,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 

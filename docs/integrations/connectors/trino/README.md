@@ -69,7 +69,7 @@ Provide a description for your Trino service that enables other users to determi
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -269,7 +269,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 

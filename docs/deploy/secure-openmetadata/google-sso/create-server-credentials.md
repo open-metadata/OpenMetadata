@@ -33,7 +33,7 @@ description: >-
   * Chose **External** if you are testing,
   * Otherwise chose **Internal**
 
-![](<../../../.gitbook/assets/image (52) (2).png>)
+![](<../../../.gitbook/assets/image (52) (2) (1).png>)
 
 * Once the user type is selected, provide the **App Information** and other details.
 * Click **Save and Continue**.
@@ -88,4 +88,4 @@ description: >-
 
 * You will find the **Client ID** and **Client Secret** in the top right corner
 
-![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1) (1).png>)

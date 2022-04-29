@@ -71,7 +71,7 @@ Provide a description for your MySQL service that enables other users to determi
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (18).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (18) (1).png>)
 
 #### Username
 
@@ -103,7 +103,7 @@ Enter the details for any additional connection arguments such as security or pr
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -225,7 +225,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (17).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (17) (2).png>)
 
 #### Name
 

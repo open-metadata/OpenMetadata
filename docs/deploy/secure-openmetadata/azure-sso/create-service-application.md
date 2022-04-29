@@ -13,7 +13,7 @@
 
 * Navigate to the section **Expose an API**
 
-![](<../../../.gitbook/assets/image (14) (1) (1).png>)
+![](<../../../.gitbook/assets/image (14) (1) (1) (1).png>)
 
 * Set the **App ID URI.** If it has not been set, the default value is api://\<client\_id>.
 * Click Save.
@@ -44,7 +44,7 @@ Another Azure Application must be registered for Service ingestion.
 * Navigate to the section on API Permissions.
 * Click on Add a Permission.
 
-![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1).png>)
 
 * Search for the OpenMetadata Application
 
