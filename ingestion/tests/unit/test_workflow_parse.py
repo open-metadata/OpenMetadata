@@ -36,7 +36,11 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
-from metadata.ingestion.api.parser import get_connection_class, get_service_type, parse_workflow_config_gracefully
+from metadata.ingestion.api.parser import (
+    get_connection_class,
+    get_service_type,
+    parse_workflow_config_gracefully,
+)
 
 
 class TestWorkflowParse(TestCase):
