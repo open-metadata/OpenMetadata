@@ -56,6 +56,8 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/webhook")
@@ -101,11 +103,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public ResultList<Webhook> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
       @Parameter(description = "Filter webhooks by status", schema = @Schema(type = "string", example = "active"))
           @QueryParam("status")
           String statusParam,
@@ -128,8 +125,16 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter().addQueryParam("status", statusParam);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    RestUtil.validateCursors(before, after);
+    ListFilter filter = new ListFilter(include).addQueryParam("status", statusParam);
+    ResultList<Webhook> webhooks;
+    if (before != null) { // Reverse paging
+      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
+    } else { // Forward paging or first page
+      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
+    }
+    webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
+    return webhooks;
   }
 
   @GET
