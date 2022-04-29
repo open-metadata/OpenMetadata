@@ -36,8 +36,7 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
-from metadata.ingestion.api.parser import get_connection_class, get_service_type
-from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.api.parser import get_connection_class, get_service_type, parse_workflow_config_gracefully
 
 
 class TestWorkflowParse(TestCase):
@@ -102,7 +101,7 @@ class TestWorkflowParse(TestCase):
                         "database": "master",
                         "username": "sa",
                         "password": "MY%password",
-                        "hostPort": "localhost:1433",
+                        "hostPort": "random:1433",
                     }
                 },
                 "sourceConfig": {
@@ -122,7 +121,7 @@ class TestWorkflowParse(TestCase):
             },
         }
 
-        self.assertIsNotNone(Workflow.create(config_dict))
+        self.assertIsNotNone(parse_workflow_config_gracefully(config_dict))
 
     def test_parsing_ko_mssql(self):
         """
@@ -161,7 +160,7 @@ class TestWorkflowParse(TestCase):
         }
 
         with self.assertRaises(ValidationError) as err:
-            Workflow.create(config_dict)
+            parse_workflow_config_gracefully(config_dict)
 
         self.assertIn("1 validation error for MssqlConnection", str(err.exception))
 
@@ -200,6 +199,6 @@ class TestWorkflowParse(TestCase):
         }
 
         with self.assertRaises(ValidationError) as err:
-            Workflow.create(config_dict)
+            parse_workflow_config_gracefully(config_dict)
 
         self.assertIn("2 validation errors for GlueConnection", str(err.exception))
