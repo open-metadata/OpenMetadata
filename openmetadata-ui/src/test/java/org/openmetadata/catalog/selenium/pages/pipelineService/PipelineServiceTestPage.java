@@ -77,14 +77,12 @@ class PipelineServiceTestPage {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
     Events.click(webDriver, common.selectServiceTab(4));
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
   void addPipelineService() throws InterruptedException {
     openPipelineServicePage();
-    Thread.sleep(waitTime);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
       Events.click(webDriver, common.noServicesAddServiceButton());
@@ -105,11 +103,9 @@ class PipelineServiceTestPage {
     Events.click(webDriver, common.nextButton());
     Events.sendKeys(webDriver, pipelineServicePage.pipelineServiceUrl(), "localhost:8080");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
     Events.click(webDriver, common.selectServiceTab(4));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.getPageSource().contains(serviceName)) {
         LOG.info("Success");
@@ -149,12 +145,10 @@ class PipelineServiceTestPage {
     Events.click(webDriver, pipelineServicePage.deletePipeline());
     Events.sendKeys(webDriver, pipelineServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
-    Thread.sleep(waitTime);
     wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices());
     Events.click(webDriver, common.selectServiceTab(4));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
         Assert.fail("Service not deleted");

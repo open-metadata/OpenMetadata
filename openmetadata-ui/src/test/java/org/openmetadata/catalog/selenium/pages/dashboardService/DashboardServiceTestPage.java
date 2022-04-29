@@ -52,7 +52,6 @@ class DashboardServiceTestPage {
   static String serviceName = faker.name().firstName();
   static Actions actions;
   static WebDriverWait wait;
-  Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
 
@@ -78,14 +77,12 @@ class DashboardServiceTestPage {
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
     Events.click(webDriver, common.selectServiceTab(3));
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
   void addDashboardService() throws InterruptedException {
     openDashboardServicePage();
-    Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
       Events.click(webDriver, common.noServicesAddServiceButton());
@@ -112,14 +109,12 @@ class DashboardServiceTestPage {
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
     Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "localhost:8080");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
     Events.click(webDriver, common.selectServiceTab(3));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.getPageSource().contains(serviceName)) {
         LOG.info("Success");
@@ -133,7 +128,6 @@ class DashboardServiceTestPage {
   @Order(3)
   void checkDashboardServiceDetails() throws InterruptedException {
     openDashboardServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -144,14 +138,12 @@ class DashboardServiceTestPage {
   @Order(4)
   void checkConnectionConfigTab() throws InterruptedException, IOException {
     openDashboardServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, dashboardServicePage.hostPort(), "test");
     Events.sendKeys(webDriver, common.serviceUsername(), "test");
     Events.sendKeys(webDriver, common.servicePassword(), "test");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(2000);
     try {
       WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
       if (errorText.isDisplayed()) {
@@ -171,12 +163,10 @@ class DashboardServiceTestPage {
     Events.click(webDriver, dashboardServicePage.deleteDashboard());
     Events.sendKeys(webDriver, dashboardServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
-    Thread.sleep(waitTime);
     wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsServices());
     Events.click(webDriver, common.selectServiceTab(3));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
         Assert.fail("Service not deleted");

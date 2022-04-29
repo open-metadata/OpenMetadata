@@ -16,7 +16,6 @@ package org.openmetadata.catalog.selenium.pages.databaseService;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +35,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -55,6 +56,7 @@ class DatabaseServicePageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -69,26 +71,30 @@ class DatabaseServicePageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
   void openDatabaseServicePage() throws InterruptedException {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
   void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
-    List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
-    if (webElementList.isEmpty()) {
+    try {
+      fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.noServicesAddServiceButton()));
       Events.click(webDriver, common.noServicesAddServiceButton());
-    } else {
+    } catch (NoSuchElementException | TimeoutException e) {
+      fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.addServiceButton()));
       Events.click(webDriver, common.addServiceButton());
     }
     Events.click(webDriver, common.serviceType("Mysql"));
@@ -116,13 +122,11 @@ class DatabaseServicePageTest {
     Events.click(webDriver, common.databaseName());
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.getPageSource().contains(serviceName)) {
         LOG.info("Success");
@@ -136,7 +140,6 @@ class DatabaseServicePageTest {
   @Order(3)
   void checkDatabaseServiceDetails() throws InterruptedException {
     openDatabaseServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, databaseServicePage.serviceName(serviceName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -173,7 +176,6 @@ class DatabaseServicePageTest {
     Events.sendKeys(webDriver, common.servicePassword(), "test");
     Events.sendKeys(webDriver, common.databaseName(), "test");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(2000);
     try {
       WebElement errorText = webDriver.findElement(common.containsText("Error while updating service"));
       if (errorText.isDisplayed()) {
@@ -193,11 +195,9 @@ class DatabaseServicePageTest {
     Events.click(webDriver, databaseServicePage.deleteDatabase());
     Events.sendKeys(webDriver, databaseServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
-    Thread.sleep(waitTime);
     wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsServices());
-    Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
         Assert.fail("Service not deleted");

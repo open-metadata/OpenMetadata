@@ -1,10 +1,12 @@
 package org.openmetadata.catalog.selenium.objectRepository;
 
+import java.util.List;
 import javax.annotation.Nonnull;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 @Getter
 @RequiredArgsConstructor
@@ -21,10 +23,16 @@ public class GlossaryPage {
   By saveAssociatedTag = By.xpath("//button[@data-testid='saveAssociatedTag']");
   By addGlossary = By.cssSelector("[data-testid='add-category']");
   By reviewers = By.cssSelector("[data-testid='Reviewers']");
+  By reviewerCardContainer = By.cssSelector("[data-testid='user-card-container']");
+  By glossaryName = By.cssSelector("[data-testid='inactive-link']");
 
   public By checkboxAddUser(int index) {
     return By.xpath(
         "(//div[@data-testid='user-card-container']//input[@data-testid='checkboxAddUser'])[" + index + "]");
+  }
+
+  public List<WebElement> reviewerCardContainer() {
+    return webDriver.findElements(reviewerCardContainer);
   }
 
   public By removeAssociatedTag(int index) {

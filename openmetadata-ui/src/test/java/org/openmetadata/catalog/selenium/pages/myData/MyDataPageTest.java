@@ -245,8 +245,7 @@ class MyDataPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
-    Events.sendKeys(webDriver, myDataPage.searchBox(), table);
-    Events.click(webDriver, common.selectSuggestionSearch(searchSuggestion));
+    Events.click(webDriver, common.selectTableLink(1));
     String follow = webDriver.findElement(tableDetails.follow()).getText();
     if (follow.equals("Unfollow")) {
       Events.click(webDriver, tableDetails.follow());

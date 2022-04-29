@@ -223,7 +223,7 @@ class Explore {
     String tableName = webDriver.findElement(common.selectTableLink(1)).getText();
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Events.click(webDriver, explorePage.explore());

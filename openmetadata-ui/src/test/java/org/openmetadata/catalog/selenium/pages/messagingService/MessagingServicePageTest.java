@@ -72,19 +72,17 @@ class MessagingServicePageTest {
 
   @Test
   @Order(1)
-  void openMessagingServicePage() throws InterruptedException {
+  void openMessagingServicePage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices()); // Setting/Services
     Events.click(webDriver, common.selectServiceTab(2));
-    Thread.sleep(waitTime);
   }
 
   @Test
   @Order(2)
-  void addMessagingService() throws InterruptedException {
+  void addMessagingService() {
     openMessagingServicePage();
-    Thread.sleep(2000);
     List<WebElement> webElementList = webDriver.findElements(common.addServiceButton());
     if (webElementList.isEmpty()) {
       Events.click(webDriver, common.noServicesAddServiceButton());
@@ -111,14 +109,12 @@ class MessagingServicePageTest {
         webDriver, messagingServicePage.messagingServiceBootstrapServers(), "localhost:8080, localhost:9092");
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceSchemaRegistry(), "https://localhost:8081");
     Events.click(webDriver, common.saveServiceButton());
-    Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
     Events.click(webDriver, common.selectServiceTab(2));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.getPageSource().contains(serviceName)) {
         LOG.info("Success");
@@ -130,9 +126,8 @@ class MessagingServicePageTest {
 
   @Test
   @Order(4)
-  void checkConnectionConfigTab() throws InterruptedException {
+  void checkConnectionConfigTab() {
     openMessagingServicePage();
-    Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.connectionConfig());
     Events.sendKeys(webDriver, messagingServicePage.messagingServiceBootstrapServers(), "test");
@@ -142,19 +137,17 @@ class MessagingServicePageTest {
 
   @Test
   @Order(5)
-  void deleteMessagingService() throws InterruptedException {
+  void deleteMessagingService() {
     openMessagingServicePage();
     Events.click(webDriver, common.containsText(serviceName));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, messagingServicePage.deleteMessagingService());
     Events.sendKeys(webDriver, messagingServicePage.confirmationDeleteText(), "DELETE");
     Events.click(webDriver, common.confirmButton());
-    Thread.sleep(waitTime);
     wait.until(ExpectedConditions.urlMatches("http://localhost:8585/my-data"));
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsServices());
     Events.click(webDriver, common.selectServiceTab(2));
-    Thread.sleep(waitTime);
     try {
       if (webDriver.findElement(common.containsText(serviceName)).isDisplayed()) {
         Assert.fail("Service not deleted");
