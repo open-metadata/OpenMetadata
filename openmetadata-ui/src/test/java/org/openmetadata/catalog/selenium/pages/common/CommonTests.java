@@ -345,7 +345,6 @@ class CommonTests {
     } catch (StaleElementReferenceException e) {
       webDriver.findElement(common.editAssociatedTagButton()).click();
     }
-
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
@@ -353,9 +352,12 @@ class CommonTests {
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Events.click(webDriver, common.editAssociatedTagButton());
+    try {
+      Events.click(webDriver, common.editAssociatedTagButton());
+    } catch (StaleElementReferenceException e) {
+      webDriver.findElement(common.editAssociatedTagButton()).click();
+    }
     Events.click(webDriver, common.explore());
-
     try {
       Events.click(webDriver, common.viewMore());
       pause(waitTime);

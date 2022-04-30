@@ -162,6 +162,7 @@ class TagsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
+    fluentWait.until(ExpectedConditions.elementToBeClickable(common.containsText(tagCategoryDisplayName)));
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
   }
@@ -233,10 +234,11 @@ class TagsPageTest {
   void TagUsageCheck() {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerItem("explore"));
-    Events.click(webDriver, tagsPage.lastTableLink());
+    Events.click(webDriver, common.selectTableLink(5));
     Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
+    fluentWait.until(ExpectedConditions.visibilityOfElementLocated(common.tagListItem()));
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());

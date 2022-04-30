@@ -250,23 +250,20 @@ class MyDataPageTest {
 
   @Test
   @Order(7)
-  void checkFollowingTab() throws InterruptedException {
+  void checkFollowingTab() {
+    String tableName = "raw_product_catalog";
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
-    Events.click(webDriver, common.selectTableLink(1));
-    String follow = webDriver.findElement(tableDetails.follow()).getText();
-    if (follow.equals("Unfollow")) {
-      Events.click(webDriver, tableDetails.follow());
-      Events.click(webDriver, tableDetails.follow());
-    } else {
-      Events.click(webDriver, tableDetails.follow());
-    }
+    Events.sendKeys(webDriver, common.searchBar(), tableName);
+    Events.click(webDriver, common.selectSuggestionSearch("sample_dataecommerce_dbshopifyraw_product_catalog"));
+    Events.click(webDriver, tableDetails.follow());
     Events.click(webDriver, myDataPage.home());
+    pause(waitTime);
+    webDriver.navigate().refresh();
     fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(myDataPage.tables())));
     try {
-      pause(waitTime);
-      Events.click(webDriver, common.followingTable(table));
+      Events.click(webDriver, common.clickFollowedTable(tableName));
     } catch (TimeoutException | NoSuchElementException e) {
       Assert.fail("Following data not present");
     }

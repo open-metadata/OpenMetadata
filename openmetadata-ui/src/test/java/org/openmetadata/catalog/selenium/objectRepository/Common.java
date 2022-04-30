@@ -186,7 +186,11 @@ public class Common {
   }
 
   public By followingTable(String table) {
-    return By.xpath("//div[@data-testid='Following data-" + table + "']");
+    return By.xpath("//div[@data-testid='Following data-" + table + "']/div/a/button");
+  }
+
+  public By clickFollowedTable(String tableName) {
+    return By.xpath("(//button[@title='" + tableName + "'])[2]");
   }
 
   public By recentlySearchedText(String text) {
