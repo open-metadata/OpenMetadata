@@ -3,7 +3,6 @@ package org.openmetadata.catalog.selenium.pages.Webhooks;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -55,14 +54,6 @@ class WebhooksPageTest {
     webDriver.get(url);
   }
 
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
   @Test
   @Order(1)
   void openWebHookPage() throws InterruptedException {
@@ -108,7 +99,7 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, webhooks.toast(), 10);
     WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");

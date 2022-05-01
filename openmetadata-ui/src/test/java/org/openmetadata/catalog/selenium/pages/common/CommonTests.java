@@ -20,7 +20,6 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,12 +29,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
+import org.openmetadata.catalog.selenium.objectRepository.TagsPage;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -49,12 +51,14 @@ class CommonTests {
   static Faker faker = new Faker();
   static String tagCategoryDisplayName = faker.name().firstName();
   static WebDriverWait wait;
+  TagsPage tagsPage;
   static String url = Property.getInstance().getURL();
   static String urlTag = "/api/v1/tags/";
   Integer waitTime = Property.getInstance().getSleepTime();
   String tableName = "fact_line_item";
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -63,19 +67,17 @@ class CommonTests {
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
     webDriver = new ChromeDriver(options);
+    tagsPage = new TagsPage(webDriver);
     common = new Common(webDriver);
     actions = new Actions(webDriver);
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-  }
-
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -92,9 +94,10 @@ class CommonTests {
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "PII.None");
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
-    webDriver.navigate().refresh();
-    pause(waitTime);
-    Object tagCount = webDriver.findElements(common.containsText("#PersonalData.Personal")).size();
+    Events.waitForElementToDisplay(webDriver, common.tags(), 10);
+    Object tagCount =
+        wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.containsText("#PersonalData.Personal")))
+            .size();
     Assert.assertEquals(tagCount, 1);
   }
 
@@ -136,7 +139,7 @@ class CommonTests {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, common.descriptionSaveButton());
     webDriver.navigate().refresh();
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, tagsPage.addTagButton(), 10);
     URL tagUrl = new URL(url + urlTag);
     HttpURLConnection http = (HttpURLConnection) tagUrl.openConnection();
     http.setRequestMethod("HEAD");
@@ -294,7 +297,7 @@ class CommonTests {
     Events.click(webDriver, common.closeWhatsNew());
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.tagCountSearch(), 10);
     Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
     String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
@@ -307,7 +310,7 @@ class CommonTests {
     Events.click(webDriver, common.selectOverview("tour"));
     webDriver.navigate().back();
     Events.click(webDriver, common.selectOverview("tables"));
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.tables(), 10);
     String tablesUrl = webDriver.getCurrentUrl();
     Assert.assertEquals(tablesUrl, url + "/explore/tables/");
   }
@@ -318,7 +321,7 @@ class CommonTests {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.selectOverview("tour"));
     for (int i = 0; i < 2; i++) {
-      pause(waitTime);
+      Events.waitForElementToDisplay(webDriver, tagsPage.tourData(), 10);
       Events.click(webDriver, common.tourNavigationArrow("right-arrow"));
     }
     Events.sendKeys(webDriver, common.searchBar(), "dim_a"); // Search bar/dim
@@ -360,11 +363,11 @@ class CommonTests {
     Events.click(webDriver, common.explore());
     try {
       Events.click(webDriver, common.viewMore());
-      pause(waitTime);
+      Events.waitForElementToDisplay(webDriver, common.selectTableLink(1), 10);
       Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
       Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
     } catch (NoSuchElementException | TimeoutException e) {
-      pause(waitTime);
+      Events.waitForElementToDisplay(webDriver, common.selectTableLink(1), 10);
       Object tagsFilterCount = webDriver.findElements(common.tagFilterCount()).size();
       Assert.assertEquals(Integer.parseInt(tagsFilterCount.toString()), count);
     }
@@ -376,13 +379,13 @@ class CommonTests {
     Events.click(webDriver, common.closeWhatsNew());
     Events.sendKeys(webDriver, common.searchBar(), "!");
     Events.sendEnter(webDriver, common.searchBar());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.noSearchResult(), 10);
     String search1 = webDriver.findElement(common.noSearchResult()).getText();
     Assert.assertEquals(search1, "No matching data assets found for !");
     webDriver.navigate().back();
     Events.sendKeys(webDriver, common.searchBar(), "{");
     Events.sendEnter(webDriver, common.searchBar());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.noSearchResult(), 10);
     try {
       String search2 = webDriver.findElement(common.noSearchResult()).getText();
       Assert.assertEquals(search2, "No matching data assets found for {");
@@ -398,9 +401,11 @@ class CommonTests {
     Events.click(webDriver, common.selectOverview("dashboards"));
     Events.sendKeys(webDriver, common.searchBar(), "sales");
     Events.sendEnter(webDriver, common.searchBar());
-    pause(waitTime);
-    String resultsCount = webDriver.findElement(common.resultsCount()).getAttribute("innerHTML");
-    Object matchesCount = webDriver.findElements(common.matchesStats()).size();
+    Events.waitForElementToDisplay(webDriver, common.searchMatchesTableName(), 10);
+    String resultsCount =
+        fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.resultsCount())).getAttribute("innerHTML");
+    Object matchesCount =
+        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.matchesStats())).size();
     Assert.assertEquals(matchesCount + " results", resultsCount);
   }
 

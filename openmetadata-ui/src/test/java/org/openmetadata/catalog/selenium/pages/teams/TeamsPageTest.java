@@ -17,7 +17,6 @@ import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -83,14 +82,6 @@ class TeamsPageTest {
             .withTimeout(Duration.ofSeconds(10))
             .pollingEvery(Duration.ofSeconds(10))
             .ignoring(NoSuchElementException.class);
-  }
-
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
   }
 
   @Test
@@ -218,7 +209,7 @@ class TeamsPageTest {
 
   @Test
   @Order(7)
-  void checkTeamsFilterCount() throws InterruptedException {
+  void checkTeamsFilterCount() {
     String teamName = faker.name().firstName();
     String teamDisplayName = faker.name().firstName();
     Events.click(webDriver, common.closeWhatsNew());
@@ -231,7 +222,7 @@ class TeamsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Events.click(webDriver, myDataPage.home());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, teamsPage.myDataTeamsCount(), 10);
     String updatedCount = webDriver.findElement(teamsPage.myDataTeamsCount()).getText();
     if (updatedCount.equals(myDataTeamsCount)) {
       Assert.fail("Team filter not updated");

@@ -13,12 +13,12 @@
 
 package org.openmetadata.catalog.selenium.events;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
+import lombok.extern.slf4j.Slf4j;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+@Slf4j
 public final class Events {
 
   @SuppressWarnings("unused")
@@ -37,5 +37,28 @@ public final class Events {
   public static void sendEnter(WebDriver driver, By by) {
     (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
     driver.findElement(by).sendKeys(Keys.ENTER);
+  }
+
+  public static void sleep(int timeOutInSeconds) {
+    try {
+      Thread.sleep(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static boolean waitForElementToDisplay(WebDriver driver, By by, int timeOutInSeconds) {
+    boolean isDisplayed = false;
+    for (int i = 0; i < timeOutInSeconds; i++) {
+      try {
+        if (driver.findElement(by).isDisplayed()) {
+          LOG.info("Element is displayed");
+        }
+      } catch (NoSuchElementException | TimeoutException e) {
+        LOG.info("Element is not displayed");
+        sleep(1);
+      }
+    }
+    return isDisplayed;
   }
 }

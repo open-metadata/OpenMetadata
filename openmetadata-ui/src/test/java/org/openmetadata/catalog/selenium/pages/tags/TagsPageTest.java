@@ -16,7 +16,6 @@ package org.openmetadata.catalog.selenium.pages.tags;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,14 +75,6 @@ class TagsPageTest {
             .ignoring(NoSuchElementException.class);
   }
 
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
   @Test
   @Order(1)
   void openTagsPage() {
@@ -140,7 +131,7 @@ class TagsPageTest {
   void changeTagDescription() {
     openTagsPage();
     Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, tagsPage.tagCategoryName(tagCategoryDisplayName), 10);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -251,7 +242,6 @@ class TagsPageTest {
             .until(ExpectedConditions.visibilityOfElementLocated(tagsPage.tagFilterCount(1)))
             .getAttribute("innerHTML");
     Events.click(webDriver, common.topics());
-    pause(waitTime);
     Events.click(webDriver, common.tables());
     String afterFilterCount =
         fluentWait

@@ -3,7 +3,6 @@ package org.openmetadata.catalog.selenium.pages.glossary;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -60,14 +59,6 @@ class GlossaryPageTest {
             .withTimeout(Duration.ofSeconds(10))
             .pollingEvery(Duration.ofSeconds(10))
             .ignoring(NoSuchElementException.class);
-  }
-
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
   }
 
   @Test
@@ -135,7 +126,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.addGlossaryReviewer());
     Events.click(webDriver, glossary.checkboxAddUser(4));
     Events.click(webDriver, common.descriptionSaveButton());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
     Object reviewerCount =
         fluentWait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(common.reviewCount())).size();
     Assert.assertEquals(reviewerCount.toString(), "4");
@@ -171,8 +162,9 @@ class GlossaryPageTest {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
-    pause(waitTime);
-    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
+    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
+    Object reviewerCount =
+        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 
@@ -230,7 +222,7 @@ class GlossaryPageTest {
     Events.click(webDriver, glossary.checkboxAddUser(2));
     Events.click(webDriver, glossary.checkboxAddUser(3));
     Events.click(webDriver, glossary.saveTermReviewer());
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
     Object reviewerCount =
         fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
     Assert.assertEquals(reviewerCount.toString(), "3");
@@ -247,9 +239,9 @@ class GlossaryPageTest {
     actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
     for (int i = 1; i <= 3; i++) {
       Events.click(webDriver, common.removeAssociatedTag());
-      pause(waitTime);
     }
-    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
+    Object reviewerCount =
+        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 
@@ -263,11 +255,10 @@ class GlossaryPageTest {
     Events.click(webDriver, glossary.editGlossaryTag());
     for (int i = 0; i < 2; i++) {
       Events.click(webDriver, common.removeAssociatedTag());
-      pause(waitTime);
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    pause(waitTime);
-    Object reviewerCount = webDriver.findElements(common.tagsCount()).size();
+    Object reviewerCount =
+        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 

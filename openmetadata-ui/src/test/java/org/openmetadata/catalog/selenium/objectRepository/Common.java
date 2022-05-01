@@ -104,6 +104,8 @@ public class Common {
   By deployButton = By.cssSelector("[data-testid='deploy-button']");
   By confirmButton = By.cssSelector("[data-testid='confirm-button']");
   By tables = By.xpath("(//button[@data-testid='tab'])[1]");
+  By tags = By.xpath("//div[@data-testid='entity-tags']/div");
+  By searchMatchesTableName = By.xpath("//button[@data-testid='table-link']/span");
 
   public List<WebElement> versionRadioButton() {
     return webDriver.findElements(versionRadioButton);

@@ -2,7 +2,6 @@ package org.openmetadata.catalog.selenium.pages.users;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -59,14 +58,6 @@ class UsersPageTest {
             .ignoring(NoSuchElementException.class);
   }
 
-  public void pause(Integer milliseconds) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
   void openUsersPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
@@ -120,7 +111,7 @@ class UsersPageTest {
     openUsersPage();
     Events.click(webDriver, userPage.users());
     Events.sendKeys(webDriver, userPage.userListSearchBar(), "AaR");
-    pause(waitTime);
+    Events.waitForElementToDisplay(webDriver, userPage.userListSearchResult(), 10);
     Object userResultsCount = webDriver.findElements(userPage.userListSearchResult()).size();
     Assert.assertEquals(userResultsCount, 3);
   }

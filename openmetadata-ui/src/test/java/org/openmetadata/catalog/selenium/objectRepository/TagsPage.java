@@ -37,6 +37,7 @@ public class TagsPage {
   By sortBy = By.cssSelector("[data-testid='sortBy']");
   By editTags = By.xpath("(//div[@data-testid=\"tag-container\"])[1]");
   By editBreadcrumbTag = By.xpath("//div[@data-testid='tag-container']/div/button");
+  By tourData = By.cssSelector("[class='reactutorial__mask--disable-interaction']");
 
   public By tagFilter(String tagCategoryDisplayName, String tagDisplayName) {
     return By.cssSelector("[data-testid='checkbox'][id='" + tagCategoryDisplayName + "." + tagDisplayName + "']");
@@ -56,6 +57,10 @@ public class TagsPage {
 
   public By tagFilterCount(int index) {
     return By.xpath("(//button[@data-testid='tab'])[" + index + "]//span[@data-testid='filter-count']");
+  }
+
+  public By tagCategoryName(String categoryName) {
+    return By.xpath("//div[@data-testid='category-name'][text()='" + categoryName + "']");
   }
 
   public By headerItem(String item) {
