@@ -20,6 +20,7 @@ from airflow import DAG
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.utils.logger import set_loggers_level
 
 try:
     from airflow.operators.python import PythonOperator
@@ -34,7 +35,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
 from metadata.ingestion.api.workflow import Workflow
 
@@ -48,6 +51,8 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = Workflow.create(config)
@@ -66,6 +71,9 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     This is the callable used to create the PythonOperator
     """
+
+    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
     workflow = ProfilerWorkflow.create(config)
@@ -85,6 +93,20 @@ def date_to_datetime(
         return
 
     return datetime.strptime(str(date.__root__), date_format)
+
+
+def build_workflow_config_property(
+    ingestion_pipeline: IngestionPipeline,
+) -> WorkflowConfig:
+    """
+    Prepare the workflow config with logLevels and openMetadataServerConfig
+    :param ingestion_pipeline: Received payload from REST
+    :return: WorkflowConfig
+    """
+    return WorkflowConfig(
+        loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
+        openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
+    )
 
 
 def build_default_args() -> Dict[str, Any]:

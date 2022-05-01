@@ -11,7 +11,6 @@
 
 import csv
 import json
-import logging
 import os
 import random
 import sys
@@ -67,8 +66,9 @@ from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 COLUMN_NAME = "Column"
 KEY_TYPE = "Key type"

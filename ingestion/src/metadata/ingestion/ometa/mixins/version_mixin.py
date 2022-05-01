@@ -14,7 +14,6 @@ Mixin class containing entity versioning specific methods
 To be used by OpenMetadata
 """
 
-import logging
 from typing import Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
@@ -23,10 +22,10 @@ from requests.models import Response
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, ometa_logger
 
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 
 class OMetaVersionMixin(Generic[T]):

@@ -143,7 +143,14 @@ public final class TablesInitializer {
       System.out.println("Disabling validation on schema migrate");
     }
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
-    Flyway flyway = get(jdbcUrl, user, password, scriptRootPath, !disableValidateOnMigrate);
+    Flyway flyway =
+        get(
+            jdbcUrl,
+            user,
+            password,
+            scriptRootPath,
+            config.getDataSourceFactory().getDriverClass(),
+            !disableValidateOnMigrate);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
       execute(flyway, client, schemaMigrationOptionSpecified);
@@ -155,11 +162,12 @@ public final class TablesInitializer {
     System.exit(0);
   }
 
-  static Flyway get(String url, String user, String password, String scriptRootPath, boolean validateOnMigrate) {
+  static Flyway get(
+      String url, String user, String password, String scriptRootPath, String dbSubType, boolean validateOnMigrate) {
     System.out.format(
         "url %s, user %s, password %s, scriptRoot %s, validateOnMigrate %s",
         url, user, password, scriptRootPath, validateOnMigrate);
-    String location = "filesystem:" + scriptRootPath + File.separator + "mysql";
+    String location = "filesystem:" + scriptRootPath + File.separator + dbSubType;
     return Flyway.configure()
         .encoding(StandardCharsets.UTF_8)
         .table("DATABASE_CHANGE_LOG")
