@@ -31,21 +31,47 @@ const getHandle = (
 ) => {
   if (nodeType === 'output') {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Left}
-        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
-        type="target"
-      />
+      <Fragment>
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{ ...handleStyles, left: '-14px' } as CSSProperties}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{
+            opacity: 0,
+            borderRadius: '0px',
+            height: '156%',
+            marginLeft: '-10px',
+          }}
+          type="target"
+        />
+      </Fragment>
     );
   } else if (nodeType === 'input') {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Right}
-        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
-        type="source"
-      />
+      <Fragment>
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{ ...handleStyles, right: '-14px' } as CSSProperties}
+          type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{
+            opacity: 0,
+            borderRadius: '0px',
+            height: '156%',
+            marginRight: '-10px',
+          }}
+          type="source"
+        />
+      </Fragment>
     );
   } else {
     return (
@@ -72,6 +98,28 @@ const getHandle = (
               top: isNewNode ? 13 : handleStyles.top,
             } as CSSProperties
           }
+          type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{
+            opacity: 0,
+            borderRadius: '0px',
+            height: '156%',
+            marginLeft: '-10px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{
+            opacity: 0,
+            borderRadius: '0px',
+            height: '156%',
+            marginRight: '-10px',
+          }}
           type="source"
         />
       </Fragment>
