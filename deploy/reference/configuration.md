@@ -138,4 +138,4 @@ Healthcheck API provides an API endpoint to check the OpenMetadata server health
 
 ## Security
 
-Please follow our [Enable Security Guide](https://docs.open-metadata.org/install/enable-security) guide to configure security for your OpenMetadata installation.
+Please follow our [Enable Security Guide](../../docs/deploy/secure-openmetadata/) to configure security for your OpenMetadata installation.
