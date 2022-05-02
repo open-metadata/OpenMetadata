@@ -98,8 +98,6 @@ const AddIngestionPage = () => {
                     jsonData['api-error-messages']['deploy-ingestion-error']
                   );
                 } else {
-                  reject();
-
                   throw jsonData['api-error-messages'][
                     'unexpected-server-response'
                   ];
