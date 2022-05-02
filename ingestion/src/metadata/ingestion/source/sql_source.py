@@ -184,7 +184,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             self.source_config.enableDataProfiler = False
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.debug(f"Error running ingestion profiler {repr(exc)}")
 
         return None
@@ -359,7 +359,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
                 yield table_schema_and_db
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
@@ -501,7 +501,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     model_fqdn = f"{schema}.{model_name}".lower()
                     self.data_models[model_fqdn] = model
                 except Exception as err:
-                    logger.debug(traceback.print_exc())
+                    logger.debug(traceback.format_exc())
                     logger.error(err)
 
     def _parse_data_model_upstream(self, mnode):
@@ -771,12 +771,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                     )
                                 ]
                         except Exception as err:
-                            logger.debug(traceback.print_exc())
+                            logger.debug(traceback.format_exc())
                             logger.error(err)
 
                         om_column = col_dict
                 except Exception as err:
-                    logger.debug(traceback.print_exc())
+                    logger.debug(traceback.format_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)

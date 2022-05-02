@@ -113,6 +113,8 @@ services:
     build:
       context: ../../.
       dockerfile: ingestion/Dockerfile
+      args:
+        INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
     depends_on:
       - mysql

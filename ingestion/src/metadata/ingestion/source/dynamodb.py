@@ -65,7 +65,6 @@ class DynamodbSource(Source[Entity]):
             yield from self.ingest_tables()
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
@@ -107,7 +106,7 @@ class DynamodbSource(Source[Entity]):
                 yield table_and_db
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def get_columns(self, column_data):
@@ -127,7 +126,7 @@ class DynamodbSource(Source[Entity]):
                 yield Column(**parsed_string)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def close(self):

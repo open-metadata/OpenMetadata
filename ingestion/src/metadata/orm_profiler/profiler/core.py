@@ -289,7 +289,7 @@ class Profiler(Generic[MetricType]):
 
             except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
                 print(err)
-                print(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )

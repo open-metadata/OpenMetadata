@@ -143,7 +143,7 @@ class LookerSource(Source[Entity]):
                     try:
                         yield from self._get_dashboard_elements(iter_chart)
                     except Exception as err:
-                        logger.debug(traceback.print_exc())
+                        logger.debug(traceback.format_exc())
                         logger.error(err)
                 yield Dashboard(
                     name=dashboard.id,
