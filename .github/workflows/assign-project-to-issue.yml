@@ -15,5 +15,5 @@ jobs:
         uses: srggrs/assign-one-project-github-action@1.2.0
         if: contains(github.event.issue.labels.*.name, 'epic')
         with:
-          project: 'https://github.com/<project location>'
+          project: 'https://github.com/orgs/open-metadata/projects/6'
           column_name: 'No Status'
