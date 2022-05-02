@@ -1,3 +1,9 @@
+---
+description: >-
+  This section provides detailed instructions to secure the REST endpoints of
+  the OpenMetadata Server
+---
+
 # Secure OpenMetadata
 
 OpenMetadata has support for Google SSO and Okta SSO as identity providers. Please see the next sections about how to configure them.
