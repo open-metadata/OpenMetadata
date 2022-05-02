@@ -528,6 +528,7 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(f"Table Tests: {record.table_name}.{test}")
         except Exception as err:
             logger.debug(traceback.format_exc())
+            logger.error(err)
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
         try:
