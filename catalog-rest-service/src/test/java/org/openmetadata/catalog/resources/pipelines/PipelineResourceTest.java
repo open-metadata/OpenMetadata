@@ -484,11 +484,24 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
-    // TODO update this once task removal is figured out
-    // remove a task
-    // TASKS.remove(0);
-    // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
-    // updateAndCheckEntity(request.withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(3, pipeline.getTasks().size());
+
+    List<Task> new_tasks = new ArrayList<>();
+    for (int i = 1; i < 3; i++) { // remove task0
+      Task task =
+          new Task()
+              .withName("task" + i)
+              .withDescription("description")
+              .withDisplayName("displayName")
+              .withTaskUrl(new URI("http://localhost:0"));
+      new_tasks.add(task);
+    }
+
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
+    pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(2, pipeline.getTasks().size());
   }
 
   @Override
