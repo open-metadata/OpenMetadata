@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 from typing import Iterable
 
 from ldap3 import ALL, LEVEL, Connection, Server
@@ -21,8 +20,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class LDAPUserConfig(ConfigModel):

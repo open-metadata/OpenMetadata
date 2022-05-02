@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 import ssl
 import traceback
 from datetime import datetime
@@ -59,8 +58,9 @@ from metadata.ingestion.sink.elasticsearch_constants import (
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
     USER_ELASTICSEARCH_INDEX_MAPPING,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 def epoch_ms(dt: datetime):

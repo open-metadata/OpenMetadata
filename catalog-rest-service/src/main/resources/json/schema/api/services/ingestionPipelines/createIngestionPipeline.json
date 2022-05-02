@@ -28,8 +28,7 @@
     },
     "loggerLevel": {
       "description": "Set the logging level for the workflow.",
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels",
-      "default": "INFO"
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
     "service": {
       "description": "Link to the database service where this database is hosted in.",
