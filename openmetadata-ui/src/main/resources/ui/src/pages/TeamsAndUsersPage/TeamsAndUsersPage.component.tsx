@@ -134,6 +134,7 @@ const TeamsAndUsersPage = () => {
           break;
       }
     }
+    setIsRightPannelLoading(false);
     setIsUsersLoading(false);
   };
 
@@ -224,9 +225,10 @@ const TeamsAndUsersPage = () => {
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          if (!teamAndUser && res.data.data > 0) {
+          if (!teamAndUser && res.data.data.length > 0) {
             getCurrentTeamUsers(res.data.data[0].name);
             setCurrentTeam(res.data.data[0]);
+            setIsRightPannelLoading(false);
           }
           setTeams(res.data.data);
           AppState.updateUserTeam(res.data.data);
@@ -243,7 +245,6 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
-        handleRightPannelLoading(false);
       });
   };
 
@@ -281,7 +282,6 @@ const TeamsAndUsersPage = () => {
           showErrorToast(errMsg);
         })
         .finally(() => {
-          setIsLoading(false);
           setIsRightPannelLoading(false);
         });
     }
@@ -439,14 +439,16 @@ const TeamsAndUsersPage = () => {
    * @param name - team name
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
-    handleRightPannelLoading(true);
-    history.push(getTeamAndUserDetailsPath(name));
-    if (isUsersCategory) {
-      setIsTeamVisible(false);
-      setCurrentTeam(undefined);
-    } else {
-      setIsTeamVisible(true);
-      setactiveUserTab(undefined);
+    if (name !== teamAndUser) {
+      handleRightPannelLoading(true);
+      history.push(getTeamAndUserDetailsPath(name));
+      if (isUsersCategory) {
+        setIsTeamVisible(false);
+        setCurrentTeam(undefined);
+      } else {
+        setIsTeamVisible(true);
+        setactiveUserTab(undefined);
+      }
     }
   };
 
