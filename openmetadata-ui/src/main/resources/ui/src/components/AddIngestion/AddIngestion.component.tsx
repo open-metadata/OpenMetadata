@@ -521,7 +521,7 @@ const AddIngestion = ({
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
             cancelText="Back"
-            data={dbtConfigSource}
+            data={dbtConfigSource || {}}
             gcsType={gcsConfigType}
             handleGcsTypeChange={(type) => setGcsConfigType(type)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}
