@@ -158,7 +158,7 @@ class MetabaseSource(Source[Entity]):
                 self.status.scanned(chart_details["name"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))
-                traceback.format_exc()
+                logger.debug(traceback.format_exc())
                 continue
 
     def get_dashboards(self):
