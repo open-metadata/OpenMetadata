@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import static freemarker.template.utility.Collections12.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -489,13 +488,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     assertEquals(3, pipeline.getTasks().size());
     // remove a task
     List<Task> new_tasks = new ArrayList<>();
-    for (int i = 1; i < 3; i++) {  // remove task0
+    for (int i = 1; i < 3; i++) { // remove task0
       Task task =
-              new Task()
-                      .withName("task" + i)
-                      .withDescription("description")
-                      .withDisplayName("displayName")
-                      .withTaskUrl(new URI("http://localhost:0"));
+          new Task()
+              .withName("task" + i)
+              .withDescription("description")
+              .withDisplayName("displayName")
+              .withTaskUrl(new URI("http://localhost:0"));
       new_tasks.add(task);
     }
 

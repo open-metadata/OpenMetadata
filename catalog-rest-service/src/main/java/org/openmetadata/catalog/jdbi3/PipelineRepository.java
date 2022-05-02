@@ -395,7 +395,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updateTaskDescription(stored, updated);
       }
 
-      if (newTasks) {
+      boolean removedTasks = updatedTasks.size() < origTasks.size();
+
+      if (newTasks || removedTasks) {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
         recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
