@@ -35,6 +35,7 @@ import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionP
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository.IngestionPipelineEntityInterface;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.FilterPattern;
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
@@ -176,15 +177,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   @Test
   void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException {
-    DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
+    // Create database service without any database connection
+    CreateDatabaseService create = createRequest(test);
+    DatabaseService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference serviceRef = new DatabaseServiceEntityInterface(service).getEntityReference();
+    DatabaseConnection oldDatabaseConnection = create.getConnection();
 
-    // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
-
-    ChangeDescription change = getChangeDescription(service.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     SnowflakeConnection snowflakeConnection =
         new SnowflakeConnection()
             .withDatabase("test")
@@ -192,11 +190,23 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withPassword("password")
             .withUsername("username");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
-    update.withConnection(databaseConnection);
-    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
-    // Get the recently updated entity and verify the changes
-    service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
-    validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
+
+    // Update database connection to a new connection
+    CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
+    ChangeDescription change = getChangeDescription(service.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("connection")
+                .withOldValue(oldDatabaseConnection)
+                .withNewValue(databaseConnection));
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    oldDatabaseConnection = service.getConnection();
+    oldDatabaseConnection.setConfig(
+        JsonUtils.convertValue(oldDatabaseConnection.getConfig(), SnowflakeConnection.class));
+
+    // Update the connection with additional property
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
             .withAdditionalProperty("credentials", "/tmp/creds.json")
@@ -206,11 +216,17 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     snowflakeConnection.withConnectionArguments(connectionArguments).withConnectionOptions(connectionOptions);
     databaseConnection.withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
-    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
-    // Get the recently updated entity and verify the changes
-    service = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
-    validateDatabaseConnection(databaseConnection, service.getConnection(), service.getServiceType());
+    change = getChangeDescription(service.getVersion());
+    change
+        .getFieldsUpdated()
+        .add(
+            new FieldChange()
+                .withName("connection")
+                .withOldValue(oldDatabaseConnection)
+                .withNewValue(databaseConnection));
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
+    // Add ingestion pipeline to the database service
     IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     CreateIngestionPipeline createIngestionPipeline =
         ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
@@ -221,21 +237,28 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withIncludeViews(true)
             .withSchemaFilterPattern(new FilterPattern().withExcludes(List.of("information_schema.*", "test.*")))
             .withTableFilterPattern(new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
+
     SourceConfig sourceConfig = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
     createIngestionPipeline.withSourceConfig(sourceConfig);
     IngestionPipeline ingestionPipeline =
         ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
+
     DatabaseService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
     assertEquals(1, updatedService.getPipelines().size());
-    EntityReference expectedPipeline = updatedService.getPipelines().get(0);
-    assertEquals(ingestionPipeline.getId(), expectedPipeline.getId());
-    assertEquals(ingestionPipeline.getName(), expectedPipeline.getName());
-    assertEquals(ingestionPipeline.getFullyQualifiedName(), expectedPipeline.getFullyQualifiedName());
+    assertReference(
+        new IngestionPipelineEntityInterface(ingestionPipeline).getEntityReference(),
+        updatedService.getPipelines().get(0));
+
+    // TODO remove this
     DatabaseConnection expectedDatabaseConnection =
         JsonUtils.convertValue(ingestionPipeline.getSource().getServiceConnection(), DatabaseConnection.class);
     SnowflakeConnection expectedSnowflake =
         JsonUtils.convertValue(expectedDatabaseConnection.getConfig(), SnowflakeConnection.class);
     assertEquals(expectedSnowflake, snowflakeConnection);
+
+    // Delete the database service and ensure ingestion pipeline is deleted
+    deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
+    ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
   }
 
   @Override
@@ -297,6 +320,12 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
       assertEquals(expectedSchedule, actualSchedule);
+    } else if (fieldName.equals("connection")) {
+      DatabaseConnection expectedConnection = (DatabaseConnection) expected;
+      DatabaseConnection actualConnection = JsonUtils.readValue((String) actual, DatabaseConnection.class);
+      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), SnowflakeConnection.class));
+      // TODO remove this hardcoding
+      validateDatabaseConnection(expectedConnection, actualConnection, DatabaseServiceType.Snowflake);
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }

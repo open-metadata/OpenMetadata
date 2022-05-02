@@ -15,23 +15,23 @@ package org.openmetadata.catalog.exception;
 
 import javax.ws.rs.core.Response;
 
-public class AirflowException extends WebServiceException {
+public class PipelineServiceClientException extends WebServiceException {
   private static final String BY_NAME_MESSAGE = "Airflow Exception [%s] due to [%s].";
 
-  public AirflowException(String message) {
+  public PipelineServiceClientException(String message) {
     super(Response.Status.BAD_REQUEST, message);
   }
 
-  private AirflowException(Response.Status status, String message) {
+  private PipelineServiceClientException(Response.Status status, String message) {
     super(status, message);
   }
 
-  public static AirflowException byMessage(String name, String errorMessage, Response.Status status) {
-    return new AirflowException(status, buildMessageByName(name, errorMessage));
+  public static PipelineServiceClientException byMessage(String name, String errorMessage, Response.Status status) {
+    return new PipelineServiceClientException(status, buildMessageByName(name, errorMessage));
   }
 
-  public static AirflowException byMessage(String name, String errorMessage) {
-    return new AirflowException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+  public static PipelineServiceClientException byMessage(String name, String errorMessage) {
+    return new PipelineServiceClientException(Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }
 
   private static String buildMessageByName(String name, String errorMessage) {
