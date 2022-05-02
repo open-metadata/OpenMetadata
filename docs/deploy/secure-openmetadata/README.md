@@ -14,6 +14,10 @@ Enabling Security is only required for your production installation. If you are 
 [google-sso](google-sso/)
 {% endcontent-ref %}
 
+{% content-ref url="google-sso-1/" %}
+[google-sso-1](google-sso-1/)
+{% endcontent-ref %}
+
 {% content-ref url="okta-sso/" %}
 [okta-sso](okta-sso/)
 {% endcontent-ref %}
