@@ -235,9 +235,8 @@ class GlossaryPageTest {
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, common.manage());
-    actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
-    wait = new WebDriverWait(webDriver, 2);
     for (int i = 1; i <= 3; i++) {
+      actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
       Events.click(webDriver, common.removeAssociatedTag());
     }
     webDriver.navigate().refresh();
