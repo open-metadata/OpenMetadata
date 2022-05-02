@@ -2,14 +2,14 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Trino Connector with the CLI
+# Run Trino Connector using CLI
 
 Configure and schedule Trino **metadata**, and **profiler** workflows using the `metadata` CLI.
 
-* [Requirements](run-trino-connector-with-the-cli.md#requirements)
-* [Metadata Ingestion](run-trino-connector-with-the-cli.md#metadata-ingestion)
-* [Data Profiler and Quality Tests](run-trino-connector-with-the-cli.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-trino-connector-with-the-cli.md#dbt-integration)
+* [Requirements](run-trino-connector-using-cli.md#requirements)
+* [Metadata Ingestion](run-trino-connector-using-cli.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-trino-connector-using-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-trino-connector-using-cli.md#dbt-integration)
 
 ## Requirements
 
@@ -276,7 +276,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-trino-connector-with-the-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-trino-connector-using-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 

@@ -61,7 +61,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Postgres services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 5. Configure the Service Connection
 

@@ -89,7 +89,7 @@ Note that in order to add tests and run the Profiler workflow, the metadata shou
 
 To create a new test, we can go to the _Table_ page under the _Data Quality_ tab:
 
-![Data Quality Tab in the Table Page](<../../docs/.gitbook/assets/image (5) (1).png>)
+![Data Quality Tab in the Table Page](<../../docs/.gitbook/assets/image (5) (2).png>)
 
 Clicking on _Add Test_ will allow us two options: **Table Test** or **Column Test**. A Table Test will be run on metrics from the whole table, such as the number of rows or columns, while Column Tests are specific to each column's values.
 

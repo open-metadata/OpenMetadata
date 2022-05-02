@@ -19,8 +19,8 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 [run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-mysql-connector-with-the-cli.md" %}
-[run-mysql-connector-with-the-cli.md](run-mysql-connector-with-the-cli.md)
+{% content-ref url="run-snowflake-connector-using-cli.md" %}
+[run-snowflake-connector-using-cli.md](run-snowflake-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -241,6 +241,6 @@ You can learn more about how to host and run the different workflows on your own
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-mysql-connector-with-the-cli.md" %}
-[run-mysql-connector-with-the-cli.md](run-mysql-connector-with-the-cli.md)
+{% content-ref url="run-snowflake-connector-using-cli.md" %}
+[run-snowflake-connector-using-cli.md](run-snowflake-connector-using-cli.md)
 {% endcontent-ref %}

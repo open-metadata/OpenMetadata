@@ -20,8 +20,8 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 [run-bigquery-connector-using-airflow-sdk.md](run-bigquery-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-bigquery-connector-with-the-cli.md" %}
-[run-bigquery-connector-with-the-cli.md](run-bigquery-connector-with-the-cli.md)
+{% content-ref url="run-bigquery-connector-using-cli.md" %}
+[run-bigquery-connector-using-cli.md](run-bigquery-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -68,7 +68,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (22) (1) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -248,7 +248,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -288,6 +288,6 @@ You can learn more about how to host and run the different workflows on your own
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-bigquery-connector-with-the-cli.md" %}
-[run-bigquery-connector-with-the-cli.md](run-bigquery-connector-with-the-cli.md)
+{% content-ref url="run-bigquery-connector-using-cli.md" %}
+[run-bigquery-connector-using-cli.md](run-bigquery-connector-using-cli.md)
 {% endcontent-ref %}

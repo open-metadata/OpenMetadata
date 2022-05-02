@@ -62,7 +62,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 5. Configure the Service Connection
 
@@ -240,7 +240,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -274,4 +274,4 @@ You can learn more about how to host and run the different workflows on your own
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../mysql/run-mysql-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../mysql/run-snowflake-connector-using-cli.md).

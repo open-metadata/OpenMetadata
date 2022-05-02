@@ -17,8 +17,8 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 [run-trino-connector-using-airflow-sdk.md](run-trino-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-trino-connector-with-the-cli.md" %}
-[run-trino-connector-with-the-cli.md](run-trino-connector-with-the-cli.md)
+{% content-ref url="run-trino-connector-using-cli.md" %}
+[run-trino-connector-using-cli.md](run-trino-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -119,7 +119,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22) (2).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -269,7 +269,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
@@ -285,7 +285,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (1) (1).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (2).png>)
 
 #### Name
 
@@ -315,4 +315,4 @@ You can learn more about how to host and run the different workflows on your own
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-trino-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-trino-connector-using-cli.md).

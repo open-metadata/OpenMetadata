@@ -44,7 +44,7 @@ Another Azure Application must be registered for Service ingestion.
 * Navigate to the section on API Permissions.
 * Click on Add a Permission.
 
-![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1).png>)
 
 * Search for the OpenMetadata Application
 
@@ -64,7 +64,7 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Click on Permissions.
 * Click on **Grant Admin Consent for Default Directory**.
 
-![](<../../../.gitbook/assets/image (19) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
 ## Step 7: Set the App ID URI
 

@@ -2,15 +2,15 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run BigQuery Connector with the CLI
+# Run BigQuery Connector using CLI
 
 Configure and schedule BigQuery **metadata**, **usage**, and **profiler** workflows using the `metadata` CLI.
 
-* [Requirements](run-bigquery-connector-with-the-cli.md#requirements)
-* [Metadata Ingestion](run-bigquery-connector-with-the-cli.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-bigquery-connector-with-the-cli.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-bigquery-connector-with-the-cli.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-bigquery-connector-with-the-cli.md#dbt-integration)
+* [Requirements](run-bigquery-connector-using-cli.md#requirements)
+* [Metadata Ingestion](run-bigquery-connector-using-cli.md#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](run-bigquery-connector-using-cli.md#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](run-bigquery-connector-using-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-bigquery-connector-using-cli.md#dbt-integration)
 
 ## Requirements
 
@@ -293,7 +293,7 @@ To specify where the staging files will be located.
 
 #### Workflow Configuration
 
-The same as the [metadata](run-bigquery-connector-with-the-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-bigquery-connector-using-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 
@@ -428,7 +428,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-bigquery-connector-with-the-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-bigquery-connector-using-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 

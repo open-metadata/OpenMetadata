@@ -23,13 +23,13 @@ Admin permissions are required to register the application on the Azure portal.
 * Provide a redirect URL as a **Single Page Application**.
 * Click on **** Register.
 
-![](<../../../.gitbook/assets/image (6) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (6) (1) (1) (1) (1).png>)
 
 ## Step 3: Where to Find the Credentials
 
 * The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
 
-![](<../../../.gitbook/assets/image (8) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (8) (1) (1).png>)
 
 * When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example below. https://login.microsoftonline.com/TenantID
 

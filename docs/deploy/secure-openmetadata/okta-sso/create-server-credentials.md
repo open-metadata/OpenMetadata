@@ -79,7 +79,7 @@ This will generate the Issuer URL.
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
-![](<../../../.gitbook/assets/image (71) (1).png>)
+![](<../../../.gitbook/assets/image (71).png>)
 
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**
