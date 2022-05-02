@@ -158,7 +158,7 @@ class MetabaseSource(Source[Entity]):
                 self.status.scanned(chart_details["name"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))
-                traceback.print_exc()
+                logger.debug(traceback.format_exc())
                 continue
 
     def get_dashboards(self):
@@ -233,7 +233,7 @@ class MetabaseSource(Source[Entity]):
                         )
                         yield lineage
             except Exception as err:  # pylint: disable=broad-except,unused-variable
-                logger.error(traceback.print_exc())
+                logger.error(traceback.format_exc())
 
     def req_get(self, path):
         """Send get request method

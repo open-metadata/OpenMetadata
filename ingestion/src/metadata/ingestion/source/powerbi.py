@@ -128,7 +128,7 @@ class PowerbiSource(Source[Entity]):
                 self.charts.append(chart["id"])
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(repr(err))
                 self.status.failure(chart["title"], err)
 
@@ -165,7 +165,7 @@ class PowerbiSource(Source[Entity]):
                     ),
                 )
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
                 self.status.failure(dashboard_details["displayName"], err)
 
