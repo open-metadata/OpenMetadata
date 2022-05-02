@@ -420,7 +420,6 @@ class MetadataRestSink(Sink[Entity]):
             return role
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.format_exc())
             logger.error(err)
 
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
@@ -429,7 +428,6 @@ class MetadataRestSink(Sink[Entity]):
             self.team_entities[team.name.__root__] = str(team.id.__root__)
             return team
         except Exception as err:
-            logger.debug(traceback.format_exc())
             logger.debug(traceback.format_exc())
             logger.error(err)
 
@@ -494,7 +492,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.info("User: {}".format(user.displayName))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.format_exc())
             logger.error(err)
 
     def delete_table(self, record: DeleteTable):
@@ -504,7 +501,6 @@ class MetadataRestSink(Sink[Entity]):
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
             )
         except Exception as err:
-            logger.debug(traceback.format_exc())
             logger.debug(traceback.format_exc())
             logger.error(err)
 
@@ -532,8 +528,6 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(f"Table Tests: {record.table_name}.{test}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.format_exc())
-            logger.error(err)
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
         try:

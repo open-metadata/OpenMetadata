@@ -226,7 +226,6 @@ class GlueSource(Source[Entity]):
                 yield from self.ingest_tables(glue_resp["NextToken"])
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.format_exc())
             logger.error(err)
 
     def get_downstream_tasks(self, task_unique_id, tasks):
@@ -282,7 +281,6 @@ class GlueSource(Source[Entity]):
                 )
                 yield pipeline_ev
         except Exception as err:
-            logger.debug(traceback.format_exc())
             logger.debug(traceback.format_exc())
             logger.error(err)
 
