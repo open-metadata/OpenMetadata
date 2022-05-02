@@ -4,7 +4,6 @@ about: Roadmap track of features
 title: ''
 labels: 'epic'
 assignees: ''
-projects: 'Roadmap'
 ---
 
 **Is your feature request related to a problem? Please describe.**
