@@ -84,65 +84,22 @@ Copy and paste the configuration template below into the `redshift.json` the fil
 
 In this step, we will configure the Redshift service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
+* **hostPort**: **** Host and port of the data source.
+* **username** (Optional): Specify the User to connect to Redshift. It should have enough privileges to read all the metadata.
+* **password** (Optional): Connection password.
+* **database** (Optional): The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Trino during the connection. These details must be added as Key-Value pairs.
+* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Trino during the connection. These details must be added as Key-Value pairs.
 
+You can configure SSL options for the Redshift connection as `connectionArguments`. The key should be `sslmode` and accepts the following values:
 
-**hostPort**
+* `verify-ca`: The Redshift connector will verify that the server is trustworthy by checking the certificate chain up to a trusted certificate authority (CA).
+* `verify-full`: The Redshift connector will also verify that the server hostname matches its certificate. The SSL connection will fail if the server certificate cannot be verified. `verify-full` is recommended in most security-sensitive environments.
+* `require`: If a root CA file exists, the behavior of `sslmode=require` will be the same as that of `verify-ca`, meaning the server certificate is validated against the CA. Relying on this behavior is discouraged, and applications that need certificate validation should always use `verify-ca` or `verify-full`.&#x20;
 
-Edit the value for `source.serviceConnection.hostPort` in `redshift.json` for your Redshift deployment. Use the `host:port` format illustrated in the example below.
+In `verify-full` mode, the cn (Common Name) attribute of the certificate is matched against the hostname. If the cn attribute starts with an asterisk (\*), it will be treated as a wildcard, and will match all characters except a dot (.). This means the certificate will not match subdomains. If the connection is made using an IP address instead of a hostname, the IP address will be matched (without doing any DNS lookups).
 
-```json
-"hostPort": "cluster.name.region.redshift.amazonaws.com:5439"
-```
-
-Please ensure that your Redshift deployment is reachable from the host you are using to run metadata ingestion.
-
-
-
-**username**
-
-Edit the value `source.config.username` to identify your Redshift user.
-
-```json
-"username": "username"
-```
-
-{% hint style="danger" %}
-Note: The user specified should be authorized to read all databases you want to include in the metadata ingestion workflow.
-{% endhint %}
-
-
-
-**password**
-
-Edit the value for`source.config.password` with the password for your Redshift user.
-
-```json
-"password": "strong_password"
-```
-
-
-
-**service\_name**
-
-OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.serviceName` with a name that distinguishes this deployment from other services, including other Redshift services that you might be ingesting metadata from.
-
-```json
-"serviceName": "aws_redshift"
-```
-
-
-
-**database (optional)**
-
-If you want to limit metadata ingestion to a single database, include the `source.config.serviceConnection.database` field in your configuration file. If this field is not included, the Redshift connector will ingest metadata from all databases that the specified user is authorized to read.
-
-To specify a single database to ingest metadata from, provide the name of the database as the value for the `source.config.serviceConnection.database` key as illustrated in the example below.
-
-```json
-"database": "warehouse"
-```
-
-####
+You can find more information in the AWS [docs](https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html).
 
 #### Source Configuration - Source Config
 
