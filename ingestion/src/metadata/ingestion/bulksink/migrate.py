@@ -34,6 +34,8 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -50,8 +52,9 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +91,8 @@ class MigrateBulkSink(BulkSink):
         return cls(config, metadata_config)
 
     def write_records(self) -> None:
-        # with open(f"{self.config.filename}/table.json") as file:
-        #     self.write_tables(file)
+        with open(f"{self.config.filename}/table.json") as file:
+            self.write_tables(file)
 
         with open(f"{self.config.filename}/user.json") as file:
             self.write_users(file)
@@ -108,6 +111,86 @@ class MigrateBulkSink(BulkSink):
 
         with open(f"{self.config.filename}/glossary_term.json") as file:
             self.write_glossary_term(file)
+
+    def _separate_fqn(self, fqn):
+        database_schema, table = fqn.split(".")[-2:]
+        if not database_schema:
+            database_schema = None
+        return {"database": None, "database_schema": database_schema, "name": table}
+
+    def update_through_patch(self, entity, id, description, path, op):
+        """
+        Update the Entity Through Patch API
+        """
+        data = [{"op": op, "path": path, "value": description}]
+        resp = self.metadata.client.patch(
+            "{}/{}".format(self.metadata.get_suffix(entity), id), data=json.dumps(data)
+        )
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to PATCH to {self.metadata.get_suffix(entity)}, {data.json()}"
+            )
+
+    def write_tables(self, file):
+        tables = json.load(file)
+        for table in tables:
+            try:
+                table_entities = self.metadata.search_entities_using_es(
+                    table_obj=self._separate_fqn(table.get("fullyQualifiedName")),
+                    search_index="table_search_index",
+                    service_name=table.get("service").get("name"),
+                )
+                if len(table_entities) < 1:
+                    continue
+                table_entity: Table = table_entities[0]
+                self.update_through_patch(
+                    DatabaseSchema,
+                    table_entity.databaseSchema.id.__root__,
+                    table.get("database").get("description"),
+                    "/description",
+                    "replace",
+                )
+                self.update_through_patch(
+                    Table,
+                    table_entity.id.__root__,
+                    table.get("description"),
+                    "/description",
+                    "replace",
+                )
+                columns = table.get("columns")
+                for i in range(len(columns)):
+                    if columns[i].get("description"):
+                        self.update_through_patch(
+                            Table,
+                            table_entity.id.__root__,
+                            columns[i].get("description"),
+                            f"/columns/{i}/description",
+                            "replace",
+                        )
+                        self.update_through_patch(
+                            Table,
+                            table_entity.id.__root__,
+                            columns[i].get("description"),
+                            f"/columns/{i}/description",
+                            "replace",
+                        )
+                logger.info(
+                    "Successfully ingested table {}.{}".format(
+                        table_entity.database.name,
+                        table_entity.name.__root__,
+                    )
+                )
+
+            except (APIError, ValidationError) as err:
+                logger.error(
+                    "Failed to ingest table {} in database {} ".format(
+                        table.get("name"),
+                        table.get("database").get("name"),
+                    )
+                )
+                logger.debug(traceback.print_exc())
+                logger.error(err)
+                self.status.failure("Table: {}".format(table.get("name")))
 
     def _create_role(self, create_role: CreateRoleRequest) -> Role:
         try:

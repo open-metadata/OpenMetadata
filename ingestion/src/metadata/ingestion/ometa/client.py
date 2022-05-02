@@ -126,12 +126,17 @@ class REST:
 
     # pylint: disable=too-many-arguments
     def _request(
-        self, method, path, data=None, base_url: URL = None, api_version: str = None
+        self,
+        method,
+        path,
+        data=None,
+        base_url: URL = None,
+        api_version: str = None,
+        headers={"Content-type": "application/json"},
     ):
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)
-        headers = {"Content-type": "application/json"}
         if (
             self.config.expires_in
             and datetime.datetime.utcnow().timestamp() >= self.config.expires_in
@@ -189,6 +194,7 @@ class REST:
         """
         retry_codes = self._retry_codes
         resp = self._session.request(method, url, **opts)
+        print(resp.json())
         try:
             resp.raise_for_status()
         except HTTPError as http_error:
@@ -257,7 +263,12 @@ class REST:
         Returns:
             Response
         """
-        return self._request("PATCH", path, data)
+        return self._request(
+            method="PATCH",
+            path=path,
+            data=data,
+            headers={"Content-type": "application/json-patch+json"},
+        )
 
     def delete(self, path, data=None):
         """
