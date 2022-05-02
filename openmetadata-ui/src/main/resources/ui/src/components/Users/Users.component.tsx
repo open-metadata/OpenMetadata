@@ -40,6 +40,7 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getCountBadge,
   getEntityName,
   getNonDeletedTeams,
   getOwnerIds,
@@ -615,16 +616,20 @@ const Users = ({
         <EntityList
           entityList={userData?.owns as unknown as FormatedTableData[]}
           headerText={
-            <div className="tw-flex tw-justify-between">
+            <div className="tw-flex tw-justify-between tw-items-center">
               My Data
               {userData?.owns?.length ? (
-                <Link
-                  data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
+                <div>
+                  {/* {getCountBadge(userData?.owns?.length || 0, '', false)} */}
+                  <Link
+                    className="tw-ml-1"
+                    data-testid="my-data"
+                    to={getLinkByFilter(Ownership.OWNER)}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All <span>({userData?.owns?.length})</span>
+                    </span>
+                  </Link>
+                </div>
               ) : null}
             </div>
           }
@@ -638,13 +643,17 @@ const Users = ({
             <div className="tw-flex tw-justify-between">
               Following
               {userData?.follows?.length ? (
-                <Link
-                  data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
+                <div>
+                  {getCountBadge(userData?.follows?.length || 0, '', false)}
+                  <Link
+                    className="tw-ml-1"
+                    data-testid="following-data"
+                    to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All
+                    </span>
+                  </Link>
+                </div>
               ) : null}
             </div>
           }
