@@ -443,6 +443,10 @@
     @apply tw-list-disc;
   }
 
+  .rjsf .checkbox input[type='checkbox'] {
+    @apply tw-mr-1;
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;

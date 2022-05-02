@@ -41,6 +41,10 @@ jest.mock('./Steps/ConfigureIngestion', () => {
     .mockImplementation(() => <div>ConfigureIngestion.component</div>);
 });
 
+jest.mock('@rjsf/core', () => ({
+  Form: jest.fn().mockImplementation(() => <div>RJSF_Form.component</div>),
+}));
+
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);

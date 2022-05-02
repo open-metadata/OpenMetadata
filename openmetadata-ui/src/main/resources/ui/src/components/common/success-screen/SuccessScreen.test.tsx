@@ -13,6 +13,7 @@
 
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
 import SuccessScreen from './SuccessScreen';
 
 describe('Test SuccessScreen component', () => {
@@ -22,6 +23,7 @@ describe('Test SuccessScreen component', () => {
         showIngestionButton
         handleViewServiceClick={jest.fn()}
         name="NewService"
+        state={FormSubmitType.ADD}
       />
     );
 

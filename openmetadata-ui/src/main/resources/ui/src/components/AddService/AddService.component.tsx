@@ -228,6 +228,7 @@ const AddService = ({
               handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
               showIngestionButton={isIngestionSupported(serviceCategory)}
+              state={FormSubmitType.ADD}
             />
           )}
         </div>

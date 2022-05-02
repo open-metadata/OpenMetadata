@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-export enum FormSubmitType {
-  ADD = 'add',
-  EDIT = 'edit',
+export enum DBT_SOURCES {
+  local = 'local',
+  http = 'http',
+  s3 = 's3',
+  gcs = 'gcs',
 }
 
-export enum FormValidationRulesType {
-  email = 'email',
-  url = 'url',
-  number = 'number',
+export enum GCS_CONFIG {
+  GCSValues = 'GCSValues',
+  GCSCredentialsPath = 'GCSCredentialsPath',
 }

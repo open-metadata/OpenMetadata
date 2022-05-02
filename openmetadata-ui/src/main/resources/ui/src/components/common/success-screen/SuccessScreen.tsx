@@ -12,18 +12,21 @@
  */
 
 import React from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 
 type SuccessScreenProps = {
   name: string;
   showIngestionButton: boolean;
+  state: FormSubmitType;
   handleIngestionClick?: () => void;
   handleViewServiceClick: () => void;
 };
 
 const SuccessScreen = ({
   name,
+  state,
   showIngestionButton,
   handleIngestionClick,
   handleViewServiceClick,
@@ -42,7 +45,10 @@ const SuccessScreen = ({
       </div>
       <p className="tw-mb-7" data-testid="success-line">
         <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-        <span>has been created successfully</span>
+        <span>
+          has been {state === FormSubmitType.EDIT ? 'updated' : 'created'}{' '}
+          successfully
+        </span>
       </p>
 
       <div>

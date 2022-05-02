@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 
-export enum FormSubmitType {
-  ADD = 'add',
-  EDIT = 'edit',
-}
+import { FormValidationRulesType } from '../enums/form.enum';
 
-export enum FormValidationRulesType {
-  email = 'email',
-  url = 'url',
-  number = 'number',
-}
+export type FormValidationRules = Record<
+  FormValidationRulesType,
+  Array<string>
+>;

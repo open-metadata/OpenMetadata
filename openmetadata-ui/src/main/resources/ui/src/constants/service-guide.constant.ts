@@ -29,7 +29,7 @@ export const addServiceGuide = [
 ];
 
 const schedulingIngestionGuide = {
-  step: 2,
+  step: 3,
   title: 'Schedule for Ingestion',
   description:
     'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
@@ -43,10 +43,16 @@ export const addMetadataIngestionGuide = [
       You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.`,
   },
   {
+    step: 2,
+    title: 'Configure DBT Model',
+    description: `A DBT model provides transformation logic that creates a table from raw data. While lineage tells us broadly what data a table was generated from. A DBT model provides specifics. 
+    OpenMetadata includes an integration for DBT that enables you to see what models are being used to generate tables.`,
+  },
+  {
     ...schedulingIngestionGuide,
   },
   {
-    step: 3,
+    step: 4,
     title: 'Metadata Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The metadata will be ingested at a regular interval as per the schedule.',
@@ -64,7 +70,7 @@ export const addUsageIngestionGuide = [
     ...schedulingIngestionGuide,
   },
   {
-    step: 3,
+    step: 4,
     title: 'Usage Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The usage will be ingested at a regular interval as per the schedule.',
@@ -80,7 +86,7 @@ export const addProfilerIngestionGuide = [
   },
   { ...schedulingIngestionGuide },
   {
-    step: 3,
+    step: 4,
     title: 'Profiler Ingestion Added Successfully',
     description:
       'You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The profiler will run at a regular interval as per the schedule.',
