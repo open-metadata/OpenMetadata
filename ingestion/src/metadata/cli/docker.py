@@ -185,7 +185,6 @@ def run_docker(
         )
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.debug(traceback.format_exc())
         click.secho(str(err), fg="red")
 
 
