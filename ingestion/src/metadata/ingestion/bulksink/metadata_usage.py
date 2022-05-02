@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 from datetime import datetime
 from typing import List
 
@@ -31,8 +30,9 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import _get_formmated_table_name
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class MetadataUsageSinkConfig(ConfigModel):

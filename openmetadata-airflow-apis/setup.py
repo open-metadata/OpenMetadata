@@ -23,14 +23,12 @@ def get_long_description():
 
 base_requirements = {
     "openmetadata-ingestion[airflow-container]~=0.9",
-    "PyYAML<6.0",  # pycln requires < 6
     "pendulum~=2.1.2",
     "packaging~=21.2",
     "setuptools~=58.3.0",
-    "apache-airflow[http,kubernetes]>=1.10.2",
+    "apache-airflow==2.1.4",
     "Flask~=1.1.4",
-    "Flask-Admin",
-    "pydantic>=1.7.4",
+    "Flask-Admin==1.6.0",
 }
 
 dev_requirements = {
@@ -44,7 +42,7 @@ dev_requirements = {
 
 setup(
     name="openmetadata-airflow-managed-apis",
-    version="0.10.0.dev0",
+    version="0.11.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

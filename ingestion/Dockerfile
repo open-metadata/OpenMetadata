@@ -26,7 +26,8 @@ FROM apis as ingestion
 WORKDIR /ingestion
 COPY ingestion /ingestion
 
-RUN pip install ".[all]"
+ARG INGESTION_DEPENDENCY=all
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 
 RUN airflow db init

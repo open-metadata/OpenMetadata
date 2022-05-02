@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 import ssl
 import traceback
 from datetime import datetime
@@ -59,8 +58,9 @@ from metadata.ingestion.sink.elasticsearch_constants import (
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
     USER_ELASTICSEARCH_INDEX_MAPPING,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 def epoch_ms(dt: datetime):
@@ -266,7 +266,7 @@ class ElasticsearchSink(Sink[Entity]):
             self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
 
     def _create_table_es_doc(self, table: Table):
         fqdn = table.fullyQualifiedName.__root__

@@ -6,11 +6,10 @@ import tempfile
 import time
 import traceback
 from base64 import b64encode
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import click
 import requests as requests
-from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -18,8 +17,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import cli_logger
 
-logger = logging.getLogger(__name__)
+logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 
@@ -165,7 +165,6 @@ def run_docker(
             docker.compose.stop()
             logger.info("Docker compose for OpenMetadata stopped successfully.")
         if reset_db:
-
             reset_db_om(docker)
         if clean:
             logger.info(
@@ -186,7 +185,6 @@ def run_docker(
         )
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.debug(traceback.print_exc())
         click.secho(str(err), fg="red")
 
 
@@ -230,6 +228,7 @@ def ingest_sample_data() -> None:
     """
     Trigger sample data DAGs
     """
+    from requests._internal_utils import to_native_string
 
     base_url = "http://localhost:8080/api"
     dags = ["sample_data", "sample_usage", "index_metadata"]
@@ -243,9 +242,20 @@ def ingest_sample_data() -> None:
         ),
     )
     client = REST(client_config)
-
+    timeout = time.time() + 60 * 5  # Timeout of 5 minutes
+    while True:
+        try:
+            resp = client.get("/dags")
+            if resp:
+                break
+            elif time.time() > timeout:
+                raise TimeoutError("Ingestion container timed out")
+        except TimeoutError as err:
+            print(err)
+            sys.exit(1)
+        except Exception:
+            sys.stdout.write(".")
+            time.sleep(5)
     for dag in dags:
-        json_sample_data = {
-            "dag_run_id": "{}_{}".format(dag, datetime.now()),
-        }
-        client.post("/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data))
+        json_sample_data = {"is_paused": False}
+        client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))

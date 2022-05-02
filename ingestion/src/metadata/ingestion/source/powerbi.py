@@ -10,7 +10,6 @@
 #  limitations under the License.
 """PowerBI source module"""
 
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -33,8 +32,9 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class PowerbiSource(Source[Entity]):
@@ -128,7 +128,7 @@ class PowerbiSource(Source[Entity]):
                 self.charts.append(chart["id"])
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(repr(err))
                 self.status.failure(chart["title"], err)
 
@@ -165,7 +165,7 @@ class PowerbiSource(Source[Entity]):
                     ),
                 )
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
                 self.status.failure(dashboard_details["displayName"], err)
 

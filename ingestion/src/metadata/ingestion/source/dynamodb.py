@@ -1,4 +1,3 @@
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -25,8 +24,9 @@ from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class DynamodbSource(Source[Entity]):
@@ -65,7 +65,6 @@ class DynamodbSource(Source[Entity]):
             yield from self.ingest_tables()
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
@@ -107,7 +106,7 @@ class DynamodbSource(Source[Entity]):
                 yield table_and_db
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def get_columns(self, column_data):
@@ -127,7 +126,7 @@ class DynamodbSource(Source[Entity]):
                 yield Column(**parsed_string)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def close(self):

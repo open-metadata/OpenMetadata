@@ -46,6 +46,8 @@ jobs:
       run: make install_dev generate
 
     - name: Start Server and Ingest Sample Data
+      env:
+        INGESTION_DEPENDENCY: "airflow-container,sample-data,elasticsearch"
       run: ./docker/run_local_docker.sh
       timeout-minutes: 20
 

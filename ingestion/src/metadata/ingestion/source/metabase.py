@@ -11,7 +11,6 @@
 """Metabase source module"""
 
 import json
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -40,10 +39,11 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.logger import ingestion_logger
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class MetabaseSource(Source[Entity]):
@@ -158,7 +158,7 @@ class MetabaseSource(Source[Entity]):
                 self.status.scanned(chart_details["name"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))
-                traceback.print_exc()
+                logger.debug(traceback.format_exc())
                 continue
 
     def get_dashboards(self):
@@ -233,7 +233,7 @@ class MetabaseSource(Source[Entity]):
                         )
                         yield lineage
             except Exception as err:  # pylint: disable=broad-except,unused-variable
-                logger.error(traceback.print_exc())
+                logger.error(traceback.format_exc())
 
     def req_get(self, path):
         """Send get request method

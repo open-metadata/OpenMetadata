@@ -23,9 +23,9 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.models import ProfilerResponse
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class MetadataRestSinkConfig(ConfigModel):
@@ -91,5 +91,5 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(
                 f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__} - {err}"
             )
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")

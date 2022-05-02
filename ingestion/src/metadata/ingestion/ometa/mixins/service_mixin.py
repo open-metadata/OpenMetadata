@@ -11,7 +11,6 @@
 """
 Helper mixin to handle services
 """
-import logging
 from typing import Type, TypeVar
 
 from pydantic import BaseModel
@@ -19,8 +18,9 @@ from pydantic import BaseModel
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.utils.logger import ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)

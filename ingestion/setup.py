@@ -23,7 +23,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.9.0",
+    "openmetadata-ingestion-core==0.10.0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1,<8",
@@ -46,7 +46,6 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
-    "MarkupSafe==2.0.1",
 }
 
 report_requirements = {
@@ -156,7 +155,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.10.0.dev0",
+    version="0.11.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

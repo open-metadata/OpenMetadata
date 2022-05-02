@@ -15,14 +15,14 @@ Timeout utilities
 import errno
 import functools
 import inspect
-import logging
 import os
 import signal
 import traceback
 
 from metadata.utils.constants import TEN_MIN
+from metadata.utils.logger import utils_logger
 
-logger = logging.getLogger(__name__)
+logger = utils_logger()
 
 
 def _handle_timeout(signum, frame):

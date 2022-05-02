@@ -53,8 +53,9 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
@@ -251,7 +252,7 @@ class MetadataRestSink(Sink[Entity]):
                     db_schema_and_table.database.name.__root__,
                 )
             )
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.error(err)
             self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
@@ -377,7 +378,7 @@ class MetadataRestSink(Sink[Entity]):
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest Policy {ometa_policy.policy.name}")
             logger.error(err)
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             self.status.failure(f"Policy: {ometa_policy.policy.name}")
 
     def _create_location(self, location: Location) -> Location:
@@ -419,7 +420,6 @@ class MetadataRestSink(Sink[Entity]):
             return role
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def _create_team(self, create_team: CreateTeamRequest) -> Team:
@@ -429,7 +429,6 @@ class MetadataRestSink(Sink[Entity]):
             return team
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def write_users(self, record: OMetaUserProfile):
@@ -493,7 +492,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.info("User: {}".format(user.displayName))
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def delete_table(self, record: DeleteTable):
@@ -504,7 +502,6 @@ class MetadataRestSink(Sink[Entity]):
             )
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def write_table_tests(self, record: OMetaTableTest) -> None:
@@ -531,7 +528,6 @@ class MetadataRestSink(Sink[Entity]):
             self.status.records_written(f"Table Tests: {record.table_name}.{test}")
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):

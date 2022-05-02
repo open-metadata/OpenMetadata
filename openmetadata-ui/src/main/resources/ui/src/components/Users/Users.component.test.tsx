@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findAllByText,
+  findByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -107,8 +112,22 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
+jest.mock('../../axiosAPIs/teamsAPI', () => ({
+  getTeams: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
+jest.mock('../EntityList/EntityList', () => {
+  return jest.fn().mockReturnValue(<p>EntityList.component</p>);
 });
 
 const mockObserve = jest.fn();
@@ -153,10 +172,50 @@ describe('Test User Component', () => {
       }
     );
 
+    const leftPanel = await findByTestId(container, 'left-panel');
+    const rightPanel = await findByTestId(container, 'right-pannel');
+    const EntityLists = await findAllByText(container, 'EntityList.component');
+
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(EntityLists.length).toBe(2);
+  });
+
+  it('Only admin can able to see tab for bot page', async () => {
+    const { container } = render(
+      <Users
+        userData={{ ...mockUserData, isBot: true }}
+        {...mockProp}
+        isAdminUser
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
     const tabs = await findByTestId(container, 'tabs');
     const leftPanel = await findByTestId(container, 'left-panel');
+    const rightPanel = await findByTestId(container, 'right-pannel');
+    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(tabs).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(EntityLists.length).toBe(2);
+  });
+
+  it('Tab should not visible to normal user', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tabs = queryByTestId(container, 'tabs');
+    const leftPanel = await findByTestId(container, 'left-panel');
+
+    expect(tabs).not.toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
   });
 

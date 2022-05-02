@@ -9,15 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import os
 import traceback
 from typing import Iterable
 
 import looker_sdk
 
-from metadata.generated.schema.entity.services.connections.dashboard import (
-    lookerConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -32,8 +31,9 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class LookerSource(Source[Entity]):
@@ -82,8 +82,8 @@ class LookerSource(Source[Entity]):
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: lookerConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, lookerConnection):
+        connection: LookerConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
                 f"Expected LookerConnection, but got {connection}"
             )
@@ -143,7 +143,7 @@ class LookerSource(Source[Entity]):
                     try:
                         yield from self._get_dashboard_elements(iter_chart)
                     except Exception as err:
-                        logger.debug(traceback.print_exc())
+                        logger.debug(traceback.format_exc())
                         logger.error(err)
                 yield Dashboard(
                     name=dashboard.id,

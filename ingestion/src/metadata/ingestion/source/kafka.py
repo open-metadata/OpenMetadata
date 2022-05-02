@@ -86,12 +86,11 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.schema_registry_client = SchemaRegistryClient(
             self.service_connection.schemaRegistryConfig
         )
-        self.admin_client = AdminClient(
-            {
-                "bootstrap.servers": self.service_connection.bootstrapServers,
-                "session.timeout.ms": 6000,
-            }
-        )
+        admin_client_config = self.service_connection.consumerConfig
+        admin_client_config[
+            "bootstrap.servers"
+        ] = self.service_connection.bootstrapServers
+        self.admin_client = AdminClient(admin_client_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -110,7 +109,9 @@ class KafkaSource(Source[CreateTopicRequest]):
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
             try:
-                if filter_by_topic(self.source_config.topicFilterPattern, topic_name):
+                if not filter_by_topic(
+                    self.source_config.topicFilterPattern, topic_name
+                ):
                     logger.info("Fetching topic schema {}".format(topic_name))
                     topic_schema = self._parse_topic_metadata(topic_name)
                     logger.info("Fetching topic config {}".format(topic_name))

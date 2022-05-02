@@ -16,6 +16,9 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -40,5 +43,9 @@ class MssqlSource(SQLSource):
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
                 f"Expected MssqlConnection, but got {connection}"
+            )
+        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
+            config.sourceConfig.config.sampleDataQuery = (
+                "select top 50 * from [{}].[{}]"
             )
         return cls(config, metadata_config)

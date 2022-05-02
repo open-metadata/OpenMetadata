@@ -34,11 +34,11 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.utils import logger
 from metadata.utils.constants import TEN_MIN
+from metadata.utils.logger import profiler_logger
 from metadata.utils.timeout import cls_timeout
 
-logger = logger()
+logger = profiler_logger()
 
 
 class MissingMetricException(Exception):
@@ -289,7 +289,7 @@ class Profiler(Generic[MetricType]):
 
             except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
                 print(err)
-                print(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )

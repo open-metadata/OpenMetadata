@@ -13,10 +13,8 @@ Redshift usage module
 """
 
 # This import verifies that the dependencies are available.
-import logging
 from typing import Any, Dict, Iterable, Iterator, Union
 
-# pylint: disable=useless-super-delegation
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -33,9 +31,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
+
+# pylint: disable=useless-super-delegation
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import REDSHIFT_SQL_STATEMENT
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class RedshiftUsageSource(Source[TableQuery]):

@@ -12,7 +12,6 @@
 Snowflake usage module
 """
 
-import logging
 import traceback
 from datetime import timedelta
 from typing import Any, Dict, Iterable, Iterator, Union
@@ -34,9 +33,10 @@ from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class SnowflakeUsageSource(Source[TableQuery]):
@@ -119,7 +119,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     self.report.scanned(f"{row['database_name']}")
                 yield table_query
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.debug(repr(err))
 
     def get_report(self):

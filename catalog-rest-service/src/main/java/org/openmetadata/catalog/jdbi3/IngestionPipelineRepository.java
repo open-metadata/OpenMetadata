@@ -19,10 +19,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.UUID;
+import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
+import org.openmetadata.catalog.metadataIngestion.LogLevels;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -31,10 +33,11 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig";
-  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig";
+  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig,loggerLevel";
+  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig,loggerLevel";
 
   public IngestionPipelineRepository(CollectionDAO dao) {
     super(
@@ -250,12 +253,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateAirflowConfig(origIngestion.getAirflowConfig(), updatedIngestion.getAirflowConfig());
       updateOpenMetadataServerConnection(
           origIngestion.getOpenMetadataServerConnection(), updatedIngestion.getOpenMetadataServerConnection());
+      updateLogLevel(origIngestion.getLoggerLevel(), updatedIngestion.getLoggerLevel());
     }
 
     private void updateSource(Source origSource, Source updatedSource) throws JsonProcessingException {
-      if (origSource.getServiceConnection() != updatedSource.getServiceConnection()
-          && !origSource.getServiceName().equals(updatedSource.getServiceName())
-          && origSource.getSourceConfig() != updatedSource.getSourceConfig()) {
+      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(updatedSource.getSourceConfig().getConfig()));
+      JSONObject origSourceConnection = new JSONObject(JsonUtils.pojoToJson(origSource.getServiceConnection()));
+      JSONObject updatedSourceConnection = new JSONObject(JsonUtils.pojoToJson(updatedSource.getServiceConnection()));
+
+      if (!origSource.getServiceName().equals(updatedSource.getServiceName())
+          || !origSourceConfig.similar(updatedSourceConfig)
+          || !origSourceConnection.similar(updatedSourceConnection)) {
         recordChange("source", origSource, updatedSource);
       }
     }
@@ -272,6 +282,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         throws JsonProcessingException {
       if (updatedConfig != null && !origConfig.equals(updatedConfig)) {
         recordChange("openMetadataServerConnection", origConfig, updatedConfig);
+      }
+    }
+
+    private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) throws JsonProcessingException {
+      if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
+        recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
   }

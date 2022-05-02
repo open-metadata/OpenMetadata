@@ -17,6 +17,10 @@ export interface MessagingServiceMetadataPipelineClass {
    * Regex to only fetch topics that matches the pattern.
    */
   topicFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: MessagingMetadataConfigType;
 }
 
 /**
@@ -33,4 +37,13 @@ export interface FilterPattern {
    * List of strings/regex patterns to match and include only database entities that match.
    */
   includes?: string[];
+}
+
+/**
+ * Pipeline type
+ *
+ * Messaging Source Config Metadata Pipeline type
+ */
+export enum MessagingMetadataConfigType {
+  MessagingMetadata = 'MessagingMetadata',
 }

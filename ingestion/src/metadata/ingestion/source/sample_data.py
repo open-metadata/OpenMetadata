@@ -11,7 +11,6 @@
 
 import csv
 import json
-import logging
 import os
 import random
 import sys
@@ -67,8 +66,9 @@ from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 COLUMN_NAME = "Column"
 KEY_TYPE = "Key type"
@@ -473,7 +473,7 @@ class SampleDataSource(Source[Entity]):
                     }
                     sql_object["user"] = EntityReference(**user_dict, type="user")
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.debug(err)
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(
@@ -589,7 +589,7 @@ class SampleDataSource(Source[Entity]):
                 )
                 yield model_ev
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:

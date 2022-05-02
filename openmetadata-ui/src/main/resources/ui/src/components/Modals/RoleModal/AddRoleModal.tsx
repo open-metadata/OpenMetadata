@@ -14,7 +14,7 @@
 import { isNil } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useRef, useState } from 'react';
-import Select, { MultiValue } from 'react-select';
+import Select from 'react-select';
 import { Role } from '../../../generated/entity/teams/role';
 import { errorMsg, getEntityName } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -63,10 +63,7 @@ const AddRoleModal = ({
     });
   };
 
-  const handleOnChange = (
-    value: MultiValue<unknown>,
-    { action }: { action: string }
-  ) => {
+  const handleOnChange = (value: unknown, { action }: { action: string }) => {
     if (isNil(value) || action === 'clear') {
       setSelectedPolicies([]);
     } else {

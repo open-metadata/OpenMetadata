@@ -189,6 +189,29 @@ public class AirflowRESTClient {
         Response.Status.fromStatusCode(response.statusCode()));
   }
 
+  public HttpResponse<String> getRESTStatus() {
+    HttpResponse<String> response;
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String statusEndPoint = "%s/rest_api/api?api=rest_status";
+      String statusUrl = String.format(statusEndPoint, airflowURL);
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(statusUrl))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, authToken)
+              .GET()
+              .build();
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() == 200) {
+        return response;
+      }
+    } catch (Exception e) {
+      throw AirflowException.byMessage("Failed to get REST status.", e.getMessage());
+    }
+    throw new AirflowException(String.format("Failed to get REST status due to %s", response.body()));
+  }
+
   public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
     HttpResponse<String> response;
     try {
@@ -207,10 +230,9 @@ public class AirflowRESTClient {
       if (response.statusCode() == 200) {
         return response;
       }
-
     } catch (Exception e) {
       throw AirflowException.byMessage("Failed to test connection.", e.getMessage());
     }
-    throw AirflowException.byMessage("Failed to test connection.", response.toString());
+    throw new AirflowException(String.format("Failed to test connection due to %s", response.body()));
   }
 }

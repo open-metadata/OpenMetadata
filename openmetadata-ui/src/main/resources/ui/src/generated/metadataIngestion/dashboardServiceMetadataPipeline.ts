@@ -21,6 +21,10 @@ export interface DashboardServiceMetadataPipelineClass {
    * Regex to only fetch tables or databases that matches the pattern.
    */
   dashboardFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: DashboardMetadataConfigType;
 }
 
 /**
@@ -39,4 +43,13 @@ export interface FilterPattern {
    * List of strings/regex patterns to match and include only database entities that match.
    */
   includes?: string[];
+}
+
+/**
+ * Pipeline type
+ *
+ * Dashboard Source Config Metadata Pipeline type
+ */
+export enum DashboardMetadataConfigType {
+  DashboardMetadata = 'DashboardMetadata',
 }

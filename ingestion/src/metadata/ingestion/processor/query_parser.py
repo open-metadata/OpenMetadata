@@ -13,7 +13,7 @@ Query parser implementation
 """
 
 import datetime
-import logging
+import traceback
 from typing import Optional
 
 from sql_metadata import Parser
@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
+from metadata.utils.logger import ingestion_logger
 
 
 class QueryParserProcessorConfig(ConfigModel):
@@ -34,7 +35,7 @@ class QueryParserProcessorConfig(ConfigModel):
     filter: Optional[str] = None
 
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class QueryParserProcessor(Processor):
@@ -91,7 +92,9 @@ class QueryParserProcessor(Processor):
             )
         # pylint: disable=broad-except
         except Exception as err:
-            logger.debug(record.sql)
+            if hasattr(record, "sql"):
+                logger.debug(record.sql)
+            logger.debug(traceback.format_exc())
             logger.error(err)
             query_parser_data = None
 
