@@ -1,6 +1,9 @@
 ---
-name: Feature Epic: Roadmap epic: ''
+name: Epic Feature
+about: Roadmap track of features
+title: ''
 labels: 'epic'
+assignees: ''
 projects: 'Roadmap'
 ---
 
