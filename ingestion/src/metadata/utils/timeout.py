@@ -29,7 +29,7 @@ def _handle_timeout(signum, frame):
     """
     Handler for signal timeout
     """
-    logger.debug(traceback.print_stack(frame))
+    logger.debug(traceback.format_stack(frame))
     raise TimeoutError(f"[SIGNUM {signum}] {os.strerror(errno.ETIME)}")
 
 
