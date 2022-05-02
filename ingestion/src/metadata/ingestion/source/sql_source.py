@@ -427,7 +427,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(err)
 
-                # table.dataModel = self._get_data_model(schema, view_name)
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
@@ -489,8 +488,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
-                    schema = mnode["schema"]
                     database = mnode["database"]
+                    schema = mnode["schema"]
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
                         modelType=ModelType.DBT,
@@ -501,7 +500,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = f"{database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{model_name}".lower()
+                    model_fqdn = get_fqdn(DataModel, database, schema, model_name)
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -527,9 +526,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, database, schema, table_name):
-        table_fqn = (
-            f"{database}{FQDN_SEPARATOR}{schema}{FQDN_SEPARATOR}{table_name}".lower()
-        )
+        table_fqn = get_fqdn(DataModel, database, schema, table_name)
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
