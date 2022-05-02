@@ -403,15 +403,30 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+            content = @Content(mediaType = "application/json"))
       })
   public Response testIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
     HttpResponse<String> response = airflowRESTClient.testConnection(testServiceConnection);
+    return Response.status(200, response.body()).build();
+  }
+
+  @GET
+  @Path("/status")
+  @Operation(
+      summary = "Check the Airflow REST status",
+      tags = "IngestionPipelines",
+      description = "Check that the Airflow REST endpoint is reachable and up and running",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Status message",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    HttpResponse<String> response = airflowRESTClient.getRESTStatus();
     return Response.status(200, response.body()).build();
   }
 
