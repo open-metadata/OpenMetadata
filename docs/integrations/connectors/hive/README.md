@@ -87,7 +87,7 @@ Provide a description for your Snowflake service that enables other users to det
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1) (1).png>)
 
 #### Username
 
@@ -234,7 +234,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../.
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (6).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 2. Configure the Profiler Ingestion <a href="#2.-configure-the-profiler-ingestion" id="2.-configure-the-profiler-ingestion"></a>
 

@@ -28,7 +28,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/redshift-usage.md)
 * [Salesforce](salesforce.md)
-* [SingleStore](singlestore.md)
+* [SingleStore](singlestore/)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](broken-reference)
 * [Trino](trino/)

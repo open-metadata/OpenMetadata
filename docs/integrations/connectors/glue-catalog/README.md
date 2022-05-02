@@ -4,6 +4,8 @@ description: In this section, we provide guides and reference to use the Glue co
 
 # Glue Catalog
 
+
+
 Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
@@ -126,7 +128,7 @@ After hitting Save you will see that your Glue connector has been added successf
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (2).png>)
 
 <details>
 

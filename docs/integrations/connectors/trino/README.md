@@ -59,10 +59,6 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Trino services that you might be ingesting metadata from.
 
-#### Description
-
-Provide a description for your Trino service that enables other users to determine whether it might provide data of interest to them.
-
 ![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13) (2).png>)
 
 ### 5. Configure the Service Connection
@@ -131,7 +127,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (2).png>)
 
 <details>
 
