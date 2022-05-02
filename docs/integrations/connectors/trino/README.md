@@ -17,8 +17,8 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 [run-trino-connector-using-airflow-sdk.md](run-trino-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-trino-connector-using-cli.md" %}
-[run-trino-connector-using-cli.md](run-trino-connector-using-cli.md)
+{% content-ref url="run-trino-connector-with-the-cli.md" %}
+[run-trino-connector-with-the-cli.md](run-trino-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44).png>)
 
 ### 3. Select the Service Type
 
 Select Trino as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (20) (1).png>)
+![Select your Service type](<../../../.gitbook/assets/image (20).png>)
 
 ### 4. Name and Describe your Service
 
@@ -63,17 +63,17 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 Provide a description for your Trino service that enables other users to determine whether it might provide data of interest to them.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13) (2).png>)
+![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1).png>)
+![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1).png>)
 
 #### Host and Port
 
@@ -119,7 +119,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 `"authenticator" : "externalbrowser"`
 
-![Service has been saved](<../../../.gitbook/assets/image (22) (2).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -173,7 +173,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21).png>)
 
 **Every**
 
@@ -209,7 +209,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -227,7 +227,7 @@ Once the metadata ingestion runs correctly and we are able to explore the servic
 
 This will populate the _Queries_ and _Lineage_ tab from the Table Entity Page.
 
-![Table Entity Page](<../../../.gitbook/assets/image (1) (1).png>)
+![Table Entity Page](<../../../.gitbook/assets/image (1).png>)
 
 We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Usage Ingestion will be in charge of obtaining this data.
 
@@ -235,7 +235,7 @@ We can create a workflow that will obtain the query log and table creation infor
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Usage Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
 ### 2. Configure the Usage Ingestion
 
@@ -267,9 +267,9 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1) (1).png>)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (3) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Data Quality tab of a Table Entity](<../../../.gitbook/assets/image (6) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
@@ -277,7 +277,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../.
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (9) (2).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (9).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
@@ -285,7 +285,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (19) (2).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (19).png>)
 
 #### Name
 
@@ -315,4 +315,4 @@ You can learn more about how to host and run the different workflows on your own
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-trino-connector-using-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-trino-connector-with-the-cli.md).

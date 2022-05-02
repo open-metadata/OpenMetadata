@@ -89,7 +89,7 @@ Note that in order to add tests and run the Profiler workflow, the metadata shou
 
 To create a new test, we can go to the _Table_ page under the _Data Quality_ tab:
 
-![Data Quality Tab in the Table Page](<../../docs/.gitbook/assets/image (5) (2).png>)
+![Data Quality Tab in the Table Page](<../../docs/.gitbook/assets/image (5).png>)
 
 Clicking on _Add Test_ will allow us two options: **Table Test** or **Column Test**. A Table Test will be run on metrics from the whole table, such as the number of rows or columns, while Column Tests are specific to each column's values.
 
@@ -97,7 +97,7 @@ Clicking on _Add Test_ will allow us two options: **Table Test** or **Column Tes
 
 Adding a Table Test will show us the following view:
 
-![Add a Table Test](<../../docs/.gitbook/assets/image (1).png>)
+![Add a Table Test](../../docs/.gitbook/assets/image.png)
 
 * **Test Type**: It allows us to specify the test we want to configure.
 * **Description**: To explain why the test is necessary and what scenarios we want to validate.
@@ -107,7 +107,7 @@ Adding a Table Test will show us the following view:
 
 Adding a Column Test will have a similar view:
 
-![Add Column Test](<../../docs/.gitbook/assets/image (52) (2).png>)
+![Add Column Test](<../../docs/.gitbook/assets/image (52).png>)
 
 The Column Test form will be similar to the Table Test one. The only difference is the **Column Name** field, where we need to select the column we will be targeting for the test.
 
@@ -117,7 +117,7 @@ You can review the supported tests [here](tests.md). We will keep expanding the 
 
 Once tests are added, we will be able to see them in the _Data Quality_ tab:
 
-![Freshly created tests](<../../docs/.gitbook/assets/image (42) (1).png>)
+![Freshly created tests](<../../docs/.gitbook/assets/image (42).png>)
 
 Note how the tests are grouped in Table and Column tests. All tests from the same column will also be grouped together. From this view, we can both edit and delete the tests if needed.
 
