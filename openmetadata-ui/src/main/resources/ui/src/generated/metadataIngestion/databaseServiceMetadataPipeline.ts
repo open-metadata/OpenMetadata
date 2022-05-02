@@ -14,13 +14,9 @@
 
 export interface DatabaseServiceMetadataPipelineClass {
   /**
-   * DBT catalog file to extract dbt models with their column schemas.
+   * Available sources to fetch DBT catalog and manifest files.
    */
-  dbtCatalogFilePath?: string;
-  /**
-   * DBT manifest file path to extract dbt models and associate with tables.
-   */
-  dbtManifestFilePath?: string;
+  dbtConfigSource?: any[] | boolean | number | null | DbtConfigSource | string;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -54,6 +50,113 @@ export interface DatabaseServiceMetadataPipelineClass {
    * Regex exclude tables or databases that matches the pattern.
    */
   tableFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: DatabaseMetadataConfigType;
+}
+
+/**
+ * DBT Catalog and Manifest file path config.
+ *
+ * DBT Catalog and Manifest HTTP path configuration.
+ */
+export interface DbtConfigSource {
+  /**
+   * DBT catalog file path to extract dbt models with their column schemas.
+   */
+  dbtCatalogFilePath?: string;
+  /**
+   * DBT manifest file path to extract dbt models and associate with tables.
+   */
+  dbtManifestFilePath?: string;
+  /**
+   * DBT catalog http file path to extract dbt models with their column schemas.
+   */
+  dbtCatalogHttpPath?: string;
+  /**
+   * DBT manifest http file path to extract dbt models and associate with tables.
+   */
+  dbtManifestHttpPath?: string;
+  dbtSecurityConfig?: SCredentials;
+}
+
+/**
+ * AWS credentials configs.
+ *
+ * GCS credentials configs.
+ */
+export interface SCredentials {
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId?: string;
+  /**
+   * AWS Region
+   */
+  awsRegion?: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey?: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
+  /**
+   * GCS configs.
+   */
+  gcsConfig?: GCSCredentialsValues | string;
+}
+
+/**
+ * GCS Credentials.
+ */
+export interface GCSCredentialsValues {
+  /**
+   * Google Cloud auth provider certificate.
+   */
+  authProviderX509CertUrl?: string;
+  /**
+   * Google Cloud auth uri.
+   */
+  authUri?: string;
+  /**
+   * Google Cloud email.
+   */
+  clientEmail?: string;
+  /**
+   * Google Cloud Client ID.
+   */
+  clientId?: string;
+  /**
+   * Google Cloud client certificate uri.
+   */
+  clientX509CertUrl?: string;
+  /**
+   * Google Cloud private key.
+   */
+  privateKey?: string;
+  /**
+   * Google Cloud private key id.
+   */
+  privateKeyId?: string;
+  /**
+   * Google Cloud project id.
+   */
+  projectId?: string;
+  /**
+   * Google Cloud token uri.
+   */
+  tokenUri?: string;
+  /**
+   * Google Cloud service account type.
+   */
+  type?: string;
 }
 
 /**
@@ -72,4 +175,13 @@ export interface FilterPattern {
    * List of strings/regex patterns to match and include only database entities that match.
    */
   includes?: string[];
+}
+
+/**
+ * Pipeline type
+ *
+ * Database Source Config Metadata Pipeline type
+ */
+export enum DatabaseMetadataConfigType {
+  DatabaseMetadata = 'DatabaseMetadata',
 }

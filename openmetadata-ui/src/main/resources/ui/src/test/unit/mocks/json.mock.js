@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-export enum FormSubmitType {
-  ADD = 'add',
-  EDIT = 'edit',
-}
-
-export enum FormValidationRulesType {
-  email = 'email',
-  url = 'url',
-  number = 'number',
-}
+/* eslint-disable */
+module.exports = {
+  data: '',
+};

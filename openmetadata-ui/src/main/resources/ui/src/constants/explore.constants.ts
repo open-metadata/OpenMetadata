@@ -62,7 +62,7 @@ export const getBucketList = (buckets: Array<Bucket>) => {
 export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
     ? urlSearchQuery.startsWith('?')
-      ? urlSearchQuery.substr(1).split('&')
+      ? urlSearchQuery.substring(1).split('&')
       : urlSearchQuery.split('&')
     : [];
 

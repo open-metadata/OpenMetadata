@@ -34,6 +34,7 @@ import { ConfigData } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
+import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -65,23 +66,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           .connection.config as ConfigData)
       : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
     : ({} as ConfigData);
-
-  const escapeBackwardSlashChar = (formData: ConfigData) => {
-    for (const key in formData) {
-      if (typeof formData[key as keyof ConfigData] === 'object') {
-        escapeBackwardSlashChar(
-          formData[key as keyof ConfigData] as ConfigData
-        );
-      } else {
-        const data = formData[key as keyof ConfigData];
-        if (typeof data === 'string') {
-          formData[key as keyof ConfigData] = data.replace(/\\n/g, '\n');
-        }
-      }
-    }
-
-    return formData;
-  };
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {
     const updatedFormData = escapeBackwardSlashChar(data.formData);

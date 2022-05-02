@@ -19,43 +19,47 @@ type Props = {
   activeStep: number;
   stepperLineClassName?: string;
   className?: string;
+  excludeSteps?: Array<number>;
 };
 const IngestionStepper = ({
   steps,
   activeStep,
+  excludeSteps = [],
   stepperLineClassName = '',
   className = '',
 }: Props) => {
   return (
     <div className={classNames('ingestion-content tw-relative', className)}>
-      {steps.map((step, index) => (
-        <Fragment key={index}>
-          {index > 0 && index < steps.length && (
-            <span
-              className={classNames('ingestion-line', stepperLineClassName)}
-            />
-          )}
-          <div className="ingestion-wrapper" key={index}>
-            <span className="tw-flex tw-flex-col">
+      {steps.map((step, index) =>
+        excludeSteps.includes(step.step) ? null : (
+          <Fragment key={index}>
+            {index > 0 && index < steps.length && (
               <span
-                className={classNames(
-                  'ingestion-rounder tw-self-center',
-                  {
-                    active: step.step === activeStep,
-                  },
-                  { completed: step.step < activeStep }
-                )}
+                className={classNames('ingestion-line', stepperLineClassName)}
               />
-              <span
-                className={classNames('tw-mt-2 tw-text-xs', {
-                  'tw-text-primary': step.step <= activeStep,
-                })}>
-                {step.name}
+            )}
+            <div className="ingestion-wrapper" key={index}>
+              <span className="tw-flex tw-flex-col">
+                <span
+                  className={classNames(
+                    'ingestion-rounder tw-self-center',
+                    {
+                      active: step.step === activeStep,
+                    },
+                    { completed: step.step < activeStep }
+                  )}
+                />
+                <span
+                  className={classNames('tw-mt-2 tw-text-xs', {
+                    'tw-text-primary': step.step <= activeStep,
+                  })}>
+                  {step.name}
+                </span>
               </span>
-            </span>
-          </div>
-        </Fragment>
-      ))}
+            </div>
+          </Fragment>
+        )
+      )}
     </div>
   );
 };

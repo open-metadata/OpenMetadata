@@ -555,6 +555,8 @@ export interface Connection {
    *
    * Host and port of the Athena
    *
+   * Host and port of AzureSQL
+   *
    * Host and port of the Clickhouse
    *
    * Host and port of the Databricks
@@ -581,7 +583,7 @@ export interface Connection {
    *
    * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */
-  hostPort?: any;
+  hostPort?: string;
   /**
    * password to connect  to the Looker.
    *
@@ -591,7 +593,7 @@ export interface Connection {
    *
    * password for the Tableau
    *
-   * password to connect  to the Athena.
+   * Password to connect to AzureSQL.
    *
    * password to connect to the Clickhouse.
    *
@@ -649,8 +651,7 @@ export interface Connection {
    * username to connect to the Bigquery. This user should have privileges to read all the
    * metadata in Bigquery.
    *
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Azure SQL.
+   * Username to connect to AzureSQL. This user should have privileges to read the metadata.
    *
    * username to connect  to the Clickhouse. This user should have privileges to read all the
    * metadata in Clickhouse.
@@ -704,6 +705,10 @@ export interface Connection {
   username?: string;
   /**
    * Database Service Name for creation of lineage
+   *
+   * Database Service Name to create lineage
+   *
+   * Database Service Name in order to create a lineage
    */
   dbServiceName?: string;
   /**
@@ -737,10 +742,6 @@ export interface Connection {
    */
   connectionOptions?: { [key: string]: any };
   /**
-   * Database Service to create lineage
-   */
-  dbServiceConnection?: string;
-  /**
    * authenticaiton provider for the Superset
    */
   provider?: string;
@@ -765,80 +766,16 @@ export interface Connection {
   connectionArguments?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Athena.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Azure SQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Clickhouse.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
    * attempts to scan all the databases in Databricks.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in DB2.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Druid.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Glue.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Hive.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MariaDB.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MsSQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Mysql.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-   * attempts to scan all the databases.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Oracle.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Postgres.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Redshift.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MySQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Snowflake.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in the selected catalog in Trino.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Vertica.
+   * attempts to scan all the databases in the selected catalog.
    */
   database?: string;
   /**
@@ -846,19 +783,19 @@ export interface Connection {
    */
   enablePolicyTagImport?: boolean;
   /**
-   * Column name on which bigquery table will be partitioned
+   * Column name on which the BigQuery table will be partitioned.
    */
   partitionField?: string;
   /**
-   * Partitioning query for bigquery tables
+   * Partitioning query for BigQuery tables.
    */
   partitionQuery?: string;
   /**
-   * Duration for partitioning bigquery tables
+   * Duration for partitioning BigQuery tables.
    */
   partitionQueryDuration?: number;
   /**
-   * BigQuery project ID. Inform it here if passing the credentials path.
+   * BigQuery project ID. Only required if using credentials path instead of values.
    */
   projectId?: string;
   /**
@@ -871,7 +808,7 @@ export interface Connection {
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
    */
   tagCategoryName?: string;
-  awsConfig?: S3Credentials;
+  awsConfig?: AWSCredentials;
   /**
    * S3 Staging Directory.
    */
@@ -881,13 +818,17 @@ export interface Connection {
    */
   workgroup?: string;
   /**
-   * SQLAlchemy driver for Azure SQL
+   * SQLAlchemy driver for AzureSQL
    */
   driver?: string;
   /**
    * Clickhouse SQL connection duration
    */
   duration?: number;
+  /**
+   * Databricks compute resources URL
+   */
+  httpPath?: string;
   /**
    * Generated Token to connect to Databricks
    */
@@ -904,28 +845,6 @@ export interface Connection {
    * Host and port of remote Hive Metastore.
    */
   metastoreHostPort?: string;
-  /**
-   * AWS Access key ID.
-   */
-  awsAccessKeyId?: string;
-  /**
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  /**
-   * AWS Secret Access Key.
-   */
-  awsSecretAccessKey?: string;
-  /**
-   * AWS Session Token.
-   */
-  awsSessionToken?: string;
-  /**
-   * EndPoint URL for the Dynamo DB
-   *
-   * EndPoint URL for the Glue
-   */
-  endPointURL?: string;
   /**
    * AWS pipelineServiceName Name.
    */
@@ -970,6 +889,10 @@ export interface Connection {
    */
   account?: string;
   /**
+   * Connection to Snowflake instance via Private Key
+   */
+  privateKey?: string;
+  /**
    * Snowflake Role.
    */
   role?: string;
@@ -993,6 +916,14 @@ export interface Connection {
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
   bootstrapServers?: string;
+  /**
+   * Confluent Kafka Consumer Config
+   */
+  consumerConfig?: { [key: string]: any };
+  /**
+   * Confluent Kafka Schema Registry Config.
+   */
+  schemaRegistryConfig?: { [key: string]: any };
   /**
    * Confluent Kafka Schema Registry URL.
    */
@@ -1057,9 +988,9 @@ export interface Connection {
 }
 
 /**
- * AWS S3 credentials configs.
+ * AWS credentials configs.
  */
-export interface S3Credentials {
+export interface AWSCredentials {
   /**
    * AWS Access key ID.
    */
@@ -1091,13 +1022,13 @@ export interface GCSCredentials {
   /**
    * GCS configs.
    */
-  gcsConfig: GCSValues | string;
+  gcsConfig: GCSCredentialsValues | string;
 }
 
 /**
  * GCS Credentials.
  */
-export interface GCSValues {
+export interface GCSCredentialsValues {
   /**
    * Google Cloud auth provider certificate.
    */
@@ -1244,10 +1175,7 @@ export interface ConfigClass {
    * DBT Catalog file name
    */
   dbtCatalogFileName?: string;
-  /**
-   * DBT configuration.
-   */
-  dbtConfig?: LocalHTTPDbtConfig;
+  dbtConfig?: DbtConfig;
   /**
    * DBT Manifest file name
    */
@@ -1259,6 +1187,10 @@ export interface ConfigClass {
    * local system), 'http'(url path of dbt files).
    */
   dbtProvider?: DbtProvider;
+  /**
+   * DBT configuration.
+   */
+  dbtSecurityConfig?: SCredentials;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -1350,29 +1282,47 @@ export interface FilterPattern {
 }
 
 /**
+ * DBT Catalog and Manifest file path config.
+ */
+export interface DbtConfig {
+  /**
+   * DBT catalog file to extract dbt models with their column schemas.
+   */
+  dbtCatalogFilePath: string;
+  /**
+   * DBT manifest file path to extract dbt models and associate with tables.
+   */
+  dbtManifestFilePath: string;
+}
+
+/**
+ * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+ * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+ * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+ * local system), 'http'(url path of dbt files).
+ */
+export enum DbtProvider {
+  Gcs = 'gcs',
+  GcsPath = 'gcs-path',
+  HTTP = 'http',
+  Local = 'local',
+  S3 = 's3',
+}
+
+/**
  * DBT configuration.
- *
- * Local and HTTP DBT configs.
  *
  * GCS Credentials
  *
  * GCS credentials configs.
  *
- * AWS S3 credentials configs.
+ * AWS credentials configs.
  */
-export interface LocalHTTPDbtConfig {
-  /**
-   * DBT catalog file to extract dbt models with their column schemas.
-   */
-  dbtCatalogFilePath?: string;
-  /**
-   * DBT manifest file path to extract dbt models and associate with tables.
-   */
-  dbtManifestFilePath?: string;
+export interface SCredentials {
   /**
    * GCS configs.
    */
-  gcsConfig?: GCSValues | string;
+  gcsConfig?: GCSCredentialsValues | string;
   /**
    * AWS Access key ID.
    */
@@ -1393,20 +1343,6 @@ export interface LocalHTTPDbtConfig {
    * EndPoint URL for the AWS
    */
   endPointURL?: string;
-}
-
-/**
- * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
- * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
- * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
- * local system), 'http'(url path of dbt files).
- */
-export enum DbtProvider {
-  Gcs = 'gcs',
-  GcsPath = 'gcs-path',
-  HTTP = 'http',
-  Local = 'local',
-  S3 = 's3',
 }
 
 /**

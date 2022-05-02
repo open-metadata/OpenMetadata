@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 
-export enum FormSubmitType {
-  ADD = 'add',
-  EDIT = 'edit',
-}
+import { isString } from 'lodash';
 
-export enum FormValidationRulesType {
-  email = 'email',
-  url = 'url',
-  number = 'number',
+export function escapeBackwardSlashChar<T>(formData: T): T {
+  for (const key in formData) {
+    if (typeof formData[key as keyof T] === 'object') {
+      escapeBackwardSlashChar(formData[key as keyof T]);
+    } else {
+      const data = formData[key as keyof T];
+      if (isString(data)) {
+        formData[key as keyof T] = data.replace(
+          /\\n/g,
+          '\n'
+        ) as unknown as T[keyof T];
+      }
+    }
+  }
+
+  return formData;
 }

@@ -176,10 +176,7 @@ export interface ConfigClass {
    * DBT Catalog file name
    */
   dbtCatalogFileName?: string;
-  /**
-   * DBT configuration.
-   */
-  dbtConfig?: LocalHTTPDbtConfig;
+  dbtConfig?: DbtConfig;
   /**
    * DBT Manifest file name
    */
@@ -191,6 +188,10 @@ export interface ConfigClass {
    * local system), 'http'(url path of dbt files).
    */
   dbtProvider?: DbtProvider;
+  /**
+   * DBT configuration.
+   */
+  dbtSecurityConfig?: SCredentials;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -282,27 +283,45 @@ export interface FilterPattern {
 }
 
 /**
- * DBT configuration.
- *
- * Local and HTTP DBT configs.
- *
- * GCS credentials configs.
- *
- * AWS S3 credentials configs.
+ * DBT Catalog and Manifest file path config.
  */
-export interface LocalHTTPDbtConfig {
+export interface DbtConfig {
   /**
    * DBT catalog file to extract dbt models with their column schemas.
    */
-  dbtCatalogFilePath?: string;
+  dbtCatalogFilePath: string;
   /**
    * DBT manifest file path to extract dbt models and associate with tables.
    */
-  dbtManifestFilePath?: string;
+  dbtManifestFilePath: string;
+}
+
+/**
+ * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
+ * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
+ * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
+ * local system), 'http'(url path of dbt files).
+ */
+export enum DbtProvider {
+  Gcs = 'gcs',
+  GcsPath = 'gcs-path',
+  HTTP = 'http',
+  Local = 'local',
+  S3 = 's3',
+}
+
+/**
+ * DBT configuration.
+ *
+ * GCS credentials configs.
+ *
+ * AWS credentials configs.
+ */
+export interface SCredentials {
   /**
    * GCS configs.
    */
-  gcsConfig?: GCSValues | string;
+  gcsConfig?: GCSCredentialsValues | string;
   /**
    * AWS Access key ID.
    */
@@ -328,7 +347,7 @@ export interface LocalHTTPDbtConfig {
 /**
  * GCS Credentials.
  */
-export interface GCSValues {
+export interface GCSCredentialsValues {
   /**
    * Google Cloud auth provider certificate.
    */
@@ -369,20 +388,6 @@ export interface GCSValues {
    * Google Cloud service account type.
    */
   type?: string;
-}
-
-/**
- * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
- * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
- * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
- * local system), 'http'(url path of dbt files).
- */
-export enum DbtProvider {
-  Gcs = 'gcs',
-  GcsPath = 'gcs-path',
-  HTTP = 'http',
-  Local = 'local',
-  S3 = 's3',
 }
 
 /**
