@@ -14,12 +14,15 @@ import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.Webhooks;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -32,12 +35,13 @@ class WebhooksPageTest {
   static Webhooks webhooks;
   static String url = Property.getInstance().getURL();
   static Faker faker = new Faker();
-  static String name = faker.name().firstName();
+  static String webhookName = faker.name().firstName();
   static Actions actions;
   static WebDriverWait wait;
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -52,11 +56,16 @@ class WebhooksPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    fluentWait =
+        new FluentWait<WebDriver>(webDriver)
+            .withTimeout(Duration.ofSeconds(10))
+            .pollingEvery(Duration.ofSeconds(10))
+            .ignoring(NoSuchElementException.class);
   }
 
   @Test
   @Order(1)
-  void openWebHookPage() throws InterruptedException {
+  void openWebHookPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, webhooks.webhookLink());
@@ -64,10 +73,10 @@ class WebhooksPageTest {
 
   @Test
   @Order(2)
-  void addWebHook() throws InterruptedException {
+  void addWebHook() {
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
-    Events.sendKeys(webDriver, webhooks.name(), name);
+    Events.sendKeys(webDriver, webhooks.name(), webhookName);
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), faker.address().toString());
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
@@ -78,17 +87,18 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
-    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook(name)));
-    Assert.assertTrue(checkName.isDisplayed());
-    Assert.assertEquals(checkName.getText(), name);
+    WebElement checkName = wait.until(ExpectedConditions.presenceOfElementLocated(webhooks.checkWebhook(webhookName)));
+    Assert.assertEquals(checkName.getText(), webhookName);
   }
 
   @Test
   @Order(3)
-  void checkDuplicateWebhookName() throws InterruptedException {
-    openWebHookPage();
+  void checkDuplicateWebhookName() {
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, webhooks.webhookLink());
     Events.click(webDriver, webhooks.addWebhook());
-    Events.sendKeys(webDriver, webhooks.name(), name);
+    Events.sendKeys(webDriver, webhooks.name(), webhookName);
     Events.click(webDriver, webhooks.descriptionBox());
     Events.sendKeys(webDriver, webhooks.focusedDescriptionBox(), "test");
     Events.sendKeys(webDriver, webhooks.endpoint(), "https://www.example.com");
@@ -100,14 +110,14 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     Events.waitForElementToDisplay(webDriver, webhooks.toast(), 10);
-    WebElement errorMessage = webDriver.findElement(webhooks.toast());
-    Assert.assertTrue(errorMessage.isDisplayed());
+    WebElement errorMessage =
+        fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(webhooks.toast())));
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");
   }
 
   @Test
   @Order(4)
-  void checkBlankName() throws InterruptedException {
+  void checkBlankName() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
@@ -123,13 +133,12 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
-    Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook name is required.");
   }
 
   @Test
   @Order(5)
-  void checkBlankEndpoint() throws InterruptedException {
+  void checkBlankEndpoint() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
@@ -145,13 +154,12 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
-    Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook endpoint is required.");
   }
 
   @Test
   @Order(6)
-  void checkBlankEntityCheckbox() throws InterruptedException {
+  void checkBlankEntityCheckbox() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openWebHookPage();
     Events.click(webDriver, webhooks.addWebhook());
@@ -163,7 +171,6 @@ class WebhooksPageTest {
         .executeScript("arguments[0].scrollIntoView(true);", webDriver.findElement(common.saveWebhook()));
     Events.click(webDriver, common.saveWebhook());
     WebElement errorMessage = webDriver.findElement(common.errorMessage());
-    Assert.assertTrue(errorMessage.isDisplayed());
     Assert.assertEquals(errorMessage.getText(), "Webhook event filters are required.");
   }
 

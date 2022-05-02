@@ -111,7 +111,7 @@ class UsersPageTest {
     openUsersPage();
     Events.click(webDriver, userPage.users());
     Events.sendKeys(webDriver, userPage.userListSearchBar(), "AaR");
-    Events.waitForElementToDisplay(webDriver, userPage.userListSearchResult(), 10);
+    Events.sleep(waitTime);
     Object userResultsCount = webDriver.findElements(userPage.userListSearchResult()).size();
     Assert.assertEquals(userResultsCount, 3);
   }

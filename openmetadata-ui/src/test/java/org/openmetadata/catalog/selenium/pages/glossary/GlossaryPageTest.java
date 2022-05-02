@@ -162,15 +162,14 @@ class GlossaryPageTest {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
+    Events.waitForElementToDisplay(webDriver, common.addGlossaryReviewer(), 10);
+    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 
   @Test
   @Order(8)
-  void addGlossaryTerm() throws InterruptedException {
+  void addGlossaryTerm() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
@@ -237,11 +236,12 @@ class GlossaryPageTest {
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, common.manage());
     actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
+    wait = new WebDriverWait(webDriver, 2);
     for (int i = 1; i <= 3; i++) {
       Events.click(webDriver, common.removeAssociatedTag());
     }
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
+    webDriver.navigate().refresh();
+    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 
@@ -253,12 +253,10 @@ class GlossaryPageTest {
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, glossary.editGlossaryTag());
-    for (int i = 0; i < 2; i++) {
-      Events.click(webDriver, common.removeAssociatedTag());
-    }
-    Events.click(webDriver, common.saveAssociatedTag());
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
+    Events.click(webDriver, common.removeAssociatedTag());
+    Events.click(webDriver, common.removeAssociatedTag());
+    webDriver.navigate().refresh();
+    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
 
