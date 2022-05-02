@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
@@ -19,8 +18,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.stage import Stage, StageStatus
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class FileStageConfig(ConfigModel):

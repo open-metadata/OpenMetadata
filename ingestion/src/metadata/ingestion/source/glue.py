@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import traceback
 import uuid
 from typing import Iterable
@@ -43,8 +42,9 @@ from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class GlueSource(Source[Entity]):

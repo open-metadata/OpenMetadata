@@ -12,7 +12,6 @@
 Redshift source ingestion
 """
 
-import logging
 import re
 from collections import defaultdict
 
@@ -34,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
@@ -41,7 +41,7 @@ from metadata.utils.sql_queries import (
 
 sa_version = Version(sa.__version__)
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
 ischema_names.update({"binary varying": sqltypes.VARBINARY})

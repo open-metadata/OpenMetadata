@@ -53,6 +53,9 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
+      
+      - name: Setup Test Containers Properties
+        run: echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
       - name: Build PR with Maven
         env:
@@ -60,7 +63,6 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          echo 'testcontainers.reuse.enable=true' >> ~/.testcontainers.properties
           mvn -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
               -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
               -Dsonar.pullrequest.branch=${{ github.head_ref }} \

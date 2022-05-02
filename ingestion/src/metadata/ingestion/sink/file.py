@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
@@ -18,8 +17,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class FileSinkConfig(ConfigModel):

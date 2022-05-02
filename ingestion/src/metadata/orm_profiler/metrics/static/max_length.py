@@ -17,9 +17,9 @@ from sqlalchemy import column, func
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
 from metadata.orm_profiler.orm.registry import is_concatenable
-from metadata.orm_profiler.utils import logger
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 class MaxLength(StaticMetric):
