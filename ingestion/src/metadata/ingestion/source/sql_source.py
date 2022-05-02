@@ -500,7 +500,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = get_fqdn(DataModel, database, schema, model_name)
+                    model_fqdn = get_fqdn(
+                        DataModel, database, schema, model_name
+                    ).lower()
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -526,7 +528,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, database, schema, table_name):
-        table_fqn = get_fqdn(DataModel, database, schema, table_name)
+        table_fqn = get_fqdn(DataModel, database, schema, table_name).lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
