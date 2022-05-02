@@ -62,7 +62,7 @@ OpenMetadata now supports integration with your custom built OIDC SSO for authen
 
 Support has been added for Azure SSO on Airflow.
 
-## 0.9.3 Release - May 25th, 2022
+## 0.11 Release - Jun 9th, 2022
 
 ### Data Insights
 
