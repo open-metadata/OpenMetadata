@@ -140,7 +140,7 @@ const MyData: React.FC<MyDataProps> = ({
                   data-testid="my-data"
                   to={getLinkByFilter(Ownership.OWNER)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({ownedData.length})</span>
                   </span>
                 </Link>
               ) : null}
@@ -160,7 +160,7 @@ const MyData: React.FC<MyDataProps> = ({
                   data-testid="following-data"
                   to={getLinkByFilter(Ownership.FOLLOWERS)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({followedData.length})</span>
                   </span>
                 </Link>
               ) : null}
