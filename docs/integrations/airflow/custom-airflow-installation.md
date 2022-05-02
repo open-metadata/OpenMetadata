@@ -27,7 +27,7 @@ You can find the full information in [Airflow Lineage Backend](airflow-lineage.m
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install "openmetadata-ingestion[airflow-container]"
+pip3 install "openmetadata-ingestion[airflow-container]"
 ```
 {% endtab %}
 {% endtabs %}
@@ -45,7 +45,7 @@ If running on a lower Airflow version, then you'll need to install:
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install "openmetadata-ingestion[airflow-container-1.10.15]"
+pip3 install "openmetadata-ingestion[airflow-container-1.10.15]"
 ```
 {% endtab %}
 {% endtabs %}
@@ -67,7 +67,7 @@ Then, you can just follow the guides for each [Connector](../connectors/). In th
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install "openmetadata-ingestion[<connector-name>]"
+pip3 install "openmetadata-ingestion[<connector-name>]"
 ```
 {% endtab %}
 {% endtabs %}
