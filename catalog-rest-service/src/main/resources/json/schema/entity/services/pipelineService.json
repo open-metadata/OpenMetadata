@@ -47,7 +47,7 @@
     },
     "description": {
       "description": "Description of a pipeline service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",
