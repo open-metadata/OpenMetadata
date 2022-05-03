@@ -33,9 +33,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -55,7 +52,6 @@ class PipelineDetailsPageTest {
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String description = "Test@1234";
   String xpath = "//div[@data-testid='description']/div/span";
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -71,11 +67,6 @@ class PipelineDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(30))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -84,7 +75,7 @@ class PipelineDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    if (fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.tableCount())).isDisplayed()) {
+    if (Events.waitForElementToDisplay(webDriver, common.tableCount(), 10, 2).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -107,8 +98,8 @@ class PipelineDetailsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
-    String checkDescription =
-        fluentWait.until(ExpectedConditions.presenceOfElementLocated(pipelineDetails.descriptionContainer())).getText();
+    Events.waitForElementToDisplay(webDriver, pipelineDetails.descriptionContainer(), 10, 2);
+    String checkDescription = webDriver.findElement(pipelineDetails.descriptionContainer()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -172,8 +163,8 @@ class PipelineDetailsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
-    String checkDescription =
-        fluentWait.until(ExpectedConditions.visibilityOf(pipelineDetails.getDescriptionBox())).getText();
+    Events.waitForElementToDisplay(webDriver, pipelineDetails.descriptionBox(), 10, 2);
+    String checkDescription = webDriver.findElement(pipelineDetails.descriptionBox()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {

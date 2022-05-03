@@ -26,8 +26,4 @@ public class PipelineDetails {
   public List<WebElement> lineageNodes() {
     return webDriver.findElements(lineageComponents);
   }
-
-  public WebElement getDescriptionBox() {
-    return webDriver.findElement(descriptionBox);
-  }
 }

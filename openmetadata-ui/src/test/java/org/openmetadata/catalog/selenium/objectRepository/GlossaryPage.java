@@ -25,6 +25,7 @@ public class GlossaryPage {
   By reviewers = By.cssSelector("[data-testid='Reviewers']");
   By reviewerCardContainer = By.cssSelector("[data-testid='user-card-container']");
   By glossaryName = By.cssSelector("[data-testid='inactive-link']");
+  By ownerDropdown = By.cssSelector("[data-testid='owner-dropdown']");
 
   public By checkboxAddUser(int index) {
     return By.xpath(

@@ -32,8 +32,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -53,7 +51,6 @@ class TagsPageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -68,11 +65,6 @@ class TagsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -131,7 +123,7 @@ class TagsPageTest {
   void changeTagDescription() {
     openTagsPage();
     Events.click(webDriver, common.textEquals(tagCategoryDisplayName));
-    Events.waitForElementToDisplay(webDriver, tagsPage.tagCategoryName(tagCategoryDisplayName), 10);
+    Events.waitForElementToDisplay(webDriver, tagsPage.tagCategoryName(tagCategoryDisplayName), 10, 1);
     actions.moveToElement(webDriver.findElement(tagsPage.editTagDescription())).perform();
     Events.click(webDriver, tagsPage.editTagDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
@@ -153,7 +145,7 @@ class TagsPageTest {
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
-    fluentWait.until(ExpectedConditions.elementToBeClickable(common.containsText(tagCategoryDisplayName)));
+    Events.waitForElementToDisplay(webDriver, common.containsText(tagCategoryDisplayName), 10, 2);
     Events.click(webDriver, common.containsText(tagCategoryDisplayName));
     Events.click(webDriver, tagsPage.tagUsageCount());
   }
@@ -229,24 +221,20 @@ class TagsPageTest {
     Events.click(webDriver, tagsPage.editTags());
     Events.click(webDriver, common.enterAssociatedTagName());
     Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
-    fluentWait.until(ExpectedConditions.visibilityOfElementLocated(common.tagListItem()));
+    Events.waitForElementToDisplay(webDriver, common.tagListItem(), 10, 2);
     Events.click(webDriver, common.tagListItem());
     Events.click(webDriver, common.saveAssociatedTag());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, tagsPage.headerSettingsTags());
     Events.click(webDriver, common.textEquals("PersonalData"));
     Events.click(webDriver, tagsPage.usageCountElementIndex(1));
-    fluentWait.until(ExpectedConditions.elementToBeClickable(common.explore()));
+    Events.waitForElementToDisplay(webDriver, common.explore(), 10, 2);
     String beforeFilterCount =
-        fluentWait
-            .until(ExpectedConditions.visibilityOfElementLocated(tagsPage.tagFilterCount(1)))
-            .getAttribute("innerHTML");
+        Events.waitForElementToDisplay(webDriver, tagsPage.tagFilterCount(1), 10, 2).getAttribute("innerHTML");
     Events.click(webDriver, common.topics());
     Events.click(webDriver, common.tables());
     String afterFilterCount =
-        fluentWait
-            .until(ExpectedConditions.visibilityOfElementLocated(tagsPage.tagFilterCount(1)))
-            .getAttribute("innerHTML");
+        Events.waitForElementToDisplay(webDriver, tagsPage.tagFilterCount(1), 10, 2).getAttribute("innerHTML");
     Assert.assertEquals(afterFilterCount, beforeFilterCount);
   }
 

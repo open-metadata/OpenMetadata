@@ -12,8 +12,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.UserPage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -44,7 +43,7 @@ class UsersPageTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     common = new Common(webDriver);
     userPage = new UserPage(webDriver);
     actions = new Actions(webDriver);
@@ -66,19 +65,20 @@ class UsersPageTest {
 
   @Test
   @Order(1)
-  void addAdminCheckCountCheck() throws InterruptedException {
+  void addAdminCheckCountCheck() {
     openUsersPage();
     Events.click(webDriver, userPage.users());
     Events.click(webDriver, userPage.selectUser());
+    Events.waitForElementToDisplay(webDriver, userPage.editRole(), 10, 2);
     Events.click(webDriver, userPage.editRole());
-    Events.click(webDriver, common.containsText("Data Consumer"));
+    Events.click(webDriver, userPage.clickRoleDropdown());
     Events.click(webDriver, common.containsText("Admin"));
     Events.click(webDriver, userPage.saveRole());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsTeams());
     Events.click(webDriver, userPage.users());
     webDriver.navigate().refresh();
-    fluentWait.until(ExpectedConditions.elementToBeClickable(userPage.addUser()));
+    Events.waitForElementToDisplay(webDriver, userPage.addUser(), 10, 2);
     Object afterUsersCount = webDriver.findElement(userPage.userFilterCount()).getAttribute("innerHTML");
     Assert.assertEquals(afterUsersCount, "101");
     Object afterAdminCount = webDriver.findElement(userPage.adminFilterCount()).getAttribute("innerHTML");
@@ -87,7 +87,7 @@ class UsersPageTest {
 
   @Test
   @Order(2)
-  void removeAdminCheckCountCheck() throws InterruptedException {
+  void removeAdminCheckCountCheck() {
     openUsersPage();
     Events.click(webDriver, userPage.users());
     Events.click(webDriver, userPage.selectUser());
@@ -98,7 +98,7 @@ class UsersPageTest {
     Events.click(webDriver, common.headerSettingsTeams());
     Events.click(webDriver, userPage.users());
     webDriver.navigate().refresh();
-    fluentWait.until(ExpectedConditions.elementToBeClickable(userPage.addUser()));
+    Events.waitForElementToDisplay(webDriver, userPage.addUser(), 10, 2);
     Object afterAdminCount = webDriver.findElement(userPage.adminFilterCountAfterDelete()).getAttribute("innerHTML");
     Assert.assertEquals(afterAdminCount, "0");
     Object afterUsersCount = webDriver.findElement(userPage.userFilterCount()).getAttribute("innerHTML");
@@ -107,11 +107,11 @@ class UsersPageTest {
 
   @Test
   @Order(3)
-  void caseSensitiveSearchCheck() throws InterruptedException {
+  void caseSensitiveSearchCheck() {
     openUsersPage();
     Events.click(webDriver, userPage.users());
     Events.sendKeys(webDriver, userPage.userListSearchBar(), "AaR");
-    Events.sleep(waitTime);
+    fluentWait.until(ExpectedConditions.invisibilityOf(webDriver.findElement(userPage.adamMathews())));
     Object userResultsCount = webDriver.findElements(userPage.userListSearchResult()).size();
     Assert.assertEquals(userResultsCount, 3);
   }

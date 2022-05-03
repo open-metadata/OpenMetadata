@@ -13,16 +13,11 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.Webhooks;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -41,7 +36,6 @@ class WebhooksPageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -56,11 +50,6 @@ class WebhooksPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -109,9 +98,8 @@ class WebhooksPageTest {
     Events.click(webDriver, webhooks.allEntities());
     Events.click(webDriver, webhooks.clickToCloseDropdown());
     Events.click(webDriver, common.saveWebhook());
-    Events.waitForElementToDisplay(webDriver, webhooks.toast(), 10);
-    WebElement errorMessage =
-        fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(webhooks.toast())));
+    Events.waitForElementToDisplay(webDriver, webhooks.toast(), 10, 2);
+    WebElement errorMessage = webDriver.findElement(webhooks.toast());
     Assert.assertEquals(errorMessage.getText(), "Entity already exists");
   }
 

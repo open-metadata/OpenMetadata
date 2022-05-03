@@ -42,7 +42,6 @@ class RolesPageTest {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   String xpath = "//p[@title = '" + roleDisplayName + "']";
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -57,11 +56,6 @@ class RolesPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -145,9 +139,8 @@ class RolesPageTest {
     Select se = new Select(webDriver.findElement(rolesPage.listAccess()));
     se.selectByVisibleText("DENY");
     Events.click(webDriver, common.descriptionSaveButton());
-    fluentWait.until(ExpectedConditions.elementToBeClickable(rolesPage.usersTab()));
-    String access =
-        fluentWait.until(ExpectedConditions.elementToBeClickable(rolesPage.accessValue())).getAttribute("innerHTML");
+    Events.waitForElementToDisplay(webDriver, rolesPage.usersTab(), 10, 2);
+    String access = webDriver.findElement(rolesPage.accessValue()).getAttribute("innerHTML");
     Assert.assertEquals(access, "DENY");
   }
 

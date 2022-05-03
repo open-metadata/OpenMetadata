@@ -37,8 +37,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -62,7 +60,6 @@ class MyDataPageTest {
   Common common;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -82,11 +79,6 @@ class MyDataPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(30))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -261,7 +253,7 @@ class MyDataPageTest {
     Events.click(webDriver, myDataPage.home());
     pause(waitTime);
     webDriver.navigate().refresh();
-    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(myDataPage.tables())));
+    Events.waitForElementToDisplay(webDriver, myDataPage.tables(), 10, 2);
     try {
       Events.click(webDriver, common.clickFollowedTable(tableName));
     } catch (TimeoutException | NoSuchElementException e) {

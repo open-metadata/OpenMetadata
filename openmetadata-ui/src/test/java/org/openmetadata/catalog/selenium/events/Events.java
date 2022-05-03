@@ -13,9 +13,11 @@
 
 package org.openmetadata.catalog.selenium.events;
 
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 @Slf4j
@@ -39,26 +41,24 @@ public final class Events {
     driver.findElement(by).sendKeys(Keys.ENTER);
   }
 
-  public static void sleep(int timeOutInSeconds) {
-    try {
-      Thread.sleep(timeOutInSeconds);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public static boolean waitForElementToDisplay(WebDriver driver, By by, int timeOutInSeconds) {
-    boolean isDisplayed = false;
-    for (int i = 0; i < timeOutInSeconds; i++) {
+  public static WebElement waitForElementToDisplay(WebDriver driver, By by, int timeOutSec, int pollingSec) {
+    FluentWait<WebDriver> fWait =
+        new FluentWait<WebDriver>(driver)
+            .withTimeout(Duration.ofSeconds(timeOutSec))
+            .pollingEvery(Duration.ofSeconds(pollingSec))
+            .ignoring(NoSuchElementException.class, TimeoutException.class)
+            .ignoring(StaleElementReferenceException.class);
+    for (int i = 0; i < 2; i++) {
       try {
-        if (driver.findElement(by).isDisplayed()) {
-          LOG.info("Element is displayed");
-        }
-      } catch (NoSuchElementException | TimeoutException e) {
-        LOG.info("Element is not displayed");
-        sleep(1);
+        fWait.until(ExpectedConditions.presenceOfElementLocated(by));
+        fWait.until(ExpectedConditions.visibilityOf(driver.findElement(by)));
+        fWait.until(ExpectedConditions.elementToBeClickable(driver.findElement(by)));
+      } catch (Exception e) {
+        System.out.println("Element Not found trying again");
+        e.printStackTrace();
+        fWait.withTimeout(Duration.ofSeconds(2));
       }
     }
-    return isDisplayed;
+    return driver.findElement(by);
   }
 }

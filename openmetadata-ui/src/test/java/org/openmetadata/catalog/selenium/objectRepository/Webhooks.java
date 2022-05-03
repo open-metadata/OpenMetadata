@@ -20,7 +20,7 @@ public class Webhooks {
   By checkbox = By.xpath("//input[@data-testid='entity-created-checkbox']");
   By entityCreatedMenu = By.xpath("(//button[@id='menu-button-select entities'])[1]");
   By allEntities = By.xpath("(//input[@type='checkbox'])[2]");
-  By toast = By.xpath("(//div[@class='Toastify__toast-body']/div)[2]");
+  By toast = By.xpath("//div[@class='Toastify__toast-body']");
   By clickToCloseDropdown = By.cssSelector("[class='page-container-v1 tw-bg-body-main']");
 
   public By checkWebhook(String webHookName) {

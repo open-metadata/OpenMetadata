@@ -3,6 +3,7 @@ package org.openmetadata.catalog.selenium.pages.glossary;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
+import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -17,9 +18,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -39,7 +37,6 @@ class GlossaryPageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -54,19 +51,6 @@ class GlossaryPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
-  }
-
-  @Test
-  @Order(1)
-  void openGlossaryPage() {
-    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Events.click(webDriver, common.headerSettings()); // Setting
-    Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
   }
 
   @Test
@@ -111,11 +95,12 @@ class GlossaryPageTest {
       Events.click(webDriver, common.tagListItem());
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.tagsCount())).size();
+    Events.waitForElementToDisplay(webDriver, common.tagsCount(), 10, 2);
+    Object reviewerCount = webDriver.findElements(common.tagsCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "2");
   }
 
+  @SneakyThrows
   @Test
   @Order(4)
   void addReviewer() {
@@ -126,9 +111,8 @@ class GlossaryPageTest {
     Events.click(webDriver, common.addGlossaryReviewer());
     Events.click(webDriver, glossary.checkboxAddUser(4));
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(common.reviewCount())).size();
+    Events.waitForElementToDisplay(webDriver, common.containsText("Adam Matthews"), 10, 2);
+    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "4");
   }
 
@@ -162,7 +146,7 @@ class GlossaryPageTest {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
-    Events.waitForElementToDisplay(webDriver, common.addGlossaryReviewer(), 10);
+    Events.waitForElementToDisplay(webDriver, common.containsText("Aaron"), 10, 2);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }
@@ -194,7 +178,10 @@ class GlossaryPageTest {
   @Test
   @Order(9)
   void addTagToTerm() {
-    openGlossaryPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
+    Events.waitForElementToDisplay(webDriver, common.textEquals(termName), 10, 2);
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, common.breadCrumbTags());
     Events.click(webDriver, common.enterAssociatedTagName());
@@ -203,8 +190,8 @@ class GlossaryPageTest {
       Events.click(webDriver, common.tagListItem());
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.tagsCount())).size();
+    Events.waitForElementToDisplay(webDriver, common.tagsCount(), 10, 2);
+    Object reviewerCount = webDriver.findElements(common.tagsCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "2");
   }
 
@@ -214,6 +201,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
+    Events.waitForElementToDisplay(webDriver, common.textEquals(termName), 10, 2);
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, common.manage());
     Events.click(webDriver, common.addGlossaryReviewer());
@@ -221,9 +209,8 @@ class GlossaryPageTest {
     Events.click(webDriver, glossary.checkboxAddUser(2));
     Events.click(webDriver, glossary.checkboxAddUser(3));
     Events.click(webDriver, glossary.saveTermReviewer());
-    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10);
-    Object reviewerCount =
-        fluentWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(common.reviewCount())).size();
+    Events.waitForElementToDisplay(webDriver, common.reviewCount(), 10, 2);
+    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "3");
   }
 
@@ -233,6 +220,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
+    Events.waitForElementToDisplay(webDriver, common.textEquals(termName), 10, 2);
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, common.manage());
     for (int i = 1; i <= 3; i++) {
@@ -250,6 +238,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
+    Events.waitForElementToDisplay(webDriver, common.textEquals(termName), 10, 2);
     Events.click(webDriver, common.textEquals(termName));
     Events.click(webDriver, glossary.editGlossaryTag());
     Events.click(webDriver, common.removeAssociatedTag());

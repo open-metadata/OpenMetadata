@@ -153,7 +153,6 @@ class PaginationAndFilterTest {
     Events.sendEnter(webDriver, common.searchBar());
     try {
       Events.click(webDriver, common.selectFilterExplore("Glue"));
-      Events.click(webDriver, common.selectFilterExplore("default"));
     } catch (TimeoutException exception) {
       Assert.fail("filters are missing");
     }

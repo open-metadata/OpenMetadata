@@ -37,8 +37,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -60,7 +58,6 @@ class TeamsPageTest {
   MyDataPage myDataPage;
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -77,11 +74,6 @@ class TeamsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(URL);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -89,7 +81,7 @@ class TeamsPageTest {
   void openTeamsPage() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, teamsPage.teams()); // Setting/Teams
-    fluentWait.until(ExpectedConditions.visibilityOfElementLocated(teamsPage.addTeam()));
+    Events.waitForElementToDisplay(webDriver, teamsPage.addTeam(), 10, 2);
     Assert.assertTrue(teamsPage.heading().isDisplayed());
   }
 
@@ -222,7 +214,7 @@ class TeamsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     Events.click(webDriver, teamsPage.saveTeam());
     Events.click(webDriver, myDataPage.home());
-    Events.waitForElementToDisplay(webDriver, teamsPage.myDataTeamsCount(), 10);
+    Events.waitForElementToDisplay(webDriver, teamsPage.myDataTeamsCount(), 10, 1);
     String updatedCount = webDriver.findElement(teamsPage.myDataTeamsCount()).getText();
     if (updatedCount.equals(myDataTeamsCount)) {
       Assert.fail("Team filter not updated");

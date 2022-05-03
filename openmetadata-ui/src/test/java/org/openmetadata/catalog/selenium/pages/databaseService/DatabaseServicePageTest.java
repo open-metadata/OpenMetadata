@@ -27,16 +27,11 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.DatabaseServicePage;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -56,7 +51,6 @@ class DatabaseServicePageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -71,11 +65,6 @@ class DatabaseServicePageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -91,10 +80,10 @@ class DatabaseServicePageTest {
   void addDatabaseService() throws InterruptedException {
     openDatabaseServicePage();
     try {
-      fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.noServicesAddServiceButton()));
+      Events.waitForElementToDisplay(webDriver, common.noServicesAddServiceButton(), 10, 2);
       Events.click(webDriver, common.noServicesAddServiceButton());
     } catch (NoSuchElementException | TimeoutException e) {
-      fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.addServiceButton()));
+      Events.waitForElementToDisplay(webDriver, common.addServiceButton(), 10, 2);
       Events.click(webDriver, common.addServiceButton());
     }
     Events.click(webDriver, common.serviceType("Mysql"));
@@ -152,6 +141,7 @@ class DatabaseServicePageTest {
   void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
     Events.click(webDriver, databaseServicePage.serviceName(serviceName));
+    Events.waitForElementToDisplay(webDriver, databaseServicePage.databaseTable(), 10, 2);
     Events.click(webDriver, common.ingestion());
     try {
       Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion

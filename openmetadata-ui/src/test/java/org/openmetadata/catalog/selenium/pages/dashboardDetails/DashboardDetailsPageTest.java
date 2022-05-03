@@ -33,9 +33,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -56,7 +53,6 @@ class DashboardDetailsPageTest {
   String description = "Test@1234";
   String updatedDescription = "Updated Description";
   String xpath = "//div[@data-testid='description']/div/span";
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   public void openMetadataWindow() {
@@ -72,11 +68,6 @@ class DashboardDetailsPageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(30))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -85,7 +76,7 @@ class DashboardDetailsPageTest {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, explorePage.explore());
-    if (fluentWait.until(ExpectedConditions.presenceOfElementLocated(common.tableCount())).isDisplayed()) {
+    if (Events.waitForElementToDisplay(webDriver, common.tableCount(), 10, 2).isDisplayed()) {
       LOG.info("Passed");
     } else {
       Assert.fail();
@@ -100,19 +91,17 @@ class DashboardDetailsPageTest {
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
-    String checkDescription =
-        fluentWait
-            .until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.dashboardDescriptionBox()))
-            .getText();
+    Events.waitForElementToDisplay(webDriver, dashboardDetails.dashboardDescriptionBox(), 10, 2);
+    String checkDescription = webDriver.findElement(dashboardDetails.dashboardDescriptionBox()).getText();
     Assert.assertEquals(checkDescription, updatedDescription);
   }
 
@@ -172,8 +161,8 @@ class DashboardDetailsPageTest {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
-    String checkDescription =
-        fluentWait.until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.descriptionBox())).getText();
+    Events.waitForElementToDisplay(webDriver, dashboardDetails.descriptionBox(), 10, 2);
+    String checkDescription = webDriver.findElement(dashboardDetails.descriptionBox()).getText();
     if (!checkDescription.contains(updatedDescription)) {
       Assert.fail("Description not updated");
     } else {
@@ -211,8 +200,8 @@ class DashboardDetailsPageTest {
     Events.click(webDriver, common.removeAssociatedTag());
     Events.click(webDriver, common.saveAssociatedTag());
     webDriver.navigate().refresh();
-    Object updatedCount =
-        fluentWait.until(ExpectedConditions.presenceOfElementLocated(dashboardDetails.chartTags())).getSize();
+    Events.waitForElementToDisplay(webDriver, dashboardDetails.chartTags(), 10, 2);
+    Object updatedCount = webDriver.findElement(dashboardDetails.chartTags()).getSize();
     if (updatedCount.equals(count)) {
       Assert.fail("Tag not removed");
     } else {

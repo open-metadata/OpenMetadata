@@ -19,9 +19,6 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -46,7 +43,6 @@ class Explore {
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
   Integer[] check;
-  Wait<WebDriver> fluentWait;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -66,11 +62,6 @@ class Explore {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
-    fluentWait =
-        new FluentWait<WebDriver>(webDriver)
-            .withTimeout(Duration.ofSeconds(10))
-            .pollingEvery(Duration.ofSeconds(10))
-            .ignoring(NoSuchElementException.class);
   }
 
   @Test
@@ -91,7 +82,8 @@ class Explore {
   void checkTableCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
-    WebElement tabCount = fluentWait.until(webDriver1 -> webDriver.findElement(explorePage.tableCount()));
+    Events.waitForElementToDisplay(webDriver, explorePage.tableCount(), 10, 2);
+    WebElement tabCount = webDriver.findElement(explorePage.tableCount());
     int tableCount = Integer.parseInt(tabCount.getText());
     int getServiceCount = 0;
     List<WebElement> countOfItems = explorePage.serviceCount();
@@ -116,7 +108,7 @@ class Explore {
   void checkTopicCount() {
     openExplorePage();
     Events.click(webDriver, explorePage.topics());
-    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.kafka())));
+    Events.waitForElementToDisplay(webDriver, explorePage.kafka(), 10, 2);
     WebElement topCount = webDriver.findElement(explorePage.topicCount());
     int topicCount = Integer.parseInt(topCount.getText());
     int getServiceCount = 0;
@@ -143,7 +135,7 @@ class Explore {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
-    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.superset())));
+    Events.waitForElementToDisplay(webDriver, explorePage.superset(), 10, 2);
     WebElement dashCount = webDriver.findElement(explorePage.dashboardCount());
     int dashboardCount = Integer.parseInt(dashCount.getText());
     int getServiceCount = 0;
@@ -170,7 +162,7 @@ class Explore {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
-    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(explorePage.airflow())));
+    Events.waitForElementToDisplay(webDriver, explorePage.airflow(), 10, 2);
     WebElement pipCount = webDriver.findElement(explorePage.pipelineCount());
     int pipelineCount = Integer.parseInt(pipCount.getText());
     int getServiceCount = 0;
@@ -220,7 +212,6 @@ class Explore {
     String sendKeys = faker.address().toString();
     openExplorePage();
     // Adding description to check last updated sort
-    String tableName = webDriver.findElement(common.selectTableLink(1)).getText();
     Events.click(webDriver, common.selectTableLink(1));
     Events.click(webDriver, tableDetails.editDescriptionButton());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
@@ -230,7 +221,7 @@ class Explore {
     webDriver.navigate().refresh();
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Events.click(webDriver, explorePage.lastUpdatedSort());
-    fluentWait.until(ExpectedConditions.visibilityOf(webDriver.findElement(common.containsText(tableName))));
+    webDriver.navigate().refresh();
     try {
       String descriptionCheck = webDriver.findElement(explorePage.updatedDescription()).getText();
       Assert.assertEquals(descriptionCheck, sendKeys);

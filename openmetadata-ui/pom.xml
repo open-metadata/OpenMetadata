@@ -77,7 +77,12 @@
       <version>4.5.1</version>
       <scope>test</scope>
     </dependency>
-
+    <!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-devtools-v101 -->
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-devtools-v101</artifactId>
+      <version>4.1.4</version>
+    </dependency>
   </dependencies>
 
   <build>
