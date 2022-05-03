@@ -12,10 +12,12 @@
 """
 Build and document all supported Engines
 """
+import json
 import logging
 from functools import singledispatch
 from typing import Union
 
+import requests
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
@@ -24,6 +26,9 @@ from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
+    MetabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -51,6 +56,7 @@ from metadata.utils.connection_clients import (
     DynamoClient,
     GlueClient,
     KafkaClient,
+    MetabaseClient,
     SalesforceClient,
 )
 from metadata.utils.credentials import set_google_credentials
@@ -319,6 +325,45 @@ def _(connection: KafkaClient) -> None:
 def _(connection: DeltaLakeClient) -> None:
     try:
         connection.client.catalog.listDatabases()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: MetabaseConnection, verbose: bool = False):
+    try:
+        params = dict()
+        params["username"] = connection.username
+        params["password"] = connection.password.get_secret_value()
+
+        HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
+
+        resp = requests.post(
+            connection.hostPort + "/api/session/",
+            data=json.dumps(params),
+            headers=HEADERS,
+        )
+
+        session_id = resp.json()["id"]
+        metabase_session = {"X-Metabase-Session": session_id}
+        conn = {"connection": connection, "metabase_session": metabase_session}
+        return MetabaseClient(conn)
+
+    except Exception as err:
+        logger.error(f"Failed to connect with error :  {err}")
+        logger.error(err)
+
+
+@test_connection.register
+def _(connection: MetabaseClient) -> None:
+    try:
+        requests.get(
+            connection.client["connection"].hostPort + "/api/dashboard",
+            headers=connection.client["metabase_session"],
+        )
+
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
