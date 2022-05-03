@@ -22,12 +22,12 @@
     },
     "username": {
       "title": "Username",
-      "description": "username for the Redash",
+      "description": "Username for Redash",
       "type": "string"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "URL for the redash instance",
+      "description": "URL for the Redash instance",
       "type": "string",
       "format": "uri",
       "default": "http://localhost:5000"
@@ -43,9 +43,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username",
-    "apiKey"
-  ]
+  "required": ["hostPort", "username", "apiKey"]
 }

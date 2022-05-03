@@ -250,7 +250,7 @@ public final class Entity {
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete, boolean internal)
       throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId.toString(), recursive, hardDelete, internal);
+    dao.delete(updatedBy, entityId.toString(), recursive, hardDelete);
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {

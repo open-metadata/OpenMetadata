@@ -95,7 +95,7 @@ const FormBuilder: FunctionComponent<Props> = ({
     [setLocalFormData]
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 1500), [
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
   const handleChange = (updatedData: ConfigData) => {

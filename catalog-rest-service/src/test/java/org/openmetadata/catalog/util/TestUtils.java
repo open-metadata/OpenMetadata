@@ -378,6 +378,7 @@ public final class TestUtils {
       return;
     }
     if (expected != null) {
+      actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);

@@ -22,17 +22,17 @@
     },
     "metastoreHostPort": {
       "title": "Metastore Host and Port",
-      "description": "Host and port of remote Hive Metastore.",
+      "description": "Host and port of the remote Hive Metastore.",
       "type": "string"
     },
     "metastoreFilePath": {
       "title": "Metastore Local File Path",
-      "description": "File path of local Hive Metastore.",
+      "description": "File path of the local Hive Metastore.",
       "type": "string"
     },
     "appName": {
       "title": "Application Name",
-      "description": "pySpark App Name",
+      "description": "pySpark App Name.",
       "type": "string"
     },
     "connectionOptions": {

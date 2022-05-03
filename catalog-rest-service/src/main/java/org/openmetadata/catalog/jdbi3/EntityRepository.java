@@ -205,7 +205,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
-  public abstract void storeRelationships(T entity);
+  public abstract void storeRelationships(T entity) throws IOException;
 
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
@@ -364,7 +364,9 @@ public abstract class EntityRepository<T> {
   }
 
   public final T create(UriInfo uriInfo, T entity) throws IOException {
-    return withHref(uriInfo, createInternal(entity));
+    entity = withHref(uriInfo, createInternal(entity));
+    postCreate(entity);
+    return entity;
   }
 
   @Transaction
@@ -384,8 +386,16 @@ public abstract class EntityRepository<T> {
     return update(uriInfo, original, updated);
   }
 
-  @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException {
+    PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
+    if (response.getStatus() == Status.CREATED) {
+      postCreate(response.getEntity());
+    }
+    return response;
+  }
+
+  @Transaction
+  public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
     prepare(updated);
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated), ALL), entityClass);
@@ -393,6 +403,16 @@ public abstract class EntityRepository<T> {
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
     return update(uriInfo, original, updated);
+  }
+
+  protected void postCreate(T entity) {
+    // Override to perform any operation required after creation.
+    // For example ingestion pipeline creates a pipeline in AirFlow.
+  }
+
+  protected void postUpdate(T entity) {
+    // Override to perform any operation required after an entity update.
+    // For example ingestion pipeline creates a pipeline in AirFlow.
   }
 
   @Transaction
@@ -470,23 +490,25 @@ public abstract class EntityRepository<T> {
     return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
       throws IOException {
-    return delete(updatedBy, id, recursive, hardDelete, false);
+    DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
+    postDelete(response.getEntity());
+    return response;
+  }
+
+  protected void postDelete(T entity) {
+    // Override this method to perform any operation required after deletion.
+    // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
   @Transaction
-  public final DeleteResponse<T> delete(
-      String updatedBy, String id, boolean recursive, boolean hardDelete, boolean internal) throws IOException {
+  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+      throws IOException {
     // Validate entity
-    String json = dao.findJsonById(id, hardDelete ? Include.ALL : Include.NON_DELETED);
+    String json = dao.findJsonById(id, ALL);
     if (json == null) {
-      if (!internal) {
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-      } else {
-        return null; // Maybe already deleted
-      }
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
 
     T original = JsonUtils.readValue(json, entityClass);

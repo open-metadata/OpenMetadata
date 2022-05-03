@@ -34,10 +34,12 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig,loggerLevel";
   private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig,loggerLevel";
+  private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
     super(
@@ -112,6 +114,31 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private EntityReference getService(IngestionPipeline ingestionPipeline) throws IOException {
     return getContainer(ingestionPipeline.getId(), Entity.INGESTION_PIPELINE);
+  }
+
+  @Override
+  protected void postUpdate(IngestionPipeline entity) {
+    deploy(entity); // Deploy the ingestion pipeline
+  }
+
+  @Override
+  protected void postCreate(IngestionPipeline entity) {
+    deploy(entity); // Deploy the ingestion pipeline
+  }
+
+  @Override
+  protected void postDelete(IngestionPipeline entity) {
+    pipelineServiceClient.deletePipeline(entity.getName());
+  }
+
+  public void setPipelineServiceClient(PipelineServiceClient client) {
+    pipelineServiceClient = client;
+  }
+
+  private void deploy(IngestionPipeline ingestionPipeline) {
+    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
+      pipelineServiceClient.deployPipeline(ingestionPipeline);
+    }
   }
 
   public static class IngestionPipelineEntityInterface extends EntityInterface<IngestionPipeline> {
