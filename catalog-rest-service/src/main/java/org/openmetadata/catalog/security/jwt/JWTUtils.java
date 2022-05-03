@@ -15,8 +15,6 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
@@ -44,11 +42,11 @@ public final class JWTUtils {
       throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
     RSAPrivateKey privateKey = getRSAPrivateKey(jwtTokenConfiguration);
     Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-    Map<String, Object> headerClaims = new HashMap();
     Date expires = getExpiryDate(expiry);
     return JWT.create()
         .withIssuer(jwtTokenConfiguration.getJWTIssuer())
         .withClaim("email", user.getEmail())
+        .withClaim("isBot", true)
         .withIssuedAt(new Date(System.currentTimeMillis()))
         .withExpiresAt(expires)
         .sign(algorithm);
