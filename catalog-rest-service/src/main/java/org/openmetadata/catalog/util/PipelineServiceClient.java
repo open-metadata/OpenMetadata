@@ -55,14 +55,15 @@ public abstract class PipelineServiceClient {
 
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
       throws IOException, InterruptedException {
-    String authToken = authenticate ? String.format(AUTH_TOKEN, authenticate()) : null;
-    HttpRequest request =
+    String authToken = authenticate ? authenticate() : null;
+    HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(URI.create(endpoint))
             .header(CONTENT_HEADER, CONTENT_TYPE)
-            .header(AUTH_HEADER, authToken)
-            .POST(HttpRequest.BodyPublishers.ofString(payload))
-            .build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+            .POST(HttpRequest.BodyPublishers.ofString(payload));
+    if (authenticate) {
+      requestBuilder.header(AUTH_HEADER, String.format(AUTH_TOKEN, authToken));
+    }
+    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   /* Authenticate with the service */
