@@ -91,12 +91,12 @@ class DashboardDetailsPageTest {
     Events.click(webDriver, dashboardDetails.dashboard());
     Events.click(webDriver, common.selectTable());
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), description);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
     Events.click(webDriver, common.editDescriptionButton());
-    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.COMMAND + "A");
+    Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), updatedDescription);
     Events.click(webDriver, common.editDescriptionSaveButton());
     webDriver.navigate().refresh();
