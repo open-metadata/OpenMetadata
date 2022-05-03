@@ -93,14 +93,13 @@ export const getEditIngestionPath = (
 export const getExplorePathWithInitFilters = (
   searchQuery = '',
   tab = 'tables',
-  filter: string
+  filter: ''
 ) => {
   let path = ROUTES.EXPLORE_WITH_SEARCH;
   path = path
     .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
-  // return filter ? `${path}?${filter}` : path;
   return filter
     ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
     : path;
