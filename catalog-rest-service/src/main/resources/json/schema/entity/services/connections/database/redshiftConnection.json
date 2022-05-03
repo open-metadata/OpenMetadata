@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Redshift. This user should have privileges to read all the metadata in Redshift.",
+      "description": "Username to connect to Redshift. This user should have privileges to read all the metadata in Redshift.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Redshift.",
+      "description": "Password to connect to Redshift.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Redshift.",
+      "description": "Host and port of the Redshift service.",
       "type": "string"
     },
     "database": {
@@ -74,8 +74,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }

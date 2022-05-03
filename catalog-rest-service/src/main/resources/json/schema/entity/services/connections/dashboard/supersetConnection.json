@@ -22,25 +22,25 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "URL for the superset instance",
+      "description": "URL for the superset instance.",
       "type": "string",
       "format": "uri",
       "default": "http://localhost:8088"
     },
     "username": {
       "title": "Username",
-      "description": "username for the Superset",
+      "description": "Username for Superset.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password for the Superset",
+      "description": "Password for Superset.",
       "type": "string",
       "format": "password"
     },
     "provider": {
       "title": "Provider",
-      "description": "authenticaiton provider for the Superset",
+      "description": "Authentication provider for the Superset service.",
       "type": "string",
       "default": "db"
     },
