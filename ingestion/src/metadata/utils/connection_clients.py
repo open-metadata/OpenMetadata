@@ -46,3 +46,9 @@ class KafkaClient:
 class MetabaseClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class RedashClient:
+    def __init__(self, client) -> None:
+        self.client = client
