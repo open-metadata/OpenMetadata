@@ -449,6 +449,7 @@ const Users = ({
                   isMulti
                   aria-label="Select roles"
                   className="tw-ml-1"
+                  id="select-role"
                   isSearchable={false}
                   options={userRolesOption}
                   placeholder="Roles..."

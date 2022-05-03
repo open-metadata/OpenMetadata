@@ -278,7 +278,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       setStatusOwner('success');
       setTimeout(() => {
         setInitialOwnerLoadingState();
-      }, 3000);
+      }, 300);
     }
   }, [currentUser]);
 
@@ -287,7 +287,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       setStatusTier('success');
       setTimeout(() => {
         setInitialTierLoadingState();
-      }, 3000);
+      }, 300);
     }
   }, [currentTier]);
 

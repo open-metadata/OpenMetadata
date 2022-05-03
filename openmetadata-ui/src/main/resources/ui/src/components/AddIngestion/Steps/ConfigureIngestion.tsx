@@ -49,6 +49,8 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   resultLimit,
+  enableDebugLog,
+  handleEnableDebugLog,
   getExcludeValue,
   getIncludeValue,
   handleIngestionName,
@@ -206,6 +208,17 @@ const ConfigureIngestion = ({
             <p className="tw-text-grey-muted tw-mt-3">
               Extract sample data from each table
             </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Enable Debug Log</label>
+              <ToggleSwitchV1
+                checked={enableDebugLog}
+                handleCheck={handleEnableDebugLog}
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
             {getSeparator('')}
           </Field>
           {!isNil(markDeletedTables) && (

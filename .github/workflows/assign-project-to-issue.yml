@@ -1,0 +1,19 @@
+name: Auto Assign Issues to Roadmap
+
+on:
+  issues:
+    types: [ labeled ]
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  assign_to_project:
+    runs-on: ubuntu-latest
+    name: Assign topic to Project
+    steps:
+      - name: Assign issues with new-topic label to GitHub Project
+        uses: srggrs/assign-one-project-github-action@1.2.0
+        if: contains(github.event.issue.labels.*.name, 'epic')
+        with:
+          project: 'https://github.com/orgs/open-metadata/projects/6'
+          column_name: 'No Status'

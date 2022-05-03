@@ -26,7 +26,7 @@ export interface DBTFormCommonProps {
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
-  data?: DbtConfigSource;
+  data: DbtConfigSource;
   gcsType?: GCS_CONFIG;
   source?: DBT_SOURCES;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;

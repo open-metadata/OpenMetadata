@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the MsSQL. This user should have privileges to read all the metadata in MsSQL.",
+      "description": "Username to connect to MSSQL. This user should have privileges to read all the metadata in MsSQL.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the MsSQL.",
+      "description": "Password to connect to MSSQL.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the MsSQL.",
+      "description": "Host and port of the MSSQL service.",
       "type": "string"
     },
     "database": {
@@ -76,8 +76,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }
