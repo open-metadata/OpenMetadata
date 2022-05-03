@@ -194,7 +194,6 @@ class REST:
         """
         retry_codes = self._retry_codes
         resp = self._session.request(method, url, **opts)
-        print(resp.json())
         try:
             resp.raise_for_status()
         except HTTPError as http_error:

@@ -34,6 +34,27 @@ class Policy:
         self.policy_dict = policy_dict
 
 
+class Tag:
+    tag_dict: dict
+
+    def __init__(self, tag_dict) -> None:
+        self.tag_dict = tag_dict
+
+
+class MessagingService:
+    messaging_service_dict: dict
+
+    def __init__(self, messaging_service_dict) -> None:
+        self.messaging_service_dict = messaging_service_dict
+
+
+class DatabaseService:
+    database_service_dict: dict
+
+    def __init__(self, database_service_dict) -> None:
+        self.database_service_dict = database_service_dict
+
+
 class MigrateSource(MetadataSource):
     """OpenmetadataSource class
 
@@ -84,3 +105,28 @@ class MigrateSource(MetadataSource):
         policy_entities = self.metadata.client.get("/policies")
         for policy in policy_entities.get("data"):
             yield Policy(policy)
+
+    def fetch_tags(self) -> Tag:
+        """fetch policy method
+
+        Returns:
+            Tag:
+        """
+        tag_entities = self.metadata.client.get("/tags")
+        for tag in tag_entities.get("data"):
+            tag_detailed_entity = self.metadata.client.get(f"/tags/{tag.get('name')}")
+            yield Tag(tag_detailed_entity)
+
+    def fetch_messaging_services(self) -> MessagingService:
+        service_entities = self.metadata.client.get(
+            "/services/messagingServices?fields=owner"
+        )
+        for service in service_entities.get("data"):
+            yield MessagingService(service)
+
+    def fetch_database_services(self) -> DatabaseService:
+        service_entities = self.metadata.client.get(
+            "/services/databaseServices?fields=owner"
+        )
+        for service in service_entities.get("data"):
+            yield DatabaseService(service)

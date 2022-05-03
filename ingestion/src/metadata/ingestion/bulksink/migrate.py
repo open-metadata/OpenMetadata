@@ -17,19 +17,22 @@ from datetime import datetime
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createMessagingService import (
+    CreateMessagingServiceRequest,
+)
+from metadata.generated.schema.api.services.createPipelineService import (
+    CreatePipelineServiceRequest,
+)
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
 )
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -39,20 +42,18 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
 
@@ -91,17 +92,9 @@ class MigrateBulkSink(BulkSink):
         return cls(config, metadata_config)
 
     def write_records(self) -> None:
-        with open(f"{self.config.filename}/table.json") as file:
-            self.write_tables(file)
 
         with open(f"{self.config.filename}/user.json") as file:
             self.write_users(file)
-
-        # with open(f"{self.config.filename}/topic.json") as file:
-        #     self.write_topics(file)
-
-        # with open(f"{self.config.filename}/pipeline.json") as file:
-        #     self.write_pipelines(file)
 
         with open(f"{self.config.filename}/glossary.json") as file:
             self.write_glossary(file)
@@ -109,8 +102,26 @@ class MigrateBulkSink(BulkSink):
         with open(f"{self.config.filename}/glossary_term.json") as file:
             self.write_glossary_term(file)
 
-        with open(f"{self.config.filename}/glossary_term.json") as file:
-            self.write_glossary_term(file)
+        with open(f"{self.config.filename}/tag.json") as file:
+            self.write_tag(file)
+
+        with open(f"{self.config.filename}/messaging_service.json") as file:
+            self.write_messaging_services(file)
+
+        with open(f"{self.config.filename}/pipeline_service.json") as file:
+            self.write_pipeline_services(file)
+
+        with open(f"{self.config.filename}/database_service.json") as file:
+            self.write_database_services(file)
+
+        with open(f"{self.config.filename}/table.json") as file:
+            self.write_tables(file)
+
+        with open(f"{self.config.filename}/topic.json") as file:
+            self.write_topics(file)
+
+        with open(f"{self.config.filename}/pipeline.json") as file:
+            self.write_pipelines(file)
 
     def _separate_fqn(self, fqn):
         database_schema, table = fqn.split(".")[-2:]
@@ -118,11 +129,11 @@ class MigrateBulkSink(BulkSink):
             database_schema = None
         return {"database": None, "database_schema": database_schema, "name": table}
 
-    def update_through_patch(self, entity, id, description, path, op):
+    def update_through_patch(self, entity, id, value, path, op):
         """
         Update the Entity Through Patch API
         """
-        data = [{"op": op, "path": path, "value": description}]
+        data = [{"op": op, "path": path, "value": value}]
         resp = self.metadata.client.patch(
             "{}/{}".format(self.metadata.get_suffix(entity), id), data=json.dumps(data)
         )
@@ -130,6 +141,32 @@ class MigrateBulkSink(BulkSink):
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PATCH to {self.metadata.get_suffix(entity)}, {data.json()}"
             )
+
+    def write_columns(self, columns, table_id):
+        for i in range(len(columns)):
+            if columns[i].get("description"):
+                self.update_through_patch(
+                    Table,
+                    table_id,
+                    columns[i].get("description"),
+                    f"/columns/{i}/description",
+                    "replace",
+                )
+                self.update_through_patch(
+                    Table,
+                    table_id,
+                    columns[i].get("description"),
+                    f"/columns/{i}/description",
+                    "replace",
+                )
+            if columns[i].get("tags"):
+                tags_list = columns[i].get("tags", [])
+                self._add_tags_by_patch(
+                    tags_list=tags_list,
+                    entity=Table,
+                    entity_id=table_id,
+                    path=f"/columns/{i}/tags",
+                )
 
     def write_tables(self, file):
         tables = json.load(file)
@@ -150,6 +187,11 @@ class MigrateBulkSink(BulkSink):
                     "/description",
                     "replace",
                 )
+                self._add_entity_owner_by_patch(
+                    owner_dict=table.get("database").get("owner"),
+                    entity=DatabaseSchema,
+                    entity_id=table_entity.databaseSchema.id.__root__,
+                )
                 self.update_through_patch(
                     Table,
                     table_entity.id.__root__,
@@ -157,23 +199,13 @@ class MigrateBulkSink(BulkSink):
                     "/description",
                     "replace",
                 )
+                self._add_entity_owner_by_patch(
+                    owner_dict=table.get("owner"),
+                    entity=Table,
+                    entity_id=table_entity.id.__root__,
+                )
                 columns = table.get("columns")
-                for i in range(len(columns)):
-                    if columns[i].get("description"):
-                        self.update_through_patch(
-                            Table,
-                            table_entity.id.__root__,
-                            columns[i].get("description"),
-                            f"/columns/{i}/description",
-                            "replace",
-                        )
-                        self.update_through_patch(
-                            Table,
-                            table_entity.id.__root__,
-                            columns[i].get("description"),
-                            f"/columns/{i}/description",
-                            "replace",
-                        )
+                self.write_columns(columns, table_entity.id.__root__)
                 logger.info(
                     "Successfully ingested table {}.{}".format(
                         table_entity.database.name,
@@ -291,70 +323,104 @@ class MigrateBulkSink(BulkSink):
         except Exception as err:
             self.status.failure(f"User:")
 
+    def _add_entity_owner_by_patch(self, owner_dict, entity, entity_id):
+        if owner_dict:
+            owner = self.metadata.get_by_name(
+                Team if owner_dict.get("type") == "team" else User,
+                owner_dict.get("name"),
+            )
+            if owner:
+                self.update_through_patch(
+                    entity,
+                    entity_id,
+                    {"id": str(owner.id.__root__), "type": owner_dict.get("type")},
+                    "/owner",
+                    "add",
+                )
+
+    def _add_tags_by_patch(self, tags_list, entity, entity_id, path="/tags"):
+        for i in range(len(tags_list)):
+            value = {
+                "tagFQN": tags_list[i].get("tagFQN"),
+                "labelType": tags_list[i].get("labelType"),
+                "state": tags_list[i].get("state"),
+                "source": tags_list[i].get("source"),
+            }
+            self.update_through_patch(
+                entity,
+                entity_id,
+                value,
+                f"{path}/{i}",
+                "add",
+            )
+
     def write_topics(self, file) -> None:
-        try:
-            topics = json.load(file)
-            for topic in topics:
-                topic_obj = Topic(**topic)
-                topic_request = CreateTopicRequest(
-                    name=topic_obj.name,
-                    description=topic_obj.description,
-                    schemaText=topic_obj.schemaText,
-                    schemaType=topic_obj.schemaType,
-                    cleanupPolicies=topic_obj.cleanupPolicies,
-                    replicationFactor=topic_obj.replicationFactor,
-                    maximumMessageSize=topic_obj.maximumMessageSize,
-                    retentionSize=topic_obj.retentionSize,
-                    retentionTime=topic_obj.retentionTime,
-                    topicConfig=topic_obj.topicConfig,
-                    owner=topic_obj.owner,
-                    tags=topic_obj.tags,
-                    service=EntityReference(
-                        name=topic_obj.service.name, type=topic_obj.service.type
-                    ),
-                    partitions=topic_obj.partitions,
+        topics = json.load(file)
+        for topic in topics:
+            try:
+                topic_obj: Topic = self.metadata.get_by_name(
+                    Topic, topic.get("fullyQualifiedName")
                 )
-                created_topic = self.metadata.create_or_update(topic_request)
-                logger.info(
-                    f"Successfully ingested topic {created_topic.name.__root__}"
+                self.update_through_patch(
+                    Topic,
+                    topic_obj.id.__root__,
+                    topic.get("description"),
+                    "/description",
+                    "replace",
                 )
-                self.status.records_written(f"Topic: {created_topic.name.__root__}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest topic {topic.name.__root__}")
-            logger.error(err)
-            self.status.failure(f"Topic: {topic.name}")
+                tags_list = topic.get("tags", [])
+                self._add_tags_by_patch(
+                    tags_list=tags_list, entity=Topic, entity_id=topic_obj.id.__root__
+                )
+                self._add_entity_owner_by_patch(
+                    owner_dict=topic.get("owner"),
+                    entity=Topic,
+                    entity_id=topic_obj.id.__root__,
+                )
+                logger.info(f"Successfully ingested topic {topic.get('name')}")
+                self.status.records_written(f"Topic: {topic.get('name')}")
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest topic {topic.get('name')}")
+                logger.error(err)
+                self.status.failure(f"Topic: {topic.get('name')}")
 
     def write_pipelines(self, file):
         pipelines = json.load(file)
         for pipeline in pipelines:
             try:
-                pipeline_obj = Pipeline(**pipeline)
-                pipeline_service = self.metadata.get_by_name(
-                    entity=PipelineService, fqdn=pipeline_obj.service.name
+                pipelines_obj: Pipeline = self.metadata.get_by_name(
+                    Pipeline, pipeline.get("fullyQualifiedName")
                 )
-                pipeline_request = CreatePipelineRequest(
-                    name=pipeline_obj.name,
-                    displayName=pipeline_obj.displayName,
-                    description=pipeline_obj.description,
-                    pipelineUrl=pipeline_obj.pipelineUrl,
-                    tasks=pipeline_obj.tasks,
-                    service=pipeline_service,
+                self.update_through_patch(
+                    Pipeline,
+                    pipelines_obj.id.__root__,
+                    pipeline.get("description"),
+                    "/description",
+                    "replace",
                 )
-                created_pipeline = self.metadata.create_or_update(pipeline_request)
-                logger.info(
-                    f"Successfully ingested Pipeline {created_pipeline.displayName}"
+                self._add_entity_owner_by_patch(
+                    owner_dict=pipeline.get("owner"),
+                    entity=Pipeline,
+                    entity_id=pipelines_obj.id.__root__,
                 )
-                self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
+                tags_list = pipeline.get("tags", [])
+                self._add_tags_by_patch(
+                    tags_list=tags_list,
+                    entity=Pipeline,
+                    entity_id=pipelines_obj.id.__root__,
+                )
+                logger.info(f"Successfully ingested topic {pipeline.get('name')}")
+                self.status.records_written(f"Topic: {pipeline.get('name')}")
+
             except (APIError, ValidationError) as err:
-                logger.error(f"Failed to ingest pipeline {pipeline_obj.name}")
+                logger.error(f"Failed to ingest pipeline {pipeline.get('name')}")
                 logger.error(err)
-                self.status.failure(f"Pipeline: {pipeline_obj.name}")
+                self.status.failure(f"Pipeline: {pipeline.get('name')}")
 
     def _get_glossary_reviewers_entities(self, reviewers):
         users = []
         for reviewer in reviewers:
             user = self.metadata.get_by_name(entity=User, fqdn=reviewer.name)
-            print(user.id.__root__)
             users.append(
                 EntityReference(
                     id=user.id.__root__, name=user.name.__root__, type=reviewer.type
@@ -403,7 +469,6 @@ class MigrateBulkSink(BulkSink):
     def _get_glossary_term_entity(self, glossary_term):
         if glossary_term:
             try:
-                print(glossary_term.name)
                 parent = self.metadata.get_by_name(
                     entity=GlossaryTerm, fqdn=glossary_term.name
                 )
@@ -441,6 +506,169 @@ class MigrateBulkSink(BulkSink):
                 logger.error(f"Failed to ingest pipeline {glossary_term_obj.name}")
                 logger.error(err)
                 self.status.failure(f"Pipeline: {glossary_term_obj.name}")
+
+    def _create_tag_category(self, tag_category: CreateTagCategoryRequest):
+        resp = self.metadata.client.post(
+            self.metadata.get_suffix(CreateTagCategoryRequest), data=tag_category.json()
+        )
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to POST to {self.metadata.get_suffix(CreateTagCategoryRequest)}, {tag_category.json()}"
+            )
+
+    def _add_tag_to_category(self, tag_category_name, tag: CreateTagRequest):
+        resp = self.metadata.client.post(
+            self.metadata.get_suffix(CreateTagRequest) + "/" + tag_category_name,
+            data=tag.json(),
+        )
+        if not resp:
+            raise EmptyPayloadException(
+                f"Got an empty response when trying to POST to {self.metadata.get_suffix(CreateTagRequest)}, {tag.json()}"
+            )
+
+    def write_tag(self, file):
+        tags = json.load(file)
+        for tag_category in tags:
+            try:
+                tag_category_request = CreateTagCategoryRequest(
+                    name=tag_category.get("name"),
+                    description=tag_category.get("description"),
+                    categoryType=tag_category.get("categoryType"),
+                )
+                self._create_tag_category(tag_category_request)
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest TagCategory {tag_category.get('name')}")
+                logger.error(err)
+                self.status.failure(f"TagCategory: {tag_category.get('name')}")
+
+            try:
+                for tag in tag_category.get("children", []):
+                    tag_request = CreateTagRequest(
+                        name=tag.get("name"), description=tag.get("description")
+                    )
+
+                    self._add_tag_to_category(tag_category.get("name"), tag_request)
+
+                logger.info(f"Successfully ingested Tag {tag_category_request.name}")
+                self.status.records_written(f"Tag: {tag_category_request.name}")
+
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest tag {tag_category.get('name')}")
+                logger.error(err)
+                self.status.failure(f"Tag: {tag_category.get('name')}")
+
+    def write_messaging_services(self, file):
+        messaging_services = json.load(file)
+        for messaging_service in messaging_services:
+            try:
+                service_obj: MessagingService = self.metadata.get_by_name(
+                    MessagingService, messaging_service.get("name")
+                )
+                if not service_obj:
+                    continue
+                owner_dict = messaging_service.get("owner")
+                owner_ref = None
+                if owner_dict:
+                    owner = self.metadata.get_by_name(
+                        Team if owner_dict.get("type") == "team" else User,
+                        owner_dict.get("name"),
+                    )
+                    owner_ref = EntityReference(
+                        id=owner.id,
+                        name=owner_dict.get("name"),
+                        type=owner_dict.get("type"),
+                    )
+
+                service_request = CreateMessagingServiceRequest(
+                    name=messaging_service.get("name"),
+                    description=messaging_service.get("description"),
+                    serviceType=messaging_service.get("serviceType"),
+                    connection=service_obj.connection,
+                    owner=owner_ref,
+                )
+                self.metadata.create_or_update(service_request)
+                logger.info(
+                    f"Successfully ingested messaging service {messaging_service.get('name')}"
+                )
+                self.status.records_written(f"Tag: {messaging_service.get('name')}")
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest tag {messaging_service.get('name')}")
+                logger.error(err)
+                self.status.failure(f"Tag: {messaging_service.get('name')}")
+
+    def write_pipeline_services(self, file):
+        pipeline_services = json.load(file)
+        for pipeline_service in pipeline_services:
+            try:
+                owner_dict = pipeline_service.get("owner")
+                owner_ref = None
+                if owner_dict:
+                    owner = self.metadata.get_by_name(
+                        Team if owner_dict.get("type") == "team" else User,
+                        owner_dict.get("name"),
+                    )
+                    owner_ref = EntityReference(
+                        id=owner.id,
+                        name=owner_dict.get("name"),
+                        type=owner_dict.get("type"),
+                    )
+
+                service_request = CreatePipelineServiceRequest(
+                    name=pipeline_service.get("name"),
+                    description=pipeline_service.get("description"),
+                    serviceType=pipeline_service.get("serviceType"),
+                    pipelineUrl=pipeline_service.get("pipelineUrl"),
+                    owner=owner_ref,
+                )
+                self.metadata.create_or_update(service_request)
+                logger.info(
+                    f"Successfully ingested messaging service {pipeline_service.get('name')}"
+                )
+                self.status.records_written(f"Tag: {pipeline_service.get('name')}")
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest tag {pipeline_service.get('name')}")
+                logger.error(err)
+                self.status.failure(f"Tag: {pipeline_service.get('name')}")
+
+    def write_database_services(self, file):
+        database_services = json.load(file)
+        for databas_services in database_services:
+            try:
+                service_obj: DatabaseService = self.metadata.get_by_name(
+                    DatabaseService, databas_services.get("name")
+                )
+                if not service_obj:
+                    continue
+                owner_dict = databas_services.get("owner")
+                owner_ref = None
+                if owner_dict:
+                    owner = self.metadata.get_by_name(
+                        Team if owner_dict.get("type") == "team" else User,
+                        owner_dict.get("name"),
+                    )
+                    owner_ref = EntityReference(
+                        id=owner.id,
+                        name=owner_dict.get("name"),
+                        type=owner_dict.get("type"),
+                    )
+
+                database_service = CreateDatabaseServiceRequest(
+                    name=databas_services.get("name"),
+                    description=databas_services.get("description"),
+                    serviceType=databas_services.get("serviceType"),
+                    connection=service_obj.connection,
+                    owner=owner_ref,
+                )
+
+                self.metadata.create_or_update(database_service)
+                logger.info(
+                    f"Successfully ingested messaging service {databas_services.get('name')}"
+                )
+                self.status.records_written(f"Tag: {databas_services.get('name')}")
+            except (APIError, ValidationError) as err:
+                logger.error(f"Failed to ingest tag {databas_services.get('name')}")
+                logger.error(err)
+                self.status.failure(f"Tag: {databas_services.get('name')}")
 
     def get_status(self):
         return self.status

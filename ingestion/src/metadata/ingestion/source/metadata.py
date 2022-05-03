@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -177,6 +180,10 @@ class MetadataSource(Source[Entity]):
         yield from self.fetch_glossary()
         yield from self.fetch_role()
         yield from self.fetch_policy()
+        yield from self.fetch_tags()
+        yield from self.fetch_messaging_services()
+        yield from self.fetch_pipeline_services()
+        yield from self.fetch_database_services()
 
     def fetch_table(self) -> Table:
         """Fetch table method
@@ -373,21 +380,20 @@ class MetadataSource(Source[Entity]):
         Returns:
             Chart:
         """
-        if self.service_connection.includeGlossaryTerms:
-            after = None
-            while True:
-                chart_entities = self.metadata.list_entities(
-                    entity=Chart,
-                    fields=["owner", "followers", "tags"],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for chart in chart_entities.entities:
-                    self.status.scanned_team(chart.name)
-                    yield chart
-                if chart_entities.after is None:
-                    break
-                after = chart_entities.after
+        after = None
+        while True:
+            chart_entities = self.metadata.list_entities(
+                entity=Chart,
+                fields=["owner", "followers", "tags"],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for chart in chart_entities.entities:
+                self.status.scanned_team(chart.name)
+                yield chart
+            if chart_entities.after is None:
+                break
+            after = chart_entities.after
 
     def fetch_glossary(self) -> Glossary:
         """fetch glossary method
@@ -417,21 +423,20 @@ class MetadataSource(Source[Entity]):
         Returns:
             Role:
         """
-        if self.service_connection.includeGlossaryTerms:
-            after = None
-            while True:
-                role_entities = self.metadata.list_entities(
-                    entity=Role,
-                    fields=[],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for role_entity in role_entities.entities:
-                    self.status.scanned_team(role_entity.name)
-                    yield role_entity
-                if role_entities.after is None:
-                    break
-                after = role_entities.after
+        after = None
+        while True:
+            role_entities = self.metadata.list_entities(
+                entity=Role,
+                fields=[],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for role_entity in role_entities.entities:
+                self.status.scanned_team(role_entity.name)
+                yield role_entity
+            if role_entities.after is None:
+                break
+            after = role_entities.after
 
     def fetch_policy(self) -> Policy:
         """fetch policy method
@@ -439,21 +444,110 @@ class MetadataSource(Source[Entity]):
         Returns:
             Policy:
         """
-        if self.service_connection.includeGlossaryTerms:
-            after = None
-            while True:
-                policy_entities = self.metadata.list_entities(
-                    entity=Policy,
-                    fields=[],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for policy_entity in policy_entities.entities:
-                    self.status.scanned_team(policy_entity.name)
-                    yield policy_entity
-                if policy_entities.after is None:
-                    break
-                after = policy_entities.after
+        after = None
+        while True:
+            policy_entities = self.metadata.list_entities(
+                entity=Policy,
+                fields=[],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for policy_entity in policy_entities.entities:
+                self.status.scanned_team(policy_entity.name)
+                yield policy_entity
+            if policy_entities.after is None:
+                break
+            after = policy_entities.after
+
+    def fetch_tags(self) -> Tag:
+        """fetch tags method
+
+        Returns:
+            Tags:
+        """
+        after = None
+        while True:
+            policy_entities = self.metadata.list_entities(
+                entity=Tag,
+                fields=[],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for policy_entity in policy_entities.entities:
+                self.status.scanned_team(policy_entity.name)
+                yield policy_entity
+            if policy_entities.after is None:
+                break
+            after = policy_entities.after
+
+    def fetch_tag_categories(self) -> TagCategory:
+        """fetch tag categories method
+
+        Returns:
+            TagCategory:
+        """
+        after = None
+        while True:
+            policy_entities = self.metadata.list_entities(
+                entity=TagCategory,
+                fields=[],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for policy_entity in policy_entities.entities:
+                self.status.scanned_team(policy_entity.name)
+                yield policy_entity
+            if policy_entities.after is None:
+                break
+            after = policy_entities.after
+
+    def fetch_messaging_services(self) -> MessagingService:
+        after = None
+        while True:
+            service_entities = self.metadata.list_entities(
+                entity=MessagingService,
+                fields=["owner"],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for service_entity in service_entities.entities:
+                self.status.scanned_team(service_entity.name)
+                yield service_entity
+            if service_entities.after is None:
+                break
+            after = service_entities.after
+
+    def fetch_pipeline_services(self) -> PipelineService:
+        after = None
+        while True:
+            service_entities = self.metadata.list_entities(
+                entity=PipelineService,
+                fields=["owner"],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for service_entity in service_entities.entities:
+                self.status.scanned_team(service_entity.name)
+                yield service_entity
+            if service_entities.after is None:
+                break
+            after = service_entities.after
+
+    def fetch_database_services(self) -> DatabaseService:
+        after = None
+        while True:
+            service_entities = self.metadata.list_entities(
+                entity=DatabaseService,
+                fields=["owner"],
+                after=after,
+                limit=self.service_connection.limitRecords,
+            )
+            for service_entity in service_entities.entities:
+                self.status.scanned_team(service_entity.name)
+                yield service_entity
+            if service_entities.after is None:
+                break
+            after = service_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status
