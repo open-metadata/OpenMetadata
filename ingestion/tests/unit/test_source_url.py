@@ -48,13 +48,3 @@ class TestConfig(TestCase):
         )
         url = get_connection_url(connection)
         assert url == "redshift+psycopg2://username:password@localhost:1234/dev"
-
-    def test_redshift_url_without_db(self):
-        """
-        Validate Redshift without DB URL building
-        """
-        connection_without_db = RedshiftConnection(
-            username="username", password="password", hostPort="localhost:1234"
-        )
-        url_without_db = get_connection_url(connection_without_db)
-        assert url_without_db == "redshift+psycopg2://username:password@localhost:1234"
