@@ -24,6 +24,7 @@ import {
 import {
   DatabaseConnection,
   DatabaseService,
+  DatabaseServiceType,
 } from '../../generated/entity/services/databaseService';
 import {
   MessagingConnection,
@@ -44,6 +45,7 @@ interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
   okText?: string;
   cancelText?: string;
+  serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onCancel?: () => void;
@@ -54,6 +56,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   okText = 'Save',
   cancelText = 'Cancel',
+  serviceType,
   serviceCategory,
   status,
   onCancel,
@@ -149,7 +152,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
         onSubmit={handleSave}
-        onTestConnection={handleTestConnection}
+        onTestConnection={
+          serviceType !== DatabaseServiceType.SampleData
+            ? handleTestConnection
+            : undefined
+        }
       />
     );
   };
