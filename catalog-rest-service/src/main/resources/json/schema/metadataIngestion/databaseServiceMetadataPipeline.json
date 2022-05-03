@@ -10,6 +10,12 @@
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
     },
+    "dbtKeyPrefix": {
+      "title": "Prefix of object keys",
+      "description": "Enter the prefix for the name of object where the dbt files are stored",
+      "type": "string",
+      "default": ""
+    },
     "dbtLocalConfig": {
       "title": "DBT Local Config Source",
       "description": "DBT Catalog and Manifest file path config.",
@@ -51,6 +57,10 @@
         "dbtSecurityConfig": {
           "title": "DBT S3 Security Config",
           "$ref": "../security/credentials/awsCredentials.json"
+        },
+        "dbtPrefixConfig": {
+          "title": "DBT Prefix Config",
+          "$ref": "#/definitions/dbtKeyPrefix"
         }
       }
     },
@@ -61,6 +71,10 @@
         "dbtSecurityConfig": {
           "title": "DBT GCS Security Config",
           "$ref": "../security/credentials/gcsCredentials.json"
+        },
+        "dbtPrefixConfig": {
+          "title": "DBT Prefix Config",
+          "$ref": "#/definitions/dbtKeyPrefix"
         }
       }
     }
