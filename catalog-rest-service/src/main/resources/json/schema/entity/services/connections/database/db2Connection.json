@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the DB2. This user should have privileges to read all the metadata in DB2.",
+      "description": "Username to connect to DB2. This user should have privileges to read all the metadata in DB2.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect to the DB2.",
+      "description": "Password to connect to DB2.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the DB2",
+      "description": "Host and port of the DB2 service.",
       "type": "string"
     },
     "database": {
@@ -71,8 +71,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }
