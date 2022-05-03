@@ -9,13 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Iterable
 
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.services.connections.database.pinotdbConnection import (
-    PinotdbConnection,
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -37,37 +36,10 @@ class PinotdbSource(SQLSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PinotdbConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, PinotdbConnection):
+        connection: PinotDBConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, PinotDBConnection):
             raise InvalidSourceException(
                 f"Expected PinotdbConnection, but got {connection}"
             )
 
         return cls(config, metadata_config)
-
-    def prepare(self):
-        self.inspector = inspect(self.engine)
-        self.service_connection.database = "default"
-        return super().prepare()
-
-    def next_record(self) -> Iterable[Entity]:
-        for schema in self.inspector.get_schema_names():
-            self.database_source_state.clear()
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_name=schema
-            ):
-                self.status.filter(schema, "Schema pattern not allowed")
-                continue
-
-            if self.source_config.includeTables:
-                yield from self.fetch_tables(self.inspector, schema)
-            if self.source_config.includeViews:
-                yield from self.fetch_views(self.inspector, schema)
-            if self.source_config.markDeletedTables:
-                schema_fqdn = get_fqdn(
-                    DatabaseSchema,
-                    self.config.serviceName,
-                    self.service_connection.database,
-                    schema,
-                )
-                yield from self.delete_tables(schema_fqdn)

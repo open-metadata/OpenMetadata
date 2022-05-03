@@ -53,8 +53,8 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.pinotdbConnection import (
-    PinotdbConnection,
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -332,7 +332,7 @@ def _(connection: DruidConnection):
 
 
 @get_connection_url.register
-def _(connection: PinotdbConnection):
+def _(connection: PinotDBConnection):
     url = get_connection_url_common(connection)
-    url += f"{connection.path}?controller={connection.pinotControllerHost}"
+    url += f"/query/sql?controller={connection.pinotControllerHost}"
     return url

@@ -4,7 +4,7 @@
     "serviceName": "local_pinotdb",
     "serviceConnection": {
       "config": {
-        "type": "Pinotdb",
+        "type": "PinotDB",
         "username":"",
         "password":"",
         "hostPort": "localhost:8000",
