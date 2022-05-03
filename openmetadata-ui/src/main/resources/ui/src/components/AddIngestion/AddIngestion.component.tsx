@@ -25,6 +25,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import {
   ConfigClass,
   CreateIngestionPipeline,
+  LogLevels,
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -155,6 +156,9 @@ const AddIngestion = ({
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
       true
+  );
+  const [enableDebugLog, setEnableDebugLog] = useState(
+    isUndefined(data?.loggerLevel) ?? data?.loggerLevel === LogLevels.Debug
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
@@ -380,6 +384,7 @@ const AddIngestion = ({
         scheduleInterval: repeatFrequency,
         forceDeploy: true,
       },
+      loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: ingestionName,
       owner: {
@@ -426,6 +431,7 @@ const AddIngestion = ({
           endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
+        loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         source: {
           ...data.source,
           sourceConfig: {
@@ -480,6 +486,7 @@ const AddIngestion = ({
             dashboardFilterPattern={dashboardFilterPattern}
             description={description}
             enableDataProfiler={enableDataProfiler}
+            enableDebugLog={enableDebugLog}
             fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
@@ -487,6 +494,7 @@ const AddIngestion = ({
             handleEnableDataProfiler={() =>
               setEnableDataProfiler((pre) => !pre)
             }
+            handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
@@ -521,7 +529,7 @@ const AddIngestion = ({
         {activeIngestionStep === 2 && (
           <DBTConfigFormBuilder
             cancelText="Back"
-            data={dbtConfigSource}
+            data={dbtConfigSource || {}}
             gcsType={gcsConfigType}
             handleGcsTypeChange={(type) => setGcsConfigType(type)}
             handleSourceChange={(src) => setDbtConfigSourceType(src)}

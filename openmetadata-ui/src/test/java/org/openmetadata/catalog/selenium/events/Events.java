@@ -36,11 +36,6 @@ public final class Events {
     driver.findElement(by).sendKeys(sendKeys);
   }
 
-  public static void sendEnter(WebDriver driver, By by) {
-    (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
-    driver.findElement(by).sendKeys(Keys.ENTER);
-  }
-
   public static WebElement waitForElementToDisplay(WebDriver driver, By by, int timeOutSec, int pollingSec) {
     FluentWait<WebDriver> fWait =
         new FluentWait<WebDriver>(driver)
@@ -60,5 +55,10 @@ public final class Events {
       }
     }
     return driver.findElement(by);
+  }
+
+  public static void sendEnter(WebDriver driver, By by) {
+    (new WebDriverWait(driver, 15)).until(ExpectedConditions.elementToBeClickable(by));
+    driver.findElement(by).sendKeys(Keys.ENTER);
   }
 }

@@ -29,6 +29,7 @@ public class UserPage {
   By addUser = By.cssSelector("[data-testid='add-teams']");
   By adamMathews = By.xpath("(//div[@data-testid='user-card-container'])[5]");
   By clickRoleDropdown = By.cssSelector("[id='select-role']");
+  By removeDataConsumer = By.cssSelector("[aria-label='Remove Data Consumer']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");
