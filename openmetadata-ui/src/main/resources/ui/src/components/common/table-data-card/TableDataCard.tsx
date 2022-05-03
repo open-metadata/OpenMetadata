@@ -142,7 +142,7 @@ const TableDataCard: FunctionComponent<Props> = ({
             className="tw-inline tw-h-5 tw-w-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-text-base tw-font-medium tw-pl-2">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-text-base tw-font-semibold tw-pl-2">
             <button
               className="tw-text-grey-body tw-font-medium"
               data-testid="table-link"
