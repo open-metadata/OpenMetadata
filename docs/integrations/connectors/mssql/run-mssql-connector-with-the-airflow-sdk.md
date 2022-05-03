@@ -247,13 +247,13 @@ This is a sample config for MSSQL Usage:
     "stage": {
         "type": "table-usage",
         "config": {
-            "filename": "/tmp/snowflake_usage"
+            "filename": "/tmp/mssql_usage"
         }
     },
     "bulk_sink": {
         "type": "metadata-usage",
         "config": {
-            "filename": "/tmp/snowflake_usage"
+            "filename": "/tmp/mssql_usage"
         }
     },
   "workflowConfig": {
