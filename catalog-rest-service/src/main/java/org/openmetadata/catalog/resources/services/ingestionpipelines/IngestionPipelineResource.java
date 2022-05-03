@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_PIPELINE_STATUSES;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
-import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -365,15 +364,38 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, update);
-    return createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
+    return create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
+  }
+
+  @POST
+  @Path("/deploy/{id}")
+  @Operation(
+      summary = "Deploy a ingestion pipeline run",
+      tags = "IngestionPipelines",
+      description = "Trigger a ingestion pipeline run by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+      })
+  public IngestionPipeline deployIngestion(
+      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      throws IOException {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.deployPipeline(pipeline);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @POST
   @Path("/trigger/{id}")
   @Operation(
-      summary = "Trigger a airflow pipeline run",
+      summary = "Trigger a ingestion pipeline run",
       tags = "IngestionPipelines",
-      description = "Trigger a airflow pipeline run by id.",
+      description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
