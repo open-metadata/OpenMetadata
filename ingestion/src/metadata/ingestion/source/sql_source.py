@@ -17,14 +17,14 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.config.common import FQDN_SEPARATOR
+from metadata.config.common import TagRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -262,8 +262,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status.scanned(fqn)
 
     def next_record(self) -> Iterable[Entity]:
-        inspectors = self.get_databases()
-        for inspector in inspectors:
+        for inspector in self.get_databases():
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
@@ -289,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
-    ) -> Iterable[OMetaDatabaseAndTable]:
+    ) -> Iterable[Union[OMetaDatabaseAndTable, TagRequest]]:
         """
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
@@ -326,6 +325,25 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     description=description if description is not None else " ",
                     columns=table_columns,
                 )
+                tag_category_list = self.fetch_tags(
+                    schema=schema, table=table_name, object_type="table"
+                )
+                table_entity.tags = []
+                for tags in tag_category_list:
+                    yield tags
+                    table_entity.tags.append(
+                        TagLabel(
+                            tagFQN=get_fqdn(
+                                Tag,
+                                tags.category_name.name.__root__,
+                                tags.category_details.name.__root__,
+                            ),
+                            labelType="Automated",
+                            state="Suggested",
+                            source="Tag",
+                        )
+                    )
+                print(table_entity.tags)
                 if self.table_constraints:
                     table_entity.tableConstraints = self.table_constraints
                 try:
@@ -356,9 +374,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
-
                 self.register_record(table_schema_and_db)
-
                 yield table_schema_and_db
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -603,6 +619,10 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         elif column["name"] in unique_columns:
             constraint = Constraint.UNIQUE
         return constraint
+
+    @staticmethod
+    def fetch_tags(self, schema: str, table: str, object_type: str):
+        return []
 
     def _get_columns(
         self, schema: str, table: str, inspector: Inspector

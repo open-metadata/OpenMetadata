@@ -10,8 +10,6 @@
 #  limitations under the License.
 from typing import Iterable, Optional
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
@@ -19,6 +17,11 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
+from metadata.config.common import TagRequest
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -32,7 +35,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import FETCH_SNOWFLAKE_TAGS
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -64,7 +69,33 @@ class SnowflakeSource(SQLSource):
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
+                self.engine = get_connection(self.service_connection)
                 yield inspect(self.engine)
+
+    def fetch_tags(self, schema, table: str, object_type: str = "table"):
+        self.connection.execute(f"USE {self.service_connection.database}.{schema}")
+        result = self.connection.execute(
+            FETCH_SNOWFLAKE_TAGS.format(table, object_type)
+        )
+        tags = []
+        for res in result:
+            logger.info("Ingesting Tags")
+            row = list(res)
+            tag_category = row[2]
+            primary_tag = row[3]
+            tags.append(
+                TagRequest(
+                    category_name=CreateTagCategoryRequest(
+                        name=tag_category,
+                        description="SNOWFLAKE TAG NAME",
+                        categoryType="Descriptive",
+                    ),
+                    category_details=CreateTagRequest(
+                        name=primary_tag, description="SNOWFLAKE TAG VALUE"
+                    ),
+                )
+            )
+        return tags
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         resp_sample_data = super().fetch_sample_data(schema, table)

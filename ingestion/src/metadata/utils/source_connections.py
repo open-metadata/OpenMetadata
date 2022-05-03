@@ -228,34 +228,16 @@ def _(connection: TrinoConnection):
 
 @get_connection_url.register
 def _(connection: SnowflakeConnection):
-
-    url = f"{connection.scheme.value}://"
-
-    if connection.username:
-        url += f"{connection.username}"
-        if not connection.password:
-            connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
-
-        url += "@"
-
-    url += connection.account
-    url += f"/{connection.database}" if connection.database else ""
-    if connection.warehouse:
-        url += "?warehouse=" + connection.warehouse
-    options = (
-        connection.connectionOptions.dict()
-        if connection.connectionOptions
-        else connection.connectionOptions
-    )
-    if options:
-        if not connection.database:
-            url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
-        url = f"{url}?{params}"
-    return url
+    connect_string = get_connection_url_common(connection)
+    options = {
+        "account": connection.account,
+        "warehouse": connection.warehouse,
+        "role": connection.role,
+    }
+    params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
+    if params:
+        connect_string = f"{connect_string}?{params}"
+    return connect_string
 
 
 @get_connection_url.register

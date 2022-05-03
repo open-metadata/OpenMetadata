@@ -16,7 +16,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 from sql_metadata import Parser
 
-from metadata.config.common import ConfigModel
+from metadata.config.common import ConfigModel, TagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -127,6 +127,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
+        elif isinstance(record, TagRequest):
+            self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
         elif isinstance(record, OMetaTableTest):
@@ -175,6 +177,7 @@ class MetadataRestSink(Sink[Entity]):
                 description=db_schema_and_table.table.description,
                 databaseSchema=db_schema_ref,
                 tableConstraints=db_schema_and_table.table.tableConstraints,
+                tags=db_schema_and_table.table.tags,
             )
             if db_schema_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
@@ -392,6 +395,21 @@ class MetadataRestSink(Sink[Entity]):
             service=location.service,
         )
         return self.metadata.create_or_update(location_request)
+
+    def write_tag_category(self, record: TagRequest):
+        try:
+            self.metadata.create_tag_category(tag_category_body=record.category_name)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+        try:
+            self.metadata.create_primary_tag(
+                category_name=record.category_name.name.__root__,
+                primary_tag_body=record.category_details,
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
