@@ -10,6 +10,10 @@
 #  limitations under the License.
 
 version: "3.9"
+volumes:
+  ingestion-volume-dag-airflow:
+  ingestion-volume-dags:
+  ingestion-volume-tmp:
 services:
   mysql:
     container_name: openmetadata_mysql
@@ -112,6 +116,10 @@ services:
       - "localhost:172.16.240.10"
       - "localhost:172.16.240.11"
       - "localhost:172.16.240.13"
+    volumes:
+      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
+      - ingestion-volume-dags:/airflow/dags
+      - ingestion-volume-tmp:/tmp
 
 networks:
   app_net:
