@@ -25,7 +25,8 @@ public class UserPage {
   By users = By.cssSelector("[title='Users']");
   By editRole = By.cssSelector("[data-testid='edit-roles']");
   By saveRole = By.cssSelector("[data-testid='save-roles']");
-  By removeRole = By.xpath("(//div[@class='css-xb97g8'])[2]");
+  By removeRole = By.cssSelector("[aria-label='Remove Admin']");
+  By clickRoleDropdown = By.cssSelector("[id='select-role']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");

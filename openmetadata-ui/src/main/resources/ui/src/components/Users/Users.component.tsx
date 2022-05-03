@@ -336,6 +336,7 @@ const Users = ({
                   isMulti
                   aria-label="Select teams"
                   className="tw-ml-1"
+                  id="select-role"
                   isSearchable={false}
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),

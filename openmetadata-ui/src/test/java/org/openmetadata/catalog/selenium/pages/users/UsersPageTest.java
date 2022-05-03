@@ -62,7 +62,7 @@ class UsersPageTest {
     Events.click(webDriver, userPage.users());
     Events.click(webDriver, userPage.selectUser());
     Events.click(webDriver, userPage.editRole());
-    Events.click(webDriver, common.containsText("Data Consumer"));
+    Events.click(webDriver, userPage.clickRoleDropdown());
     Events.click(webDriver, common.containsText("Admin"));
     Events.click(webDriver, userPage.saveRole());
     Thread.sleep(waitTime);
