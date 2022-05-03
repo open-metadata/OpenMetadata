@@ -96,14 +96,15 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       for (User user : users) {
         UUID prevDefaultRoleId = prevDefaultRole.getId();
         boolean prevDefaultRoleExists =
-            user.getRoles().stream().anyMatch(role -> role.getId().equals(prevDefaultRoleId));
+            user.getInheritedRoles().stream().anyMatch(role -> role.getId().equals(prevDefaultRoleId));
         if (prevDefaultRoleExists) {
           fail(
               String.format(
                   "Previous default role %s has not been removed for user %s",
                   prevDefaultRole.getName(), user.getName()));
         }
-        boolean defaultRoleExists = user.getRoles().stream().anyMatch(role -> role.getId().equals(defaultRole.getId()));
+        boolean defaultRoleExists =
+            user.getInheritedRoles().stream().anyMatch(role -> role.getId().equals(defaultRole.getId()));
         if (!defaultRoleExists) {
           fail(String.format("Default role %s was not set for user %s", defaultRole.getName(), user.getName()));
         }
@@ -211,7 +212,6 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicies(), role.getUsers());
 
-    // .../roles?fields=policy,users
     String fields = "policies,teams,users";
     role =
         byName
