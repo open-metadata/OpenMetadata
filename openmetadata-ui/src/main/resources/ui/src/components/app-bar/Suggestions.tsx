@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
+import { startCase } from 'lodash';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
@@ -24,7 +26,7 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Filter } from '../AdvanceSearch/AdvanceSearch';
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 
 type SuggestionProp = {
   searchText: string;
@@ -261,18 +263,16 @@ const Suggestions = ({
     return filters.map((filter, i) => {
       return (
         <div
-          className="tw-inline tw-border tw-rounded-2xl tw-border-main tw-px-2 tw-mr-2 tw-cursor-pointer tw-mb-1 tw-shadow tw-z-50"
+          className="tw-inline tw-border tw-rounded-2xl tw-border-main tw-px-1.5 tw-py-1 tw-mr-2 tw-cursor-pointer tw-mb-1 tw-z-50"
           key={i}
           onMouseDown={(e) => {
             e.stopPropagation();
             onFilterUpdateHandle({ key: filter, value: '' });
           }}>
-          <span>{filter}</span>
-          <SVGIcons
-            alt="plus"
-            className="tw-ml-2"
-            icon={Icons.ICON_PLUS}
-            width="14px"
+          <span>{startCase(filter)}</span>
+          <FontAwesomeIcon
+            className="tw-text-primary tw-ml-1.5 tw-text-lg tw-align-middle"
+            icon="plus-circle"
           />
         </div>
       );

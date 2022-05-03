@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import React, { FC, Fragment, useState } from 'react';
 import AppState from '../../AppState';
 import {
   inPageSearchOptions,
@@ -21,22 +21,9 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import SearchOptions from '../app-bar/SearchOptions';
 import Suggestions from '../app-bar/Suggestions';
-
-interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleSearchBoxOpen: (value: boolean) => void;
-}
-
-export interface Filter {
-  key: string;
-  value: string;
-}
+import { AdvanceSearchProp, Filter } from './AdvanceSearch.interface';
+import InputSearch from './InputSearch';
+import InputText from './InputText';
 
 const AdvanceSearch: FC<AdvanceSearchProp> = ({
   searchValue,
@@ -71,7 +58,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
       'tags',
       'databaseSchema',
       'Services',
-    ].filter((f) => !selectedFilters.find((s) => s.key === f));
+    ];
 
     return filters;
   };
@@ -80,69 +67,53 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
     setSelectedFilters((prev) => [...prev, filter]);
   };
 
-  const onFilterRemoveHandle = (filter: Filter) => {
-    setSelectedFilters((prev) => prev.filter((f) => f.key !== filter.key));
+  const onFilterRemoveHandle = (index: number) => {
+    setSelectedFilters((prev) => {
+      const selectedValues = [...prev];
+      selectedValues.splice(index, 1);
+
+      return selectedValues;
+    });
   };
 
   return (
     <Fragment>
       <div
         className={classNames(
-          'tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-form-inputs tw-p-0.5 tw-flex tw-items-center',
+          'tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-form-inputs tw-py-0.5 tw-px-1.5 tw-flex tw-items-center',
           {
             'tw-border-focus': isWrapperFocused,
           }
         )}>
-        <div className="tw-w-11/12 tw-flex tw-items-center tw-overflow-x-auto">
-          <div className="tw-flex tw-items-center" id="advance-filters">
+        <div
+          className="tw-w-11/12 tw-flex tw-items-center tw-overflow-x-auto"
+          id="advance-filters">
+          <div className="tw-flex tw-items-center">
             {selectedFilters.map((filter, i) => (
-              <span
-                className={classNames(
-                  'tw-border tw-border-primary tw-rounded-2xl tw-inline-block tw-items-center tw-px-1 tw-bg-primary-lite tw-py-0.5 tw-mr-1'
-                )}
-                key={i}>
-                <span className="tw-flex tw-items-center">
-                  <span>{filter.key}:</span>
-                  <input
-                    autoComplete="off"
-                    className="tw-border-none focus:tw-outline-none tw-ml-1 tw-w-10/12"
-                    name="database"
-                    style={{ background: 'none' }}
-                    type="text"
-                    value={filter.value}
-                  />
-                  <span
-                    className="tw-ml-1 tw-cursor-pointer "
-                    onClick={() => onFilterRemoveHandle(filter)}>
-                    <SVGIcons
-                      alt="times-circle"
-                      icon="icon-times-circle"
-                      width="20px"
-                    />
-                  </span>
-                </span>
-              </span>
+              <InputText
+                filter={filter}
+                index={i}
+                key={i}
+                onFilterRemoveHandle={onFilterRemoveHandle}
+              />
             ))}
           </div>
           <div className="tw-w-full">
-            <input
-              autoComplete="off"
-              className="focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-w-full tw-bg-gray-50"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards and Pipeline"
-              type="text"
-              value={searchValue}
-              onBlur={handleOnBlur}
-              onChange={(e) => {
-                handleSearchChange(e.target.value);
-              }}
-              onFocus={handleOnFocus}
-              onKeyDown={handleKeyDown}
+            <InputSearch
+              handleKeyDown={handleKeyDown}
+              handleOnBlur={handleOnBlur}
+              handleOnFocus={handleOnFocus}
+              handleSearchChange={handleSearchChange}
+              placeholder={
+                selectedFilters.length
+                  ? ''
+                  : 'Search for Table, Topics, Dashboards and Pipeline'
+              }
+              searchValue={searchValue}
             />
           </div>
         </div>
-        <div className="tw-w-auto tw-m-auto">
+        <div className="tw-w-auto tw-m-auto tw-mt-2">
           <span
             className="tw-cursor-pointer tw-block tw-z-40 tw-w-4 tw-h-4 tw-justify-self-end"
             onClick={(e) => {
