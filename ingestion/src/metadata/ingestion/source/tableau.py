@@ -11,7 +11,6 @@
 """
 Tableau source module
 """
-
 import traceback
 import uuid
 from typing import Iterable, List
@@ -37,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -46,6 +48,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -82,8 +85,11 @@ class TableauSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.connection_config = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
-        self.client = self.tableau_client()
+        self.source_config: DashboardServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
+
+        self.client = get_connection(self.connection_config)
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )
