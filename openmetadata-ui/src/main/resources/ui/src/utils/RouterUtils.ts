@@ -93,7 +93,7 @@ export const getEditIngestionPath = (
 export const getExplorePathWithInitFilters = (
   searchQuery = '',
   tab = 'tables',
-  filter: ''
+  filter = ''
 ) => {
   let path = ROUTES.EXPLORE_WITH_SEARCH;
   path = path
