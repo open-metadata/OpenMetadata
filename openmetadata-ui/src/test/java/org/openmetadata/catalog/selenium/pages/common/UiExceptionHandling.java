@@ -72,7 +72,7 @@ class UiExceptionHandling {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver();
+    webDriver = new ChromeDriver(options);
     common = new Common(webDriver);
     actions = new Actions(webDriver);
     databaseServicePage = new DatabaseServicePage(webDriver);
