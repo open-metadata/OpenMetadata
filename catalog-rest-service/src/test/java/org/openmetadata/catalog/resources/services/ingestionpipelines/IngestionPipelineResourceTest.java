@@ -22,7 +22,6 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -50,7 +49,6 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeline;
@@ -206,10 +204,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         createRequest(test)
             .withService(BIGQUERY_REFERENCE)
             .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(true));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        IngestionPipelineDeploymentException.buildMessageByName(create.getName(), "value"));
+    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "due to airflow API");
   }
 
   @Test
