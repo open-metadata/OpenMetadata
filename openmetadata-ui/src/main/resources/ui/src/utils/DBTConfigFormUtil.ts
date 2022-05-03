@@ -227,7 +227,7 @@ export const checkDbtGCSCredsConfigRules = (
 export const getSourceTypeFromConfig = (
   data?: DbtConfigSource
 ): DbtSourceTypes => {
-  let sourceType = '' as DBT_SOURCES;
+  let sourceType = DBT_SOURCES.local;
   let gcsType = undefined;
   if (data) {
     if (!isNil(data.dbtSecurityConfig)) {
