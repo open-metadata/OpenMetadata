@@ -138,7 +138,7 @@ function getInvalidEmailErrors<
 ) {
   let isValid = true;
   for (const field of ruleFields[rule]) {
-    if (!isValidEmail(data[field] as unknown as string)) {
+    if (data[field] && !isValidEmail(data[field] as unknown as string)) {
       isValid = false;
       errors[field] = jsonData['form-error-messages'][
         'invalid-email'
@@ -164,7 +164,7 @@ function getInvalidUrlErrors<
 ) {
   let isValid = true;
   for (const field of ruleFields[rule]) {
-    if (!isValidUrl(data[field] as unknown as string)) {
+    if (data[field] && !isValidUrl(data[field] as unknown as string)) {
       isValid = false;
       errors[field] = jsonData['form-error-messages'][
         'invalid-url'
@@ -213,13 +213,6 @@ export const checkDbtGCSCredsConfigRules = (
         // even if isValid is already false
         isValid =
           getInvalidUrlErrors(data, errors, ruleFields, rule) && isValid;
-
-        for (const field of ruleFields[rule]) {
-          if (!isValidUrl(data[field] || '')) {
-            isValid = false;
-            errors[field] = jsonData['form-error-messages']['invalid-url'];
-          }
-        }
 
         break;
       }
