@@ -128,6 +128,7 @@ plugins: Dict[str, Set[str]] = {
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
     "deltalake": {"delta-spark~=1.1.0"},
+    "pinotdb": {"pinotdb~=0.3.11"},
 }
 dev = {
     "boto3==1.20.14",
