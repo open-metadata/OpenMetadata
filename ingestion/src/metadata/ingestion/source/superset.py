@@ -301,7 +301,7 @@ class SupersetSource(Source[Entity]):
                         yield lineage
 
                 except Exception as err:
-                    logger.debug(traceback.print_exc())
+                    logger.debug(traceback.format_exc())
                     logger.error(err)
 
     # pylint: disable=too-many-locals

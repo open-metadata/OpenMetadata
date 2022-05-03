@@ -45,7 +45,7 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of AzureSQL",
+      "description": "Host and port of the AzureSQL service.",
       "type": "string"
     },
     "database": {
@@ -55,7 +55,7 @@
     },
     "driver": {
       "title": "Driver",
-      "description": "SQLAlchemy driver for AzureSQL",
+      "description": "SQLAlchemy driver for AzureSQL.",
       "type": "string",
       "default": "{ODBC Driver 17 for SQL Server}"
     },

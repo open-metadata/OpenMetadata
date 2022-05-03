@@ -152,6 +152,8 @@ const jsonData = {
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
+    'invalid-url': 'Url is invalid.',
+    'is-required': 'is required',
   },
   label: {
     'delete-entity-text':

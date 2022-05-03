@@ -119,6 +119,7 @@ class DatabaseServicePageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
@@ -156,6 +157,7 @@ class DatabaseServicePageTest {
     }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, databaseServicePage.viewService());
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion

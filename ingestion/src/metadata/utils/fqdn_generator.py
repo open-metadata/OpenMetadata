@@ -64,8 +64,8 @@ def _(tag_category="", tag_name=""):
 
 
 @fqdn_build_registry.add(DataModel)
-def _(schema_name="", model_name=""):
-    return FQDN_SEPARATOR.join(replace_none(schema_name, model_name))
+def _(database_name="", schema_name="", model_name=""):
+    return FQDN_SEPARATOR.join(replace_none(database_name, schema_name, model_name))
 
 
 @fqdn_build_registry.add(AddLineageRequest)

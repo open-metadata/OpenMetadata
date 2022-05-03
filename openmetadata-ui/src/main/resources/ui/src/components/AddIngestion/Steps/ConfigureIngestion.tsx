@@ -35,11 +35,11 @@ const ConfigureIngestion = ({
   chartFilterPattern,
   fqnFilterPattern,
   includeView,
+  markDeletedTables,
   serviceCategory,
   enableDataProfiler,
   ingestSampleData,
   pipelineType,
-  markDeletedTables,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
@@ -49,14 +49,16 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   resultLimit,
+  enableDebugLog,
+  handleEnableDebugLog,
   getExcludeValue,
   getIncludeValue,
   handleIngestionName,
-  handleMarkDeletedTables,
   handleDescription,
   handleShowFilter,
   handleEnableDataProfiler,
   handleIncludeView,
+  handleMarkDeletedTables,
   handleIngestSampleData,
   handleQueryLogDuration,
   handleStageFileLocation,
@@ -206,6 +208,17 @@ const ConfigureIngestion = ({
             <p className="tw-text-grey-muted tw-mt-3">
               Extract sample data from each table
             </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Enable Debug Log</label>
+              <ToggleSwitchV1
+                checked={enableDebugLog}
+                handleCheck={handleEnableDebugLog}
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
             {getSeparator('')}
           </Field>
           {!isNil(markDeletedTables) && (

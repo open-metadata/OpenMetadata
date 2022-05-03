@@ -34,13 +34,13 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "BigQuery APIs URL",
+      "description": "BigQuery APIs URL.",
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
     "username": {
       "title": "Username",
-      "description": "username to connect to the Bigquery. This user should have privileges to read all the metadata in Bigquery.",
+      "description": "Username to connect to Bigquery. This user should have privileges to read all the metadata in Bigquery.",
       "type": "string"
     },
     "projectId": {

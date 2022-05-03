@@ -15,8 +15,8 @@ from typing import Iterable
 
 import looker_sdk
 
-from metadata.generated.schema.entity.services.connections.dashboard import (
-    lookerConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -82,8 +82,8 @@ class LookerSource(Source[Entity]):
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: lookerConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, lookerConnection):
+        connection: LookerConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
                 f"Expected LookerConnection, but got {connection}"
             )
@@ -143,7 +143,7 @@ class LookerSource(Source[Entity]):
                     try:
                         yield from self._get_dashboard_elements(iter_chart)
                     except Exception as err:
-                        logger.debug(traceback.print_exc())
+                        logger.debug(traceback.format_exc())
                         logger.error(err)
                 yield Dashboard(
                     name=dashboard.id,

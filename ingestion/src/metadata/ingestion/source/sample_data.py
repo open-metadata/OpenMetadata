@@ -473,7 +473,7 @@ class SampleDataSource(Source[Entity]):
                     }
                     sql_object["user"] = EntityReference(**user_dict, type="user")
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.debug(err)
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(
@@ -589,7 +589,7 @@ class SampleDataSource(Source[Entity]):
                 )
                 yield model_ev
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
