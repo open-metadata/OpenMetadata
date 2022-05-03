@@ -82,6 +82,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   onCancel: jest.fn(),
   onNext: jest.fn(),
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
+  enableDebugLog: false,
+  handleEnableDebugLog: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -110,6 +112,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(2);
-    expect(toggleSwitchs.length).toBe(4);
+    expect(toggleSwitchs.length).toBe(5);
   });
 });
