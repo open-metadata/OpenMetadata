@@ -49,8 +49,7 @@ public final class Events {
         fWait.until(ExpectedConditions.visibilityOf(driver.findElement(by)));
         fWait.until(ExpectedConditions.elementToBeClickable(driver.findElement(by)));
       } catch (Exception e) {
-        System.out.println("Element Not found trying again");
-        e.printStackTrace();
+        LOG.info("Element not founf trying again");
         fWait.withTimeout(Duration.ofSeconds(2));
       }
     }

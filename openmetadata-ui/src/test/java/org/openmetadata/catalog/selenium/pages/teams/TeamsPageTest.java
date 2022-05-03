@@ -157,7 +157,7 @@ class TeamsPageTest {
 
   @Test
   @Order(5)
-  void addAsset() throws InterruptedException {
+  void addAsset() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openTeamsPage();
     Events.click(webDriver, common.containsText(teamDisplayName));
@@ -169,6 +169,7 @@ class TeamsPageTest {
     Events.click(webDriver, common.manage()); // Manage
     Events.click(webDriver, common.ownerDropdown()); // Owner
     Events.sendKeys(webDriver, teamsPage.searchInput(), teamDisplayName);
+    Events.waitForElementToDisplay(webDriver, common.selectUser(), 10, 2);
     Events.click(webDriver, common.selectUser()); // Select User/Team
     Events.click(webDriver, myDataPage.home());
     Events.click(webDriver, teamsPage.teams());
