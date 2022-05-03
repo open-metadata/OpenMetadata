@@ -129,7 +129,7 @@ wget https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-rele
 ### 3.  Start the docker containers
 
 ```
-docker compose up
+docker compose up -d
 ```
 
 This will create a docker network and four containers for the following services:
