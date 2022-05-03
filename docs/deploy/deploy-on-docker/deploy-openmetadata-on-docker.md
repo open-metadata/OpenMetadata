@@ -114,44 +114,19 @@ Create a new directory for OpenMetadata and navigate into that directory.
 mkdir openmetadata-docker && cd openmetadata-docker
 ```
 
-### 2. Clone the main branch from OpenMetadata repository
+### 2. Download docker-compose.yaml file from latest release
+
+Download docker-compose.yml from [OpenMetadata Releases](https://github.com/open-metadata/OpenMetadata/releases/tag/0.10.0-release)&#x20;
+
+![](../../.gitbook/assets/docker-compose-release.jpg)
+
+Run the following command to download the file
 
 ```
-git clone https://github.com/open-metadata/OpenMetadata.git
+wget https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-release/docker-compose.yml
 ```
 
-After running the above command, you should see the output similar to the following.
-
-```
-Cloning into 'OpenMetadata'...
-remote: Enumerating objects: 70650, done.
-remote: Counting objects: 100% (10/10), done.
-remote: Compressing objects: 100% (7/7), done.
-Receiving objects: 100% (70650/70650), 532.79 MiB | 5.65 MiB/s, done.
-remote: Total 70650 (delta 0), reused 6 (delta 0), pack-reused 70640
-Resolving deltas: 100% (41944/41944), done.
-Updating files: 100% (2636/2636), done.
-```
-
-### 3. Navigate into the OpenMetadata directory
-
-```
-cd OpenMetadata
-```
-
-### 4. Navigate into the docker directory inside OpenMetadata
-
-```
-cd docker
-```
-
-### 5. Navigate into the local-metadata directory inside the docker
-
-```
-cd local-metadata
-```
-
-### 6.  Start the docker containers
+### 3.  Start the docker containers
 
 ```
 docker compose up
@@ -195,21 +170,7 @@ ca8e590de33f   local-metadata_mysql                                   "/entrypoi
 
 ```
 
-### 8. Log in to Airflow&#x20;
-
-```
-http://localhost:8080
-```
-
-You will see a login prompt similar to the one in the figure below. Use the following credentials to log in to Airflow.
-
-Username: `admin`
-
-Password: `admin`
-
-![](../../.gitbook/assets/airflow-login.png)
-
-### 9. Begin using OpenMetadata
+### 8. Begin using OpenMetadata
 
 Finally, visit the following url to begin exploring OpenMetadata.
 
