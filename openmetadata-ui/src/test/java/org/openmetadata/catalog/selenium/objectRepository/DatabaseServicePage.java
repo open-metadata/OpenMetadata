@@ -19,6 +19,7 @@ public class DatabaseServicePage {
   By viewService = By.cssSelector("[data-testid='view-service-button']");
   By clickDatabase = By.xpath("//tr[@data-testid='column']/td/a");
   By deleteDatabase = By.cssSelector("[data-testid='delete-button']");
+  By databaseTable = By.cssSelector("[data-testid='Databases']");
 
   public By ingestionInterval(String interval) {
     return By.xpath("//select[@id='ingestionType']/option[@value='" + interval + "']");
