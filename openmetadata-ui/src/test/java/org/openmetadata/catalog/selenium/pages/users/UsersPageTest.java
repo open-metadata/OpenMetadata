@@ -2,6 +2,7 @@ package org.openmetadata.catalog.selenium.pages.users;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -12,6 +13,7 @@ import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.objectRepository.UserPage;
 import org.openmetadata.catalog.selenium.properties.Property;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -62,7 +64,12 @@ class UsersPageTest {
     Events.click(webDriver, userPage.users());
     Events.click(webDriver, userPage.selectUser());
     Events.click(webDriver, userPage.editRole());
-    Events.click(webDriver, userPage.clickRoleDropdown());
+    try {
+      Events.click(webDriver, userPage.removeDataConsumer());
+      Events.click(webDriver, userPage.clickRoleDropdown());
+    } catch (NoSuchElementException | TimeoutException e) {
+      Events.click(webDriver, userPage.clickRoleDropdown());
+    }
     Events.click(webDriver, common.containsText("Admin"));
     Events.click(webDriver, userPage.saveRole());
     Thread.sleep(waitTime);

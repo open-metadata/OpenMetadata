@@ -27,6 +27,7 @@ public class UserPage {
   By saveRole = By.cssSelector("[data-testid='save-roles']");
   By removeRole = By.cssSelector("[aria-label='Remove Admin']");
   By clickRoleDropdown = By.cssSelector("[id='select-role']");
+  By removeDataConsumer = By.cssSelector("[aria-label='Remove Data Consumer']");
 
   public By selectRole(String role) {
     return By.cssSelector("[data-testid='" + role + "']");
