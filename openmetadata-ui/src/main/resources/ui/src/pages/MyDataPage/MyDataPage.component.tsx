@@ -55,6 +55,8 @@ const MyDataPage = () => {
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
+  const [ownedDataCount, setOwnedDataCount] = useState(0);
+  const [followedDataCount, setFollowedDataCount] = useState(0);
 
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
@@ -203,8 +205,10 @@ const MyDataPage = () => {
       .then(([resOwnedEntity, resFollowedEntity]) => {
         if (resOwnedEntity.status === 'fulfilled') {
           setOwnedData(formatDataResponse(resOwnedEntity.value.data.hits.hits));
+          setOwnedDataCount(resOwnedEntity.value.data.hits.total.value);
         }
         if (resFollowedEntity.status === 'fulfilled') {
+          setFollowedDataCount(resFollowedEntity.value.data.hits.total.value);
           setFollowedData(
             formatDataResponse(resFollowedEntity.value.data.hits.hits)
           );
@@ -353,8 +357,10 @@ const MyDataPage = () => {
             feedFilterHandler={feedFilterHandler}
             fetchFeedHandler={getFeedData}
             followedData={followedData || []}
+            followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
+            ownedDataCount={ownedDataCount}
             paging={paging}
             postFeedHandler={postFeedHandler}
           />
