@@ -72,7 +72,7 @@ class UiExceptionHandling {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--window-size=1280,800");
-    webDriver = new ChromeDriver(options);
+    webDriver = new ChromeDriver();
     common = new Common(webDriver);
     actions = new Actions(webDriver);
     databaseServicePage = new DatabaseServicePage(webDriver);
@@ -130,7 +130,7 @@ class UiExceptionHandling {
     Events.click(webDriver, common.closeWhatsNew());
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Services")); // Setting/Services
-    Events.click(webDriver, databaseServicePage.serviceName("Glue"));
+    Events.click(webDriver, databaseServicePage.serviceName("sample_data"));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), faker.address().toString());
     interceptor("services/databaseServices", "services/testing");
