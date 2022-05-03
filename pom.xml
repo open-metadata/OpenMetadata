@@ -38,7 +38,7 @@
     <mockito.version>4.4.0</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.2</jackson.version>
-    <dropwizard.version>2.0.28</dropwizard.version>
+    <dropwizard.version>2.1.0</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
