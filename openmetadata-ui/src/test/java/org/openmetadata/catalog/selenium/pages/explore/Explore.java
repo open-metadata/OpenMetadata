@@ -95,7 +95,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_data")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -122,7 +122,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_kafka")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -149,7 +149,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_superset")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -176,7 +176,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_airflow")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
