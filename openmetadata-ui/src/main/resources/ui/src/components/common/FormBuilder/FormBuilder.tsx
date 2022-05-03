@@ -108,7 +108,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Running test...</span>
+            <span className="tw-ml-2">Testing Connection</span>
           </div>
         );
       case 'success':
