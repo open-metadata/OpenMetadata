@@ -996,6 +996,7 @@ const ServicePage: FunctionComponent = () => {
                     data={serviceDetails as ServicesData}
                     handleUpdate={handleConfigUpdate}
                     serviceCategory={serviceName as ServiceCategory}
+                    serviceType={serviceDetails?.serviceType || ''}
                   />
                 )}
 
