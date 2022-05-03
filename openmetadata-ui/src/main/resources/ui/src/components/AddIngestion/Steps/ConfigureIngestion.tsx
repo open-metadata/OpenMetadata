@@ -68,106 +68,9 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
-  const getMetadataFilterPatternField = () => {
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showSchemaFilter}
-              excludePattern={schemaFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.SCHEMA)
-              }
-              includePattern={schemaFilterPattern?.includes ?? []}
-              type={FilterPatternEnum.SCHEMA}
-            />
-            <FilterPattern
-              checked={showTableFilter}
-              excludePattern={tableFilterPattern?.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.TABLE)
-              }
-              includePattern={tableFilterPattern?.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.TABLE}
-            />
-          </Fragment>
-        );
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showDashboardFilter}
-              excludePattern={dashboardFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.DASHBOARD)
-              }
-              includePattern={dashboardFilterPattern.includes ?? []}
-              type={FilterPatternEnum.DASHBOARD}
-            />
-            <FilterPattern
-              checked={showChartFilter}
-              excludePattern={chartFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, FilterPatternEnum.CHART)
-              }
-              includePattern={chartFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.CHART}
-            />
-          </Fragment>
-        );
-
-      case ServiceCategory.MESSAGING_SERVICES:
-        return (
-          <FilterPattern
-            checked={showTopicFilter}
-            excludePattern={topicFilterPattern.excludes ?? []}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleChecked={(value) =>
-              handleShowFilter(value, FilterPatternEnum.TOPIC)
-            }
-            includePattern={topicFilterPattern.includes ?? []}
-            showSeparator={false}
-            type={FilterPatternEnum.TOPIC}
-          />
-        );
-      default:
-        return <></>;
-    }
-  };
-
-  const getProfilerFilterPatternField = () => {
-    return (
-      <Fragment>
-        <FilterPattern
-          checked={showFqnFilter}
-          excludePattern={fqnFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, FilterPatternEnum.FQN)
-          }
-          includePattern={fqnFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.FQN}
-        />
-      </Fragment>
-    );
-  };
-  const getMetadataFields = () => {
+  const getDatabaseFieldToggles = () => {
     return (
       <>
-        <div>{getMetadataFilterPatternField()}</div>
         {getSeparator('')}
         <div>
           <Field>
@@ -242,6 +145,111 @@ const ConfigureIngestion = ({
             </Field>
           )}
         </div>
+      </>
+    );
+  };
+
+  const getMetadataFilterPatternField = () => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showSchemaFilter}
+              excludePattern={schemaFilterPattern?.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.SCHEMA)
+              }
+              includePattern={schemaFilterPattern?.includes ?? []}
+              type={FilterPatternEnum.SCHEMA}
+            />
+            <FilterPattern
+              checked={showTableFilter}
+              excludePattern={tableFilterPattern?.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.TABLE)
+              }
+              includePattern={tableFilterPattern?.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.TABLE}
+            />
+            {getDatabaseFieldToggles()}
+          </Fragment>
+        );
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showDashboardFilter}
+              excludePattern={dashboardFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.DASHBOARD)
+              }
+              includePattern={dashboardFilterPattern.includes ?? []}
+              type={FilterPatternEnum.DASHBOARD}
+            />
+            <FilterPattern
+              checked={showChartFilter}
+              excludePattern={chartFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.CHART)
+              }
+              includePattern={chartFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.CHART}
+            />
+          </Fragment>
+        );
+
+      case ServiceCategory.MESSAGING_SERVICES:
+        return (
+          <FilterPattern
+            checked={showTopicFilter}
+            excludePattern={topicFilterPattern.excludes ?? []}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleChecked={(value) =>
+              handleShowFilter(value, FilterPatternEnum.TOPIC)
+            }
+            includePattern={topicFilterPattern.includes ?? []}
+            showSeparator={false}
+            type={FilterPatternEnum.TOPIC}
+          />
+        );
+      default:
+        return <></>;
+    }
+  };
+
+  const getProfilerFilterPatternField = () => {
+    return (
+      <Fragment>
+        <FilterPattern
+          checked={showFqnFilter}
+          excludePattern={fqnFilterPattern?.excludes ?? []}
+          getExcludeValue={getExcludeValue}
+          getIncludeValue={getIncludeValue}
+          handleChecked={(value) =>
+            handleShowFilter(value, FilterPatternEnum.FQN)
+          }
+          includePattern={fqnFilterPattern?.includes ?? []}
+          type={FilterPatternEnum.FQN}
+        />
+      </Fragment>
+    );
+  };
+  const getMetadataFields = () => {
+    return (
+      <>
+        <div>{getMetadataFilterPatternField()}</div>
       </>
     );
   };
