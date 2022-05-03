@@ -1426,6 +1426,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
+  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,
@@ -1433,22 +1434,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
-    return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
-  }
-
-  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
-  protected final T patchEntityAndCheck(
-      T updated,
-      String originalJson,
-      Map<String, String> authHeaders,
-      UpdateType updateType,
-      ChangeDescription expectedChange,
-      T update)
-      throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(entityInterface.getId(), originalJson, update, authHeaders);
+    T returned = patchEntity(entityInterface.getId(), originalJson, updated, authHeaders);
     entityInterface = getEntityInterface(returned);
 
     compareEntities(updated, returned, authHeaders);

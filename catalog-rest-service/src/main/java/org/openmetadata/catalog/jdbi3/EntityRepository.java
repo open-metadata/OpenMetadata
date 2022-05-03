@@ -205,7 +205,7 @@ public abstract class EntityRepository<T> {
    *
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
-  public abstract void storeRelationships(T entity);
+  public abstract void storeRelationships(T entity) throws IOException;
 
   /**
    * PATCH operations can't overwrite certain fields, such as entity ID, fullyQualifiedNames etc. Instead of throwing an
@@ -492,8 +492,8 @@ public abstract class EntityRepository<T> {
 
   public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
       throws IOException {
-    DeleteResponse response = deleteInternal(updatedBy, id, recursive, hardDelete);
-    postDelete((T) response.getEntity());
+    DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
+    postDelete(response.getEntity());
     return response;
   }
 
