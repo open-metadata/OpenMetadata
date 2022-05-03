@@ -32,7 +32,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   okText,
   cancelText,
   gcsType,
-  source = '' as DBT_SOURCES,
+  source = DBT_SOURCES.local,
   handleGcsTypeChange,
   handleSourceChange,
   onCancel,
@@ -139,7 +139,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       default: {
         return (
           <Fragment>
-            No source selected for DBT Configuration.
+            <span data-testid="dbt-source-none">
+              No source selected for DBT Configuration.
+            </span>
             {getSeparator('')}
             <Field className="tw-flex tw-justify-end">
               <Button
