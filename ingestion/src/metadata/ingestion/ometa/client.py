@@ -132,8 +132,10 @@ class REST:
         data=None,
         base_url: URL = None,
         api_version: str = None,
-        headers={"Content-type": "application/json"},
+        headers: dict = None,
     ):
+        if not headers:
+            headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + "/" + version + path)

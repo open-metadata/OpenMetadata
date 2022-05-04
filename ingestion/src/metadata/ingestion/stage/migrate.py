@@ -11,6 +11,7 @@
 
 import json
 import logging
+from functools import singledispatch
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -28,17 +29,89 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.migrate import (
-    DatabaseService,
-    MessagingService,
-    Policy,
-    Tag,
+    DatabaseServiceWrapper,
+    MessagingServiceWrapper,
+    PolicyWrapper,
+    TagWrapper,
 )
 
 logger = logging.getLogger(__name__)
 
+file_dict = {}
+
+
+def open_files(dirPath):
+    file_dict.update(
+        {
+            "Table": open(f"{dirPath}/table.json", "w"),
+            "User": open(f"{dirPath}/user.json", "w"),
+            "Topic": open(f"{dirPath}/topic.json", "w"),
+            "Pipeline": open(f"{dirPath}/pipeline.json", "w"),
+            "Glossary": open(f"{dirPath}/glossary.json", "w"),
+            "GlossaryTerm": open(f"{dirPath}/glossary_term.json", "w"),
+            "TagWrapper": open(f"{dirPath}/tag.json", "w"),
+            "DatabaseServiceWrapper": open(f"{dirPath}/database_service.json", "w"),
+            "Role": open(f"{dirPath}/role.json", "w"),
+            "PolicyWrapper": open(f"{dirPath}/policy.json", "w"),
+            "PipelineService": open(f"{dirPath}/pipeline_service.json", "w"),
+            "MessagingServiceWrapper": open(f"{dirPath}/messaging_service.json", "w"),
+        }
+    )
+
+
+@singledispatch
+def write_record(record):
+    logger.warning(f"Write record not implemented for type {type(record)}")
+
+
+@write_record.register(Table)
+@write_record.register(User)
+@write_record.register(Topic)
+@write_record.register(Pipeline)
+@write_record.register(Glossary)
+@write_record.register(GlossaryTerm)
+@write_record.register(Role)
+@write_record.register(PipelineService)
+def _(record):
+    file = file_dict.get(type(record).__name__)
+    file.write(record.json())
+    file.write("\n")
+
+
+@write_record.register(DatabaseServiceWrapper)
+def _(record):
+    file = file_dict.get(type(record).__name__)
+    json_obj = json.dumps(record.database_service_dict)
+    file.write(json_obj)
+    file.write("\n")
+
+
+@write_record.register(PolicyWrapper)
+def _(record):
+    file = file_dict.get(type(record).__name__)
+    json_obj = json.dumps(record.policy_dict)
+    file.write(json_obj)
+    file.write("\n")
+
+
+@write_record.register(TagWrapper)
+def _(record):
+    file = file_dict.get(type(record).__name__)
+    json_obj = json.dumps(record.tag_dict)
+    file.write(json_obj)
+    file.write("\n")
+
+
+@write_record.register(MessagingServiceWrapper)
+def _(record):
+    file = file_dict.get(type(record).__name__)
+    json_obj = json.dumps(record.messaging_service_dict)
+    file.write(json_obj)
+    file.write("\n")
+
 
 class FileSinkConfig(ConfigModel):
-    filename: str
+    dirPath: str
 
 
 class MigrateStage(Stage[Entity]):
@@ -53,57 +126,7 @@ class MigrateStage(Stage[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.report = StageStatus()
-        self.table_file = open(f"{self.config.filename}/table.json", "w")
-        self.user_file = open(f"{self.config.filename}/user.json", "w")
-        self.team_file = open(f"{self.config.filename}/team.json", "w")
-        self.topic_file = open(f"{self.config.filename}/topic.json", "w")
-        self.pipeline_file = open(f"{self.config.filename}/pipeline.json", "w")
-        self.glossary_file = open(f"{self.config.filename}/glossary.json", "w")
-        self.glossary_term_file = open(
-            f"{self.config.filename}/glossary_term.json", "w"
-        )
-        self.tag_file = open(f"{self.config.filename}/tag.json", "w")
-        self.database_service_file = open(
-            f"{self.config.filename}/database_service.json", "w"
-        )
-        self.role_file = open(f"{self.config.filename}/role.json", "w")
-        self.policy_file = open(f"{self.config.filename}/policy.json", "w")
-        self.pipeline_service_file = open(
-            f"{self.config.filename}/pipeline_service.json", "w"
-        )
-        self.messaging_service_file = open(
-            f"{self.config.filename}/messaging_service.json", "w"
-        )
-        self.table_file.write("[\n")
-        self.user_file.write("[\n")
-        self.tag_file.write("[\n")
-        self.team_file.write("[\n")
-        self.topic_file.write("[\n")
-        self.pipeline_file.write("[\n")
-        self.glossary_file.write("[\n")
-        self.glossary_term_file.write("[\n")
-        self.role_file.write("[\n")
-        self.policy_file.write("[\n")
-        self.database_service_file.write("[\n")
-        self.messaging_service_file.write("[\n")
-        self.pipeline_service_file.write("[\n")
-        self.wrote_table = False
-        self.wrote_user = False
-        self.wrote_team = False
-        self.wrote_topic = False
-        self.wrote_dashboard = False
-        self.wrote_pipeline = False
-        self.wrote_glossary = False
-        self.wrote_glossary_term = False
-        self.wrote_location = False
-        self.wrote_chart = False
-        self.wrote_database_service = False
-        self.wrote_role = False
-        self.wrote_policy = False
-        self.wrote_tag = False
-        self.wrote_messaging_service = False
-        self.wrote_pipeline_service = False
-
+        open_files(self.config.dirPath)
         self.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(self.metadata_config)
         )
@@ -114,141 +137,12 @@ class MigrateStage(Stage[Entity]):
         return cls(config, metadata_config)
 
     def stage_record(self, record: Entity) -> None:
-        if isinstance(record, Table):
-            self.write_table(record=record)
-        elif isinstance(record, User):
-            self.write_user(record=record)
-        elif isinstance(record, Topic):
-            self.write_topic(record=record)
-        elif isinstance(record, Pipeline):
-            self.write_pipeline(record=record)
-        elif isinstance(record, Glossary):
-            self.write_glossary(record=record)
-        elif isinstance(record, GlossaryTerm):
-            self.write_glossary_term(record=record)
-        elif isinstance(record, DatabaseService):
-            self.write_database_service(record=record)
-        elif isinstance(record, Role):
-            self.write_role(record=record)
-        elif isinstance(record, Policy):
-            self.write_policy(record=record)
-        elif isinstance(record, Tag):
-            self.write_tag(record=record)
-        elif isinstance(record, MessagingService):
-            self.write_messaging_service(record=record)
-        elif isinstance(record, PipelineService):
-            self.write_pipeline_service(record=record)
+        write_record(record)
         self.report.records_status(record)
-
-    def write_table(self, record: Entity) -> None:
-        if self.wrote_table:
-            self.table_file.write(",\n")
-        self.wrote_table = True
-        self.table_file.write(record.json())
-
-    def write_user(self, record: Entity) -> None:
-        if self.wrote_user:
-            self.user_file.write(",\n")
-        self.wrote_user = True
-        self.user_file.write(record.json())
-
-    def write_team(self, record: Entity) -> None:
-        if self.wrote_team:
-            self.team_file.write(",\n")
-        self.wrote_team = True
-        self.team_file.write(record.json())
-
-    def write_topic(self, record: Entity) -> None:
-        if self.wrote_topic:
-            self.topic_file.write(",\n")
-        self.wrote_topic = True
-        self.topic_file.write(record.json())
-
-    def write_pipeline(self, record: Entity) -> None:
-        if self.wrote_pipeline:
-            self.pipeline_file.write(",\n")
-        self.wrote_pipeline = True
-        self.pipeline_file.write(record.json())
-
-    def write_glossary(self, record: Entity) -> None:
-        if self.wrote_glossary:
-            self.glossary_file.write(",\n")
-        self.wrote_glossary = True
-        self.glossary_file.write(record.json())
-
-    def write_glossary_term(self, record: Entity) -> None:
-        if self.wrote_glossary_term:
-            self.glossary_term_file.write(",\n")
-        self.wrote_glossary_term = True
-        self.glossary_term_file.write(record.json())
-
-    def write_database_service(self, record: Entity) -> None:
-        if self.wrote_database_service:
-            self.database_service_file.write(",\n")
-        self.wrote_database_service = True
-        tag_obj = json.dumps(record.database_service_dict)
-        self.database_service_file.write(tag_obj)
-
-    def write_role(self, record: Entity) -> None:
-        if self.wrote_role:
-            self.role_file.write(",\n")
-        self.wrote_role = True
-        self.role_file.write(record.json())
-
-    def write_policy(self, record: Entity) -> None:
-        if self.wrote_policy:
-            self.policy_file.write(",\n")
-        self.wrote_policy = True
-        policy_obj = json.dumps(record.policy_dict)
-        self.policy_file.write(policy_obj)
-
-    def write_tag(self, record: Entity) -> None:
-        if self.wrote_tag:
-            self.tag_file.write(",\n")
-        self.wrote_tag = True
-        tag_obj = json.dumps(record.tag_dict)
-        self.tag_file.write(tag_obj)
-
-    def write_messaging_service(self, record: Entity) -> None:
-        if self.wrote_messaging_service:
-            self.messaging_service_file.write(",\n")
-        self.wrote_messaging_service = True
-        tag_obj = json.dumps(record.messaging_service_dict)
-        self.messaging_service_file.write(tag_obj)
-
-    def write_pipeline_service(self, record: Entity) -> None:
-        if self.wrote_pipeline_service:
-            self.pipeline_service_file.write(",\n")
-        self.wrote_pipeline_service = True
-        self.pipeline_service_file.write(record.json())
 
     def get_status(self):
         return self.report
 
     def close(self):
-        self.table_file.write("\n]")
-        self.tag_file.write("\n]")
-        self.user_file.write("\n]")
-        self.team_file.write("\n]")
-        self.topic_file.write("\n]")
-        self.pipeline_file.write("\n]")
-        self.glossary_file.write("\n]")
-        self.glossary_term_file.write("\n]")
-        self.database_service_file.write("\n]")
-        self.messaging_service_file.write("\n]")
-        self.pipeline_service_file.write("\n]")
-        self.role_file.write("\n]")
-        self.policy_file.write("\n]")
-        self.table_file.close()
-        self.user_file.close()
-        self.team_file.close()
-        self.topic_file.close()
-        self.tag_file.close()
-        self.pipeline_file.close()
-        self.glossary_file.close()
-        self.role_file.close()
-        self.glossary_term_file.close()
-        self.database_service_file.close()
-        self.messaging_service_file.close()
-        self.pipeline_service_file.close()
-        self.policy_file.close()
+        for file in file_dict.values():
+            file.close()

@@ -11,14 +11,24 @@
 """Metadata source module"""
 
 import logging
+from typing import Iterable
 
-from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata import MetadataSource
@@ -26,29 +36,28 @@ from metadata.ingestion.source.metadata import MetadataSource
 logger = logging.getLogger(__name__)
 
 
-class Policy:
-
+class PolicyWrapper:
     policy_dict: dict
 
     def __init__(self, policy_dict) -> None:
         self.policy_dict = policy_dict
 
 
-class Tag:
+class TagWrapper:
     tag_dict: dict
 
     def __init__(self, tag_dict) -> None:
         self.tag_dict = tag_dict
 
 
-class MessagingService:
+class MessagingServiceWrapper:
     messaging_service_dict: dict
 
     def __init__(self, messaging_service_dict) -> None:
         self.messaging_service_dict = messaging_service_dict
 
 
-class DatabaseService:
+class DatabaseServiceWrapper:
     database_service_dict: dict
 
     def __init__(self, database_service_dict) -> None:
@@ -96,7 +105,82 @@ class MigrateSource(MetadataSource):
             )
         return cls(config, metadata_config)
 
-    def fetch_policy(self) -> Policy:
+    def next_record(self) -> Iterable[Entity]:
+        if self.service_connection.includeTables:
+            yield from self.fetch_entities(
+                entity_class=Table,
+                fields=[
+                    "columns",
+                    "tableConstraints",
+                    "usageSummary",
+                    "owner",
+                    "tags",
+                    "followers",
+                ],
+            )
+        if self.service_connection.includeTopics:
+            yield from self.fetch_entities(
+                entity_class=Topic,
+                fields=["owner", "tags", "followers"],
+            )
+        if self.service_connection.includeDashboards:
+            yield from self.fetch_entities(
+                entity_class=Dashboard,
+                fields=[
+                    "owner",
+                    "tags",
+                    "followers",
+                    "charts",
+                    "usageSummary",
+                ],
+            )
+
+        if self.service_connection.includePipelines:
+            yield from self.fetch_entities(
+                entity_class=Pipeline,
+                fields=["owner", "tags", "followers", "tasks"],
+            )
+        if self.service_connection.includeUsers:
+            yield from self.fetch_entities(
+                entity_class=User,
+                fields=["teams", "roles"],
+            )
+
+        if self.service_connection.includeTeams:
+            yield from self.fetch_entities(
+                entity_class=Team,
+                fields=["users", "owns"],
+            )
+
+        if self.service_connection.includeGlossaryTerms:
+            yield from self.fetch_entities(
+                entity_class=GlossaryTerm,
+                fields=[],
+            )
+            yield from self.fetch_entities(
+                entity_class=Glossary,
+                fields=["owner", "tags", "reviewers", "usageCount"],
+            )
+
+        if self.service_connection.includePolicy:
+            yield from self.fetch_policy()
+
+        if self.service_connection.includeTags:
+            yield from self.fetch_tags()
+
+        if self.service_connection.includeMessagingServices:
+            yield from self.fetch_messaging_services()
+
+        if self.service_connection.includeDatabaseServices:
+            yield from self.fetch_database_services()
+
+        if self.service_connection.includePipelineServices:
+            yield from self.fetch_entities(
+                entity_class=PipelineService,
+                fields=["owner"],
+            )
+
+    def fetch_policy(self) -> PolicyWrapper:
         """fetch policy method
 
         Returns:
@@ -104,29 +188,28 @@ class MigrateSource(MetadataSource):
         """
         policy_entities = self.metadata.client.get("/policies")
         for policy in policy_entities.get("data"):
-            yield Policy(policy)
+            yield PolicyWrapper(policy)
 
-    def fetch_tags(self) -> Tag:
+    def fetch_tags(self) -> TagWrapper:
         """fetch policy method
-
         Returns:
             Tag:
         """
         tag_entities = self.metadata.client.get("/tags")
         for tag in tag_entities.get("data"):
             tag_detailed_entity = self.metadata.client.get(f"/tags/{tag.get('name')}")
-            yield Tag(tag_detailed_entity)
+            yield TagWrapper(tag_detailed_entity)
 
-    def fetch_messaging_services(self) -> MessagingService:
+    def fetch_messaging_services(self) -> MessagingServiceWrapper:
         service_entities = self.metadata.client.get(
             "/services/messagingServices?fields=owner"
         )
         for service in service_entities.get("data"):
-            yield MessagingService(service)
+            yield MessagingServiceWrapper(service)
 
-    def fetch_database_services(self) -> DatabaseService:
+    def fetch_database_services(self) -> DatabaseServiceWrapper:
         service_entities = self.metadata.client.get(
             "/services/databaseServices?fields=owner"
         )
         for service in service_entities.get("data"):
-            yield DatabaseService(service)
+            yield DatabaseServiceWrapper(service)

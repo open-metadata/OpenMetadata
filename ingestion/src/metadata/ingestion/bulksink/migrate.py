@@ -61,11 +61,12 @@ logger = logging.getLogger(__name__)
 
 
 class MetadataMigrateSinkConfig(ConfigModel):
-    filename: str
+    dirPath: str
 
 
 class MigrateBulkSink(BulkSink):
     config: MetadataMigrateSinkConfig
+    DESCRIPTION_PATH = "/description"
 
     def __init__(
         self,
@@ -77,8 +78,6 @@ class MigrateBulkSink(BulkSink):
         self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
-        # self.file_handler = open(self.config.filename, "r")
-
         self.metadata = OpenMetadata(self.metadata_config)
         self.status = BulkSinkStatus()
         self.table_join_dict = {}
@@ -93,34 +92,34 @@ class MigrateBulkSink(BulkSink):
 
     def write_records(self) -> None:
 
-        with open(f"{self.config.filename}/user.json") as file:
+        with open(f"{self.config.dirPath}/user.json") as file:
             self.write_users(file)
 
-        with open(f"{self.config.filename}/glossary.json") as file:
+        with open(f"{self.config.dirPath}/glossary.json") as file:
             self.write_glossary(file)
 
-        with open(f"{self.config.filename}/glossary_term.json") as file:
+        with open(f"{self.config.dirPath}/glossary_term.json") as file:
             self.write_glossary_term(file)
 
-        with open(f"{self.config.filename}/tag.json") as file:
+        with open(f"{self.config.dirPath}/tag.json") as file:
             self.write_tag(file)
 
-        with open(f"{self.config.filename}/messaging_service.json") as file:
+        with open(f"{self.config.dirPath}/messaging_service.json") as file:
             self.write_messaging_services(file)
 
-        with open(f"{self.config.filename}/pipeline_service.json") as file:
+        with open(f"{self.config.dirPath}/pipeline_service.json") as file:
             self.write_pipeline_services(file)
 
-        with open(f"{self.config.filename}/database_service.json") as file:
+        with open(f"{self.config.dirPath}/database_service.json") as file:
             self.write_database_services(file)
 
-        with open(f"{self.config.filename}/table.json") as file:
+        with open(f"{self.config.dirPath}/table.json") as file:
             self.write_tables(file)
 
-        with open(f"{self.config.filename}/topic.json") as file:
+        with open(f"{self.config.dirPath}/topic.json") as file:
             self.write_topics(file)
 
-        with open(f"{self.config.filename}/pipeline.json") as file:
+        with open(f"{self.config.dirPath}/pipeline.json") as file:
             self.write_pipelines(file)
 
     def _separate_fqn(self, fqn):
@@ -169,8 +168,8 @@ class MigrateBulkSink(BulkSink):
                 )
 
     def write_tables(self, file):
-        tables = json.load(file)
-        for table in tables:
+        for table in file.readlines():
+            table = json.loads(table)
             try:
                 table_entities = self.metadata.search_entities_using_es(
                     table_obj=self._separate_fqn(table.get("fullyQualifiedName")),
@@ -184,7 +183,7 @@ class MigrateBulkSink(BulkSink):
                     DatabaseSchema,
                     table_entity.databaseSchema.id.__root__,
                     table.get("database").get("description"),
-                    "/description",
+                    self.DESCRIPTION_PATH,
                     "replace",
                 )
                 self._add_entity_owner_by_patch(
@@ -196,7 +195,7 @@ class MigrateBulkSink(BulkSink):
                     Table,
                     table_entity.id.__root__,
                     table.get("description"),
-                    "/description",
+                    self.DESCRIPTION_PATH,
                     "replace",
                 )
                 self._add_entity_owner_by_patch(
@@ -242,6 +241,47 @@ class MigrateBulkSink(BulkSink):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
+    def _get_role_ids(self, user_obj: User):
+        if user_obj.roles:  # Roles can be optional
+            role_ids = []
+            for role in user_obj.roles.__root__:
+                try:
+                    role_entity = self.metadata.get_by_name(
+                        entity=Role, fqdn=str(role.name)
+                    )
+                except APIError:
+                    role_entity = self._create_role(role)
+                if role_entity:
+                    role_ids.append(role_entity.id)
+        else:
+            role_ids = None
+
+    def _get_team_ids(self, user_obj):
+        if user_obj.teams:  # Teams can be optional
+            team_ids = []
+            for team in user_obj.teams.__root__:
+                try:
+                    team_entity = self.metadata.get_by_name(entity=Team, fqdn=team.name)
+                    if not team_entity:
+                        raise APIError(
+                            error={
+                                "message": "Creating a new team {}".format(team.name)
+                            }
+                        )
+                    team_ids.append(team_entity.id.__root__)
+                except APIError:
+                    team_request = CreateTeamRequest(
+                        name=team.name,
+                        displayName=team.displayName,
+                        description=team.description,
+                    )
+                    team_entity = self._create_team(team_request)
+                    team_ids.append(team_entity.id.__root__)
+                except Exception as err:
+                    logger.error(err)
+        else:
+            team_ids = None
+
     def write_users(self, file):
         """
         Given a User profile (User + Teams + Roles create requests):
@@ -250,53 +290,13 @@ class MigrateBulkSink(BulkSink):
         3. Create or update User
         """
         try:
-            users = json.load(file)
-            for user in users:
-                user_obj = User(**user)
+            for user in file.readlines():
+                user_obj = User(**json.loads(user))
                 # Create roles if they don't exist
-                if user_obj.roles:  # Roles can be optional
-                    role_ids = []
-                    for role in user_obj.roles.__root__:
-                        try:
-                            role_entity = self.metadata.get_by_name(
-                                entity=Role, fqdn=str(role.name)
-                            )
-                        except APIError:
-                            role_entity = self._create_role(role)
-                        if role_entity:
-                            role_ids.append(role_entity.id)
-                else:
-                    role_ids = None
+                role_ids = self._get_role_ids(user_obj=user_obj)
 
                 # Create teams if they don't exist
-                if user_obj.teams:  # Teams can be optional
-                    team_ids = []
-                    for team in user_obj.teams.__root__:
-                        try:
-                            team_entity = self.metadata.get_by_name(
-                                entity=Team, fqdn=team.name
-                            )
-                            if not team_entity:
-                                raise APIError(
-                                    error={
-                                        "message": "Creating a new team {}".format(
-                                            team.name
-                                        )
-                                    }
-                                )
-                            team_ids.append(team_entity.id.__root__)
-                        except APIError:
-                            team_request = CreateTeamRequest(
-                                name=team.name,
-                                displayName=team.displayName,
-                                description=team.description,
-                            )
-                            team_entity = self._create_team(team_request)
-                            team_ids.append(team_entity.id.__root__)
-                        except Exception as err:
-                            logger.error(err)
-                else:
-                    team_ids = None
+                team_ids = self._get_team_ids(user_obj=user_obj)
 
                 # Update user data with the new Role and Team IDs
                 metadata_user = CreateUserRequest(
@@ -355,8 +355,8 @@ class MigrateBulkSink(BulkSink):
             )
 
     def write_topics(self, file) -> None:
-        topics = json.load(file)
-        for topic in topics:
+        for topic in file.readlines():
+            topic = json.loads(topic)
             try:
                 topic_obj: Topic = self.metadata.get_by_name(
                     Topic, topic.get("fullyQualifiedName")
@@ -365,7 +365,7 @@ class MigrateBulkSink(BulkSink):
                     Topic,
                     topic_obj.id.__root__,
                     topic.get("description"),
-                    "/description",
+                    self.DESCRIPTION_PATH,
                     "replace",
                 )
                 tags_list = topic.get("tags", [])
@@ -385,8 +385,8 @@ class MigrateBulkSink(BulkSink):
                 self.status.failure(f"Topic: {topic.get('name')}")
 
     def write_pipelines(self, file):
-        pipelines = json.load(file)
-        for pipeline in pipelines:
+        for pipeline in file.readlines():
+            pipeline = json.loads(pipeline)
             try:
                 pipelines_obj: Pipeline = self.metadata.get_by_name(
                     Pipeline, pipeline.get("fullyQualifiedName")
@@ -395,7 +395,7 @@ class MigrateBulkSink(BulkSink):
                     Pipeline,
                     pipelines_obj.id.__root__,
                     pipeline.get("description"),
-                    "/description",
+                    self.DESCRIPTION_PATH,
                     "replace",
                 )
                 self._add_entity_owner_by_patch(
@@ -435,11 +435,9 @@ class MigrateBulkSink(BulkSink):
         )
 
     def write_glossary(self, file):
-        glossaries = json.load(file)
-        for glossary in glossaries:
+        for glossary in file.readlines():
             try:
-
-                glossary_obj = Glossary(**glossary)
+                glossary_obj = Glossary(**json.dumps(glossary))
                 glossary_request = CreateGlossaryRequest(
                     name=glossary_obj.name.__root__,
                     displayName=glossary_obj.displayName,
@@ -477,14 +475,13 @@ class MigrateBulkSink(BulkSink):
                     name=glossary_term.name,
                     type=glossary_term.type,
                 )
-            except:
+            except Exception:
                 logger.error(f"Failed to fetch glossary term: {glossary_term.name}")
 
     def write_glossary_term(self, file):
-        glossary_terms = json.load(file)
-        for glossary_term in glossary_terms:
+        for glossary_term in file.readlines():
             try:
-                glossary_term_obj = GlossaryTerm(**glossary_term)
+                glossary_term_obj = GlossaryTerm(**json.loads(glossary_term))
                 glossary_request = CreateGlossaryTermRequest(
                     name=glossary_term_obj.name,
                     glossary=self._get_glossary_entity(glossary_term_obj.glossary),
@@ -527,8 +524,8 @@ class MigrateBulkSink(BulkSink):
             )
 
     def write_tag(self, file):
-        tags = json.load(file)
-        for tag_category in tags:
+        for tag_category in file.readlines():
+            tag_category = json.loads(tag_category)
             try:
                 tag_category_request = CreateTagCategoryRequest(
                     name=tag_category.get("name"),
@@ -558,8 +555,8 @@ class MigrateBulkSink(BulkSink):
                 self.status.failure(f"Tag: {tag_category.get('name')}")
 
     def write_messaging_services(self, file):
-        messaging_services = json.load(file)
-        for messaging_service in messaging_services:
+        for messaging_service in file.readlines():
+            messaging_service = json.loads(messaging_service)
             try:
                 service_obj: MessagingService = self.metadata.get_by_name(
                     MessagingService, messaging_service.get("name")
@@ -597,8 +594,8 @@ class MigrateBulkSink(BulkSink):
                 self.status.failure(f"Tag: {messaging_service.get('name')}")
 
     def write_pipeline_services(self, file):
-        pipeline_services = json.load(file)
-        for pipeline_service in pipeline_services:
+        for pipeline_service in file.readlines():
+            pipeline_service = json.loads(pipeline_service)
             try:
                 owner_dict = pipeline_service.get("owner")
                 owner_ref = None
@@ -631,8 +628,8 @@ class MigrateBulkSink(BulkSink):
                 self.status.failure(f"Tag: {pipeline_service.get('name')}")
 
     def write_database_services(self, file):
-        database_services = json.load(file)
-        for databas_services in database_services:
+        for databas_services in file.readlines():
+            databas_services = json.loads(databas_services)
             try:
                 service_obj: DatabaseService = self.metadata.get_by_name(
                     DatabaseService, databas_services.get("name")

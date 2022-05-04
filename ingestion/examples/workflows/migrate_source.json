@@ -10,7 +10,6 @@
         "includeTables": true,
         "includeUsers": true,
         "includeTopics": true,
-        "includeDashboards": true,
         "limitRecords": 10
       }
     },
@@ -23,13 +22,13 @@
   "stage": {
     "type": "migrate",
     "config": {
-      "filename": "<Directory Path to store data>"
+      "dirPath": "<Directory Path to store data>"
     }
   },
   "bulkSink":{
     "type": "migrate",
     "config": {
-      "filename": "<Directory Path to store data>"
+      "dirPath": "<Directory Path to store data>"
     }
   },
   "workflowConfig": {
