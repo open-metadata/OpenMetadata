@@ -40,3 +40,9 @@ class DeltaLakeClient:
 class KafkaClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class MetabaseClient:
+    def __init__(self, client) -> None:
+        self.client = client

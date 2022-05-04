@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Metabase source module"""
 
-import json
 import traceback
 import uuid
 from typing import Iterable
@@ -28,6 +27,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -38,6 +40,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -74,7 +77,9 @@ class MetabaseSource(Source[Entity]):
         super().__init__()
         self.config = config
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
+        self.source_config: DashboardServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
 
@@ -82,16 +87,9 @@ class MetabaseSource(Source[Entity]):
         params = dict()
         params["username"] = self.service_connection.username
         params["password"] = self.service_connection.password.get_secret_value()
-        try:
-            resp = requests.post(
-                self.service_connection.hostPort + "/api/session/",
-                data=json.dumps(params),
-                headers=HEADERS,
-            )
-        except Exception as err:
-            raise ConnectionError() from err
-        session_id = resp.json()["id"]
-        self.metabase_session = {"X-Metabase-Session": session_id}
+
+        self.connection = get_connection(self.service_connection)
+        self.metabase_session = self.connection.client["metabase_session"]
 
         self.dashboard_service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
