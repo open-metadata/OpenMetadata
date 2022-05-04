@@ -56,7 +56,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
-  getExplorePathWithSearch,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
@@ -89,6 +88,7 @@ import {
   getEntityFieldThreadCounts,
   getUpdatedThread,
 } from '../../utils/FeedUtils';
+import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
@@ -576,9 +576,11 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        `${getExplorePathWithSearch(
-          appState.inPageSearchText
-        )}?database=${databaseName}&service_type=${serviceType}`
+        getExplorePathWithInitFilters(
+          appState.inPageSearchText,
+          undefined,
+          `database=${databaseName}&service_type=${serviceType}`
+        )
       );
     }
   }, [appState.inPageSearchText]);

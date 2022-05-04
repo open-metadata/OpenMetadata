@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { isEqual } from 'lodash';
+import {
+  initialFilterQS,
+  searchFilterQS,
+} from '../constants/explore.constants';
+
 const prepareModifiedKey = (key, restrictKeyModification = false) => {
   if (!restrictKeyModification) {
     if (key === 'service') {
@@ -68,11 +74,29 @@ export const getFilterKey = (key) => {
  * @param filters - filter object
  * @returns query param format
  */
-export const prepareQueryParams = (filters) => {
-  const entries = Object.entries(filters);
+export const prepareQueryParams = (filters, initFilters = {}) => {
+  const urlSearchParams = new URLSearchParams();
+  const filterSearchParams = new URLSearchParams();
+  const initFilterSearchParams = new URLSearchParams();
+  const filterEntries = Object.entries(filters);
+  const initFilterKeys = Object.keys(initFilters);
 
-  return entries
-    .filter((entry) => entry[1].length)
-    .map((entry) => `${entry[0]}=${entry[1].join(',')}`)
-    .join('&');
+  for (const [key, value] of filterEntries) {
+    if (value?.length) {
+      if (initFilterKeys.includes(key) && isEqual(initFilters[key], value)) {
+        initFilterSearchParams.set(key, value.join(','));
+      } else {
+        filterSearchParams.set(key, value.join(','));
+      }
+    }
+  }
+
+  if (initFilterSearchParams.toString()) {
+    urlSearchParams.set(initialFilterQS, initFilterSearchParams);
+  }
+  if (filterSearchParams.toString()) {
+    urlSearchParams.set(searchFilterQS, filterSearchParams);
+  }
+
+  return urlSearchParams.toString();
 };
