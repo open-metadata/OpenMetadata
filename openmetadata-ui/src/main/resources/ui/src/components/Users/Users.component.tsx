@@ -500,13 +500,15 @@ const Users = ({
       return (
         <Fragment>
           <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Inherited Roles</h6>
+            <h6 className="tw-heading tw-mb-3" data-testid="inherited-roles">
+              Inherited Roles
+            </h6>
           </div>
           <div className="tw-pb-4 tw-mb-4 tw-border-b">
-            {userData.inheritedRoles?.map((role, i) => (
+            {userData.inheritedRoles?.map((inheritedRole, i) => (
               <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
                 <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                <span>{getEntityName(role)}</span>
+                <span>{getEntityName(inheritedRole)}</span>
               </div>
             ))}
           </div>
