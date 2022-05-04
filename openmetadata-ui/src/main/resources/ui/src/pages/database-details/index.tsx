@@ -766,7 +766,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         pageSize={PAGE_SIZE}
                         paging={databaseSchemaPaging}
                         pagingHandler={databaseSchemaPagingHandler}
-                        totalCount={paging.total}
+                        totalCount={databaseSchemaPaging.total}
                       />
                     )}
                   </Fragment>
