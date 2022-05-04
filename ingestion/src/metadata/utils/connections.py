@@ -381,8 +381,8 @@ def _(connection: RedashConnection, verbose: bool = False):
 
     try:
         redash = Redash(connection.hostPort, connection.apiKey)
-
-        return RedashClient(redash)
+        redash_client = RedashClient(redash)
+        return redash_client
 
     except Exception as err:
         logger.error(f"Failed to connect with error :  {err}")
@@ -392,7 +392,7 @@ def _(connection: RedashConnection, verbose: bool = False):
 @test_connection.register
 def _(connection: RedashClient) -> None:
     try:
-        dashboard_info = connection.client.dashboards()
+        connection.client.dashboards()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
