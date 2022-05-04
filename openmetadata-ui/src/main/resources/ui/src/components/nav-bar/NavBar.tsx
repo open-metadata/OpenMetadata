@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import React, { Fragment } from 'react';
+import React, { Fragment, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import AdvanceSearch from '../AdvanceSearch/AdvanceSearch';
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 import Avatar from '../common/avatar/Avatar';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
@@ -40,10 +41,16 @@ const NavBar = ({
   handleKeyDown,
   handleOnClick,
 }: NavBarProps) => {
+  const [, setSelectedFilters] = useState<Array<Filter>>([]);
+
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
     return { color: normalLink };
+  };
+
+  const onFilterChange = (filters: Array<Filter>) => {
+    setSelectedFilters(filters);
   };
 
   return (
@@ -84,6 +91,7 @@ const NavBar = ({
               isTourRoute={isTourRoute}
               pathname={pathname}
               searchValue={searchValue}
+              onFilterChange={onFilterChange}
             />
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">

@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, Fragment, useState } from 'react';
+import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import {
   inPageSearchOptions,
@@ -34,6 +34,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
   isSearchBoxOpen,
   isTourRoute,
   pathname,
+  onFilterChange,
 }) => {
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [isWrapperFocused, setIsWrapperFocused] = useState(false);
@@ -75,6 +76,10 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
       return selectedValues;
     });
   };
+
+  useEffect(() => {
+    onFilterChange(selectedFilters);
+  }, [selectedFilters]);
 
   return (
     <Fragment>

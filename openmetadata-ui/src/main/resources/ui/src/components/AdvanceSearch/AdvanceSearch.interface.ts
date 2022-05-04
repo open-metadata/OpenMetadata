@@ -13,6 +13,10 @@
 
 import { HTMLAttributes } from 'react';
 
+export interface Filter {
+  key: string;
+  value: string;
+}
 export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
   searchValue: string;
   isTourRoute?: boolean;
@@ -22,9 +26,5 @@ export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
   handleOnClick: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   handleSearchBoxOpen: (value: boolean) => void;
-}
-
-export interface Filter {
-  key: string;
-  value: string;
+  onFilterChange: (filters: Array<Filter>) => void;
 }
