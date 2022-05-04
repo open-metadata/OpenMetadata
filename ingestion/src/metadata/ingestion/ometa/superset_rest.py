@@ -32,9 +32,9 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def __init__(self, config: WorkflowSource):
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
+        self.service_connection = self.config
         client_config = ClientConfig(
-            base_url=config.serviceConnection.__root__.config.hostPort,
+            base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
@@ -79,7 +79,7 @@ class SupersetAPIClient:
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         client_config = ClientConfig(
-            base_url=config.serviceConnection.__root__.config.hostPort,
+            base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: self._auth_provider.get_access_token(),
             auth_header="Authorization",
