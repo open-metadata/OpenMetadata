@@ -157,6 +157,8 @@ const Appbar: React.FC = (): JSX.Element => {
     const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
     const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+    const inheritedRoles =
+      currentUser?.inheritedRoles?.map((r) => r.displayName) || [];
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
@@ -175,6 +177,17 @@ const Appbar: React.FC = (): JSX.Element => {
             {roles.map((r, i) => (
               <p className="tw-text-grey-muted" key={i}>
                 {r}
+              </p>
+            ))}
+            <hr className="tw-my-1.5" />
+          </div>
+        ) : null}
+        {inheritedRoles.length > 0 ? (
+          <div>
+            <div className="tw-font-medium tw-text-xs">Inherited Roles</div>
+            {inheritedRoles.map((inheritedRole, i) => (
+              <p className="tw-text-grey-muted" key={i}>
+                {inheritedRole}
               </p>
             ))}
             <hr className="tw-my-1.5" />
