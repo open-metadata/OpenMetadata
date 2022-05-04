@@ -2,22 +2,22 @@ package org.openmetadata.catalog.security.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import java.io.IOException;
+import com.auth0.jwt.exceptions.JWTCreationException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
+@Slf4j
 public class JWTTokenGenerator {
   private static volatile JWTTokenGenerator instance;
   private RSAPrivateKey privateKey;
@@ -41,29 +41,40 @@ public class JWTTokenGenerator {
     return instance;
   }
 
-  public void init(JWTTokenConfiguration jwtTokenConfiguration)
-      throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-    byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPrivateKey()));
-    PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
-    KeyFactory privateKF = KeyFactory.getInstance("RSA");
-    privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
-    byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPublicKey()));
-    X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
-    KeyFactory kf = KeyFactory.getInstance("RSA");
-    publicKey = (RSAPublicKey) kf.generatePublic(spec);
-    issuer = jwtTokenConfiguration.getJWTIssuer();
+  public void init(JWTTokenConfiguration jwtTokenConfiguration) {
+    try {
+      byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPrivateKey()));
+      PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+      KeyFactory privateKF = KeyFactory.getInstance("RSA");
+      privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
+      byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPublicKey()));
+      X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
+      KeyFactory kf = KeyFactory.getInstance("RSA");
+      publicKey = (RSAPublicKey) kf.generatePublic(spec);
+      issuer = jwtTokenConfiguration.getJWTIssuer();
+    } catch (Exception ex) {
+      LOG.error("Failed to initialize JWTTokenGenerator ", ex);
+    }
+  }
+
+  public RSAPublicKey getPublicKey() {
+    return publicKey;
   }
 
   public String generateJWTToken(User user, JWTTokenExpiry expiry) {
-    Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-    Date expires = getExpiryDate(expiry);
-    return JWT.create()
-        .withIssuer(issuer)
-        .withClaim("email", user.getEmail())
-        .withClaim("isBot", true)
-        .withIssuedAt(new Date(System.currentTimeMillis()))
-        .withExpiresAt(expires)
-        .sign(algorithm);
+    try {
+      Algorithm algorithm = Algorithm.RSA256(null, privateKey);
+      Date expires = getExpiryDate(expiry);
+      return JWT.create()
+          .withIssuer(issuer)
+          .withClaim("sub", user.getName())
+          .withClaim("isBot", true)
+          .withIssuedAt(new Date(System.currentTimeMillis()))
+          .withExpiresAt(expires)
+          .sign(algorithm);
+    } catch (Exception e) {
+      throw new JWTCreationException("Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
+    }
   }
 
   public Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {

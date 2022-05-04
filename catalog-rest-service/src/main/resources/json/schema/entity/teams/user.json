@@ -18,6 +18,9 @@
               "$ref": "./authN/jwtAuth.json"
             }
           ]
+        },
+        "authType": {
+          "enum": ["JWT", "SSO"]
         }
       },
       "additionalProperties": false

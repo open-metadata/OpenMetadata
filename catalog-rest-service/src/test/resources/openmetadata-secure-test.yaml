@@ -138,6 +138,10 @@ authenticationConfiguration:
   clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
   callbackUrl: "http://localhost:8585/callback"
 
+jwtTokenConfiguration:
+  rsapublicKey: "src/test/resources/public_key.der"
+  rsaprivateKey: "src/test/resources/private_key.der"
+  jwtissuer: "open-metadata.org"
 
 eventHandlerConfiguration:
   eventHandlerClassNames:

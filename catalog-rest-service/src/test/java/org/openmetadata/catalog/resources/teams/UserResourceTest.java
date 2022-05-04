@@ -44,12 +44,18 @@ import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrderi
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.JWTVerifier;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +63,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -77,6 +84,10 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
+import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -93,10 +104,17 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+  private JWTTokenConfiguration jwtTokenConfiguration;
 
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
+    jwtTokenConfiguration = new JWTTokenConfiguration();
+    jwtTokenConfiguration.setRSAPublicKey("src/test/resources/public_key.der");
+    jwtTokenConfiguration.setRSAPrivateKey("src/test/resources/private_key.der");
+    jwtTokenConfiguration.setJWTIssuer("open-metadata.org");
+    JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    jwtTokenGenerator.init(jwtTokenConfiguration);
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -667,6 +685,45 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
+  }
+
+  @Test
+  void put_generateToken_bot_user_200_ok(TestInfo test) throws HttpResponseException {
+    User user =
+        createEntity(
+            createRequest(test, 6)
+                .withName("test")
+                .withDisplayName("displayName")
+                .withEmail("test@email.com")
+                .withIsBot(true),
+            authHeaders("test@email.com"));
+    JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
+    TestUtils.put(
+        getResource(String.format("users/generateToken/%s", user.getId())), authMechanism, OK, ADMIN_AUTH_HEADERS);
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(user.getAuthenticationMechanism());
+    JWTAuthMechanism jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(jwtAuthMechanism.getJWTToken());
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
+    Date date = jwt.getExpiresAt();
+    long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
+    assertTrue(daysBetween >= 6);
+    assertEquals(jwt.getClaims().get("sub").asString(), "test");
+    TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
+    jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertEquals(jwtAuthMechanism.getJWTToken(), StringUtils.EMPTY);
+  }
+
+  private DecodedJWT decodedJWT(String token) {
+    JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
+    Algorithm algorithm = Algorithm.RSA256(publicKey, null);
+    JWTVerifier verifier = JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJWTIssuer()).build();
+    return verifier.verify(token);
   }
 
   @SneakyThrows

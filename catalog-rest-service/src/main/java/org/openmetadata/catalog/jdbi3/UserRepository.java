@@ -26,11 +26,13 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.teams.UserResource;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -38,6 +40,7 @@ import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
@@ -363,9 +366,9 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("isBot", origUser.getIsBot(), updatedUser.getIsBot());
       recordChange("isAdmin", origUser.getIsAdmin(), updatedUser.getIsAdmin());
       recordChange("email", origUser.getEmail(), updatedUser.getEmail());
-
       // Add inherited roles to the entity after update
       updatedUser.setInheritedRoles(getInheritedRoles(updatedUser));
+      updateAuthenticationMechanism(origUser, updatedUser);
     }
 
     private void updateRoles(User origUser, User updatedUser) throws IOException {
@@ -398,6 +401,29 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateAuthenticationMechanism(User origUser, User updatedUser) throws IOException {
+      AuthenticationMechanism origAuthMechanism = origUser.getAuthenticationMechanism();
+      AuthenticationMechanism updatedAuthMechanism = updatedUser.getAuthenticationMechanism();
+      if (origAuthMechanism == null && updatedAuthMechanism != null) {
+        recordChange(
+            "authenticationMechanism", origUser.getAuthenticationMechanism(), updatedUser.getAuthenticationMechanism());
+      } else if (origAuthMechanism != null
+          && updatedAuthMechanism != null
+          && origAuthMechanism.getConfig() != null
+          && updatedAuthMechanism.getConfig() != null) {
+        JWTAuthMechanism origJwtAuthMechanism =
+            JsonUtils.convertValue(origAuthMechanism.getConfig(), JWTAuthMechanism.class);
+        JWTAuthMechanism updatedJwtAuthMechanism =
+            JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
+        if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
+          recordChange(
+              "authenticationMechanism",
+              origUser.getAuthenticationMechanism(),
+              updatedUser.getAuthenticationMechanism());
+        }
+      }
     }
   }
 }
