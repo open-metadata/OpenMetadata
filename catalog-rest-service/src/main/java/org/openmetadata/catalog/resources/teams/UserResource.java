@@ -344,6 +344,35 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response.toResponse();
   }
 
+  @POST
+  @Path("/generateToken/{id}")
+  @Operation(
+      summary = "Generate JWT Token for a Bot User",
+      tags = "users",
+      description = "Generate JWT Token for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateUser(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    if (!user.getIsBot()) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
+    SecurityUtil.authorize(
+        authorizer, securityContext, null, new UserEntityInterface(user).getEntityReference(), ADMIN);
+
+    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
