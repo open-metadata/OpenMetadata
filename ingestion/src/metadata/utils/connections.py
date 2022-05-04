@@ -401,7 +401,7 @@ def _(connection: RedashClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
-    
+
 
 @get_connection.register
 def _(connection: SupersetConnection, verbose: bool = False):
