@@ -692,11 +692,11 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User user =
         createEntity(
             createRequest(test, 6)
-                .withName("test")
-                .withDisplayName("displayName")
-                .withEmail("test@email.com")
+                .withName("ingestion-bot-jwt")
+                .withDisplayName("ingestion-bot-jwt")
+                .withEmail("ingestion-bot-jwt@email.com")
                 .withIsBot(true),
-            authHeaders("test@email.com"));
+            authHeaders("ingestion-bot-jwt@email.com"));
     JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())), authMechanism, OK, ADMIN_AUTH_HEADERS);
@@ -710,7 +710,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);
-    assertEquals(jwt.getClaims().get("sub").asString(), "test");
+    assertEquals(jwt.getClaims().get("sub").asString(), "ingestion-bot-jwt");
     TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
     jwtAuthMechanism =
         TestUtils.get(
