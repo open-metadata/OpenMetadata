@@ -14,6 +14,9 @@
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
+export const PRIMERY_COLOR = '#7147E8';
+export const LITE_GRAY_COLOR = '#DBE0EB';
+
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -22,6 +25,9 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
+export const INGESTION_PROGRESS_START_VAL = 20;
+export const INGESTION_PROGRESS_END_VAL = 80;
+export const DEPLOYED_PROGRESS_VAL = 100;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';

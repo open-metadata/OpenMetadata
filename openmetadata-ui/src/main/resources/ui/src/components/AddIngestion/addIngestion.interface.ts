@@ -27,14 +27,17 @@ export interface AddIngestionProps {
   activeIngestionStep: number;
   pipelineType: PipelineType;
   heading: string;
+  ingestionAction?: string;
   status: FormSubmitType;
   data?: IngestionPipeline;
   serviceCategory: ServiceCategory;
   serviceData: DataObj;
   showSuccessScreen?: boolean;
+  showDeployButton?: boolean;
   setActiveIngestionStep: (step: number) => void;
   handleCancelClick: () => void;
   onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  onIngestionDeploy?: () => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,
@@ -43,6 +46,9 @@ export interface AddIngestionProps {
     triggerIngestion?: boolean
   ) => Promise<void>;
   onSuccessSave?: () => void;
+  isIngestionDeployed?: boolean;
+  isIngestionCreated?: boolean;
+  ingestionProgress?: number;
   handleViewServiceClick?: () => void;
 }
 
@@ -95,6 +101,7 @@ export type ScheduleIntervalProps = {
   startDate: string;
   handleStartDateChange: (value: string) => void;
   endDate: string;
+  submitButtonLabel: string;
   handleEndDateChange: (value: string) => void;
   onBack: () => void;
   onDeploy: () => void;

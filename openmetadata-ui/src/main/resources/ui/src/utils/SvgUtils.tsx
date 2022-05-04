@@ -32,6 +32,7 @@ import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
 import IconControlPlus from '../assets/svg/control-plus.svg';
+import IconCreateIngestion from '../assets/svg/creating-ingestion.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -40,6 +41,7 @@ import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
+import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
@@ -275,6 +277,8 @@ export const Icons = {
   SUCCESS_BADGE: 'success-badge',
   FAIL_BADGE: 'fail-badge',
   PENDING_BADGE: 'pending-badge',
+  CREATE_INGESTION: 'create-ingestion',
+  DEPLOY_INGESTION: 'deploy-ingestion',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -797,6 +801,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PENDING_BADGE:
       IconComponent = IconPendingBadge;
+
+      break;
+    case Icons.CREATE_INGESTION:
+      IconComponent = IconCreateIngestion;
+
+      break;
+    case Icons.DEPLOY_INGESTION:
+      IconComponent = IconDeployIngestion;
 
       break;
 

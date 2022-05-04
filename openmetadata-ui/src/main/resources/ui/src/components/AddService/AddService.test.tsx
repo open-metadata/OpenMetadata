@@ -50,6 +50,10 @@ describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(
       <AddService
+        ingestionAction="Creating"
+        ingestionProgress={0}
+        isIngestionCreated={false}
+        isIngestionDeployed={false}
         newServiceData={undefined}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         onAddIngestionSave={jest.fn()}

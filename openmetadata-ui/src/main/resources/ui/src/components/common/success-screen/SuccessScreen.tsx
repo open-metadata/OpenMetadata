@@ -19,17 +19,21 @@ import { Button } from '../../buttons/Button/Button';
 type SuccessScreenProps = {
   name: string;
   showIngestionButton: boolean;
+  showDeployButton?: boolean;
   state: FormSubmitType;
   handleIngestionClick?: () => void;
   handleViewServiceClick: () => void;
+  handleDeployClick?: () => void;
 };
 
 const SuccessScreen = ({
   name,
   state,
   showIngestionButton,
+  showDeployButton = false,
   handleIngestionClick,
   handleViewServiceClick,
+  handleDeployClick,
 }: SuccessScreenProps) => {
   return (
     <div
@@ -70,6 +74,18 @@ const SuccessScreen = ({
             variant="contained"
             onClick={handleIngestionClick}>
             <span>Add Ingestion</span>
+          </Button>
+        )}
+
+        {showDeployButton && (
+          <Button
+            className="tw-ml-3.5"
+            data-testid="add-ingestion-button"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleDeployClick}>
+            <span>Deploy</span>
           </Button>
         )}
       </div>

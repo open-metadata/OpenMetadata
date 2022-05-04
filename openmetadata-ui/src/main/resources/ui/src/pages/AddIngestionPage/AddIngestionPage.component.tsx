@@ -17,6 +17,7 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  deployIngestionPipelineById,
   getIngestionPipelineByFqn,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
@@ -25,8 +26,14 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  DEPLOYED_PROGRESS_VAL,
+  getServiceDetailsPath,
+  INGESTION_PROGRESS_END_VAL,
+  INGESTION_PROGRESS_START_VAL,
+} from '../../constants/constants';
 import { FormSubmitType } from '../../enums/form.enum';
+import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -45,6 +52,14 @@ const AddIngestionPage = () => {
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsloading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isIngestionCreated, setIsIngestionCreated] = useState(false);
+  const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
+  const [ingestionAction, setIngestionAction] = useState(
+    IngestionActionMessage.CREATING
+  );
+  const [ingestionId, setIngestionId] = useState('');
+  const [showIngestionButton, setShowIngestionButton] = useState(false);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
@@ -68,12 +83,39 @@ const AddIngestionPage = () => {
       .finally(() => setIsloading(false));
   };
 
+  const onIngestionDeploy = (id?: string) => {
+    return new Promise<void>((resolve) => {
+      setIsIngestionCreated(true);
+      setIngestionProgress(INGESTION_PROGRESS_END_VAL);
+      setIngestionAction(IngestionActionMessage.DEPLOYING);
+
+      deployIngestionPipelineById(id ?? ingestionId)
+        .then(() => {
+          setIsIngestionDeployed(true);
+          setShowIngestionButton(false);
+          setIngestionProgress(DEPLOYED_PROGRESS_VAL);
+          setIngestionAction(IngestionActionMessage.DEPLOYED);
+        })
+        .catch((err: AxiosError) => {
+          setShowIngestionButton(true);
+          setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
+          showErrorToast(
+            err || jsonData['api-error-messages']['deploy-ingestion-error']
+          );
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const onAddIngestionSave = (data: CreateIngestionPipeline) => {
+    setIngestionProgress(INGESTION_PROGRESS_START_VAL);
+
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            resolve();
+            setIngestionId(res.data.id);
+            onIngestionDeploy(res.data.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -148,12 +190,18 @@ const AddIngestionPage = () => {
               handleCancelClick={goToService}
               handleViewServiceClick={goToService}
               heading={`Add ${capitalize(ingestionType)} Ingestion`}
+              ingestionAction={ingestionAction}
+              ingestionProgress={ingestionProgress}
+              isIngestionCreated={isIngestionCreated}
+              isIngestionDeployed={isIngestionDeployed}
               pipelineType={ingestionType as PipelineType}
               serviceCategory={serviceCategory as ServiceCategory}
               serviceData={serviceData as DataObj}
               setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+              showDeployButton={showIngestionButton}
               status={FormSubmitType.ADD}
               onAddIngestionSave={onAddIngestionSave}
+              onIngestionDeploy={onIngestionDeploy}
             />
           </div>
         </PageLayout>

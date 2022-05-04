@@ -48,6 +48,7 @@ import {
 } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
+import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -61,7 +62,13 @@ const AddIngestion = ({
   serviceData,
   serviceCategory,
   showSuccessScreen = true,
+  ingestionProgress = 0,
+  isIngestionCreated = false,
+  isIngestionDeployed = false,
+  ingestionAction = '',
+  showDeployButton,
   setActiveIngestionStep,
+  onIngestionDeploy,
   onUpdateIngestion,
   onSuccessSave,
   onAddIngestionSave,
@@ -76,6 +83,7 @@ const AddIngestion = ({
   }, [isDatabaseService, pipelineType]);
 
   const [saveState, setSaveState] = useState<LoadingState>('initial');
+  const [showDeployModal, setShowDeployModal] = useState(false);
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
   );
@@ -382,7 +390,6 @@ const AddIngestion = ({
         startDate: startDate as unknown as Date,
         endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
-        forceDeploy: true,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
@@ -402,10 +409,9 @@ const AddIngestion = ({
     };
 
     if (onAddIngestionSave) {
-      setSaveState('waiting');
+      setShowDeployModal(true);
       onAddIngestionSave(ingestionDetails)
         .then(() => {
-          setSaveState('success');
           if (showSuccessScreen) {
             handleNext();
           } else {
@@ -416,7 +422,7 @@ const AddIngestion = ({
           // ignore since error is displayed in toast in the parent promise
         })
         .finally(() => {
-          setTimeout(() => setSaveState('initial'), 500);
+          setTimeout(() => setShowDeployModal(false), 500);
         });
     }
   };
@@ -445,6 +451,9 @@ const AddIngestion = ({
 
       if (onUpdateIngestion) {
         setSaveState('waiting');
+        if (!data.deployed) {
+          setShowDeployModal(true);
+        }
         onUpdateIngestion(updatedData, data, data.id as string, data.name)
           .then(() => {
             setSaveState('success');
@@ -454,9 +463,19 @@ const AddIngestion = ({
               onSuccessSave?.();
             }
           })
-          .finally(() => setTimeout(() => setSaveState('initial'), 500));
+          .finally(() => {
+            setTimeout(() => setSaveState('initial'), 500);
+            setTimeout(() => setShowDeployModal(false), 500);
+          });
       }
     }
+  };
+
+  const handleDeployClick = () => {
+    setShowDeployModal(true);
+    onIngestionDeploy?.().finally(() => {
+      setTimeout(() => setShowDeployModal(false), 500);
+    });
   };
 
   const handleScheduleIntervalDeployClick = () => {
@@ -554,6 +573,7 @@ const AddIngestion = ({
             repeatFrequency={repeatFrequency}
             startDate={startDate as string}
             status={saveState}
+            submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}
             onBack={handlePrev}
             onDeploy={handleScheduleIntervalDeployClick}
           />
@@ -561,10 +581,22 @@ const AddIngestion = ({
 
         {activeIngestionStep > 3 && handleViewServiceClick && (
           <SuccessScreen
+            handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
             name={ingestionName}
+            showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
+          />
+        )}
+
+        {showDeployModal && (
+          <DeployIngestionLoaderModal
+            action={ingestionAction}
+            ingestionName={ingestionName}
+            isDeployed={isIngestionDeployed}
+            isIngestionCreated={isIngestionCreated}
+            progress={ingestionProgress}
           />
         )}
       </div>
