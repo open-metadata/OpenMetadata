@@ -58,3 +58,9 @@ class MetabaseClient:
 class RedashClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class SupersetClient:
+    def __init__(self, client) -> None:
+        self.client = client

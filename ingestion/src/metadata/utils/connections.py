@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
+    SupersetConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -63,6 +66,7 @@ from metadata.utils.connection_clients import (
     MetabaseClient,
     RedashClient,
     SalesforceClient,
+    SupersetClient,
 )
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
@@ -393,6 +397,25 @@ def _(connection: RedashConnection, verbose: bool = False):
 def _(connection: RedashClient) -> None:
     try:
         connection.client.dashboards()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: SupersetConnection, verbose: bool = False):
+    from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
+
+    superset_connection = SupersetAPIClient(connection)
+    superset_client = SupersetClient(superset_connection)
+    return superset_client
+
+
+@test_connection.register
+def _(connection: SupersetClient) -> None:
+    try:
+        connection.client.fetch_menu()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
