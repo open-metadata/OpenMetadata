@@ -79,8 +79,10 @@ const InputText: FC<InputtextProp> = ({
         'tw-border tw-border-primary tw-rounded-2xl tw-inline-block tw-items-center tw-px-1.5 tw-py-0.5 tw-mr-1'
       )}
       style={{ background: '#F1EDFD' }}>
-      <div className="tw-flex tw-items-center tw-justify-between tw-w-auto">
-        <span data-testid="filter-key">{startCase(filter.key)}:</span>
+      <div className="tw-flex tw-items-center tw-justify-between">
+        <div className="tw-min-w-max" data-testid="filter-key">
+          {startCase(filter.key)}:
+        </div>
         {showInput ? (
           <input
             autoComplete="off"
