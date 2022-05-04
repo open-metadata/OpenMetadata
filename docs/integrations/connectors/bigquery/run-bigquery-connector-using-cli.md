@@ -217,7 +217,7 @@ This is a sample config for BigQuery Usage:
 ```json
 {
     "source": {
-        "type": "bigquery",
+        "type": "bigquery-usage",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {

@@ -178,7 +178,7 @@ This is a sample config for MSSQL Usage:
 ```json
 {
   "source": {
-    "type": "mssql",
+    "type": "mssql-usage",
     "serviceName": "<service name>",
     "serviceConnection": {
       "config": {

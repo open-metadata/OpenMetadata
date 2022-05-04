@@ -219,7 +219,7 @@ This is a sample config for Reshift Usage:
 ```json
 {
     "source": {
-        "type": "redshift",
+        "type": "redshift-usage",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {

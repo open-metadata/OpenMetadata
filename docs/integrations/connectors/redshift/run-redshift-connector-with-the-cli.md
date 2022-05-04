@@ -170,7 +170,7 @@ This is a sample config for Redshift Usage:
 ```json
 {
     "source": {
-        "type": "redshift",
+        "type": "redshift-usage",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {

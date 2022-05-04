@@ -186,7 +186,7 @@ This is a sample config for Snowflake Usage:
 ```json
 {
     "source": {
-        "type": "snowflake",
+        "type": "snowflake-usage",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {
