@@ -28,6 +28,7 @@ public final class MessageParser {
 
   private MessageParser() {}
 
+  private static final String ENTITY_LINK_SEPARATOR = "::";
   // Pattern to match the following markdown entity links:
   // <#E/{entityType}/{entityFQN}>  -- <#E/table/bigquery_gcp.shopify.raw_product_catalog>
   // <#E/{entityType}/{entityFQN}/{fieldName}> -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/description>
@@ -37,18 +38,26 @@ public final class MessageParser {
   // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment/description>
   private static final Pattern ENTITY_LINK_PATTERN =
       Pattern.compile(
-          "<#E/"
-              + // Match initial string <#E/
+          "<#E"
+              + ENTITY_LINK_SEPARATOR
+              + // Match initial string <#E::
               "([^<>]+?)"
               + // Non-greedy collection group 1 for {entityType}
-              "/([^<>]+?)"
+              ENTITY_LINK_SEPARATOR
+              + "([^<>]+?)"
               + // Non-greedy collection group 2 for {entityFQN}
-              "(/([^<>]+?))?"
-              + // Non-greedy collection group 3 for optional /{fieldName} and 4 for fieldName
-              "(/([^<>]+?))?"
-              + // Non-greedy collection group 5 for optional /{arrayFieldName} // and 6 for arrayFieldName
-              "(/([^<>]+?))?"
-              + // Non-greedy collection group 7 for optional /{arrayFieldValue} // and 8 for arrayFieldValue
+              "("
+              + ENTITY_LINK_SEPARATOR
+              + "([^<>]+?))?"
+              + // Non-greedy collection group 3 for optional ::{fieldName} and 4 for fieldName
+              "("
+              + ENTITY_LINK_SEPARATOR
+              + "([^<>]+?))?"
+              + // Non-greedy collection group 5 for optional ::{arrayFieldName} // and 6 for arrayFieldName
+              "("
+              + ENTITY_LINK_SEPARATOR
+              + "([^<>]+?))?"
+              + // Non-greedy collection group 7 for optional ::{arrayFieldValue} // and 8 for arrayFieldValue
               ">"); // Match for end of link name
 
   public static class EntityLink {
@@ -103,14 +112,19 @@ public final class MessageParser {
 
     public String getLinkString() {
       StringBuilder builder = new StringBuilder();
-      builder.append("<#E/").append(entityType).append("/").append(entityFQN);
+      builder
+          .append("<#E")
+          .append(ENTITY_LINK_SEPARATOR)
+          .append(entityType)
+          .append(ENTITY_LINK_SEPARATOR)
+          .append(entityFQN);
       if (linkType == LinkType.ENTITY_REGULAR_FIELD || linkType == LinkType.ENTITY_ARRAY_FIELD) {
-        builder.append("/").append(fieldName);
+        builder.append(ENTITY_LINK_SEPARATOR).append(fieldName);
       }
       if (linkType == LinkType.ENTITY_ARRAY_FIELD) {
-        builder.append("/").append(arrayFieldName);
+        builder.append(ENTITY_LINK_SEPARATOR).append(arrayFieldName);
         if (StringUtils.isNotEmpty(arrayFieldValue)) {
-          builder.append("/").append(arrayFieldValue);
+          builder.append(ENTITY_LINK_SEPARATOR).append(arrayFieldValue);
         }
       }
       builder.append(">");
@@ -128,8 +142,12 @@ public final class MessageParser {
       EntityLink entityLink = null;
       while (matcher.find()) {
         if (entityLink == null) {
+          String entityFQN = matcher.group(2);
+          if (entityFQN == null) {
+            throw new IllegalArgumentException("Invalid Entity Link. Entity FQN is missing in " + link);
+          }
           entityLink =
-              new EntityLink(matcher.group(1), matcher.group(2), matcher.group(4), matcher.group(6), matcher.group(8));
+              new EntityLink(matcher.group(1), entityFQN, matcher.group(4), matcher.group(6), matcher.group(8));
         } else {
           throw new IllegalArgumentException("Unexpected multiple entity links in " + link);
         }

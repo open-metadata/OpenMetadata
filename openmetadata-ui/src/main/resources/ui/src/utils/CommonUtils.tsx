@@ -32,7 +32,6 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
-  FQN_REGEX,
   UrlEntityCharRegEx,
   validEmailRegEx,
 } from '../constants/regex.constants';
@@ -43,6 +42,7 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import Fqn from './Fqn';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -81,7 +81,7 @@ export const getPartialNameFromFQN = (
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
   joinSeperator = '/'
 ): string => {
-  const arrFqn = fqn.split(FQN_SEPARATOR_CHAR);
+  const arrFqn = Fqn.split(fqn);
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -106,31 +106,30 @@ export const getPartialNameFromTableFQN = (
   if (!fqn) {
     return '';
   }
+  const splitFqn = Fqn.split(fqn);
   // if nested column is requested, then ignore all the other
   // parts and just return the nested column name
   if (fqnParts.includes(FqnPart.NestedColumn)) {
-    const splitFqn = fqn.split(FQN_SEPARATOR_CHAR);
     // Remove the first 4 parts (service, database, schema, table)
 
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
-  const arrFqn = fqn.match(FQN_REGEX) || [];
   const arrPartialName = [];
-  if (arrFqn.length > 0) {
+  if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
-      arrPartialName.push(arrFqn[0]);
+      arrPartialName.push(splitFqn[0]);
     }
-    if (fqnParts.includes(FqnPart.Database) && arrFqn.length > 1) {
-      arrPartialName.push(arrFqn[1]);
+    if (fqnParts.includes(FqnPart.Database) && splitFqn.length > 1) {
+      arrPartialName.push(splitFqn[1]);
     }
-    if (fqnParts.includes(FqnPart.Schema) && arrFqn.length > 2) {
-      arrPartialName.push(arrFqn[2]);
+    if (fqnParts.includes(FqnPart.Schema) && splitFqn.length > 2) {
+      arrPartialName.push(splitFqn[2]);
     }
-    if (fqnParts.includes(FqnPart.Table) && arrFqn.length > 3) {
-      arrPartialName.push(arrFqn[3]);
+    if (fqnParts.includes(FqnPart.Table) && splitFqn.length > 3) {
+      arrPartialName.push(splitFqn[3]);
     }
-    if (fqnParts.includes(FqnPart.Column) && arrFqn.length > 4) {
-      arrPartialName.push(arrFqn[4]);
+    if (fqnParts.includes(FqnPart.Column) && splitFqn.length > 4) {
+      arrPartialName.push(splitFqn[4]);
     }
   }
 

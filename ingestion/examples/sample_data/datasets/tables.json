@@ -1095,7 +1095,7 @@
         },
         {
               "id": "753833e0-f526-47b6-8555-97f5bb2882d5",
-              "name": "dim_api_client",
+              "name": "dim.api/client",
               "description": "This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.",
               "version": 0.1,
               "updatedAt": 1638354087454,
