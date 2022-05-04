@@ -87,6 +87,7 @@ const InputText: FC<InputtextProp> = ({
           <input
             autoComplete="off"
             className="tw-border-none focus:tw-outline-none tw-ml-1 tw-w-search-filter tw-flex-grow"
+            data-testid="filter-input"
             name="database"
             ref={inputRef}
             style={{ background: 'none' }}
@@ -109,6 +110,7 @@ const InputText: FC<InputtextProp> = ({
         )}
         <div
           className="tw-cursor-pointer tw-self-center"
+          data-testid="filter-remove-button"
           onMouseDown={() => {
             onFilterRemoveHandle(index);
           }}>
