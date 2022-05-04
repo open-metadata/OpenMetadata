@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
@@ -40,8 +40,9 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  onFilterUpdate,
 }: NavBarProps) => {
-  const [, setSelectedFilters] = useState<Array<Filter>>([]);
+  const [selectedFilters, setSelectedFilters] = useState<Array<Filter>>([]);
 
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
@@ -52,6 +53,10 @@ const NavBar = ({
   const onFilterChange = (filters: Array<Filter>) => {
     setSelectedFilters(filters);
   };
+
+  useEffect(() => {
+    onFilterUpdate(selectedFilters);
+  }, [selectedFilters]);
 
   return (
     <Fragment>

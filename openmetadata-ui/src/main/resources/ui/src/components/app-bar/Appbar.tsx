@@ -41,8 +41,10 @@ import {
   addToRecentSearched,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
+import { prepareQueryParams } from '../../utils/FilterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 
@@ -69,12 +71,18 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const [version, setVersion] = useState<string>('');
 
+  const [advanceFilters, setAdvanceFilters] = useState<Array<Filter>>([]);
+
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
   };
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
+  };
+
+  const onFilterUpdate = (filters: Array<Filter>) => {
+    setAdvanceFilters(filters);
   };
 
   const supportLinks = [
@@ -213,18 +221,29 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const prepareSearchString = () => {
+    const filterObject = advanceFilters.reduce((filterObj, item) => {
+      return { ...filterObj, [item.key]: item.value.split(',') };
+    }, {});
+
+    return prepareQueryParams(filterObject, filterObject);
+  };
+
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push(
-      getExplorePathWithSearch(
-        value,
-        // this is for if user is searching from another page
-        location.pathname.startsWith(ROUTES.EXPLORE)
-          ? appState.explorePageTab
-          : 'tables'
-      )
+    const explorePath = getExplorePathWithSearch(
+      value,
+      // this is for if user is searching from another page
+      location.pathname.startsWith(ROUTES.EXPLORE)
+        ? appState.explorePageTab
+        : 'tables'
     );
+
+    history.push({
+      pathname: explorePath,
+      search: prepareSearchString(),
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -291,6 +310,7 @@ const Appbar: React.FC = (): JSX.Element => {
           settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
           username={getUserName()}
+          onFilterUpdate={onFilterUpdate}
         />
       ) : null}
     </>

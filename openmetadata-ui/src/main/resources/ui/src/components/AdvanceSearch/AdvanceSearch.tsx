@@ -12,9 +12,14 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, Fragment, useEffect, useState } from 'react';
+import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
+import {
+  ADVANCE_SEARCH_FILTER,
+  getInitialFilter,
+  getQueryParam,
+} from '../../constants/explore.constants';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -37,6 +42,11 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
   pathname,
   onFilterChange,
 }) => {
+  const location = useLocation();
+  const initialFilter = useMemo(
+    () => getQueryParam(getInitialFilter(location.search)),
+    [location.search]
+  );
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [isWrapperFocused, setIsWrapperFocused] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Array<Filter>>([]);
@@ -84,9 +94,23 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
     });
   };
 
+  const getDefaultFilters = () => {
+    const defaultFilters = [];
+    for (const key in initialFilter) {
+      const filter = { key, value: initialFilter[key].join(',') };
+      defaultFilters.push(filter);
+    }
+
+    return defaultFilters;
+  };
+
   useEffect(() => {
     onFilterChange(selectedFilters);
   }, [selectedFilters]);
+
+  useEffect(() => {
+    setSelectedFilters(getDefaultFilters());
+  }, [initialFilter]);
 
   return (
     <Fragment>
@@ -111,7 +135,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
               />
             ))}
           </div>
-          <div className="tw-w-full">
+          <div className="tw-min-w-max">
             <InputSearch
               handleKeyDown={handleKeyDown}
               handleOnBlur={handleOnBlur}

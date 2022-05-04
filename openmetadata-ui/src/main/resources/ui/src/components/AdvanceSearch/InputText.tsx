@@ -87,7 +87,10 @@ const InputText: FC<InputtextProp> = ({
         {showInput ? (
           <input
             autoComplete="off"
-            className="tw-border-none focus:tw-outline-none tw-ml-1 tw-w-search-filter tw-flex-grow"
+            className={classNames(
+              'tw-border-none focus:tw-outline-none tw-ml-1 tw-w-search-filter tw-flex-grow tw-px-1',
+              { 'tw-min-w-max': inputValue.length > 8 }
+            )}
             data-testid="filter-input"
             name="database"
             ref={inputRef}
@@ -99,15 +102,18 @@ const InputText: FC<InputtextProp> = ({
             onFocus={onFocus}
           />
         ) : (
-          <span
-            className={classNames('tw-px-2 tw-cursor-text tw-inline-block', {
-              'tw-w-2 tw-h-2': !inputValue,
-            })}
+          <div
+            className={classNames(
+              'tw-px-2 tw-cursor-text tw-inline-block tw-min-w-max',
+              {
+                'tw-w-2 tw-h-2': !inputValue,
+              }
+            )}
             onClick={() => {
               onValueClick();
             }}>
             {inputValue}
-          </span>
+          </div>
         )}
         <div
           className="tw-cursor-pointer tw-self-center"
