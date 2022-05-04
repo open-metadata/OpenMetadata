@@ -223,7 +223,11 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const prepareSearchString = () => {
     const filterObject = advanceFilters.reduce((filterObj, item) => {
-      return { ...filterObj, [item.key]: item.value.split(',') };
+      if (item.value) {
+        return { ...filterObj, [item.key]: item.value.split(',') };
+      } else {
+        return filterObj;
+      }
     }, {});
 
     return prepareQueryParams(filterObject, filterObject);
