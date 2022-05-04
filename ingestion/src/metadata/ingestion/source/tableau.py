@@ -99,46 +99,6 @@ class TableauSource(Source[Entity]):
         self.dashboards = get_workbooks_dataframe(self.client).to_dict()
         self.all_dashboard_details = get_views_dataframe(self.client).to_dict()
 
-    def tableau_client(self):
-        """Tableau client method
-
-        Returns:
-        """
-        tableau_server_config = {
-            f"{self.connection_config.env}": {
-                "server": self.connection_config.hostPort,
-                "api_version": self.connection_config.apiVersion,
-                "site_name": self.connection_config.siteName,
-                "site_url": self.connection_config.siteName,
-            }
-        }
-        if self.connection_config.username and self.connection_config.password:
-            tableau_server_config[self.connection_config.env][
-                "username"
-            ] = self.connection_config.username
-            tableau_server_config[self.connection_config.env][
-                "password"
-            ] = self.connection_config.password.get_secret_value()
-        elif (
-            self.connection_config.personalAccessTokenName
-            and self.connection_config.personalAccessTokenSecret
-        ):
-            tableau_server_config[self.connection_config.env][
-                "personal_access_token_name"
-            ] = self.connection_config.personalAccessTokenName
-            tableau_server_config[self.connection_config.env][
-                "personal_access_token_secret"
-            ] = self.connection_config.personalAccessTokenSecret
-        try:
-            conn = TableauServerConnection(
-                config_json=tableau_server_config,
-                env=self.connection_config.env,
-            )
-            conn.sign_in().json()
-            return conn
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error("%s: %s", repr(err), err)
-
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
