@@ -59,18 +59,11 @@ class RolesPageTest {
   }
 
   @Test
-  @Order(1)
-  void openRolesPage() {
+  @Order(2)
+  void addRole() {
     Events.click(webDriver, common.closeWhatsNew()); // Close What's new
     Events.click(webDriver, common.headerSettings()); // Setting
     Events.click(webDriver, common.headerSettingsMenu("Roles"));
-  }
-
-  @Test
-  @Order(2)
-  void addRole() {
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    openRolesPage();
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
@@ -95,10 +88,12 @@ class RolesPageTest {
   @Test
   @Order(3)
   void editDescription() {
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String description = faker.address().toString();
     String roleName = "Data Consumer";
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
+    Events.waitForElementToDisplay(webDriver, common.containsText(roleDisplayName), 10, 2);
     Events.click(webDriver, common.containsText(roleName));
     Events.click(webDriver, common.editTagCategoryDescription());
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), Keys.CONTROL + "A");
@@ -113,7 +108,9 @@ class RolesPageTest {
   @Test
   @Order(4)
   void addRules() {
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Select se = new Select(webDriver.findElement(rolesPage.listOperation()));
@@ -133,7 +130,9 @@ class RolesPageTest {
   @Test
   @Order(5)
   void editRule() {
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, common.containsText("Data Consumer"));
     Events.click(webDriver, rolesPage.editRuleButton());
     Select se = new Select(webDriver.findElement(rolesPage.listAccess()));
@@ -146,9 +145,12 @@ class RolesPageTest {
 
   @Test
   @Order(6)
-  void deleteRule() throws InterruptedException {
-    openRolesPage();
+  void deleteRule() {
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, common.containsText(roleDisplayName));
+    Events.waitForElementToDisplay(webDriver, common.containsText(roleDisplayName), 10, 2);
     String ruleName = webDriver.findElement(rolesPage.ruleName()).getText();
     Events.click(webDriver, rolesPage.deleteRuleButton());
     Events.click(webDriver, common.saveEditedService());
@@ -165,8 +167,9 @@ class RolesPageTest {
   @Test
   @Order(7)
   void checkBlankName() {
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
@@ -187,8 +190,9 @@ class RolesPageTest {
   @Test
   @Order(8)
   void checkBlankDisplayName() {
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
@@ -211,7 +215,9 @@ class RolesPageTest {
   void checkDuplicateRoleName() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String firstName = faker.name().firstName();
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, rolesPage.addRoleButton());
     actions.moveToElement(webDriver.findElement(rolesPage.policiesDropdown())).perform();
     Events.click(webDriver, rolesPage.policiesDropdown());
@@ -242,7 +248,9 @@ class RolesPageTest {
   @Test
   @Order(10)
   void addRuleWithoutOperation() {
-    openRolesPage();
+    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
+    Events.click(webDriver, common.headerSettings()); // Setting
+    Events.click(webDriver, common.headerSettingsMenu("Roles"));
     Events.click(webDriver, common.containsText(roleDisplayName));
     Events.click(webDriver, rolesPage.addRule());
     Events.click(webDriver, rolesPage.listAccess());
