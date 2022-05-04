@@ -10,11 +10,25 @@
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
     },
-    "dbtKeyPrefix": {
-      "title": "Prefix of object keys",
-      "description": "Enter the prefix for the name of object where the dbt files are stored",
-      "type": "string",
-      "default": ""
+    "dbtBucketDetails": {
+      "title": "DBT Bucket Details",
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string",
+          "default": ""
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
     },
     "dbtLocalConfig": {
       "title": "DBT Local Config Source",
@@ -60,7 +74,7 @@
         },
         "dbtPrefixConfig": {
           "title": "DBT Prefix Config",
-          "$ref": "#/definitions/dbtKeyPrefix"
+          "$ref": "#/definitions/dbtBucketDetails"
         }
       }
     },
@@ -74,7 +88,7 @@
         },
         "dbtPrefixConfig": {
           "title": "DBT Prefix Config",
-          "$ref": "#/definitions/dbtKeyPrefix"
+          "$ref": "#/definitions/dbtBucketDetails"
         }
       }
     }
