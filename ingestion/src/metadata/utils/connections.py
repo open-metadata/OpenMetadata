@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
+    RedashConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -58,6 +61,7 @@ from metadata.utils.connection_clients import (
     GlueClient,
     KafkaClient,
     MetabaseClient,
+    RedashClient,
     SalesforceClient,
 )
 from metadata.utils.credentials import set_google_credentials
@@ -364,7 +368,31 @@ def _(connection: MetabaseClient) -> None:
             connection.client["connection"].hostPort + "/api/dashboard",
             headers=connection.client["metabase_session"],
         )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
 
+
+@get_connection.register
+def _(connection: RedashConnection, verbose: bool = False):
+
+    from redash_toolbelt import Redash
+
+    try:
+        redash = Redash(connection.hostPort, connection.apiKey)
+        redash_client = RedashClient(redash)
+        return redash_client
+
+    except Exception as err:
+        logger.error(f"Failed to connect with error :  {err}")
+        logger.error(err)
+
+
+@test_connection.register
+def _(connection: RedashClient) -> None:
+    try:
+        connection.client.dashboards()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

@@ -11,6 +11,12 @@
 
 from dataclasses import dataclass
 
+"""
+Creating client for non-sqlalchemy package is neccessary, 
+Importing a Class directly in connection.py will break the ingestion,
+if non-sqlalchemy package is not installed
+"""
+
 
 @dataclass
 class GlueClient:
@@ -44,5 +50,11 @@ class KafkaClient:
 
 @dataclass
 class MetabaseClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class RedashClient:
     def __init__(self, client) -> None:
         self.client = client
