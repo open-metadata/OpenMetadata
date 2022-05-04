@@ -124,7 +124,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
         <div
           className="tw-w-11/12 tw-flex tw-items-center tw-overflow-x-auto"
           id="advance-filters">
-          <div className="tw-flex tw-items-center">
+          <div className="tw-flex tw-items-center" data-testid="filter-wrapper">
             {selectedFilters.map((filter, i) => (
               <InputText
                 filter={filter}
@@ -135,7 +135,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
               />
             ))}
           </div>
-          <div className="tw-min-w-max">
+          <div className="tw-min-w-max" data-testid="search-wrapper">
             <InputSearch
               handleKeyDown={handleKeyDown}
               handleOnBlur={handleOnBlur}
@@ -153,6 +153,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
         <div className="tw-w-auto tw-m-auto tw-mt-2">
           <span
             className="tw-cursor-pointer tw-block tw-z-40 tw-w-4 tw-h-4 tw-justify-self-end"
+            data-testid="search-button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
