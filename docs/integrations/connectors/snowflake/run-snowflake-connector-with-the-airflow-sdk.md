@@ -263,7 +263,7 @@ This is a sample config for Snowflake Usage:
             "filename": "/tmp/snowflake_usage"
         }
     },
-    "bulk_sink": {
+    "bulkSink": {
         "type": "metadata-usage",
         "config": {
             "filename": "/tmp/snowflake_usage"

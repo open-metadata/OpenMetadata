@@ -235,46 +235,13 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-## Data Profiler and Quality Tests <a href="#data-profiler-and-quality-tests" id="data-profiler-and-quality-tests"></a>
+## Data Profiler and Quality Tests
 
-After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
+You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.\
-
-
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (7) (1).png>)
-
-You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
-
-### 1. Add a Profiler Ingestion <a href="#1.-add-a-profiler-ingestion" id="1.-add-a-profiler-ingestion"></a>
-
-From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
-
-![Add Ingestion](<../../../.gitbook/assets/image (6) (2).png>)
-
-### 2. Configure the Profiler Ingestion <a href="#2.-configure-the-profiler-ingestion" id="2.-configure-the-profiler-ingestion"></a>
-
-Here you can enter the Profiler Ingestion details.
-
-![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (1).png>)
-
-#### Name
-
-Define the name of the Profiler Workflow. While we only support a single workflow for the Metadata and Usage ingestion, users can define different schedules and filters for Profiler workflows.
-
-As profiling is a costly task, this enables a fine-grained approach to profiling and running tests by specifying different filters for each pipeline.
-
-#### FQN Filter Pattern
-
-Regex patterns to be applied to the Tables' Fully Qualified Names. Note that Tables' FQNs are built as `serviceName.DatabaseName.SchemaName.TableName`, with a dot `.` as the FQN separator.
-
-#### Description
-
-Give the Ingestion Pipeline a description to show what type of data we are profiling.
-
-### 3. Schedule and Deploy
-
-After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
+{% content-ref url="../../../data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% endcontent-ref %}
 
 ## DBT Integration
 

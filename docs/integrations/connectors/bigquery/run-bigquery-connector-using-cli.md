@@ -259,7 +259,7 @@ This is a sample config for BigQuery Usage:
             "filename": "/tmp/bigquery_usage"
         }
     },
-    "bulk_sink": {
+    "bulkSink": {
         "type": "metadata-usage",
         "config": {
             "filename": "/tmp/bigquery_usage"

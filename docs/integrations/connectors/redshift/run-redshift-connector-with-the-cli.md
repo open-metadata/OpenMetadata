@@ -201,7 +201,7 @@ This is a sample config for Redshift Usage:
             "filename": "/tmp/redshift_usage"
         }
     },
-    "bulk_sink": {
+    "bulkSink": {
         "type": "metadata-usage",
         "config": {
             "filename": "/tmp/redshift_usage"

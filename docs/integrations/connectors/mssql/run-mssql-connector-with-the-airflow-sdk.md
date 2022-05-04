@@ -250,7 +250,7 @@ This is a sample config for MSSQL Usage:
             "filename": "/tmp/mssql_usage"
         }
     },
-    "bulk_sink": {
+    "bulkSink": {
         "type": "metadata-usage",
         "config": {
             "filename": "/tmp/mssql_usage"
