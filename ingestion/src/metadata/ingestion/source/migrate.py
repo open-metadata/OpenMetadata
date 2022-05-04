@@ -180,34 +180,25 @@ class MigrateSource(MetadataSource):
                 fields=["owner"],
             )
 
-    def fetch_policy(self) -> PolicyWrapper:
-        """fetch policy method
-
-        Returns:
-            Policy:
-        """
+    def fetch_policy(self):
         policy_entities = self.metadata.client.get("/policies")
         for policy in policy_entities.get("data"):
             yield PolicyWrapper(policy)
 
-    def fetch_tags(self) -> TagWrapper:
-        """fetch policy method
-        Returns:
-            Tag:
-        """
+    def fetch_tags(self):
         tag_entities = self.metadata.client.get("/tags")
         for tag in tag_entities.get("data"):
             tag_detailed_entity = self.metadata.client.get(f"/tags/{tag.get('name')}")
             yield TagWrapper(tag_detailed_entity)
 
-    def fetch_messaging_services(self) -> MessagingServiceWrapper:
+    def fetch_messaging_services(self):
         service_entities = self.metadata.client.get(
             "/services/messagingServices?fields=owner"
         )
         for service in service_entities.get("data"):
             yield MessagingServiceWrapper(service)
 
-    def fetch_database_services(self) -> DatabaseServiceWrapper:
+    def fetch_database_services(self):
         service_entities = self.metadata.client.get(
             "/services/databaseServices?fields=owner"
         )

@@ -205,7 +205,7 @@ class MetadataSource(Source[Entity]):
                 fields=["owner"],
             )
 
-    def fetch_entities(self, entity_class, fields) -> None:
+    def fetch_entities(self, entity_class, fields) -> Entity:
         after = None
         while True:
             entities_list = self.metadata.list_entities(

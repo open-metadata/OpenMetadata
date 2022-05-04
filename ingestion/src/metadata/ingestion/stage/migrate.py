@@ -40,21 +40,21 @@ logger = logging.getLogger(__name__)
 file_dict = {}
 
 
-def open_files(dirPath):
+def open_files(dir_path):
     file_dict.update(
         {
-            "Table": open(f"{dirPath}/table.json", "w"),
-            "User": open(f"{dirPath}/user.json", "w"),
-            "Topic": open(f"{dirPath}/topic.json", "w"),
-            "Pipeline": open(f"{dirPath}/pipeline.json", "w"),
-            "Glossary": open(f"{dirPath}/glossary.json", "w"),
-            "GlossaryTerm": open(f"{dirPath}/glossary_term.json", "w"),
-            "TagWrapper": open(f"{dirPath}/tag.json", "w"),
-            "DatabaseServiceWrapper": open(f"{dirPath}/database_service.json", "w"),
-            "Role": open(f"{dirPath}/role.json", "w"),
-            "PolicyWrapper": open(f"{dirPath}/policy.json", "w"),
-            "PipelineService": open(f"{dirPath}/pipeline_service.json", "w"),
-            "MessagingServiceWrapper": open(f"{dirPath}/messaging_service.json", "w"),
+            "Table": open(f"{dir_path}/table.json", "w"),
+            "User": open(f"{dir_path}/user.json", "w"),
+            "Topic": open(f"{dir_path}/topic.json", "w"),
+            "Pipeline": open(f"{dir_path}/pipeline.json", "w"),
+            "Glossary": open(f"{dir_path}/glossary.json", "w"),
+            "GlossaryTerm": open(f"{dir_path}/glossary_term.json", "w"),
+            "TagWrapper": open(f"{dir_path}/tag.json", "w"),
+            "DatabaseServiceWrapper": open(f"{dir_path}/database_service.json", "w"),
+            "Role": open(f"{dir_path}/role.json", "w"),
+            "PolicyWrapper": open(f"{dir_path}/policy.json", "w"),
+            "PipelineService": open(f"{dir_path}/pipeline_service.json", "w"),
+            "MessagingServiceWrapper": open(f"{dir_path}/messaging_service.json", "w"),
         }
     )
 
