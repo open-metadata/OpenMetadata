@@ -12,7 +12,6 @@
 import csv
 import json
 import os
-import random
 import sys
 import traceback
 import uuid
