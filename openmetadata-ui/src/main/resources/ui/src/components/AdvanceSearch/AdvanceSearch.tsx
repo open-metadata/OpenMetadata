@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import AppState from '../../AppState';
+import { ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -53,15 +54,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
   };
 
   const getAdvanceFilters = () => {
-    const filters = [
-      'database',
-      'column_name',
-      'tags',
-      'databaseSchema',
-      'Services',
-    ];
-
-    return filters;
+    return ADVANCE_SEARCH_FILTER;
   };
 
   const onFilterUpdateHandle = (filter: Filter) => {
