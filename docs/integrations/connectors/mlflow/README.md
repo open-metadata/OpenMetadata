@@ -1,5 +1,7 @@
 ---
-description: In this section, we provide guides and reference to use the MLflow connector.
+description: >-
+  In this section, we provide the guides and reference to use the MLflow
+  connector.
 ---
 
 # MLflow

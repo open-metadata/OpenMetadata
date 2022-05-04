@@ -1,5 +1,5 @@
 ---
-description: Use your own Airflow instance to schedule and run the Connector.
+description: Use your own Airflow instance to schedule and run the SingleStore Connector.
 ---
 
 # Run SingleStore Connector using Airflow SDK

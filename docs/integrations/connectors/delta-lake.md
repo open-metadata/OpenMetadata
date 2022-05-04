@@ -1,7 +1,7 @@
 ---
 description: >-
-  This guide will help you install and configure the Delta Lake connector and
-  run metadata ingestion workflows manually.
+  In this section, we provide the guides and references to use the Delta Lake
+  connector.
 ---
 
 # Delta Lake
@@ -146,7 +146,7 @@ OpenMetadata uniquely identifies services by their `service_name`. Edit the valu
 
 #### platform\_name (optional)
 
-Edit the value for `source.config.platform_name` in `deltalake.json` for your Delta Lake deployment.&#x20;
+Edit the value for `source.config.platform_name` in `deltalake.json` for your Delta Lake deployment.
 
 ```javascript
 "platform_name": "deltalake",
@@ -162,7 +162,7 @@ To specify a single database to ingest metadata from, provide the name of the da
 "database": "delta"
 ```
 
-### 5.  Configure data filters (optional)
+### 5. Configure data filters (optional)
 
 #### table\_filter\_pattern (optional)
 

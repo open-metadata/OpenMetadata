@@ -1,7 +1,7 @@
 ---
 description: >-
-  This guide will help you install and configure the DynamoDB and run metadata
-  ingestion workflows manually.
+  In this section, we provide the guides and references to use the DynamoDB
+  connector.
 ---
 
 # DynamoDB

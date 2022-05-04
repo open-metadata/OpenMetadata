@@ -1,7 +1,5 @@
 ---
-description: >-
-  This guide will help you install and configure the Redshift Usage connector
-  and run metadata ingestion workflows manually.
+description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
 # Run Redshift Connector with the CLI
@@ -237,7 +235,7 @@ To specify where the staging files will be located.
 
 #### Workflow Configuration
 
-The same as the [metadata](redshift-usage.md#workflow-configuration) ingestion.
+The same as the [metadata](run-redshift-connector-with-the-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 
@@ -362,7 +360,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](redshift-usage.md#workflow-configuration) ingestion.
+The same as the [metadata](run-redshift-connector-with-the-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 

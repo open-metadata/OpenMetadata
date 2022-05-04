@@ -1,3 +1,7 @@
+---
+description: Use the 'metadata' CLI to run a one-time ingestion
+---
+
 # Run Athena Connector with the CLI
 
 ## Requirements

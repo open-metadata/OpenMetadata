@@ -1,5 +1,5 @@
 ---
-description: Use your own Airflow instance to schedule and run the Connector.
+description: Use your own Airflow instance to schedule and run the Snowflake connector.
 ---
 
 # Run Snowflake Connector with the Airflow SDK

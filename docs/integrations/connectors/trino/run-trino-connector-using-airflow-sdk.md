@@ -1,5 +1,5 @@
 ---
-description: Use your own Airflow instance to schedule and run the Connector.
+description: Use your own Airflow instance to schedule and run the Trino connector.
 ---
 
 # Run Trino Connector using Airflow SDK

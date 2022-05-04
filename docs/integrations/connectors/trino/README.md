@@ -1,5 +1,7 @@
 ---
-description: In this section, we provide guides and references to use the Trino connector.
+description: >-
+  In this section, we provide the guides and references to use the Trino
+  connector.
 ---
 
 # Trino

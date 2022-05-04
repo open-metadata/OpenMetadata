@@ -1,10 +1,10 @@
+---
+description: Use your own Airflow instance to schedule and run the Athena Connector.
+---
+
 # Run Athena Connector using Airflow SDK
 
-
-
-Configure and schedule Athena **metadata** and **profiler** workflows using your own Airflow instances
-
-
+Configure and schedule Athena **metadata** and **profiler** workflows using your own Airflow instances.
 
 ### **Install the Python module for this connector**
 

@@ -1,5 +1,5 @@
 ---
-description: Use your own Airflow instance to schedule and run the Connector.
+description: Use your own Airflow instance to schedule and run the MySQL Connector.
 ---
 
 # Run MySQL Connector with the Airflow SDK

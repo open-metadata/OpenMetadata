@@ -1,10 +1,10 @@
 ---
-description: In this section, we provide guides and reference to use the Glue connector.
+description: >-
+  In this section, we provide the guides and reference to use the Glue
+  connector.
 ---
 
 # Glue Catalog
-
-
 
 Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 

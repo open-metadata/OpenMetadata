@@ -1,6 +1,6 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the Metabase
+  In this section, we provide the guides and reference to use the Metabase
   connector.
 ---
 

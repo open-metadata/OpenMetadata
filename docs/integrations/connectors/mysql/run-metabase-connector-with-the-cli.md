@@ -18,7 +18,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the Metabase ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[metabase]'
+pip3 install 'openmetadata-ingestion[metabase]'
 ```
 
 ## Metadata Ingestion

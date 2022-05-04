@@ -1,5 +1,7 @@
 ---
-description: In this section, we provide guides and reference to use the MSSQL connector.
+description: >-
+  In this section, we provide the guides and reference to use the MSSQL
+  connector.
 ---
 
 # MSSQL

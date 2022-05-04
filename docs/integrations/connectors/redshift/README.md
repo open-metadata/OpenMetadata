@@ -1,6 +1,6 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the Redshift
+  In this section, we provide the guides and reference to use the Redshift
   connector.
 ---
 
@@ -256,6 +256,6 @@ You can learn more about how to host and run the different workflows on your own
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="redshift-usage.md" %}
-[redshift-usage.md](redshift-usage.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}

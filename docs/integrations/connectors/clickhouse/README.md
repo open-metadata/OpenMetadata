@@ -1,6 +1,6 @@
 ---
 description: >-
-  In this section, we provide guides and reference to use the ClickHouse
+  In this section, we provide the guides and reference to use the ClickHouse
   connector.
 ---
 
@@ -34,7 +34,7 @@ python3 --version
 
 ## 2. Install ClickHouse Connector
 
-### **2.1  Prepare a Python virtual environment**
+### **2.1 Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
@@ -299,7 +299,7 @@ Use `source.config.schema_filter_pattern.excludes` and `source.config.schema_fil
 
 The syntax and semantics for `schema_filter_pattern` are the same as for [`table_filter_pattern`](./#table\_filter\_pattern-optional). Please check that section for details.
 
-### **3.**6 Configure sample data (optional)
+### \*\*3.\*\*6 Configure sample data (optional)
 
 #### generate\_sample\_data (optional)
 

@@ -1,7 +1,7 @@
 ---
 description: >-
-  This guide will help you install and configure the Databricks connector and
-  run metadata ingestion workflows manually.
+  In this section, we provide the guides and references to use the Databricks
+  connector.
 ---
 
 # Databricks
