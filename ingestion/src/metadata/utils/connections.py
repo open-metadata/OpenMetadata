@@ -101,7 +101,7 @@ def create_generic_connection(connection, verbose: bool = False):
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient]:
+) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
