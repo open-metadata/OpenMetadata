@@ -22,11 +22,13 @@ const mockFilter = {
 };
 
 const mockFilterRemoveHandler = jest.fn();
+const mockFilterValueUpdateHandler = jest.fn();
 
 const mockProp = {
   filter: mockFilter,
   index: 1,
   onFilterRemoveHandle: mockFilterRemoveHandler,
+  onFilterValueUpdate: mockFilterValueUpdateHandler,
 };
 
 describe('Test InputText Component', () => {

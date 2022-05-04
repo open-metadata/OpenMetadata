@@ -74,7 +74,7 @@ const Suggestions = ({
   filters,
   onFilterUpdateHandle,
 }: SuggestionProp) => {
-  const [, setOptions] = useState<Array<Option>>([]);
+  const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
@@ -307,7 +307,7 @@ const Suggestions = ({
 
   return (
     <Fragment>
-      {isOpen ? (
+      {isOpen && (options.length > 0 || filters.length > 0) ? (
         <Fragment>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "

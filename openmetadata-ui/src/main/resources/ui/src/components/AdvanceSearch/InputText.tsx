@@ -21,12 +21,14 @@ interface InputtextProp {
   filter: Filter;
   index: number;
   onFilterRemoveHandle: (index: number) => void;
+  onFilterValueUpdate: (filter: Filter) => void;
 }
 
 const InputText: FC<InputtextProp> = ({
   filter,
   onFilterRemoveHandle,
   index,
+  onFilterValueUpdate,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showInput, setShowInput] = useState<boolean>(true);
@@ -44,6 +46,8 @@ const InputText: FC<InputtextProp> = ({
     const value = e.target.value;
 
     setInputValue(value);
+
+    onFilterValueUpdate({ ...filter, value });
   };
 
   const handleFocus = () => {
@@ -58,9 +62,6 @@ const InputText: FC<InputtextProp> = ({
 
   useEffect(() => {
     setInputValue(filter.value);
-    if (filter.value) {
-      setShowInput(false);
-    }
   }, [filter]);
 
   useEffect(() => {

@@ -54,7 +54,9 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
   };
 
   const getAdvanceFilters = () => {
-    return ADVANCE_SEARCH_FILTER;
+    return ADVANCE_SEARCH_FILTER.filter(
+      (f) => !selectedFilters.find((selectedFilter) => f === selectedFilter.key)
+    );
   };
 
   const onFilterUpdateHandle = (filter: Filter) => {
@@ -67,6 +69,18 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
       selectedValues.splice(index, 1);
 
       return selectedValues;
+    });
+  };
+
+  const onFilterValueUpdate = (filter: Filter) => {
+    setSelectedFilters((prevFilter) => {
+      return prevFilter.map((f) => {
+        if (f.key === filter.key) {
+          return filter;
+        } else {
+          return f;
+        }
+      });
     });
   };
 
@@ -93,6 +107,7 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
                 index={i}
                 key={i}
                 onFilterRemoveHandle={onFilterRemoveHandle}
+                onFilterValueUpdate={onFilterValueUpdate}
               />
             ))}
           </div>
