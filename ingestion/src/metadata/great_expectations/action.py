@@ -16,7 +16,7 @@ This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 from enum import Enum
 import logging
 
@@ -35,8 +35,12 @@ from metadata.generated.schema.security.client import (
     oktaSSOClientConfig,
 )
 from metadata.great_expectations.table_test_builders import (
-    GenericTableTestCaseBuilder,
     TableColumCountToEqualBuilder,
+    TableRowCountToBeBetweenBuilder,
+    TableRowCountToEqualBuilder,
+)
+from metadata.great_expectations.column_test_builders import (
+    ColumnValuesLengthsToBeBetweenBuilder,
 )
 from great_expectations.checkpoint.actions import ValidationAction
 from great_expectations.validator.validator import Validator
@@ -58,8 +62,25 @@ from sqlalchemy.engine.url import URL
 logger = logging.getLogger(__name__)
 
 
-class GETests(Enum):
+class SupportedGETests(Enum):
     expect_table_column_count_to_equal = TableColumCountToEqualBuilder()
+    expect_table_row_count_to_be_between = TableRowCountToBeBetweenBuilder()
+    expect_table_row_count_to_equal = TableRowCountToEqualBuilder()
+    expect_column_value_lengths_to_be_between = ColumnValuesLengthsToBeBetweenBuilder()
+
+
+class GenericTestCaseBuilder:
+    """Generic TestCase builder to create test case entity
+    
+    Attributes:
+        test_case_builder (obj): Specific builder for the GE expectation
+    """
+    def __init__(self, *, test_case_builder):
+        self.test_case_builder = test_case_builder
+
+    def build_test_from_handler(self, result: Dict):
+        """Main method to build the test case entity"""
+        return self.test_case_builder.build_test(result)
 
 
 class OpenMetadataValidationAction(ValidationAction):
@@ -124,10 +145,13 @@ class OpenMetadataValidationAction(ValidationAction):
             execution_engine_url.database,
             check_point_spec.get("schema_name"),
             check_point_spec.get("table_name"),
-
         )
-        for result in validation_result_suite.results:
-            self._handle_test_case(result, table_entity)
+
+        # logger.warning(validation_result_suite.results)
+
+        if table_entity:
+            for result in validation_result_suite.results:
+                self._handle_test_case(result, table_entity)
 
 
     def _get_checkpoint_batch_spec(self, data_asset: Union[Validator, DataAsset, Batch]) -> SqlAlchemyDatasourceBatchSpec:
@@ -153,13 +177,17 @@ class OpenMetadataValidationAction(ValidationAction):
                         ]
         
         if len(table_entity) > 1:
-            raise Error(
+            raise ValueError(
                 "Non unique `database`.`schema`.`table` found: %s."
                 "Please specify a service name in you checkpoint.yml file.",
                 table_entity
                 )
 
-        return table_entity[0] or None
+        if table_entity:
+            return table_entity[0]
+
+        logger.warning("No entity found for %s.%s.%s", database, schema_name, table_name)
+        return None
 
     
     def _get_execution_engine_url(self, data_asset: Union[Validator, DataAsset, Batch]) -> URL:
@@ -252,9 +280,15 @@ class OpenMetadataValidationAction(ValidationAction):
 
     
     def _handle_test_case(self, result, table_entity):
-        self.ometa_conn.add_table_test(
-            table_entity,
-            GenericTableTestCaseBuilder(
-                test_case_builder=GETests[result["expectation_config"]["expectation_type"]].value
-            ).build_table_test(result),
-        )
+        try:
+            self.ometa_conn.add_table_test(
+                table_entity,
+                GenericTestCaseBuilder(
+                    test_case_builder=SupportedGETests[result["expectation_config"]["expectation_type"]].value
+                ).build_test_from_handler(result),
+            )
+        except KeyError:
+            logger.warning(
+                "GE Test %s not yet support. Skipping test ingestion",
+                result["expectation_config"]["expectation_type"]
+            )

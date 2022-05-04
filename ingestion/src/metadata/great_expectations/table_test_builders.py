@@ -16,8 +16,11 @@ from typing import Dict
 from datetime import datetime
 
 from metadata.generated.schema.type.basic import Timestamp
-from metadata.generated.schema.tests.table.tableColumnCountToEqual import (
-    TableColumnCountToEqual,
+from metadata.generated.schema.tests.table import (
+    tableRowCountToBeBetween,
+    tableRowCountToEqual,
+    tableColumnCountToEqual
+
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
@@ -26,47 +29,77 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.tableTest import (
     TableTestCase,
     TableTestType,
-    TableTest,
 )
 from metadata.generated.schema.api.tests.createTableTest import (
     CreateTableTestRequest
-)
-
-class GenericTableTestCaseBuilder:
-    """Generic TestCase builder to create test case entity
-    
-    Attributes:
-        test_case_builder (obj): Specific builder for the GE expectation
-    """
-    def __init__(self, *, test_case_builder):
-        self.test_case_builder = test_case_builder
-
-    def build_table_test(self, result: Dict):
-        """Main method to build the test case entity"""
-        return CreateTableTestRequest(
-            testCase=self.test_case_builder.build_test_case(result),
-            result=self.test_case_builder.build_test_result(result),
-            updatedAt=Timestamp(__root__=int(int(datetime.now().timestamp()))),
-        )
-        
+)        
 
 
 class TableColumCountToEqualBuilder:
     """Builder for `expect_table_column_count_to_equal` GE expectation"""
-    def build_test_case(self, result: Dict):
-        """Build TestCase entity"""
-        return TableTestCase(
-                    config=TableColumnCountToEqual(
-                                columnCount=result["expectation_config"]["kwargs"]["value"]
-                            ),
-                    tableTestType=TableTestType.tableRowCountToEqual
+    def build_test(self, result: Dict):
+        timestamp = Timestamp(__root__=int(int(datetime.now().timestamp())))
+        test_case = TableTestCase(
+                        config=tableColumnCountToEqual.TableColumnCountToEqual(
+                                    columnCount=result["expectation_config"]["kwargs"]["value"]
+                                ),
+                        tableTestType=TableTestType.tableColumnCountToEqual
+                    )
+        test_case_result = TestCaseResult(
+                                executionTime=timestamp,
+                                testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
+                                result=result["result"]["observed_value"],
+                            )
+
+        return CreateTableTestRequest(
+                    testCase=test_case,
+                    result=test_case_result,
+                    updatedAt=timestamp,
                 )
 
 
-    def build_test_result(self, result: Dict):
-        """Build TestResult entity"""
-        return TestCaseResult(
-            executionTime=Timestamp(__root__=int(int(datetime.now().timestamp()))),
-            testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
-            result=result["result"]["observed_value"],
-        )
+class TableRowCountToBeBetweenBuilder:
+    """Builder for `expect_table_row_count_to_be_between` GE expectation"""
+    def build_test(self, result: Dict):
+        timestamp = Timestamp(__root__=int(int(datetime.now().timestamp())))
+        test_case = TableTestCase(
+                        config=tableRowCountToBeBetween.TableRowCountToBeBetween(
+                                    minValue=result["expectation_config"]["kwargs"]["min_value"],
+                                    maxValue=result["expectation_config"]["kwargs"]["max_value"],
+                                ),
+                        tableTestType=TableTestType.tableRowCountToBeBetween
+                    )
+        test_case_result = TestCaseResult(
+                                executionTime=timestamp,
+                                testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
+                                result=result["result"]["observed_value"],
+                            )
+
+        return CreateTableTestRequest(
+                    testCase=test_case,
+                    result=test_case_result,
+                    updatedAt=timestamp,
+                )
+
+
+class TableRowCountToEqualBuilder:
+    """Builder for `expect_table_row_count_to_equal` GE expectation"""
+    def build_test(self, result: Dict):
+        timestamp = Timestamp(__root__=int(int(datetime.now().timestamp())))
+        test_case = TableTestCase(
+                        config=tableRowCountToEqual.TableRowCountToEqual(
+                                    value=result["expectation_config"]["kwargs"]["value"],
+                                ),
+                        tableTestType=TableTestType.tableRowCountToEqual
+                    )
+        test_case_result = TestCaseResult(
+                                executionTime=timestamp,
+                                testCaseStatus=TestCaseStatus.Success if result["success"] else TestCaseStatus.Failed,
+                                result=result["result"]["observed_value"],
+                            )
+
+        return CreateTableTestRequest(
+                    testCase=test_case,
+                    result=test_case_result,
+                    updatedAt=timestamp,
+                )
