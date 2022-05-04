@@ -51,6 +51,11 @@ export interface User {
    */
   id: string;
   /**
+   * Roles that a user is inheriting either as part of system default role or through
+   * membership in teams that have set team default roles.
+   */
+  inheritedRoles?: EntityReference[];
+  /**
    * When true indicates user is an administrator for the system with superuser privileges.
    */
   isAdmin?: boolean;

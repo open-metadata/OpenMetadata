@@ -495,6 +495,28 @@ const Users = ({
     }
   };
 
+  const getInheritedRolesComponent = () => {
+    if (userData.inheritedRoles?.length) {
+      return (
+        <Fragment>
+          <div className="tw-flex">
+            <h6 className="tw-heading tw-mb-3">Inherited Roles</h6>
+          </div>
+          <div className="tw-pb-4 tw-mb-4 tw-border-b">
+            {userData.inheritedRoles?.map((role, i) => (
+              <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
+                <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+                <span>{getEntityName(role)}</span>
+              </div>
+            ))}
+          </div>
+        </Fragment>
+      );
+    } else {
+      return null;
+    }
+  };
+
   const fetchLeftPanel = () => {
     return (
       <div className="tw-pt-4" data-testid="left-panel">
@@ -520,6 +542,7 @@ const Users = ({
         </div>
         {getTeamsComponent()}
         {getRolesComponent()}
+        {getInheritedRolesComponent()}
       </div>
     );
   };
