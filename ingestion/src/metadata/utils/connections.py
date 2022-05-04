@@ -14,6 +14,7 @@ Build and document all supported Engines
 """
 import json
 import logging
+import traceback
 from functools import singledispatch
 from typing import Union
 
@@ -353,7 +354,7 @@ def _(connection: MetabaseConnection, verbose: bool = False):
 
     except Exception as err:
         logger.error(f"Failed to connect with error :  {err}")
-        logger.error(err)
+        logger.debug(traceback.format_exc())
 
 
 @test_connection.register
