@@ -142,6 +142,11 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
 
+jwtTokenConfiguration:
+  rsapublicKey: ${RSA_PUBLIC_KEY:-""}
+  rsaprivateKey: ${RSA_PRIVATE_KEY:-""}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
