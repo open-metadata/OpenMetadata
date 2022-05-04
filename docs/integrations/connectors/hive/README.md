@@ -77,10 +77,6 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-#### Description <a href="#description" id="description"></a>
-
-Provide a description for your Snowflake service that enables other users to determine whether it might provide data of interest to them.
-
 ![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (34).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
@@ -88,6 +84,10 @@ Provide a description for your Snowflake service that enables other users to det
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
 ![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1).png>)
+
+<details>
+
+<summary>Connection Arguments</summary>
 
 #### Username
 
@@ -117,6 +117,10 @@ Enter the details for any additional connection options that can be sent to Snow
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
+To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
+
+</details>
+
 ![Service has been saved](<../../../.gitbook/assets/image (4) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
@@ -124,6 +128,10 @@ Enter the details for any additional connection arguments such as security or pr
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1) (1).png>)
+
+<details>
+
+<summary>Metadata Ingestion Options</summary>
 
 #### Include (Table Filter Pattern)
 
@@ -163,6 +171,8 @@ Set the _Enable data profiler_ toggle to the on position to enable the data prof
 
 Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
+</details>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -172,6 +182,10 @@ Review your configuration settings. If they match what you intended, click _Depl
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+
+<details>
+
+<summary><strong>Scheduling Options</strong></summary>
 
 **Every**
 
@@ -200,6 +214,8 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 **End date (UTC)**
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
+
+</details>
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 

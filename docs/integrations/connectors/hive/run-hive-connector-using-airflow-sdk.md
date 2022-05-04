@@ -97,6 +97,14 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
+To specify LDAP Auth, use the following `connectionArguments`:
+
+```
+"connectionArguments": {
+"auth": "LDAP"
+}
+```
+
 In this step, we will configure the Hive service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Hive service as desired.
 
 #### Source Configuration - Source Config

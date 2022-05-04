@@ -97,6 +97,14 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
+To specify LDAP Auth, use the following `connectionArguments`:
+
+```
+"connectionArguments": {
+"auth": "LDAP"
+}
+```
+
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
