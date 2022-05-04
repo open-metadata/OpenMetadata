@@ -15,7 +15,7 @@ import json
 import traceback
 import urllib.request
 from functools import singledispatch
-from urllib.parse import urlparse
+from typing import Optional, Tuple
 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DbtGCSConfig,
@@ -73,21 +73,21 @@ def _(config: DbtHttpConfig):
 @get_dbt_details.register
 def _(config: DbtS3Config):
     try:
-        prefix = ""
-        bucket_name = ""
-        if config.dbtPrefixConfig:
-            prefix = config.dbtPrefixConfig.dbtObjectPrefix
-            bucket_name = config.dbtPrefixConfig.dbtBucketName
+        bucket_name, prefix = get_dbt_prefix_config(config)
         from metadata.utils.aws_client import AWSClient
 
         aws_client = AWSClient(config.dbtSecurityConfig).get_resource("s3")
 
-        if bucket_name == "":
+        if not bucket_name:
             buckets = aws_client.buckets.all()
         else:
             buckets = [aws_client.Bucket(bucket_name)]
         for bucket in buckets:
-            for bucket_object in bucket.objects.filter(Prefix=prefix):
+            if prefix:
+                obj_list = bucket.objects.filter(Prefix=prefix)
+            else:
+                obj_list = bucket.objects.all()
+            for bucket_object in obj_list:
                 if DBT_MANIFEST_FILE_NAME in bucket_object.key:
                     dbt_manifest = bucket_object.get()["Body"].read().decode()
                 if DBT_CATALOG_FILE_NAME in bucket_object.key:
@@ -102,21 +102,21 @@ def _(config: DbtS3Config):
 @get_dbt_details.register
 def _(config: DbtGCSConfig):
     try:
-        prefix = ""
-        bucket_name = ""
-        if config.dbtPrefixConfig:
-            prefix = config.dbtPrefixConfig.dbtObjectPrefix
-            bucket_name = config.dbtPrefixConfig.dbtBucketName
+        bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage
 
         set_google_credentials(gcs_credentials=config.dbtSecurityConfig)
         client = storage.Client()
-        if bucket_name == "":
+        if not bucket_name:
             buckets = client.list_buckets()
         else:
             buckets = [client.get_bucket(bucket_name)]
         for bucket in buckets:
-            for blob in client.list_blobs(bucket.name, prefix=prefix):
+            if prefix:
+                obj_list = client.list_blobs(bucket.name, prefix=prefix)
+            else:
+                obj_list = client.list_blobs(bucket.name)
+            for blob in obj_list:
                 if DBT_MANIFEST_FILE_NAME in blob.name:
                     dbt_manifest = blob.download_as_string().decode()
                 if DBT_CATALOG_FILE_NAME in blob.name:
@@ -126,3 +126,15 @@ def _(config: DbtGCSConfig):
         logger.error(traceback.format_exc())
         logger.error(f"Error fetching dbt files from gcs {repr(exc)}")
     return None
+
+
+def get_dbt_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Return (bucket, prefix) tuple
+    """
+    if config.dbtPrefixConfig:
+        return (
+            config.dbtPrefixConfig.dbtBucketName,
+            config.dbtPrefixConfig.dbtObjectPrefix,
+        )
+    return None, None
