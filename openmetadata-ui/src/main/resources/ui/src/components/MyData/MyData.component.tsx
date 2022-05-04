@@ -53,6 +53,8 @@ const MyData: React.FC<MyDataProps> = ({
   followedData,
   feedData,
   feedFilter,
+  ownedDataCount,
+  followedDataCount,
   feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
@@ -140,7 +142,7 @@ const MyData: React.FC<MyDataProps> = ({
                   data-testid="my-data"
                   to={getLinkByFilter(Ownership.OWNER)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({ownedDataCount})</span>
                   </span>
                 </Link>
               ) : null}
@@ -160,7 +162,7 @@ const MyData: React.FC<MyDataProps> = ({
                   data-testid="following-data"
                   to={getLinkByFilter(Ownership.FOLLOWERS)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({followedDataCount})</span>
                   </span>
                 </Link>
               ) : null}

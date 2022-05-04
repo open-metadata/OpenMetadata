@@ -12,7 +12,13 @@
  */
 
 import { isEmpty, isString } from 'lodash';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   DbtConfigSource,
   GCSCredentialsValues,
@@ -54,6 +60,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleGcsTypeChange,
   handleSecurityConfigChange,
 }: Props) => {
+  const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
     key: keyof GCSCredentialsValues,
     val: string
@@ -349,8 +356,14 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   useEffect(() => {
-    handleSecurityConfigChange();
+    if (isMounted.current) {
+      handleSecurityConfigChange();
+    }
   }, [gcsType]);
+
+  useEffect(() => {
+    isMounted.current = true;
+  }, []);
 
   return (
     <Fragment>

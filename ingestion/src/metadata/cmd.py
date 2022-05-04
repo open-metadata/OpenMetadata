@@ -23,9 +23,6 @@ from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
 from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import cli_logger, set_loggers_level
@@ -179,7 +176,7 @@ def report(config: str) -> None:
 )
 @click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
 @click.option(
-    "--skip-sample-data", help="Skip the ingestion of sample metadata", is_flag=True
+    "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
 )
 def docker(
     start,
@@ -190,7 +187,7 @@ def docker(
     file_path,
     env_file_path,
     reset_db,
-    skip_sample_data,
+    ingest_sample_data,
 ) -> None:
     """
     Checks Docker Memory Allocation
@@ -206,7 +203,7 @@ def docker(
         file_path,
         env_file_path,
         reset_db,
-        skip_sample_data,
+        ingest_sample_data,
     )
 
 

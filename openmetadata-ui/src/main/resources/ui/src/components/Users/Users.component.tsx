@@ -616,14 +616,15 @@ const Users = ({
         <EntityList
           entityList={userData?.owns as unknown as FormatedTableData[]}
           headerText={
-            <div className="tw-flex tw-justify-between">
+            <div className="tw-flex tw-justify-between tw-items-center">
               My Data
               {userData?.owns?.length ? (
                 <Link
+                  className="tw-ml-1"
                   data-testid="my-data"
                   to={getLinkByFilter(Ownership.OWNER)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({userData?.owns?.length})</span>
                   </span>
                 </Link>
               ) : null}
@@ -640,10 +641,11 @@ const Users = ({
               Following
               {userData?.follows?.length ? (
                 <Link
+                  className="tw-ml-1"
                   data-testid="following-data"
                   to={getLinkByFilter(Ownership.FOLLOWERS)}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({userData?.follows?.length})</span>
                   </span>
                 </Link>
               ) : null}
