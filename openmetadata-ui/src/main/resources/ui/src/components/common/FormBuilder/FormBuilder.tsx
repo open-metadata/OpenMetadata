@@ -12,23 +12,16 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Form, {
-  ArrayFieldTemplateProps,
-  FormProps,
-  ObjectFieldTemplateProps,
-} from '@rjsf/core';
+import Form, { FormProps } from '@rjsf/core';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useCallback,
-  useState,
-} from 'react';
+import React, { FunctionComponent, useCallback, useState } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
+import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
+import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
 
 interface Props extends FormProps<ConfigData> {
@@ -38,96 +31,6 @@ interface Props extends FormProps<ConfigData> {
   status?: LoadingState;
   onCancel?: () => void;
   onTestConnection?: (formData: ConfigData) => Promise<void>;
-}
-
-function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
-  return (
-    <Fragment>
-      <div className="tw-flex tw-justify-between tw-items-center">
-        <div>
-          <label className="control-label">{props.title}</label>
-          <p className="field-description">{props.schema.description}</p>
-        </div>
-        {props.canAdd && (
-          <Button
-            className="tw-h-7 tw-w-7 tw-px-2"
-            data-testid={`add-item-${props.title}`}
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={props.onAddClick}>
-            <FontAwesomeIcon icon="plus" />
-          </Button>
-        )}
-      </div>
-      {props.items.map((element, index) => (
-        <div
-          className={classNames('tw-flex tw-items-center tw-w-full', {
-            'tw-mt-2': index > 0,
-          })}
-          key={`${element.key}-${index}`}>
-          <div className="tw-flex-1 array-fields">{element.children}</div>
-          {element.hasRemove && (
-            <button
-              className="focus:tw-outline-none tw-w-7 tw-ml-3"
-              type="button"
-              onClick={(event) => {
-                element.onDropIndexClick(element.index)(event);
-              }}>
-              <SVGIcons
-                alt="delete"
-                icon={Icons.DELETE}
-                title="Delete"
-                width="14px"
-              />
-            </button>
-          )}
-        </div>
-      ))}
-    </Fragment>
-  );
-}
-
-function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
-  return (
-    <Fragment>
-      <div className="tw-flex tw-justify-between tw-items-center">
-        <div>
-          <label className="control-label" id={`${props.idSchema.$id}__title`}>
-            {props.title}
-          </label>
-          <p
-            className="field-description"
-            id={`${props.idSchema.$id}__description`}>
-            {props.description}
-          </p>
-        </div>
-        {props.schema.additionalProperties && (
-          <Button
-            className="tw-h-7 tw-w-7 tw-px-2"
-            data-testid={`add-item-${props.title}`}
-            id={`${props.idSchema.$id}__add`}
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={() => {
-              props.onAddClick(props.schema)();
-            }}>
-            <FontAwesomeIcon icon="plus" />
-          </Button>
-        )}
-      </div>
-      {props.properties.map((element, index) => (
-        <div
-          className={classNames('property-wrapper', {
-            'additional-fields': props.schema.additionalProperties,
-          })}
-          key={`${element.content.key}-${index}`}>
-          {element.content}
-        </div>
-      ))}
-    </Fragment>
-  );
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -192,7 +95,7 @@ const FormBuilder: FunctionComponent<Props> = ({
     [setLocalFormData]
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 1500), [
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
   const handleChange = (updatedData: ConfigData) => {
@@ -205,7 +108,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Running test...</span>
+            <span className="tw-ml-2">Testing Connection</span>
           </div>
         );
       case 'success':

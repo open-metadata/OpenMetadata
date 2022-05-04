@@ -77,6 +77,7 @@ import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
+import org.openmetadata.catalog.util.PipelineServiceClient;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -87,7 +88,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
-  private AirflowRESTClient airflowRESTClient;
+  private PipelineServiceClient pipelineServiceClient;
   private AirflowConfiguration airflowConfiguration;
 
   @Override
@@ -103,7 +104,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public void initialize(CatalogApplicationConfig config) {
     this.airflowConfiguration = config.getAirflowConfiguration();
-    this.airflowRESTClient = new AirflowRESTClient(config.getAirflowConfiguration());
+    this.pipelineServiceClient = new AirflowRESTClient(config.getAirflowConfiguration());
+    dao.setPipelineServiceClient(pipelineServiceClient);
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -318,9 +320,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, create);
-    Response response = create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
-    deploy(ingestionPipeline);
-    return response;
+    return create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
   }
 
   @PATCH
@@ -365,17 +365,38 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, update);
-    Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
-    deploy(ingestionPipeline);
-    return response;
+    return createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
+  }
+
+  @POST
+  @Path("/deploy/{id}")
+  @Operation(
+      summary = "Deploy a ingestion pipeline run",
+      tags = "IngestionPipelines",
+      description = "Trigger a ingestion pipeline run by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+      })
+  public IngestionPipeline deployIngestion(
+      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      throws IOException {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.deployPipeline(pipeline);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @POST
   @Path("/trigger/{id}")
   @Operation(
-      summary = "Trigger a airflow pipeline run",
+      summary = "Trigger a ingestion pipeline run",
       tags = "IngestionPipelines",
-      description = "Trigger a airflow pipeline run by id.",
+      description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -389,7 +410,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
-    airflowRESTClient.runPipeline(pipeline.getName());
+    pipelineServiceClient.runPipeline(pipeline.getName());
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
@@ -403,15 +424,30 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(
             responseCode = "200",
             description = "The ingestion",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+            content = @Content(mediaType = "application/json"))
       })
   public Response testIngestion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid TestServiceConnection testServiceConnection) {
-    HttpResponse<String> response = airflowRESTClient.testConnection(testServiceConnection);
+    HttpResponse<String> response = pipelineServiceClient.testConnection(testServiceConnection);
+    return Response.status(200, response.body()).build();
+  }
+
+  @GET
+  @Path("/status")
+  @Operation(
+      summary = "Check the Airflow REST status",
+      tags = "IngestionPipelines",
+      description = "Check that the Airflow REST endpoint is reachable and up and running",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Status message",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getRESTStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    HttpResponse<String> response = pipelineServiceClient.getServiceStatus();
     return Response.status(200, response.body()).build();
   }
 
@@ -434,10 +470,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           boolean hardDelete,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
-    IngestionPipeline pipeline = (IngestionPipeline) response.getEntity();
-    airflowRESTClient.deletePipeline(pipeline.getName());
-    return response;
+    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
   private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
@@ -459,12 +492,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         .withService(create.getService())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
-  }
-
-  private void deploy(IngestionPipeline ingestionPipeline) {
-    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
-      airflowRESTClient.deploy(ingestionPipeline);
-    }
   }
 
   private Source buildIngestionSource(CreateIngestionPipeline create) throws IOException {
@@ -510,7 +537,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   private IngestionPipeline addStatus(IngestionPipeline ingestionPipeline) {
     try {
-      ingestionPipeline = airflowRESTClient.getStatus(ingestionPipeline);
+      ingestionPipeline = pipelineServiceClient.getPipelineStatus(ingestionPipeline);
     } catch (Exception e) {
       LOG.error("Failed to fetch status for {} due to {}", ingestionPipeline.getName(), e);
     }

@@ -72,16 +72,18 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleIngestionName: jest.fn(),
   handleEnableDataProfiler: jest.fn(),
   handleIngestSampleData: jest.fn(),
+  handleMarkDeletedTables: jest.fn(),
   handleQueryLogDuration: jest.fn(),
   handleResultLimit: jest.fn(),
   handleStageFileLocation: jest.fn(),
-  handleMarkDeletedTables: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
+  enableDebugLog: false,
+  handleEnableDebugLog: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -110,6 +112,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(2);
-    expect(toggleSwitchs.length).toBe(4);
+    expect(toggleSwitchs.length).toBe(5);
   });
 });

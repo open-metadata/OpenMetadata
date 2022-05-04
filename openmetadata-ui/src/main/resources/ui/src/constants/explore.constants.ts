@@ -23,14 +23,16 @@ export const INITIAL_SORT_ORDER = 'desc';
 export const INITIAL_FROM = 1;
 export const ZERO_SIZE = 0;
 export const emptyValue = '';
+export const initialFilterQS = 'initialFilter';
+export const searchFilterQS = 'searchFilter';
 
 export const UPDATABLE_AGGREGATION = ['Service', 'Tier', 'Tags'];
 
 export const FACET_FILTER_SORTING_ORDER = [
   'Service',
-  'ServiceName',
   'Tier',
   'Tags',
+  'ServiceName',
   'Database',
   'DatabaseSchema',
 ];
@@ -59,10 +61,52 @@ export const getBucketList = (buckets: Array<Bucket>) => {
   return bucketList ?? [];
 };
 
+/**
+ *
+ * @param urlSearchQuery filter query params
+ * @returns
+ */
+export const getInitialFilter = (urlSearchQuery = ''): string => {
+  let initFilter = '';
+  const urlSearchParams = new URLSearchParams(urlSearchQuery);
+
+  // Loop over to get all params to get initial filters
+  for (const [key, value] of urlSearchParams.entries()) {
+    if (key === initialFilterQS) {
+      initFilter = decodeURIComponent(value);
+
+      break;
+    }
+  }
+
+  return initFilter;
+};
+
+/**
+ *
+ * @param urlSearchQuery filter query params
+ * @returns
+ */
+export const getSearchFilter = (urlSearchQuery = ''): string => {
+  let srchFilter = '';
+  const urlSearchParams = new URLSearchParams(urlSearchQuery);
+
+  // Loop over to get all params to get searched filters
+  for (const [key, value] of urlSearchParams.entries()) {
+    if (key === searchFilterQS) {
+      srchFilter = decodeURIComponent(value);
+
+      break;
+    }
+  }
+
+  return srchFilter;
+};
+
 export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
     ? urlSearchQuery.startsWith('?')
-      ? urlSearchQuery.substr(1).split('&')
+      ? urlSearchQuery.substring(1).split('&')
       : urlSearchQuery.split('&')
     : [];
 

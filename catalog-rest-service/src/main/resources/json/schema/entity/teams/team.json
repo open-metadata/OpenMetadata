@@ -69,7 +69,7 @@
       "default": false
     },
     "defaultRoles": {
-      "description": "Roles to be assigned to all users that are part of this team.",
+      "description": "Default roles of a team. These roles will be inherited by all the users that are part of this team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

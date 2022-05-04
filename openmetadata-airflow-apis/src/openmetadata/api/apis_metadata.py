@@ -10,7 +10,7 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
-# TODO DELETE, STATUS (pick it up from airflow directly), LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
+# TODO LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
 APIS_METADATA = [
     {
         "name": "deploy_dag",
@@ -78,6 +78,11 @@ APIS_METADATA = [
                 "required": True,
             },
         ],
+    },
+    {
+        "name": "rest_status",
+        "description": "Get the status of Airflow REST status",
+        "http_method": "GET",
     },
 ]
 

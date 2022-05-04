@@ -119,7 +119,7 @@ class SnowflakeUsageSource(Source[TableQuery]):
                     self.report.scanned(f"{row['database_name']}")
                 yield table_query
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.debug(repr(err))
 
     def get_report(self):

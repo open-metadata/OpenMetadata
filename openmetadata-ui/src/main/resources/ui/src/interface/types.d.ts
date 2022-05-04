@@ -222,6 +222,7 @@ declare module 'Models' {
       name: string[];
     };
     index: string;
+    type?: string;
     database?: string;
     databaseSchema?: string;
     deleted?: boolean;
@@ -493,6 +494,7 @@ declare module 'Models' {
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
+    avatarWidth?: string;
   };
 
   export type TourSteps = {

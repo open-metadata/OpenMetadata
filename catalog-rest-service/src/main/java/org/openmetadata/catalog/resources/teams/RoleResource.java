@@ -177,7 +177,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
     ResultList<Role> roles;
     if (defaultParam) {
-      // The number of default roles is usually 1, and hence does not require pagination.
+      // The number of default roles is 1, and hence does not require pagination.
       roles = dao.getDefaultRolesResultList(uriInfo, fields);
     } else if (before != null) { // Reverse paging
       roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry

@@ -29,6 +29,7 @@ import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -233,7 +234,7 @@ public final class EntityUtil {
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
-    private final List<String> fieldList;
+    @Getter private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
@@ -259,10 +260,6 @@ public final class EntityUtil {
 
     public boolean contains(String field) {
       return fieldList.contains(field);
-    }
-
-    public List<String> getList() {
-      return fieldList;
     }
   }
 

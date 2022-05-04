@@ -34,12 +34,12 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Redshift. This user should have privileges to read all the metadata in Redshift.",
+      "description": "Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Redshift.",
+      "description": "Password to connect to the Salesforce.",
       "type": "string",
       "format": "password"
     },
@@ -50,7 +50,7 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Redshift.",
+      "description": "Host and port of the Salesforce service.",
       "type": "string"
     },
     "sobjectName": {
@@ -76,8 +76,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username"]
 }

@@ -82,6 +82,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;

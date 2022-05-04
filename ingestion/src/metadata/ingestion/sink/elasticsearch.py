@@ -266,7 +266,7 @@ class ElasticsearchSink(Sink[Entity]):
             self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
 
     def _create_table_es_doc(self, table: Table):
         fqdn = table.fullyQualifiedName.__root__

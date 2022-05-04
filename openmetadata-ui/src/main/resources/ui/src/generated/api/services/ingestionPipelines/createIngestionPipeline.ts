@@ -26,6 +26,10 @@ export interface CreateIngestionPipeline {
    */
   displayName?: string;
   /**
+   * Set the logging level for the workflow.
+   */
+  loggerLevel?: LogLevels;
+  /**
    * Name that identifies this pipeline instance uniquely.
    */
   name: string;
@@ -108,6 +112,18 @@ export interface AirflowConfig {
 }
 
 /**
+ * Set the logging level for the workflow.
+ *
+ * Supported logging levels
+ */
+export enum LogLevels {
+  Debug = 'DEBUG',
+  Error = 'ERROR',
+  Info = 'INFO',
+  Warn = 'WARN',
+}
+
+/**
  * Owner of this Pipeline.
  *
  * This schema defines the EntityReference type used for referencing an entity.
@@ -173,24 +189,9 @@ export interface SourceConfig {
 
 export interface ConfigClass {
   /**
-   * DBT Catalog file name
+   * Available sources to fetch DBT catalog and manifest files.
    */
-  dbtCatalogFileName?: string;
-  /**
-   * DBT configuration.
-   */
-  dbtConfig?: LocalHTTPDbtConfig;
-  /**
-   * DBT Manifest file name
-   */
-  dbtManifestFileName?: string;
-  /**
-   * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
-   * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
-   * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
-   * local system), 'http'(url path of dbt files).
-   */
-  dbtProvider?: DbtProvider;
+  dbtConfigSource?: any[] | boolean | number | null | DbtConfigSource | string;
   /**
    * Run data profiler as part of this metadata ingestion to get table profile data.
    */
@@ -282,17 +283,13 @@ export interface FilterPattern {
 }
 
 /**
- * DBT configuration.
+ * DBT Catalog and Manifest file path config.
  *
- * Local and HTTP DBT configs.
- *
- * GCS credentials configs.
- *
- * AWS S3 credentials configs.
+ * DBT Catalog and Manifest HTTP path configuration.
  */
-export interface LocalHTTPDbtConfig {
+export interface DbtConfigSource {
   /**
-   * DBT catalog file to extract dbt models with their column schemas.
+   * DBT catalog file path to extract dbt models with their column schemas.
    */
   dbtCatalogFilePath?: string;
   /**
@@ -300,9 +297,22 @@ export interface LocalHTTPDbtConfig {
    */
   dbtManifestFilePath?: string;
   /**
-   * GCS configs.
+   * DBT catalog http file path to extract dbt models with their column schemas.
    */
-  gcsConfig?: GCSValues | string;
+  dbtCatalogHttpPath?: string;
+  /**
+   * DBT manifest http file path to extract dbt models and associate with tables.
+   */
+  dbtManifestHttpPath?: string;
+  dbtSecurityConfig?: SCredentials;
+}
+
+/**
+ * AWS credentials configs.
+ *
+ * GCS credentials configs.
+ */
+export interface SCredentials {
   /**
    * AWS Access key ID.
    */
@@ -323,12 +333,16 @@ export interface LocalHTTPDbtConfig {
    * EndPoint URL for the AWS
    */
   endPointURL?: string;
+  /**
+   * GCS configs.
+   */
+  gcsConfig?: GCSCredentialsValues | string;
 }
 
 /**
  * GCS Credentials.
  */
-export interface GCSValues {
+export interface GCSCredentialsValues {
   /**
    * Google Cloud auth provider certificate.
    */
@@ -369,20 +383,6 @@ export interface GCSValues {
    * Google Cloud service account type.
    */
   type?: string;
-}
-
-/**
- * Method from which the DBT files will be fetched. Accepted values are: 's3'(Required aws
- * s3 credentials to be provided), 'gcs'(Required gcs credentials to be provided),
- * 'gcs-path'(path of the file containing gcs credentials), 'local'(path of dbt files on
- * local system), 'http'(url path of dbt files).
- */
-export enum DbtProvider {
-  Gcs = 'gcs',
-  GcsPath = 'gcs-path',
-  HTTP = 'http',
-  Local = 'local',
-  S3 = 's3',
 }
 
 /**

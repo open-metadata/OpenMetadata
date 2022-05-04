@@ -214,6 +214,7 @@ const AddService = ({
                   : {}) as DataService
               }
               serviceCategory={serviceCategory}
+              serviceType={selectServiceType}
               status={saveServiceState}
               onCancel={handleConnectionDetailsBackClick}
               onSave={(e) => {
@@ -228,6 +229,7 @@ const AddService = ({
               handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
               showIngestionButton={isIngestionSupported(serviceCategory)}
+              state={FormSubmitType.ADD}
             />
           )}
         </div>

@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Databricks. This user should have privileges to read all the metadata in Databricks.",
+      "description": "Username to connect to Databricks. This user should have privileges to read all the metadata in Databricks.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect to the Databricks.",
+      "description": "Password to connect to Databricks.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Databricks",
+      "description": "Host and port of the Databricks service.",
       "type": "string"
     },
     "database": {
@@ -55,13 +55,13 @@
     },
     "token": {
       "title": "Token",
-      "description": "Generated Token to connect to Databricks",
+      "description": "Generated Token to connect to Databricks.",
       "type": "string",
       "format": "password"
     },
     "httpPath": {
       "title": "Http Path",
-      "description": "Databricks compute resources URL",
+      "description": "Databricks compute resources URL.",
       "type": "string"
     },
     "connectionOptions": {

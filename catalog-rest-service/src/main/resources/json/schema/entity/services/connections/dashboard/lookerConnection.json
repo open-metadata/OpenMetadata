@@ -22,18 +22,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Looker. This user should have privileges to read all the metadata in Looker.",
+      "description": "Username to connect to Looker. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Looker.",
+      "description": "Password to connect to Looker.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "URL to Looker instance.",
+      "description": "URL to the Looker instance.",
       "type": "string",
       "format": "uri"
     },
