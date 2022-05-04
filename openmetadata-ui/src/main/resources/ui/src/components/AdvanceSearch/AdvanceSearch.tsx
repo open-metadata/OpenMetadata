@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { observer } from 'mobx-react';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -135,7 +136,9 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
               />
             ))}
           </div>
-          <div className="tw-min-w-max" data-testid="search-wrapper">
+          <div
+            className={classNames('tw-w-full', { 'tw-min-w-max': searchValue })}
+            data-testid="search-wrapper">
             <InputSearch
               handleKeyDown={handleKeyDown}
               handleOnBlur={handleOnBlur}
@@ -187,4 +190,4 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
   );
 };
 
-export default AdvanceSearch;
+export default observer(AdvanceSearch);
