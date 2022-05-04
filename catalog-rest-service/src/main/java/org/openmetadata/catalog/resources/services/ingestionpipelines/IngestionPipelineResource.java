@@ -369,11 +369,34 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   @POST
+  @Path("/deploy/{id}")
+  @Operation(
+      summary = "Deploy a ingestion pipeline run",
+      tags = "IngestionPipelines",
+      description = "Trigger a ingestion pipeline run by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+      })
+  public IngestionPipeline deployIngestion(
+      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      throws IOException {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
+    pipelineServiceClient.deployPipeline(pipeline);
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
+  }
+
+  @POST
   @Path("/trigger/{id}")
   @Operation(
-      summary = "Trigger a airflow pipeline run",
+      summary = "Trigger a ingestion pipeline run",
       tags = "IngestionPipelines",
-      description = "Trigger a airflow pipeline run by id.",
+      description = "Trigger a ingestion pipeline run by id.",
       responses = {
         @ApiResponse(
             responseCode = "200",

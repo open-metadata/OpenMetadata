@@ -46,10 +46,13 @@ const EntityList: FunctionComponent<Prop> = ({
                 )}`}
                 key={index}>
                 <div className="tw-flex">
-                  {getEntityIcon(item.index)}
+                  {getEntityIcon(item.index || item.type || '')}
                   <Link
                     className="tw-font-medium tw-pl-2"
-                    to={getEntityLink(item.index, item.fullyQualifiedName)}>
+                    to={getEntityLink(
+                      item.index || item.type || '',
+                      item.fullyQualifiedName
+                    )}>
                     <button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline tw-w-52 tw-truncate tw-text-left"
                       title={getEntityName(item as unknown as EntityReference)}>
