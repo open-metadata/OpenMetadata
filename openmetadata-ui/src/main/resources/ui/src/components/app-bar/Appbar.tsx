@@ -185,9 +185,9 @@ const Appbar: React.FC = (): JSX.Element => {
         {inheritedRoles.length > 0 ? (
           <div>
             <div className="tw-font-medium tw-text-xs">Inherited Roles</div>
-            {inheritedRoles.map((inheritedRoles, i) => (
+            {inheritedRoles.map((inheritedRole, i) => (
               <p className="tw-text-grey-muted" key={i}>
-                {inheritedRoles}
+                {inheritedRole}
               </p>
             ))}
             <hr className="tw-my-1.5" />
