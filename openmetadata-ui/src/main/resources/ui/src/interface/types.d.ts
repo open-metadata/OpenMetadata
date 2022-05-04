@@ -493,6 +493,7 @@ declare module 'Models' {
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
+    avatarWidth?: string;
   };
 
   export type TourSteps = {

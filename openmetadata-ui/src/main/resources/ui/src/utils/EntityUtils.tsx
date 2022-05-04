@@ -389,7 +389,11 @@ export const getInfoElements = (data: ExtraInfo) => {
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
               <div className="tw-inline-block tw-mr-2">
-                <Avatar name={displayVal} textClass="tw-text-xs" width="20" />
+                <Avatar
+                  name={displayVal}
+                  textClass="tw-text-xs"
+                  width={data.avatarWidth || '20'}
+                />
               </div>
             ) : (
               <></>
