@@ -164,14 +164,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
     // Filter by glossary
     String fqn = null;
+    String glossaryName = null;
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = dao.getGlossary(glossaryIdParam);
-      fqn = glossary.getName();
+      glossaryName = glossary.getName();
+      fqn = glossaryName;
     }
 
     // Filter by glossary parent term
-    if (parentTermParam != null) {
+    if (parentTermParam != null && !parentTermParam.equals("null")) {
       GlossaryTerm parentTerm = dao.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
       fqn = parentTerm.getFullyQualifiedName();
 
@@ -180,6 +182,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         throw new IllegalArgumentException(
             CatalogExceptionMessage.glossaryTermMismatch(parentTermParam, glossaryIdParam));
       }
+    }
+    if (parentTermParam != null && parentTermParam.equals("null")) {
+      fqn = glossaryName + "%";
     }
     ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
 
