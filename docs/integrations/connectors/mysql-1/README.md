@@ -1,28 +1,24 @@
 ---
-description: In this section, we provide guides and reference to use the Oracle connector.
+description: In this section, we provide guides and reference to use the MySQL connector.
 ---
 
-# Oracle
+# MySQL
 
-Configure and schedule Oracle **metadata**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule MySQL **metadata**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
 * [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
 * [DBT Integration](./#dbt-integration)
 
-If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Abigquery
-
-irflow SDK or with the CLI.
-
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-oracle-connector-with-the-airflow-sdk.md" %}
-[run-oracle-connector-with-the-airflow-sdk.md](run-oracle-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-oracle-connector-with-the-cli.md" %}
-[run-oracle-connector-with-the-cli.md](run-oracle-connector-with-the-cli.md)
+{% content-ref url="run-mysql-connector-using-cli.md" %}
+[run-mysql-connector-using-cli.md](run-mysql-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -51,25 +47,25 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Oracle as the service type and click _Next_.
+Select MySQL as the service type and click _Next_.
 
-![Add New Service Page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
+![Select your Service type](<../../../.gitbook/assets/image (29).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![Service Name and Description page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (2).png>)
-
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Oracle services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MySQL services that you might be ingesting metadata from.
+
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (32) (2).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Oracle service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (18) (1).png>)
 
 <details>
 
@@ -77,35 +73,31 @@ In this step, we will configure the connection settings required for this connec
 
 #### Username
 
-Enter the username of your Oracle user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your MySQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 #### Password
 
-Enter the password for your Oracle user in the _Password_ field.
+Enter the password for your MySQL user in the _Password_ field.
 
 #### Host and Port
 
-Enter the fully qualified hostname and port number for your Oracle deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
 
-#### Database (any one, Database or Oracle Service Name)
+#### Database (optional)
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-#### Oracle Service Name (any one, Database or Oracle Service Name)
-
-Oracle Service name is **the TNS alias that you give when you remotely connect to your database**, and this Service name is recorded in tnsnames
-
 #### Connection Options (Optional)
 
-Enter the details for any additional connection options that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
 #### Connection Arguments (Optional)
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
 </details>
 
-![Add Ingestion Page](<../../../.gitbook/assets/image (22).png>)
+![Service has been saved](<../../../.gitbook/assets/image (13).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -165,7 +157,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20) (1).png>)
 
 <details>
 
@@ -207,7 +199,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (12) (1).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -239,14 +231,14 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-oracle-connector-with-the-airflow-sdk.md" %}
-[run-oracle-connector-with-the-airflow-sdk.md](run-oracle-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-oracle-connector-with-the-cli.md" %}
-[run-oracle-connector-with-the-cli.md](run-oracle-connector-with-the-cli.md)
+{% content-ref url="run-mysql-connector-using-cli.md" %}
+[run-mysql-connector-using-cli.md](run-mysql-connector-using-cli.md)
 {% endcontent-ref %}

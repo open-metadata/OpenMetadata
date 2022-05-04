@@ -16,7 +16,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Profiler tab of a Table Entity](<../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../.gitbook/assets/image (6) (1) (1).png>)
+![Data Quality tab of a Table Entity](<../.gitbook/assets/image (6) (1) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../data-quality/data-quality-overview/).
 
@@ -32,7 +32,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../.gitbook/assets/image (19) (3).png>)
+![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1).png>)
 
 <details>
 

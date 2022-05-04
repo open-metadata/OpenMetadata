@@ -88,4 +88,4 @@ description: >-
 
 * You will find the **Client ID** and **Client Secret** in the top right corner
 
-![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (17) (2) (1) (1) (1) (1) (1).png>)

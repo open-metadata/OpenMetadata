@@ -49,7 +49,7 @@ description: >-
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1) (1) (1).png>)
 
 * The app is now configured.
 
@@ -79,7 +79,7 @@ This will generate the Issuer URL.
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
-![](<../../../.gitbook/assets/image (71).png>)
+![](<../../../.gitbook/assets/image (71) (1).png>)
 
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**

@@ -87,7 +87,7 @@ Provide a description for your Snowflake service that enables other users to det
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1).png>)
 
 #### Username
 
@@ -123,7 +123,7 @@ Enter the details for any additional connection arguments such as security or pr
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1) (1).png>)
 
 #### Include (Table Filter Pattern)
 
@@ -207,7 +207,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (2).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
@@ -215,7 +215,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32) (2) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -226,7 +226,7 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.\
 
 
-![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (7).png>)
+![Profiler tab of a Table Entity](<../../../.gitbook/assets/image (7) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../../../data-quality/data-quality-overview/).
 
@@ -234,13 +234,13 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../.
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../../../.gitbook/assets/image (6) (1).png>)
+![Add Ingestion](<../../../.gitbook/assets/image (6) (2).png>)
 
 ### 2. Configure the Profiler Ingestion <a href="#2.-configure-the-profiler-ingestion" id="2.-configure-the-profiler-ingestion"></a>
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (2).png>)
+![Profiler Workflow Details](<../../../.gitbook/assets/image (54) (1).png>)
 
 #### Name
 
