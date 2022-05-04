@@ -9,7 +9,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the Athena ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[athena]'
+pip3 install 'openmetadata-ingestion[athena]'
 ```
 
 ## Metadata Ingestion

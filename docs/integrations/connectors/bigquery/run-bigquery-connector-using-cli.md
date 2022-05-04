@@ -23,7 +23,7 @@ In order to execute the workflows, you will need a running OpenMetadata server.
 To run the BigQuery ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[bigquery]'
+pip3 install 'openmetadata-ingestion[bigquery]'
 ```
 
 ## Metadata Ingestion

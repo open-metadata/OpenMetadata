@@ -21,7 +21,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the Glue ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[glue]'
+pip3 install 'openmetadata-ingestion[glue]'
 ```
 
 ## Metadata Ingestion

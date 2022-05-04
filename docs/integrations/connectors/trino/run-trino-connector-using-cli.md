@@ -22,7 +22,7 @@ In order to execute the workflows, you will need a running OpenMetadata server.
 To run the Trino ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[trino]'
+pip3 install 'openmetadata-ingestion[trino]'
 ```
 
 ## Metadata Ingestion

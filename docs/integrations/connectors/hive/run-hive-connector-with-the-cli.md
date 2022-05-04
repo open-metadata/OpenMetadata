@@ -20,7 +20,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the Hive ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[hive]'
+pip3 install 'openmetadata-ingestion[hive]'
 ```
 
 ## Metadata Ingestion

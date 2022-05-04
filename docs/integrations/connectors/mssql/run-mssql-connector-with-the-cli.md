@@ -21,7 +21,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the MSSQL ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[mssql]'
+pip3 install 'openmetadata-ingestion[mssql]'
 ```
 
 ## Metadata Ingestion

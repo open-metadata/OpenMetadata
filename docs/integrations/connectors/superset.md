@@ -17,7 +17,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[superset]'
+pip3 install 'openmetadata-ingestion[superset]'
 ```
 {% endtab %}
 {% endtabs %}

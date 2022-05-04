@@ -2,15 +2,15 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Snowflake Connector using CLI
+# Run MySQL Connector using CLI
 
 Configure and schedule MySQL **metadata**, and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-snowflake-connector-using-cli.md#requirements)
-* [Metadata Ingestion](run-snowflake-connector-using-cli.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-snowflake-connector-using-cli.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-snowflake-connector-using-cli.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-snowflake-connector-using-cli.md#dbt-integration)
+* [Requirements](run-mysql-connector-using-cli.md#requirements)
+* [Metadata Ingestion](run-mysql-connector-using-cli.md#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](run-mysql-connector-using-cli.md#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](run-mysql-connector-using-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-mysql-connector-using-cli.md#dbt-integration)
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the MySQL ingestion, you will need to install:
 
 ```
-pip install 'openmetadata-ingestion[mysql]'
+pip3 install 'openmetadata-ingestion[mysql]'
 ```
 
 ## Metadata Ingestion
@@ -260,7 +260,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-snowflake-connector-using-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-mysql-connector-using-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 

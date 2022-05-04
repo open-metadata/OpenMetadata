@@ -49,7 +49,7 @@
     * [Run MSSQL Connector with the CLI](integrations/connectors/mssql/run-mssql-connector-with-the-cli.md)
   * [MySQL](integrations/connectors/mysql/README.md)
     * [Run MySQL Connector with the Airflow SDK](integrations/connectors/mysql/run-mysql-connector-with-the-airflow-sdk.md)
-    * [Run Snowflake Connector using CLI](integrations/connectors/mysql/run-snowflake-connector-using-cli.md)
+    * [Run MySQL Connector using CLI](integrations/connectors/mysql/run-mysql-connector-using-cli.md)
   * [Postgres](<integrations/connectors/snowflake/README (1).md>)
     * [Run Postgres Connector with the Airflow SDK](integrations/connectors/snowflake/run-postgres-connector-with-the-airflow-sdk.md)
     * [Run Postgres Connector with the CLI](integrations/connectors/snowflake/run-postgres-connector-with-the-cli.md)

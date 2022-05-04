@@ -17,7 +17,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[tableau]'
+pip3 install 'openmetadata-ingestion[tableau]'
 ```
 {% endtab %}
 {% endtabs %}
@@ -54,7 +54,7 @@ metadata ingest -c ./examples/workflows/tableau.json
 
 1. **username** - pass the Tableau username.
 2. **password** - password for the username.
-3. **personal\_access\_token\_secret** - **** pass the personal access token secret
+3. **personal\_access\_token\_secret** - \*\*\*\* pass the personal access token secret
 4. **personal\_access\_token\_name** - pass the personal access token name
 5. **server** - address of the server.
 6. **site\_name** - pass the site name.
