@@ -214,6 +214,7 @@ const AddService = ({
                   : {}) as DataService
               }
               serviceCategory={serviceCategory}
+              serviceType={selectServiceType}
               status={saveServiceState}
               onCancel={handleConnectionDetailsBackClick}
               onSave={(e) => {

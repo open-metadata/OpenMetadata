@@ -298,7 +298,10 @@ const ServicePage: FunctionComponent = () => {
       source,
     } = data;
     const updateData = {
-      airflowConfig,
+      airflowConfig: {
+        ...airflowConfig,
+        forceDeploy: true,
+      },
       description,
       displayName,
       name,
@@ -996,6 +999,7 @@ const ServicePage: FunctionComponent = () => {
                     data={serviceDetails as ServicesData}
                     handleUpdate={handleConfigUpdate}
                     serviceCategory={serviceName as ServiceCategory}
+                    serviceType={serviceDetails?.serviceType || ''}
                   />
                 )}
 
