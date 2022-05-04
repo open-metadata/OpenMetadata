@@ -8,11 +8,11 @@ description: >-
 
 This workflow is available ONLY for the following connectors:
 
-* BigQuery
-* Snowflake
-* MSSQL
-* Redshift
-* Clickhouse
+* [BigQuery](../integrations/connectors/bigquery/)
+* [Snowflake](../integrations/connectors/snowflake/)
+* [MSSQL](../integrations/connectors/mssql/)
+* [Redshift](../integrations/connectors/redshift/)
+* [Clickhouse](../integrations/connectors/clickhouse/)
 
 ## UI Configuration
 

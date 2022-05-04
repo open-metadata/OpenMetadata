@@ -59,10 +59,6 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Metabase services that you might be ingesting metadata from.
 
-#### Description
-
-Provide a description for your Metabase service that enables other users to determine whether it might provide data of interest to them.
-
 ![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (42).png>)
 
 ### 5. Configure the Service Connection
@@ -70,6 +66,10 @@ Provide a description for your Metabase service that enables other users to dete
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Metabase service as desired.
 
 ![Configure the Service connection](<../../../.gitbook/assets/image (12).png>)
+
+<details>
+
+<summary>Connection Options</summary>
 
 #### Username
 
@@ -85,7 +85,9 @@ Enter the fully qualified hostname and port number for your Metabase deployment 
 
 #### Database Service Name (optional)
 
-Enter the Database Service Name for creation of Lineage
+Enter the Database Service Name for the Lineage creation.
+
+</details>
 
 ![Service has been saved](<../../../.gitbook/assets/image (4).png>)
 
@@ -94,6 +96,10 @@ Enter the Database Service Name for creation of Lineage
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (55).png>)
+
+<details>
+
+<summary>Metadata Ingestion Options</summary>
 
 #### Include (Dashboard Filter Pattern)
 
@@ -115,6 +121,8 @@ Explicitly include charts by adding a list of comma-separated regular expression
 
 Explicitly exclude charts by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
 
+</details>
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -124,6 +132,10 @@ Review your configuration settings. If they match what you intended, click _Depl
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20) (1).png>)
+
+<details>
+
+<summary><strong>Scheduling Options</strong></summary>
 
 **Every**
 
@@ -153,6 +165,8 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
+</details>
+
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
 ### 8. View the Ingestion Pipeline
@@ -173,12 +187,16 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-metabase-connector-with-the-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
+[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-metabase-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-
-
-####
+{% content-ref url="run-metabase-connector-with-the-cli.md" %}
+[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% endcontent-ref %}
