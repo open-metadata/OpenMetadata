@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchDataFunctionType, SearchResponse } from 'Models';
+import { FilterObject, SearchDataFunctionType, SearchResponse } from 'Models';
 
 export type UrlParams = {
   searchQuery: string;
@@ -37,6 +37,8 @@ export interface ExploreProps {
     dbtModel: number;
   };
   searchText: string;
+  initialFilter?: FilterObject;
+  searchFilter?: FilterObject;
   sortValue: string;
   tab: string;
   error: string;
@@ -44,6 +46,7 @@ export interface ExploreProps {
   showDeleted: boolean;
   searchResult: ExploreSearchData | undefined;
   fetchCount: () => void;
+  handleFilterChange: (data: FilterObject) => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;

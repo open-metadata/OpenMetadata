@@ -12,7 +12,6 @@
 import csv
 import json
 import os
-import random
 import sys
 import traceback
 import uuid
@@ -457,24 +456,7 @@ class SampleDataSource(Source[Entity]):
         )
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
-        user_entity_len = min(len(self.user_entity), 5)
         for table in self.tables["tables"]:
-            try:
-                for sql_object in table["tableQueries"]:
-                    user_entity = self.user_entity[
-                        random.choice(range(user_entity_len))
-                    ]
-                    user_dict = {
-                        "id": user_entity.id.__root__,
-                        "name": user_entity.name.__root__,
-                        "displayName": user_entity.displayName,
-                        "href": user_entity.href,
-                        "description": user_entity.description,
-                    }
-                    sql_object["user"] = EntityReference(**user_dict, type="user")
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.debug(err)
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(
                 table=table_metadata, database=db, database_schema=schema

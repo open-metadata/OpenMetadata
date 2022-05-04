@@ -37,6 +37,7 @@ export interface MssqlConnection {
    */
   scheme?: MssqlScheme;
   supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */

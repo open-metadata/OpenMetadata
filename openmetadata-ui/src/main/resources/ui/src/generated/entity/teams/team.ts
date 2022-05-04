@@ -22,7 +22,8 @@ export interface Team {
    */
   changeDescription?: ChangeDescription;
   /**
-   * Roles to be assigned to all users that are part of this team.
+   * Default roles of a team. These roles will be inherited by all the users that are part of
+   * this team.
    */
   defaultRoles?: EntityReference[];
   /**
@@ -124,7 +125,8 @@ export interface FieldChange {
 }
 
 /**
- * Roles to be assigned to all users that are part of this team.
+ * Default roles of a team. These roles will be inherited by all the users that are part of
+ * this team.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
