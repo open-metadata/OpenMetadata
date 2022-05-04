@@ -26,6 +26,8 @@ export interface MyDataProps {
   countTables: number;
   countTopics: number;
   countDashboards: number;
+  followedDataCount: number;
+  ownedDataCount: number;
   countPipelines: number;
   userDetails?: User;
   ownedData: Array<FormatedTableData>;
