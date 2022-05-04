@@ -22,28 +22,28 @@
     },
     "clientId": {
       "title": "Client ID",
-      "description": "client_id for the PowerBI.",
+      "description": "client_id for PowerBI.",
       "type": "string"
     },
     "clientSecret": {
       "title": "Client Secret",
-      "description": "clientSecret for the PowerBI.",
+      "description": "clientSecret for PowerBI.",
       "type": "string",
       "format": "password"
     },
     "credentials": {
       "title": "Credentials",
-      "description": "Credentials for the PowerBI.",
+      "description": "Credentials for PowerBI.",
       "type": "string"
     },
     "redirectURI": {
       "title": "Redirect URI",
-      "description": "Dashboard redirect URI for the PowerBI.",
+      "description": "Dashboard redirect URI for the PowerBI service.",
       "type": "string"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Dashboard URL for the power BI.",
+      "description": "Dashboard URL for PowerBI service.",
       "type": "string",
       "format": "uri",
       "default": "https://analysis.windows.net/powerbi"
@@ -63,9 +63,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "clientId",
-    "clientSecret"
-  ]
+  "required": ["hostPort", "clientId", "clientSecret"]
 }

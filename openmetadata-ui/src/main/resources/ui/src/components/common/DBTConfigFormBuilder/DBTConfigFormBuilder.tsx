@@ -28,18 +28,17 @@ import { DBTLocalConfig } from './DBTLocalConfig';
 import { DBTS3Config } from './DBTS3Config';
 
 const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
-  data = {},
+  data,
   okText,
   cancelText,
   gcsType,
-  source = '' as DBT_SOURCES,
+  source = DBT_SOURCES.local,
   handleGcsTypeChange,
   handleSourceChange,
   onCancel,
   onSubmit,
 }: DBTConfigFormProps) => {
   const [dbtConfig, setDbtConfig] = useState<DbtConfigSource>(data);
-  const [dbtSource, setDbtSource] = useState<DBT_SOURCES>(source);
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
@@ -124,7 +123,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   const getFields = () => {
-    switch (dbtSource) {
+    switch (source) {
       case DBT_SOURCES.local: {
         return getLocalConfigFields();
       }
@@ -140,7 +139,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       default: {
         return (
           <Fragment>
-            No source selected for DBT Configuration.
+            <span data-testid="dbt-source-none">
+              No source selected for DBT Configuration.
+            </span>
             {getSeparator('')}
             <Field className="tw-flex tw-justify-end">
               <Button
@@ -169,12 +170,8 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   useEffect(() => {
-    handleSourceChange && handleSourceChange(dbtSource);
-  }, [dbtSource]);
-
-  useEffect(() => {
     setDbtConfig(data);
-  }, [data, dbtSource, gcsType]);
+  }, [data, source, gcsType]);
 
   return (
     <Fragment>
@@ -191,9 +188,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           id="dbt-source"
           name="dbt-source"
           placeholder="Select DBT Source"
-          value={dbtSource}
+          value={source}
           onChange={(e) => {
-            setDbtSource(e.target.value as DBT_SOURCES);
+            handleSourceChange &&
+              handleSourceChange(e.target.value as DBT_SOURCES);
           }}>
           {DBTSources.map((option, i) => (
             <option key={i} value={option.value}>

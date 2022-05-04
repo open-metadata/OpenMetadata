@@ -286,16 +286,6 @@ public class RoleRepository extends EntityRepository<Role> {
         updatedDefaultRole = updatedDefaultRole.withDefaultRole(false);
         new RoleUpdater(origDefaultRole, updatedDefaultRole, Operation.PATCH).update();
       }
-      List<User> users = getAllUsers();
-      if (users.isEmpty()) {
-        return;
-      }
-      LOG.info("Creating 'user --- has ---> role' relationship for {} role", role.getName());
-      for (User user : users) {
-        daoCollection
-            .relationshipDAO()
-            .insert(user.getId(), role.getId(), Entity.USER, Entity.ROLE, Relationship.HAS.ordinal());
-      }
     }
 
     private void setDefaultToFalse(Role role) {

@@ -141,8 +141,10 @@ const TourPage = () => {
             }}
             fetchFeedHandler={handleOnClick}
             followedData={[]}
+            followedDataCount={1}
             isFeedLoading={false}
             ownedData={[]}
+            ownedDataCount={1}
             paging={{} as Paging}
             postFeedHandler={handleOnClick}
             userDetails={AppState.userDetails}

@@ -49,7 +49,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap">
+      <div className="tw-mb-4 tw-flex tw-items-center tw-flex-wrap tw-text-xs">
         {extraInfo.map((info, i) =>
           !isNil(info.value) ? (
             <span

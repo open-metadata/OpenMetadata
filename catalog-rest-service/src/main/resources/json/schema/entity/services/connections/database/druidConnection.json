@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Druid. This user should have privileges to read all the metadata in Druid.",
+      "description": "Username to connect to Druid. This user should have privileges to read all the metadata in Druid.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect to the Druid.",
+      "description": "Password to connect to Druid.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Druid",
+      "description": "Host and port of the Druid service.",
       "type": "string"
     },
     "database": {

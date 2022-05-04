@@ -55,7 +55,7 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "defaultRole": {
-      "description": "If `true`, this role is set as default role and will be assigned to all users.",
+      "description": "If `true`, this role is set as default system role and will be inherited by all the users.",
       "type": "boolean",
       "default": false
     },

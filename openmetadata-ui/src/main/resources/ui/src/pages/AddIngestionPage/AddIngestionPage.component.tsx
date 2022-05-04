@@ -87,6 +87,7 @@ const AddIngestionPage = () => {
               err,
               jsonData['api-error-messages']['entity-already-exist-error']
             );
+            reject();
           } else {
             getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
               .then((res: AxiosResponse) => {
@@ -107,9 +108,9 @@ const AddIngestionPage = () => {
                   err,
                   jsonData['api-error-messages']['create-ingestion-error']
                 );
+                reject();
               });
           }
-          reject();
         });
     });
   };

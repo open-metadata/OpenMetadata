@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.common.utils.CommonUtil;
 
@@ -106,9 +107,9 @@ public final class RestUtil {
   }
 
   public static class PutResponse<T> {
-    private T entity;
+    @Getter private T entity;
     private ChangeEvent changeEvent;
-    private final Response.Status status;
+    @Getter private final Response.Status status;
     private final String changeType;
 
     /**
@@ -126,10 +127,6 @@ public final class RestUtil {
       this.changeEvent = changeEvent;
       this.status = status;
       this.changeType = changeType;
-    }
-
-    public T getEntity() {
-      return entity;
     }
 
     public Response toResponse() {
