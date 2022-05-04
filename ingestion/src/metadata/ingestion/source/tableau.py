@@ -89,7 +89,8 @@ class TableauSource(Source[Entity]):
             self.config.sourceConfig.config
         )
 
-        self.client = get_connection(self.connection_config)
+        self.connection = get_connection(self.connection_config)
+        self.client = self.connection.client
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )

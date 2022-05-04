@@ -467,7 +467,7 @@ def _(connection: TableauClient) -> None:
     from tableau_api_lib.utils.querying import get_workbooks_dataframe
 
     try:
-        get_workbooks_dataframe(connection).to_dict()
+        get_workbooks_dataframe(connection.client).to_dict()
 
     except Exception as err:
         raise SourceConnectionException(
