@@ -199,15 +199,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Test
-  void post_IngestionPipelineWithDeploy_4xx(TestInfo test) {
-    CreateIngestionPipeline create =
-        createRequest(test)
-            .withService(BIGQUERY_REFERENCE)
-            .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(true));
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "due to airflow API");
-  }
-
-  @Test
   void post_AirflowWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {REDSHIFT_REFERENCE, BIGQUERY_REFERENCE};
 
