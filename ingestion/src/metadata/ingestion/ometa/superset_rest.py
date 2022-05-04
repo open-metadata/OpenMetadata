@@ -166,3 +166,16 @@ class SupersetAPIClient:
         """
         response = self.client.get(f"/database/{database_id}")
         return response
+
+    def fetch_menu(self):
+        """
+        Check Current User
+
+        Args:
+            No Arguments
+
+        Returns:
+            requests.Response
+        """
+        response = self.client.get(f"/menu/")
+        return response

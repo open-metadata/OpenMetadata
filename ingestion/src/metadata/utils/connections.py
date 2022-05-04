@@ -415,7 +415,7 @@ def _(connection: SupersetConnection, verbose: bool = False):
 @test_connection.register
 def _(connection: SupersetClient) -> None:
     try:
-        connection.client.fetch_total_dashboards()
+        connection.client.fetch_menu()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

@@ -186,7 +186,6 @@ class SupersetSource(Source[Entity]):
 
         self.status = SourceStatus()
         self.connection = get_connection(self.service_connection)
-        test_connection(self.connection)
         self.client = self.connection.client
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
