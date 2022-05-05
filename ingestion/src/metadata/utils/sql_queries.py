@@ -308,3 +308,8 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 FETCH_SNOWFLAKE_TAGS = (
     "select * from table(information_schema.tag_references('{}', '{}'));"
 )
+
+
+FETCH_SNOWFLAKE_METADATA = """
+select TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables
+"""

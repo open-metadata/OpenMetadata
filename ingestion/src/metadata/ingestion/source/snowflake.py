@@ -8,7 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Iterable, Optional
+import uuid
+from typing import Iterable, Optional, Union
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -22,35 +23,35 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import FETCH_SNOWFLAKE_TAGS
+from metadata.utils.sql_queries import FETCH_SNOWFLAKE_METADATA, FETCH_SNOWFLAKE_TAGS
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = GEOGRAPHY
 
 logger = ingestion_logger()
-
-
-def normalize_names(self, name):
-    return name
-
-
-SnowflakeDialect.normalize_name = normalize_names
 
 
 class SnowflakeSource(SQLSource):
@@ -127,6 +128,59 @@ class SnowflakeSource(SQLSource):
             )
         return cls(config, metadata_config)
 
+    def next_record(self) -> Iterable[Entity]:
+        for inspector in self.get_databases():
+            yield from self.fetch_tables(inspector=inspector)
+
+    def fetch_tables(
+        self, inspector: Inspector, schema: str = ""
+    ) -> Iterable[Union[OMetaDatabaseAndTable, TagRequest]]:
+        entities = inspector.get_table_names()
+        for db, schema, entity, entity_type, comment in entities:
+            if filter_by_table(
+                self.source_config.tableFilterPattern, table_name=entity
+            ):
+                self.status.filter(
+                    f"{self.config.serviceName}.{db}.{schema}.{entity}",
+                    "{} pattern not allowed".format(entity_type),
+                )
+                continue
+            table_columns = self._get_columns(schema, entity, inspector)
+            view_definition = inspector.get_view_definition(entity, schema)
+            view_definition = "" if view_definition is None else str(view_definition)
+            table_entity = Table(
+                id=uuid.uuid4(),
+                name=entity,
+                tableType="Regular" if entity_type == "Base Table" else "View",
+                description=comment,
+                columns=table_columns,
+                viewDefinition=view_definition,
+            )
+
+            if self.source_config.generateSampleData:
+                table_data = self.fetch_sample_data(schema, entity)
+                table_entity.sampleData = table_data
+            try:
+                if self.source_config.enableDataProfiler:
+                    profile = self.run_profiler(table=entity, schema=schema)
+                    table_entity.tableProfile = [profile] if profile else None
+            # Catch any errors during the profile runner and continue
+            except Exception as err:
+                logger.error(err)
+            database = self._get_database(self.service_connection.database)
+            table_schema_and_db = OMetaDatabaseAndTable(
+                table=table_entity,
+                database=database,
+                database_schema=self._get_schema(schema, database),
+            )
+            self.register_record(table_schema_and_db)
+            yield table_schema_and_db
+
+
+def get_table_names(self, connection, schema=None, **kw):
+    result = connection.execute(FETCH_SNOWFLAKE_METADATA)
+    return result.fetchall()
+
 
 @reflection.cache
 def _get_table_comment(self, connection, table_name, schema=None, **kw):
@@ -147,5 +201,11 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
     return []
 
 
+def normalize_names(self, name):
+    return name
+
+
+SnowflakeDialect.get_table_names = get_table_names
+SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect._get_table_comment = _get_table_comment
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
