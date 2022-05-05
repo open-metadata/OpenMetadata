@@ -54,13 +54,11 @@ setup(
     zip_safe=False,
     dependency_links=[],
     include_package_data=True,
-    package_data={
-        "": [
-            "*.html", "*.j2"
-        ]
-    },
+    package_data={"": ["*.html", "*.j2"]},
     entry_points={
-        "airflow.plugins": ["openmetadata-airflow-managed-apis = plugins.openmetadata_airflow_apis_plugin:RestApiPlugin"]
+        "airflow.plugins": [
+            "openmetadata-airflow-managed-apis = plugins.openmetadata_airflow_apis_plugin:RestApiPlugin"
+        ]
     },
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
