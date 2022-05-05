@@ -151,6 +151,8 @@ test = {
     # sklearn integration
     "scikit-learn==1.0.2",
     "pandas==1.3.5",
+    # great_expectations tests
+    "great-expectations~=0.15.0",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -190,7 +192,8 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow-container-1.10.15", "db2", "great-expectations"}
+                    if plugin
+                    not in {"airflow-container-1.10.15", "db2", "great-expectations"}
                 ]
             )
         ),
