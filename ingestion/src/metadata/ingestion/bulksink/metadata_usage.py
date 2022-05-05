@@ -81,6 +81,7 @@ class MetadataUsageBulkSink(BulkSink):
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             table_entities = []
+            self.service_name = table_usage.service_name
             if "." in table_usage.table:
                 (
                     table_usage.database_schema,
@@ -100,7 +101,6 @@ class MetadataUsageBulkSink(BulkSink):
                     search_index="table_search_index",
                 )
                 table_entities = es_result
-            self.service_name = table_usage.service_name
             for table_entity in table_entities:
                 if table_entity is not None:
                     if not table_usage_map.get(table_entity.id.__root__):

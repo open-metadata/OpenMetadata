@@ -73,5 +73,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "apiVersion", "siteName", "env"]
+  "required": ["apiVersion", "siteName", "env"]
 }

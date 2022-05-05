@@ -70,6 +70,14 @@ const TourPage = () => {
     setExplorePageCounts(exploreCount);
   };
 
+  /**
+   *
+   * @returns void
+   */
+  const handleFilterChange = () => {
+    return;
+  };
+
   const mockPromiseFunction = (): Promise<void> => {
     return new Promise<void>((resolve) => resolve());
   };
@@ -149,6 +157,7 @@ const TourPage = () => {
             error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}
+            handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
             handleSearchText={() => setExploreSearchResult(exploreSearchData)}
             searchQuery=""
