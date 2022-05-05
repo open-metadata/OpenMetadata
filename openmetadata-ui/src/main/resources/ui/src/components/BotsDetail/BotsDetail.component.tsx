@@ -14,20 +14,24 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { ROUTES } from '../../constants/constants';
-import { Bots } from '../../generated/entity/bots';
+import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
+import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Description from '../common/description/Description';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
+import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
-  botsData: Bots;
+  botsData: User;
+  updateBotsDetails: (data: UserDetails) => void;
 }
 
-const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
+const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
@@ -38,16 +42,20 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
 
   const handleDisplayNameChange = () => {
     if (displayName !== botsData.displayName) {
-      // updateUserDetails({ displayName: displayName || '' });
+      updateBotsDetails({ displayName: displayName || '' });
     }
     setIsDisplayNameEdit(false);
   };
 
   const handleDescriptionChange = (description: string) => {
     if (description !== botsData.description) {
-      // updateUserDetails({ description });
+      updateBotsDetails({ description });
     }
     setIsDescriptionEdit(false);
+  };
+
+  const getTokenValue = () => {
+    return botsData.authenticationMechanism?.config?.JWTToken;
   };
 
   const getDisplayNameComponent = () => {
@@ -160,10 +168,47 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
     );
   };
 
+  const getCopyComponent = () => {
+    const token = getTokenValue();
+    if (token) {
+      return <CopyToClipboardButton copyText={token} />;
+    } else {
+      return null;
+    }
+  };
+
+  const getCenterLayout = () => {
+    return (
+      <div className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4">
+        <div className="tw-flex tw-justify-between tw-items-center">
+          <h6 className="tw-mb-2 tw-self-center">JWT Token</h6>
+          <Button size="small" theme="primary" variant="outlined">
+            Generate new token
+          </Button>
+        </div>
+        <hr className="tw-mt-2" />
+        <p className="tw-mt-4">
+          Token you have generated that can be used to access the OpenMetadata
+          API.
+        </p>
+        <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
+          <input
+            readOnly
+            className="tw-form-inputs tw-p-1.5"
+            placeholder="Generate new token..."
+            type="password"
+            value={getTokenValue()}
+          />
+          {getCopyComponent()}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <Fragment>
+    <PageContainerV1 className="tw-py-4">
       <TitleBreadcrumb
-        className="tw-py-4 tw-px-6"
+        className="tw-px-6"
         titleLinks={[
           {
             name: 'Bots',
@@ -176,9 +221,9 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
         classes="tw-h-full tw-px-4"
         leftPanel={fetchLeftPanel()}
         rightPanel={fetchRightPanel()}>
-        <></>
+        {getCenterLayout()}
       </PageLayout>
-    </Fragment>
+    </PageContainerV1>
   );
 };
 

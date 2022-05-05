@@ -12,19 +12,21 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { compare } from 'fast-json-patch';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getUserByName } from '../../axiosAPIs/userAPI';
+import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import BotsDetail from '../../components/BotsDetail/BotsDetail.component';
 import Loader from '../../components/Loader/Loader';
-import { Bots } from '../../generated/entity/bots';
+import { UserDetails } from '../../components/Users/Users.interface';
+import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotsPage = () => {
   const { botsName } = useParams<{ [key: string]: string }>();
 
-  const [botsData, setBotsData] = useState<Bots>({} as Bots);
+  const [botsData, setBotsData] = useState<User>({} as User);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchBotsData = () => {
@@ -46,13 +48,33 @@ const BotsPage = () => {
       .finally(() => setIsLoading(false));
   };
 
+  const updateBotsDetails = (data: UserDetails) => {
+    const updatedDetails = { ...botsData, ...data };
+    const jsonPatch = compare(botsData, updatedDetails);
+    updateUserDetail(botsData.id, jsonPatch)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setBotsData((prevData) => ({ ...prevData, ...data }));
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
   useEffect(() => {
     fetchBotsData();
   }, [botsName]);
 
   return (
     <Fragment>
-      {isLoading ? <Loader /> : <BotsDetail botsData={botsData} />}
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <BotsDetail botsData={botsData} updateBotsDetails={updateBotsDetails} />
+      )}
     </Fragment>
   );
 };
