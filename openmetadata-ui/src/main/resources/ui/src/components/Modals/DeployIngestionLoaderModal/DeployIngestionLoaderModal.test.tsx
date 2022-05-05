@@ -24,7 +24,7 @@ const deployIngestionLoaderModalProps = {
   isDeployed: false,
 };
 
-describe('Test AddWebhook component', () => {
+describe('Test DeployIngestionLoaderModal component', () => {
   it('Component should render properly', async () => {
     render(
       <DeployIngestionLoaderModal {...deployIngestionLoaderModalProps} />,

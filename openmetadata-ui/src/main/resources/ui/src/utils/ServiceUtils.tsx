@@ -495,7 +495,8 @@ export const getServiceIngestionStepGuide = (
   isIngestion: boolean,
   ingestionName: string,
   serviceName: string,
-  ingestionType: IngestionPipelineType
+  ingestionType: IngestionPipelineType,
+  showDeployTitle: boolean
 ) => {
   let guide;
   if (isIngestion) {
@@ -525,7 +526,11 @@ export const getServiceIngestionStepGuide = (
     <>
       {guide && (
         <>
-          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+          <h6 className="tw-heading tw-text-base">
+            {showDeployTitle
+              ? guide.title.replace('Added', 'Added & Deployed')
+              : guide.title}
+          </h6>
           <div className="tw-mb-5">
             {isIngestion
               ? getFormattedGuideText(

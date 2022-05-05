@@ -486,6 +486,28 @@ const AddIngestion = ({
     }
   };
 
+  const getSuccessMessage = () => {
+    const updateMessage = data?.deployed
+      ? `has been updated successfully`
+      : showDeployButton
+      ? 'has been updated, but failed to deploy'
+      : 'has been updated and deployed successfully';
+    const createMessage = showDeployButton
+      ? 'has been created, but failed to deploy'
+      : 'has been created and deployed successfully';
+
+    return (
+      <span>
+        <span className="tw-mr-1 tw-font-semibold">
+          &quot;{ingestionName}&quot;
+        </span>
+        <span>
+          {status === FormSubmitType.ADD ? createMessage : updateMessage}
+        </span>
+      </span>
+    );
+  };
+
   return (
     <div data-testid="add-ingestion-container">
       <h6 className="tw-heading tw-text-base">{heading}</h6>
@@ -587,6 +609,7 @@ const AddIngestion = ({
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
+            successMessage={getSuccessMessage()}
           />
         )}
 

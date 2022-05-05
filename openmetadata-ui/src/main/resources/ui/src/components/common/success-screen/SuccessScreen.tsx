@@ -18,6 +18,7 @@ import { Button } from '../../buttons/Button/Button';
 
 type SuccessScreenProps = {
   name: string;
+  successMessage: JSX.Element;
   showIngestionButton: boolean;
   showDeployButton?: boolean;
   state: FormSubmitType;
@@ -27,13 +28,12 @@ type SuccessScreenProps = {
 };
 
 const SuccessScreen = ({
-  name,
-  state,
   showIngestionButton,
   showDeployButton = false,
   handleIngestionClick,
   handleViewServiceClick,
   handleDeployClick,
+  successMessage,
 }: SuccessScreenProps) => {
   return (
     <div
@@ -48,11 +48,7 @@ const SuccessScreen = ({
         />
       </div>
       <p className="tw-mb-7" data-testid="success-line">
-        <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-        <span>
-          has been {state === FormSubmitType.EDIT ? 'updated' : 'created'}{' '}
-          successfully
-        </span>
+        {successMessage}
       </p>
 
       <div>
