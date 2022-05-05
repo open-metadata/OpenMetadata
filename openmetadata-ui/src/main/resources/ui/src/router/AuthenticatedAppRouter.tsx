@@ -21,7 +21,7 @@ import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPag
 import AddIngestionPage from '../pages/AddIngestionPage/AddIngestionPage.component';
 import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
-import BotsPage from '../pages/Botspage/BotsPage.component';
+import BotsListPage from '../pages/BotsListpage/BotsListpage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
@@ -164,7 +164,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
       />
-      <AdminProtectedRoute exact component={BotsPage} path={ROUTES.BOTS} />
+      <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
