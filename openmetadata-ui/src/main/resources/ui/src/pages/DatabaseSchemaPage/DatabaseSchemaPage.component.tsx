@@ -58,7 +58,6 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
-  getTableDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -90,6 +89,7 @@ import {
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -534,7 +534,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   key={index}>
                   <td className="tableBody-cell">
                     <Link
-                      to={getTableDetailsPath(
+                      to={getEntityLink(
+                        EntityType.TABLE,
                         table.fullyQualifiedName as string
                       )}>
                       {table.name}

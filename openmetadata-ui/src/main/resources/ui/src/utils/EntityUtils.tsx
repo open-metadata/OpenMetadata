@@ -482,14 +482,20 @@ export const getInfoElements = (data: ExtraInfo) => {
   );
 };
 
+export const ENTITY_LINK_SEPARATOR = '::';
+
 export const getEntityFeedLink: Function = (
   type: string,
   fqn: string,
   field?: string
 ): string | undefined => {
   if (isUndefined(type) || isUndefined(fqn)) return undefined;
+  // url decode the fqn
+  fqn = decodeURIComponent(fqn);
 
-  return `<#E/${type}/${fqn}${field ? `/${field}` : ''}>`;
+  return `<#E${ENTITY_LINK_SEPARATOR}${type}${ENTITY_LINK_SEPARATOR}${fqn}${
+    field ? `${ENTITY_LINK_SEPARATOR}${field}` : ''
+  }>`;
 };
 
 export const isSupportedTest = (dataType: string) => {

@@ -33,6 +33,7 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
+import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
@@ -193,6 +194,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       displayName = getPartialNameFromFQN(entityFQN, ['database']);
     }
 
+    // Remove quotes if the name is wrapped in quotes
+    if (displayName) {
+      displayName = displayName.replace(/^"+|"+$/g, '');
+    }
+
     return displayName;
   };
 
@@ -219,7 +225,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           posted on{' '}
           {isEntityFeed ? (
             <span className="tw-heading" data-testid="headerText-entityField">
-              {entityField}
+              {getEntityFieldDisplay(entityField)}
             </span>
           ) : (
             <Fragment>
@@ -268,7 +274,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         </PopOver>
         {getFeedLinkElement()}
         <span
-          className="tw-text-grey-muted tw-pl-2 tw-text-xs"
+          className="tw-text-grey-muted tw-pl-2 tw-text-xs tw--mb-0.5"
           data-testid="timestamp">
           {getDayTimeByTimeStamp(timeStamp)}
         </span>
