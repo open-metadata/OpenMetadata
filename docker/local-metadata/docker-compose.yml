@@ -14,6 +14,7 @@ volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
   ingestion-volume-tmp:
+  openmetadata-secure-volume:
 services:
   mysql:
     build:
@@ -113,6 +114,9 @@ services:
     extra_hosts:
       - "localhost:172.16.239.10"
       - "elasticsearch:172.16.239.11"
+     volumes:
+      - openmetadata-secure-volume:/security/private
+      - openmetadata-secure-volume:/security/public
 
   ingestion:
     build:
