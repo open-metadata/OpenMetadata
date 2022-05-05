@@ -18,9 +18,11 @@ import sys
 import traceback
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Tuple
 
 import requests
+from dateutil.relativedelta import relativedelta
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -413,6 +415,7 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
         self.config = config
         self.security_config: OpenMetadataJWTClientConfig = self.config.securityConfig
         self.jwt_token = None
+        self.expiry = datetime.now() - relativedelta(years=1)
 
     @classmethod
     def create(cls, config: OpenMetadataConnection):
@@ -428,4 +431,4 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
 
     def get_access_token(self):
         self.auth_token()
-        return self.jwt_token
+        return self.jwt_token, self.expiry

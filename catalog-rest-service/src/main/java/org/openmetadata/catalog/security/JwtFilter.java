@@ -160,7 +160,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
   private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-    User user = userRepository.getByName(null, userName, EntityUtil.Fields.EMPTY_FIELDS);
+    User user = userRepository.getByName(null, userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
     if (authenticationMechanism != null) {
       JWTAuthMechanism jwtAuthMechanism =
