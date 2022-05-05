@@ -127,15 +127,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
-    TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
-    TABLE_COLUMN_LINK = String.format("<#E/table/%s/columns/c1/description>", TABLE.getFullyQualifiedName());
-    TABLE_DESCRIPTION_LINK = String.format("<#E/table/%s/description>", TABLE.getFullyQualifiedName());
+    TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
+    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1::description>", TABLE.getFullyQualifiedName());
+    TABLE_DESCRIPTION_LINK = String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;
-    USER_LINK = String.format("<#E/user/%s>", USER.getName());
+    USER_LINK = String.format("<#E::user::%s>", USER.getName());
 
     TEAM = TableResourceTest.TEAM1;
-    TEAM_LINK = String.format("<#E/team/%s>", TEAM.getName());
+    TEAM_LINK = String.format("<#E::team::%s>", TEAM.getName());
 
     CreateThread createThread = create();
     THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
@@ -156,19 +156,19 @@ public class FeedResourceTest extends CatalogApplicationTest {
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/>"); // Invalid EntityLink - missing entityType and entityId
+    create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/table/>"); // Invalid EntityLink - missing entityId
+    create.withAbout("<#E::table::>"); // Invalid EntityLink - missing entityId
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/table/tableName"); // Invalid EntityLink - missing closing bracket ">"
+    create.withAbout("<#E::table::tableName"); // Invalid EntityLink - missing closing bracket ">"
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
   }
 
   @Test
@@ -196,7 +196,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void post_feedWithNonExistentAbout_404() {
     // Create thread with non-existent addressed To entity
-    CreateThread create = create().withAbout("<#E/table/invalidTableName>");
+    CreateThread create = create().withAbout("<#E::table::invalidTableName>");
     assertResponse(
         () -> createThread(create, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
   }
@@ -282,8 +282,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   private static Stream<Arguments> provideStringsForListThreads() {
     return Stream.of(
-        Arguments.of(String.format("<#E/%s/%s>", Entity.USER, USER.getName())),
-        Arguments.of(String.format("<#E/%s/%s>", Entity.TABLE, TABLE.getFullyQualifiedName())));
+        Arguments.of(String.format("<#E::%s::%s>", Entity.USER, USER.getName())),
+        Arguments.of(String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName())));
   }
 
   @ParameterizedTest
@@ -414,7 +414,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // update the About of the thread
     String originalAbout = thread.getAbout();
-    Thread updated = thread.withAbout("<#E/user>");
+    Thread updated = thread.withAbout("<#E::user>");
 
     patchThread(updated.getId(), originalJson, updated, ADMIN_AUTH_HEADERS);
     updated = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
@@ -473,7 +473,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
     createAndCheck(
-        create().withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
 
     assertNotNull(ownerId);
@@ -504,7 +504,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     createAndCheck(
         create()
             .withMessage(String.format("Message mentions %s", USER_LINK))
-            .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
         ADMIN_AUTH_HEADERS);
 
     // Create a thread that has user mention in a post
@@ -513,7 +513,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
         createAndCheck(
             create()
                 .withMessage("Thread Message")
-                .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+                .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
     addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
 
@@ -524,7 +524,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void list_threadsWithFollowsFilter() throws HttpResponseException {
     // Get the initial thread count of TABLE2
-    String entityLink = String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName());
+    String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
     int initialThreadCount = listThreads(entityLink, null, AUTH_HEADERS).getPaging().getTotal();
 
     // Create threads
@@ -685,7 +685,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateThread create() {
-    String about = String.format("<#E/%s/%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 

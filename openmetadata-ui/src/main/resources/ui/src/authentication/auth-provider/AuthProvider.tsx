@@ -191,6 +191,12 @@ export const AuthProvider = ({
       });
   };
 
+  const handleFailedLogin = () => {
+    setIsSigningIn(false);
+    setIsUserAuthenticated(false);
+    history.push(ROUTES.SIGNIN);
+  };
+
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
@@ -208,12 +214,15 @@ export const AuthProvider = ({
         }
       })
       .catch((err) => {
-        if (err.response.data.code === 404) {
+        if (err.response.status === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
           appState.updateUserPermissions({} as UserPermissions);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
+        } else {
+          showErrorToast(err);
+          history.push(ROUTES.SIGNIN);
         }
       })
       .finally(() => {
@@ -415,6 +424,7 @@ export const AuthProvider = ({
             userConfig={getUserManagerConfig({
               ...(authConfig as Record<string, string>),
             })}
+            onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>
             {children}

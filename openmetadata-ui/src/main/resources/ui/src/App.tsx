@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { library } from '@fortawesome/fontawesome-svg-core';
+import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
+import { faTimesCircle } from '@fortawesome/free-regular-svg-icons';
 import {
   faCheck,
   faCheckCircle,
@@ -19,6 +20,7 @@ import {
   faChevronDown,
   faChevronRight,
   faPlus,
+  faPlusCircle,
   faSearch,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
@@ -39,7 +41,9 @@ const App: FunctionComponent = () => {
     faCheckSquare,
     faCheckCircle,
     faChevronDown,
-    faChevronRight
+    faChevronRight,
+    faTimesCircle as IconDefinition,
+    faPlusCircle
   );
 
   return (

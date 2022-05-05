@@ -59,9 +59,9 @@
       "format": "date-time"
     },
     "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{arrayFieldName}/{arrayFieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E/\\S+/\\S+>$"
+      "pattern": "^<#E::\\S+::\\S+>$"
     },
     "entityName": {
       "description": "Name that identifies this dashboard service.",

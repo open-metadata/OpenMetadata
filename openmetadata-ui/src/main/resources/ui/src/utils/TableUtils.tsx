@@ -201,6 +201,8 @@ export const getEntityLink = (
   indexType: string,
   fullyQualifiedName: string
 ) => {
+  // encode the FQN for entities that can have "/" in their names
+  fullyQualifiedName = encodeURIComponent(fullyQualifiedName);
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
