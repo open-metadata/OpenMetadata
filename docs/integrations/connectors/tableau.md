@@ -35,33 +35,40 @@ metadata ingest -c ./examples/workflows/tableau.json
 {
   "source": {
     "type": "tableau",
-    "config": {
-      "username": "username",
-      "password": "password",
-      "personal_access_token_secret": "personal_access_token_secret",
-      "personal_access_token_name": "personal_access_token_name",
-      "service_name": "local_tableau",
-      "server": "server_address",
-      "site_name": "site_name",
-      "site_url": "site_url",
-      "api_version": "api version",
-      "env": "env"
+    "serviceName": "local_tableau",
+    "serviceConnection": {
+      "config": {
+        "type": "Tableau",
+        "username": "username",
+        "password": "password",
+        "env": "tableau_prod",
+        "hostPort": "http://localhost",
+        "siteName": "site_name",
+        "apiVersion": "api_version",
+        "personalAccessTokenName": "personal_access_token_name",
+        "personalAccessTokenSecret": "personal_access_token_secret"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
     }
-  },
- ...
+  }
 ```
 {% endcode %}
 
 1. **username** - pass the Tableau username.
 2. **password** - password for the username.
-3. **personal\_access\_token\_secret** - \*\*\*\* pass the personal access token secret
-4. **personal\_access\_token\_name** - pass the personal access token name
+3. **personalAccessTokenSecret** - \*\*\*\* pass the personal access token secret
+4. **personalAccessTokenName** - pass the personal access token name
 5. **server** - address of the server.
-6. **site\_name** - pass the site name.
-7. **site\_url** - pass the tableau connector url.
-8. **api\_version** - pass an api version.
+6. **siteName** - pass the site name.
+7. **siteUrl** - pass the tableau connector url.
+8. **apiVersion** - pass an api version.
 9. **service\_name** - Service Name for this Tableau cluster. If you added Tableau cluster through OpenMetadata UI, make sure the service name matches the same.
-10. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+10. **dashboardFilterPattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
@@ -74,26 +81,35 @@ Add `metadata-rest` sink along with `metadata-server` config
 {
   "source": {
     "type": "tableau",
-    "config": {
-      "username": "username",
-      "password": "password",
-      "service_name": "local_tableau",
-      "server": "server_address",
-      "site_name": "site_name",
-      "site_url": "site_url",
-      "api_version": "api version",
-      "env": "env"
+    "serviceName": "local_tableau",
+    "serviceConnection": {
+      "config": {
+        "type": "Tableau",
+        "username": "username",
+        "password": "password",
+        "env": "tableau_prod",
+        "hostPort": "http://localhost",
+        "siteName": "site_name",
+        "apiVersion": "api_version",
+        "personalAccessTokenName": "personal_access_token_name",
+        "personalAccessTokenSecret": "personal_access_token_secret"
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
