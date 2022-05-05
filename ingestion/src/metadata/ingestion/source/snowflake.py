@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import traceback
 import uuid
 from typing import Iterable, Optional, Union
 
@@ -130,51 +131,54 @@ class SnowflakeSource(SQLSource):
 
     def next_record(self) -> Iterable[Entity]:
         for inspector in self.get_databases():
-            yield from self.fetch_tables(inspector=inspector)
+            yield from self.fetch_tables(inspector=inspector, schema="")
 
     def fetch_tables(
-        self, inspector: Inspector, schema: str = ""
+        self,
+        inspector: Inspector,
+        schema: str,
     ) -> Iterable[Union[OMetaDatabaseAndTable, TagRequest]]:
         entities = inspector.get_table_names()
         for db, schema, entity, entity_type, comment in entities:
-            if filter_by_table(
-                self.source_config.tableFilterPattern, table_name=entity
-            ):
-                self.status.filter(
-                    f"{self.config.serviceName}.{db}.{schema}.{entity}",
-                    "{} pattern not allowed".format(entity_type),
-                )
-                continue
-            table_columns = self._get_columns(schema, entity, inspector)
-            view_definition = inspector.get_view_definition(entity, schema)
-            view_definition = "" if view_definition is None else str(view_definition)
-            table_entity = Table(
-                id=uuid.uuid4(),
-                name=entity,
-                tableType="Regular" if entity_type == "Base Table" else "View",
-                description=comment,
-                columns=table_columns,
-                viewDefinition=view_definition,
-            )
-
-            if self.source_config.generateSampleData:
-                table_data = self.fetch_sample_data(schema, entity)
-                table_entity.sampleData = table_data
             try:
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=entity
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{db}.{schema}.{entity}",
+                        "{} pattern not allowed".format(entity_type),
+                    )
+                    continue
+                table_columns = self._get_columns(schema, entity, inspector)
+                view_definition = inspector.get_view_definition(entity, schema)
+                view_definition = (
+                    "" if view_definition is None else str(view_definition)
+                )
+                table_entity = Table(
+                    id=uuid.uuid4(),
+                    name=entity,
+                    tableType="Regular" if entity_type == "Base Table" else "View",
+                    description=comment,
+                    columns=table_columns,
+                    viewDefinition=view_definition,
+                )
+                if self.source_config.generateSampleData:
+                    table_data = self.fetch_sample_data(schema, entity)
+                    table_entity.sampleData = table_data
                 if self.source_config.enableDataProfiler:
                     profile = self.run_profiler(table=entity, schema=schema)
                     table_entity.tableProfile = [profile] if profile else None
-            # Catch any errors during the profile runner and continue
+                database = self._get_database(self.service_connection.database)
+                table_schema_and_db = OMetaDatabaseAndTable(
+                    table=table_entity,
+                    database=database,
+                    database_schema=self._get_schema(schema, database),
+                )
+                self.register_record(table_schema_and_db)
+                yield table_schema_and_db
             except Exception as err:
+                logger.debug(traceback.format_exc())
                 logger.error(err)
-            database = self._get_database(self.service_connection.database)
-            table_schema_and_db = OMetaDatabaseAndTable(
-                table=table_entity,
-                database=database,
-                database_schema=self._get_schema(schema, database),
-            )
-            self.register_record(table_schema_and_db)
-            yield table_schema_and_db
 
 
 def get_table_names(self, connection, schema=None, **kw):
