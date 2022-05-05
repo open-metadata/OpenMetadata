@@ -145,6 +145,21 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
     );
   };
 
+  const fetchRightPanel = () => {
+    return (
+      <div data-testid="right-panel">
+        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
+          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
+          <p className="tw-mb-2">
+            Anyone who has your REST API key will be able to send notifications
+            from your app. Do not expose the REST API key in your application
+            code. Do not share it on GitHub or anywhere else online.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Fragment>
       <TitleBreadcrumb
@@ -157,7 +172,10 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData }) => {
           { name: botsData.name || '', url: '', activeTitle: true },
         ]}
       />
-      <PageLayout classes="tw-h-full tw-px-4" leftPanel={fetchLeftPanel()}>
+      <PageLayout
+        classes="tw-h-full tw-px-4"
+        leftPanel={fetchLeftPanel()}
+        rightPanel={fetchRightPanel()}>
         <></>
       </PageLayout>
     </Fragment>

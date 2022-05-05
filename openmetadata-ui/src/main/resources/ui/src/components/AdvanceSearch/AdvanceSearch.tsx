@@ -137,7 +137,9 @@ const AdvanceSearch: FC<AdvanceSearchProp> = ({
             ))}
           </div>
           <div
-            className={classNames('tw-w-full', { 'tw-min-w-max': searchValue })}
+            className={classNames('tw-w-full', {
+              'tw-min-w-max': searchValue || selectedFilters.length,
+            })}
             data-testid="search-wrapper">
             <InputSearch
               handleKeyDown={handleKeyDown}
