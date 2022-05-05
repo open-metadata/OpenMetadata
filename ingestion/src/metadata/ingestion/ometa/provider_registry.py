@@ -23,6 +23,7 @@ from metadata.ingestion.ometa.auth_provider import (
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
+    OpenMetadataAuthenticationProvider,
 )
 from metadata.utils.dispatch import enum_register
 
@@ -65,3 +66,8 @@ def azure_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
 @auth_provider_registry.add(AuthProvider.custom_oidc.value)
 def custom_oidc_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return CustomOIDCAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.openmetadata.value)
+def om_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    return OpenMetadataAuthenticationProvider.create(config)

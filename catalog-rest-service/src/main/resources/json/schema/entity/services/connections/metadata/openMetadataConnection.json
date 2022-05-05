@@ -27,7 +27,15 @@
     "authProvider": {
       "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
       "type": "string",
-      "enum": ["no-auth", "azure", "google", "okta", "auth0", "custom-oidc"],
+      "enum": [
+        "no-auth",
+        "azure",
+        "google",
+        "okta",
+        "auth0",
+        "custom-oidc",
+        "openmetadata"
+      ],
       "default": "no-auth"
     },
     "securityConfig": {
@@ -47,6 +55,9 @@
         },
         {
           "$ref": "../../../../security/client/customOidcSSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
         }
       ]
     },

@@ -44,19 +44,29 @@ import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrderi
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.auth0.jwk.JwkException;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
+import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -77,6 +87,10 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
+import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -97,6 +111,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
+    this.supportsFieldsQueryParam = false;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -667,6 +682,59 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
+  }
+
+  @Test
+  void put_generateToken_bot_user_200_ok(TestInfo test)
+      throws HttpResponseException, MalformedURLException, JwkException {
+    User user =
+        createEntity(
+            createRequest(test, 6)
+                .withName("ingestion-bot-jwt")
+                .withDisplayName("ingestion-bot-jwt")
+                .withEmail("ingestion-bot-jwt@email.com")
+                .withIsBot(true),
+            authHeaders("ingestion-bot-jwt@email.com"));
+    JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
+    TestUtils.put(
+        getResource(String.format("users/generateToken/%s", user.getId())), authMechanism, OK, ADMIN_AUTH_HEADERS);
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+    JWTAuthMechanism jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(jwtAuthMechanism.getJWTToken());
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
+    Date date = jwt.getExpiresAt();
+    long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
+    assertTrue(daysBetween >= 6);
+    assertEquals(jwt.getClaims().get("sub").asString(), "ingestion-bot-jwt");
+    assertEquals(jwt.getClaims().get("isBot").asBoolean(), true);
+    TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
+    jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertEquals(jwtAuthMechanism.getJWTToken(), StringUtils.EMPTY);
+  }
+
+  private DecodedJWT decodedJWT(String token) throws MalformedURLException, JwkException, HttpResponseException {
+    WebTarget target = getConfigResource("jwks");
+    JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
+    DecodedJWT jwt;
+    try {
+      jwt = JWT.decode(token);
+    } catch (JWTDecodeException e) {
+      throw new AuthenticationException("Invalid token", e);
+    }
+
+    // Check if expired
+    // if the expiresAt set to null, treat it as never expiring token
+    if (jwt.getExpiresAt() != null
+        && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+      throw new AuthenticationException("Expired token!");
+    }
+
+    return jwt;
   }
 
   @SneakyThrows
