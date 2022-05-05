@@ -21,7 +21,7 @@ import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const BotsPage = () => {
+const BotsListPage = () => {
   const [bots, setBots] = useState<Array<Bots>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -56,4 +56,4 @@ const BotsPage = () => {
   );
 };
 
-export default BotsPage;
+export default BotsListPage;

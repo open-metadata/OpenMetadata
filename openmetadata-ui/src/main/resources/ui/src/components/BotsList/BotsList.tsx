@@ -12,6 +12,8 @@
  */
 
 import React, { FC, HTMLAttributes } from 'react';
+import { useHistory } from 'react-router-dom';
+import { getBotsPath } from '../../constants/constants';
 import { Bots } from '../../generated/entity/bots';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -25,14 +27,23 @@ interface BotsListProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 const BotsList: FC<BotsListProp> = ({ bots }) => {
+  const history = useHistory();
+
+  const handleTitleClick = (botsName: string) => {
+    const botsPath = getBotsPath(botsName);
+
+    history.push(botsPath);
+  };
+
   const BotCard = ({ bot }: { bot: Bots }) => {
     return (
       <div className="tw-bg-white tw-shadow tw-border tw-border-main tw-rounded tw-p-3">
         <div className="tw-flex">
           <SVGIcons alt="bot-profile" icon={Icons.BOT_PROFILE} />
           <span
-            className="tw-ml-2 tw-self-center"
-            data-testid="bot-displayname">
+            className="tw-ml-2 tw-self-center tw-cursor-pointer hover:tw-underline"
+            data-testid="bot-displayname"
+            onClick={() => handleTitleClick(bot.name || '')}>
             {getEntityName(bot as unknown as EntityReference)}
           </span>
         </div>

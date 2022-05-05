@@ -61,6 +61,7 @@ const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 const PLACEHOLDER_USER_NAME = ':username';
+const PLACEHOLDER_BOTS_NAME = ':botsName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -198,6 +199,7 @@ export const ROUTES = {
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS: `/bots`,
+  BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -390,6 +392,13 @@ export const getAddGlossaryTermsPath = (
   if (glossaryTerm) {
     path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
   }
+
+  return path;
+};
+
+export const getBotsPath = (botsName: string) => {
+  let path = ROUTES.BOTS_PROFILE;
+  path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
 
   return path;
 };
