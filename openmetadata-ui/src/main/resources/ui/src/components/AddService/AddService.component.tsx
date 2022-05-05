@@ -243,6 +243,10 @@ const AddService = ({
     );
   };
 
+  const isDeployed = () => {
+    return activeIngestionStep >= 3 && !showDeployButton;
+  };
+
   const fetchRightPanel = () => {
     const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
 
@@ -251,7 +255,8 @@ const AddService = ({
       addIngestion,
       `${serviceName}_${PipelineType.Metadata}`,
       serviceName,
-      PipelineType.Metadata
+      PipelineType.Metadata,
+      isDeployed()
     );
   };
 

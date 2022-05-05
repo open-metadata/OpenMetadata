@@ -24,6 +24,7 @@ describe('Test SuccessScreen component', () => {
         handleViewServiceClick={jest.fn()}
         name="NewService"
         state={FormSubmitType.ADD}
+        successMessage={<span>title</span>}
       />
     );
 

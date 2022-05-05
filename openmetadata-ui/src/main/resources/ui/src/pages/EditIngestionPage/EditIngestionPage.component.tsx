@@ -200,6 +200,15 @@ const EditIngestionPage = () => {
     );
   };
 
+  const isDeployed = () => {
+    const ingestion =
+      ingestionType === PipelineType.Metadata
+        ? activeIngestionStep >= 3
+        : activeIngestionStep >= 2;
+
+    return ingestion && !showIngestionButton;
+  };
+
   const renderEditIngestionPage = () => {
     if (isLoading) {
       return <Loader />;
@@ -215,7 +224,8 @@ const EditIngestionPage = () => {
             true,
             ingestionData?.name || '',
             '',
-            ingestionType as PipelineType
+            ingestionType as PipelineType,
+            isDeployed()
           )}>
           <div className="tw-form-container">
             <AddIngestion

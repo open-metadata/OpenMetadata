@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -18,7 +19,7 @@ import { Button } from '../../buttons/Button/Button';
 
 type SuccessScreenProps = {
   name: string;
-  successMessage: JSX.Element;
+  successMessage?: JSX.Element;
   showIngestionButton: boolean;
   showDeployButton?: boolean;
   state: FormSubmitType;
@@ -28,6 +29,7 @@ type SuccessScreenProps = {
 };
 
 const SuccessScreen = ({
+  name,
   showIngestionButton,
   showDeployButton = false,
   handleIngestionClick,
@@ -48,7 +50,14 @@ const SuccessScreen = ({
         />
       </div>
       <p className="tw-mb-7" data-testid="success-line">
-        {successMessage}
+        {isUndefined(successMessage) ? (
+          <span>
+            <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
+            <span>has been created successfully</span>
+          </span>
+        ) : (
+          successMessage
+        )}
       </p>
 
       <div>
