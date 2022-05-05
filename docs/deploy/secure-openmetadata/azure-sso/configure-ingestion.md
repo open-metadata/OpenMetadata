@@ -16,12 +16,14 @@ All Connectors have the **workflowConfig** section. Pass the JSON file generated
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "azure",
-      "clientSecret": "{your_client_secret}",   
-      "authority": "{your_authority_url}"    
-      "clientId": "{your_client_id}",
-      "scopes": [
-        {your_scopes}
-        ]
+      "securityConfig": {
+        "clientSecret": "{your_client_secret}",   
+        "authority": "{your_authority_url}"    
+        "clientId": "{your_client_id}",
+        "scopes": [
+          {your_scopes}
+         ]
+       }
     }
   }
 ...

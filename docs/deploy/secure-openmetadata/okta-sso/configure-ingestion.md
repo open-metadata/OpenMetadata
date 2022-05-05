@@ -16,13 +16,15 @@ All Connectors have the **workflowConfig** section. Pass the public/private key 
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "okta",
-      "clientId": "{CLIENT_ID - SPA APP}",   
-      "orgURL": "{ISSUER_URL}/v1/token",
-      "privateKey": "{public/private keypair}",
-      "email": "{email}",
-      "scopes": [
-        "token"
-        ]
+      "securityConfig": {
+        "clientId": "{CLIENT_ID - SPA APP}",   
+        "orgURL": "{ISSUER_URL}/v1/token",
+        "privateKey": "{public/private keypair}",
+        "email": "{email}",
+        "scopes": [
+          "token"
+         ]
+      }
     }
   }
 ...

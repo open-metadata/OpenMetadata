@@ -16,9 +16,11 @@ All Connectors have the **workflowConfig** section. Pass the JSON file generated
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "auth0",
-      "clientId": "{your_client_id}",
-      "secretKey": "{your_client_secret}",
-      "domain": "{your_domain}"    
+      "securityConfig": {
+        "clientId": "{your_client_id}",
+        "secretKey": "{your_client_secret}",
+        "domain": "{your_domain}"    
+      }
     }
   }
 ...

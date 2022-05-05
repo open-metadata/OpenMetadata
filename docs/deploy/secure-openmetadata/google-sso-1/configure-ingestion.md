@@ -16,7 +16,9 @@ All Connectors have the **workflowConfig** section. Pass the JSON file generated
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "custom-oidc",
-      "secretKey": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
+      "securityConfig": {
+        "secretKey": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
+       }
     }
   }
 ...
