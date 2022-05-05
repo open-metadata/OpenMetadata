@@ -63,10 +63,7 @@ Copy and paste the configuration template below into the `hive.json` the file yo
           "sampleDataQuery": "<query to fetch table data>",
           "schemaFilterPattern": "<schema name regex list>",
           "tableFilterPattern": "<table name regex list>",
-          "dbtProvider": "<s3, gcs, gcs-path, local or http>",
-          "dbtConfig": "<for the selected provider>",
-          "dbtCatalogFileName": "<file name>",
-          "dbtManifestFileName": "<file name>"
+          "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
         }
       }
   },

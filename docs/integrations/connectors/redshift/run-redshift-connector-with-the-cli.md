@@ -13,7 +13,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 To run the Snowflake ingestion, you will need to install:
 
 ```
-pip3 install 'openmetadata-ingestion[snowflake]'
+pip3 install 'openmetadata-ingestion[redshift]'
 ```
 
 ## Metadata Ingestion
@@ -52,10 +52,7 @@ This is a sample config for Redshift:
             "sampleDataQuery": "<query to fetch table data>",
             "schemaFilterPattern": "<schema name regex list>",
             "tableFilterPattern": "<table name regex list>",
-            "dbtProvider": "<s3, gcs, gcs-path, local or http>",
-            "dbtConfig": "<for the selected provider>",
-            "dbtCatalogFileName": "<file name>",
-            "dbtManifestFileName": "<file name>"
+            "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
         }
      }
     },
