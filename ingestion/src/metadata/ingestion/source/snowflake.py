@@ -77,7 +77,7 @@ class SnowflakeSource(SQLSource):
                 self.engine = get_connection(self.service_connection)
                 yield inspect(self.engine)
 
-    def fetch_tags(self, schema, table: str, object_type: str = "table"):
+    def fetch_tags(self, schema, table: str):
         self.connection.execute(f"USE {self.service_connection.database}.{schema}")
         result = self.connection.execute(FETCH_SNOWFLAKE_TAGS.format(table))
         tags = []
