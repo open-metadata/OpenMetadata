@@ -206,7 +206,7 @@ const EditIngestionPage = () => {
         ? activeIngestionStep >= 3
         : activeIngestionStep >= 2;
 
-    return ingestion && !showIngestionButton;
+    return ingestion && !showIngestionButton && !ingestionData.deployed;
   };
 
   const renderEditIngestionPage = () => {
@@ -225,7 +225,8 @@ const EditIngestionPage = () => {
             ingestionData?.name || '',
             '',
             ingestionType as PipelineType,
-            isDeployed()
+            isDeployed(),
+            true
           )}>
           <div className="tw-form-container">
             <AddIngestion
