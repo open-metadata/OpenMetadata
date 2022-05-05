@@ -11,23 +11,20 @@
  *  limitations under the License.
  */
 
-import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
-import { DropDownListItem } from '../dropdown/types';
+import { HTMLAttributes } from 'react';
 
-export interface NavBarProps {
-  settingDropdown: DropDownListItem[];
-  supportDropdown: DropDownListItem[];
-  profileDropdown: DropDownListItem[];
+export interface Filter {
+  key: string;
+  value: string;
+}
+export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
   searchValue: string;
   isTourRoute?: boolean;
-  isFeatureModalOpen: boolean;
   pathname: string;
   isSearchBoxOpen: boolean;
-  username: string;
-  handleSearchBoxOpen: (value: boolean) => void;
-  handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
   handleOnClick: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onFilterUpdate: (filters: Array<Filter>) => void;
+  handleSearchBoxOpen: (value: boolean) => void;
+  onFilterChange: (filters: Array<Filter>) => void;
 }

@@ -261,6 +261,9 @@ const Appbar: React.FC = (): JSX.Element => {
           settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
           username={getUserName()}
+          onFilterUpdate={() => {
+            return;
+          }}
         />
       ) : null}
     </>
