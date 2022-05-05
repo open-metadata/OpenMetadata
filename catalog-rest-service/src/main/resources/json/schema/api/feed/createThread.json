@@ -14,11 +14,11 @@
       "type": "string"
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E/{entities}/{entityName}/{field}/{fieldValue}.",
+      "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E/{entities}/{entityType}/{field}/{fieldValue}",
+      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityType}::{field}::{fieldValue}",
       "$ref": "../../type/basic.json#/definitions/entityLink"
     }
   },

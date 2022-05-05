@@ -260,3 +260,11 @@ export const tabsInfo = [
     selectedIcon: Icons.PIPELINE,
   },
 ];
+
+export const ADVANCE_SEARCH_FILTER = [
+  'database',
+  'column_names',
+  'tags',
+  'database_schema',
+  'service',
+];

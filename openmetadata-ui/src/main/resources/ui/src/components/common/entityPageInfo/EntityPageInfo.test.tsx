@@ -25,7 +25,7 @@ import EntityPageInfo from './EntityPageInfo';
 
 const mockEntityFieldThreads = [
   {
-    entityLink: '<#E/table/bigquery_gcp.shopify.raw_product_catalog/tags>',
+    entityLink: '<#E::table::bigquery_gcp.shopify.raw_product_catalog::tags>',
     count: 1,
     entityField: 'tags',
   },

@@ -28,6 +28,8 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -35,9 +37,11 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 @Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
+  private final JWTTokenGenerator jwtTokenGenerator;
 
   public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
     this.catalogApplicationConfig = catalogApplicationConfig;
+    this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
   }
 
   @GET
@@ -124,5 +128,20 @@ public class ConfigResource {
       airflowConfigurationForAPI.setApiEndpoint(catalogApplicationConfig.getAirflowConfiguration().getApiEndpoint());
     }
     return airflowConfigurationForAPI;
+  }
+
+  @GET
+  @Path(("/jwks"))
+  @Operation(
+      summary = "Get JWKS public key",
+      tags = "general",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JWKS public key",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class)))
+      })
+  public JWKSResponse getJWKSResponse() {
+    return jwtTokenGenerator.getJWKSResponse();
   }
 }
