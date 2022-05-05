@@ -104,7 +104,7 @@ export const getLoggedInUserPermissions: Function =
 
 export const getInitialUsers: Function = (): Promise<AxiosResponse> => {
   return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=user_search_index`
+    `/search/query?q=*&from=0&size=5&index=${SearchIndex.USER}`
   );
 };
 export const getUserSuggestions: Function = (
@@ -117,6 +117,38 @@ export const getUserSuggestions: Function = (
 export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
   return APIClient.get(
     `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
+  );
+};
+
+export const getSearchedUsers = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
+};
+
+export const getSearchedTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+};
+
+export const getSearchedUsersAndTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(
+    queryString,
+    from,
+    size,
+    '',
+    '',
+    '',
+    `${SearchIndex.USER},${SearchIndex.TEAM}`
   );
 };
 

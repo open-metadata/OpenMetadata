@@ -13,17 +13,36 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { debounce, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { TableDetail } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import { SearchResponse, TableDetail } from 'Models';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getUserSuggestions,
+} from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import {
+  formatTeamsAndUsersResponse,
+  formatTeamsResponse,
+  formatUsersResponse,
+} from '../../utils/APIUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import CardListItem from '../cardlist/CardListItem/CardWithListItem';
@@ -56,6 +75,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [statusOwner, setStatusOwner] = useState<Status>('initial');
   const [statusTier, setStatusTier] = useState<Status>('initial');
   const [activeTier, setActiveTier] = useState(currentTier);
@@ -66,6 +86,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -148,6 +169,78 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleCardSelection = (cardId: string) => {
     setActiveTier(cardId);
+  };
+
+  const getOwnerSearch = useCallback(
+    (searchQuery = WILD_CARD_CHAR, from = 1) => {
+      setIsUserLoading(true);
+      const promises = [
+        getSearchedUsers(searchQuery, from),
+        getSearchedTeams(searchQuery, from),
+      ];
+      Promise.allSettled(promises)
+        .then(
+          ([resUsers, resTeams]: Array<
+            PromiseSettledResult<SearchResponse>
+          >) => {
+            const users =
+              resUsers.status === 'fulfilled'
+                ? formatUsersResponse(resUsers.value.data.hits.hits)
+                : [];
+            const teams =
+              resTeams.status === 'fulfilled'
+                ? formatTeamsResponse(resTeams.value.data.hits.hits)
+                : [];
+            setListOwners(getOwnerList(users, teams));
+          }
+        )
+        .catch(() => {
+          // console.log('Failed to fetch search results: ', err);
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const getOwnerSuggestion = useCallback(
+    (searchText = '') => {
+      setIsUserLoading(true);
+      getUserSuggestions(searchText)
+        .then((res: AxiosResponse) => {
+          const { users, teams } = formatTeamsAndUsersResponse(
+            res.data.suggest['table-suggest'][0].options
+          );
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners(getOwnerList());
+        })
+        .finally(() => setIsUserLoading(false));
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      if (text) {
+        getOwnerSuggestion(text);
+      } else {
+        getOwnerSearch();
+      }
+    },
+    [getOwnerSuggestion, getOwnerSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
+
+  const handleOwnerSearch = (text: string) => {
+    setSearchText(text);
+    debounceOnSearch(text);
   };
 
   const getDeleteEntityWidget = () => {
@@ -263,6 +356,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (!hideTier) {
       getTierData();
     }
+    if (!hideOwner) {
+      getOwnerSearch();
+    }
   }, []);
 
   useEffect(() => {
@@ -299,6 +395,13 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setTeamJoinable(isJoinable);
   }, [isJoinable]);
 
+  useEffect(() => {
+    if (!listVisible) {
+      setSearchText('');
+      setListOwners(getOwnerList());
+    }
+  }, [listVisible]);
+
   return (
     <div
       className="tw-max-w-3xl tw-mx-auto"
@@ -314,16 +417,19 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             entityType={entityType}
             handleIsJoinable={handleIsJoinable}
             handleOwnerSelection={handleOwnerSelection}
+            handleSearchOwnerDropdown={handleOwnerSearch}
             handleSelectOwnerDropdown={() =>
               setListVisible((visible) => !visible)
             }
             hasEditAccess={hasEditAccess}
             isAuthDisabled={isAuthDisabled}
             isJoinableActionAllowed={isJoinableActionAllowed()}
+            isListLoading={isUserLoading}
             listOwners={listOwners}
             listVisible={listVisible}
             owner={owner}
             ownerName={ownerName}
+            ownerSearchText={searchText}
             statusOwner={statusOwner}
             teamJoinable={teamJoinable}
           />

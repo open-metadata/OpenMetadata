@@ -237,6 +237,13 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormattedTeamsData = {
+    name: string;
+    displayName: string;
+    type: string;
+    id: string;
+  };
+
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;

@@ -26,8 +26,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   listGroups = [],
   horzPosRight,
   searchString = '',
+  controlledSearchStr,
   showSearchBar = false,
   value,
+  onSearchTextChange,
   onSelect,
   groupType = 'label',
   domPosition,
@@ -59,7 +61,11 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   };
 
   const handleListSearch = (text: string) => {
-    setSearchText(text || '');
+    if (!onSearchTextChange) {
+      setSearchText(text || '');
+    } else {
+      onSearchTextChange(text || '');
+    }
   };
 
   const getSearchedListByGroup = (
@@ -159,45 +165,55 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             data-testid="dropdown-list"
             role="menu"
             style={dropDownPosition}>
-            {isLoading ? (
+            {/* {isLoading ? (
               <div className={widthClass}>
                 <Loader />
               </div>
-            ) : (
-              <>
-                {showSearchBar && (
-                  <div className="has-search tw-p-4 tw-pb-2">
-                    <input
-                      className="tw-form-inputs tw-px-3 tw-py-1"
-                      data-testid="searchInputText"
-                      placeholder="Search..."
-                      type="text"
-                      onChange={(e) => {
-                        handleListSearch(e.target.value);
-                      }}
-                    />
-                  </div>
-                )}
-                {groupType === 'tab' && (
-                  <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
-                    {listGroups.map((grp, index) => {
-                      return (
-                        <button
-                          className={getTabClasses(index + 1, activeTab)}
-                          data-testid="tab"
-                          key={index}
-                          onClick={() => setActiveTab(index + 1)}>
-                          {grp}
-                          {getCountBadge(
-                            getSearchedListByGroup(grp).length,
-                            '',
-                            activeTab === index + 1
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+            ) : ( */}
+            <>
+              {showSearchBar && (
+                <div className="has-search tw-p-4 tw-pb-2">
+                  <input
+                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="searchInputText"
+                    placeholder="Search..."
+                    type="text"
+                    value={
+                      !isUndefined(controlledSearchStr)
+                        ? controlledSearchStr
+                        : undefined
+                    }
+                    onChange={(e) => {
+                      handleListSearch(e.target.value);
+                    }}
+                  />
+                </div>
+              )}
+              {groupType === 'tab' && (
+                <div className="tw-flex tw-justify-between tw-border-b tw-border-separator tw-mb-1">
+                  {listGroups.map((grp, index) => {
+                    return (
+                      <button
+                        className={getTabClasses(index + 1, activeTab)}
+                        data-testid="tab"
+                        key={index}
+                        onClick={() => setActiveTab(index + 1)}>
+                        {grp}
+                        {getCountBadge(
+                          getSearchedListByGroup(grp).length,
+                          '',
+                          activeTab === index + 1
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {isLoading ? (
+                <div className={classNames('tw-mx-4 tw-my-2', widthClass)}>
+                  <Loader />
+                </div>
+              ) : (
                 <div
                   className="tw-py-1 tw-max-h-60 tw-overflow-y-auto"
                   role="none">
@@ -234,8 +250,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                     </>
                   )}
                 </div>
-              </>
-            )}
+              )}
+            </>
+            {/* )} */}
           </div>
         </>
       )}

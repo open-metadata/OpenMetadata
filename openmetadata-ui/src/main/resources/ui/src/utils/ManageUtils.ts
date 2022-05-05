@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
+import { FormattedTeamsData, FormattedUsersData } from 'Models';
 import AppState from '../AppState';
 import { EntityReference } from '../generated/type/entityUsage';
 import { getEntityName } from './CommonUtils';
 
-export const getOwnerList = () => {
+export const getOwnerList = (
+  listUsers?: FormattedUsersData[],
+  listTeams?: FormattedTeamsData[]
+) => {
   const userDetails = AppState.getCurrentUserDetails();
 
   const userTeams =
@@ -27,7 +31,7 @@ export const getOwnerList = () => {
     })) ?? [];
 
   if (userDetails?.isAdmin) {
-    const users = AppState.getAllUsers()
+    const users = (listUsers || [])
       .map((user) => ({
         name: getEntityName(user as unknown as EntityReference),
         value: user.id,
@@ -35,7 +39,7 @@ export const getOwnerList = () => {
         type: 'user',
       }))
       .filter((u) => u.value != userDetails.id);
-    const teams = AppState.getAllTeams().map((team) => ({
+    const teams = (listTeams || []).map((team) => ({
       name: getEntityName(team),
       value: team.id,
       group: 'Teams',

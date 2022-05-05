@@ -54,9 +54,10 @@ import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getAllUsersList } from '../../utils/UserDataUtils';
 
 const TeamsAndUsersPage = () => {
-  const { teamAndUser } = useParams() as Record<string, string>;
+  const { teamAndUser } = useParams<Record<string, string>>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
@@ -182,7 +183,8 @@ const TeamsAndUsersPage = () => {
     setIsUsersLoading(true);
     deleteUser(id)
       .then(() => {
-        AppState.updateUsers((userList || []).filter((item) => item.id !== id));
+        // AppState.updateUsers((userList || []).filter((item) => item.id !== id));
+        getAllUsersList();
       })
       .catch((err: AxiosError) => {
         showErrorToast(

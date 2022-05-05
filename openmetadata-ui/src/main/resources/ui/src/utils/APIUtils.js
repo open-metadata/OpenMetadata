@@ -13,6 +13,7 @@
 
 import { orderBy } from 'lodash';
 import { getTableDetails } from '../axiosAPIs/tableAPI';
+import { SearchIndex } from '../enums/search.enum';
 import { getRelativeTime } from './TimeUtils';
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -68,6 +69,35 @@ export const formatUsersResponse = (hits) => {
   });
 
   return users;
+};
+
+export const formatTeamsResponse = (hits) => {
+  const teams = hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.display_name,
+      type: d._source.entity_type,
+      id: d._source.team_id,
+    };
+  });
+
+  return teams;
+};
+
+export const formatTeamsAndUsersResponse = (hits) => {
+  const data = hits.reduce(
+    (prev, curr) => {
+      return curr._index === SearchIndex.TEAM
+        ? { ...prev, teams: [...prev.teams, curr] }
+        : { ...prev, users: [...prev.users, curr] };
+    },
+    { users: [], teams: [] }
+  );
+
+  const users = formatUsersResponse(data.users);
+  const teams = formatTeamsResponse(data.teams);
+
+  return { users, teams };
 };
 
 export const formatSearchGlossaryTermResponse = (hits) => {

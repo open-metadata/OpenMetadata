@@ -18,13 +18,13 @@ import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface
 import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUsers } from '../axiosAPIs/userAPI';
-import { API_RES_MAX_SIZE } from '../constants/constants';
+// import { API_RES_MAX_SIZE } from '../constants/constants';
 import { User } from '../generated/entity/teams/user';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
-const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, API_RES_MAX_SIZE)
+export const getAllUsersList = (arrQueryFields = ''): void => {
+  getUsers(arrQueryFields, 1)
     .then((res) => {
       AppState.updateUsers(res.data.data);
     })
@@ -89,4 +89,8 @@ export const matchUserDetails = (
   }
 
   return isMatch;
+};
+
+export const isCurrentUserAdmin = () => {
+  return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
 };

@@ -42,6 +42,8 @@ export type DropDownListProp = {
   horzPosRight?: boolean;
   listGroups?: Array<string>;
   searchString?: string;
+  controlledSearchStr?: string;
+  onSearchTextChange?: (text: string) => void;
   selectedItems?: Array<string>;
   disabledItems?: Array<string>;
   hiddenItems?: Array<string>;
