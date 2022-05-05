@@ -31,12 +31,14 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -45,6 +47,7 @@ from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import FETCH_SNOWFLAKE_METADATA, FETCH_SNOWFLAKE_TAGS
 
@@ -76,9 +79,7 @@ class SnowflakeSource(SQLSource):
 
     def fetch_tags(self, schema, table: str, object_type: str = "table"):
         self.connection.execute(f"USE {self.service_connection.database}.{schema}")
-        result = self.connection.execute(
-            FETCH_SNOWFLAKE_TAGS.format(table, object_type)
-        )
+        result = self.connection.execute(FETCH_SNOWFLAKE_TAGS.format(table))
         tags = []
         for res in result:
             logger.info("Ingesting Tags")
@@ -133,6 +134,24 @@ class SnowflakeSource(SQLSource):
         for inspector in self.get_databases():
             yield from self.fetch_tables(inspector=inspector, schema="")
 
+    def create_tags(self, schema: str, table_name: str, table_entity):
+        tag_category_list = self.fetch_tags(schema=schema, table=table_name)
+        table_entity.tags = []
+        for tags in tag_category_list:
+            yield tags
+            table_entity.tags.append(
+                TagLabel(
+                    tagFQN=get_fqdn(
+                        Tag,
+                        tags.category_name.name.__root__,
+                        tags.category_details.name.__root__,
+                    ),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
+            )
+
     def fetch_tables(
         self,
         inspector: Inspector,
@@ -161,6 +180,9 @@ class SnowflakeSource(SQLSource):
                     description=comment,
                     columns=table_columns,
                     viewDefinition=view_definition,
+                )
+                self.create_tags(
+                    schema=schema, table_name=entity, table_entity=table_entity
                 )
                 if self.source_config.generateSampleData:
                     table_data = self.fetch_sample_data(schema, entity)

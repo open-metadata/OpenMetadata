@@ -325,25 +325,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     description=description if description is not None else " ",
                     columns=table_columns,
                 )
-                tag_category_list = self.fetch_tags(
-                    schema=schema, table=table_name, object_type="table"
-                )
-                table_entity.tags = []
-                for tags in tag_category_list:
-                    yield tags
-                    table_entity.tags.append(
-                        TagLabel(
-                            tagFQN=get_fqdn(
-                                Tag,
-                                tags.category_name.name.__root__,
-                                tags.category_details.name.__root__,
-                            ),
-                            labelType="Automated",
-                            state="Suggested",
-                            source="Tag",
-                        )
-                    )
-                print(table_entity.tags)
                 if self.table_constraints:
                     table_entity.tableConstraints = self.table_constraints
                 try:
@@ -620,7 +601,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.UNIQUE
         return constraint
 
-    @staticmethod
     def fetch_tags(self, schema: str, table: str, object_type: str):
         return []
 

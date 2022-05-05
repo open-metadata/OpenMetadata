@@ -306,7 +306,7 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 """
 
 FETCH_SNOWFLAKE_TAGS = (
-    "select * from table(information_schema.tag_references('{}', '{}'));"
+    "select * from table(information_schema.tag_references('{}', 'table'));"
 )
 
 
