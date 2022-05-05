@@ -107,9 +107,7 @@ class MyDataPageTest {
   @Test
   @Order(2)
   void checkOverview() {
-    MyDataPage myDataPage = new MyDataPage(webDriver);
     String url;
-    webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     Events.click(webDriver, myDataPage.closeWhatsNew());
     Events.click(webDriver, myDataPage.tables());
     url = webDriver.getCurrentUrl();
