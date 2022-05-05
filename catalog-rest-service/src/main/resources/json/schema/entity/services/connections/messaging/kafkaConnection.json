@@ -23,15 +23,13 @@
     "bootstrapServers": {
       "title": "Bootstrap Servers",
       "description": "Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092",
-      "type": "string",
-      "default": "localhost:9092"
+      "type": "string"
     },
     "schemaRegistryURL": {
       "title": "Schema Registry URL",
       "description": "Confluent Kafka Schema Registry URL.",
       "type": "string",
-      "format": "uri",
-      "default": "http://localhost:8081"
+      "format": "uri"
     },
     "consumerConfig": {
       "title": "Consumer Config",
@@ -52,5 +50,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["bootstrapServers"]
 }
