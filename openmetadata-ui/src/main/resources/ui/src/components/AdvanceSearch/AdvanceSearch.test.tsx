@@ -56,7 +56,7 @@ const mockProp = {
 };
 
 describe('Test Advance Search Component', () => {
-  it('Shold render child elements', async () => {
+  it('Should render child elements', async () => {
     const { container } = render(<AdvanceSearch {...mockProp} />, {
       wrapper: MemoryRouter,
     });
@@ -74,7 +74,7 @@ describe('Test Advance Search Component', () => {
     expect(searchButton).toBeInTheDocument();
   });
 
-  it('Shold call handleOnClick when search search button is clicked', async () => {
+  it('Should call handleOnClick when search search button is clicked', async () => {
     const { container } = render(<AdvanceSearch {...mockProp} />, {
       wrapper: MemoryRouter,
     });
