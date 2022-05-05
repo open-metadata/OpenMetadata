@@ -32,6 +32,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -51,6 +52,7 @@ class DatabaseServicePageTest {
   Integer waitTime = Property.getInstance().getSleepTime();
   String webDriverInstance = Property.getInstance().getWebDriver();
   String webDriverPath = Property.getInstance().getWebDriverPath();
+  JavascriptExecutor js;
 
   @BeforeEach
   void openMetadataWindow() {
@@ -65,6 +67,7 @@ class DatabaseServicePageTest {
     wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
     webDriver.manage().window().maximize();
     webDriver.get(url);
+    js = (JavascriptExecutor) webDriver;
   }
 
   @Test
@@ -107,12 +110,16 @@ class DatabaseServicePageTest {
     Events.click(webDriver, common.servicePassword());
     Events.sendKeys(webDriver, common.servicePassword(), "openmetadata_password");
     Events.click(webDriver, common.hostPort());
-    Events.sendKeys(webDriver, common.hostPort(), "localhost");
+    Events.sendKeys(webDriver, common.hostPort(), "localhost:3306");
     Events.click(webDriver, common.databaseName());
     Events.sendKeys(webDriver, common.databaseName(), "openmetadata_db");
+    js.executeAsyncScript("window.setTimeout(arguments[arguments.length - 1], " + waitTime + ");");
+    Events.click(webDriver, databaseServicePage.testConnection());
     Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
+    Select selectDBTSource = new Select(webDriver.findElement(databaseServicePage.dbtDropdown()));
+    selectDBTSource.selectByVisibleText("None");
     Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
@@ -150,6 +157,8 @@ class DatabaseServicePageTest {
     }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
+    Select selectDBTSource = new Select(webDriver.findElement(databaseServicePage.dbtDropdown()));
+    selectDBTSource.selectByVisibleText("None");
     Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, databaseServicePage.viewService());

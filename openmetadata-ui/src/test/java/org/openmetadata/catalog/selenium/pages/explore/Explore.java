@@ -218,10 +218,10 @@ class Explore {
     Events.sendKeys(webDriver, common.focusedDescriptionBox(), sendKeys);
     Events.click(webDriver, tableDetails.saveTableDescription());
     Events.click(webDriver, explorePage.explore());
-    webDriver.navigate().refresh();
     Events.click(webDriver, explorePage.lastUpdatedSort());
     Events.click(webDriver, explorePage.lastUpdatedSort());
     webDriver.navigate().refresh();
+    Events.waitForElementToDisplay(webDriver, common.containsText(sendKeys), 10, 2);
     try {
       String descriptionCheck = webDriver.findElement(explorePage.updatedDescription()).getText();
       Assert.assertEquals(descriptionCheck, sendKeys);

@@ -20,6 +20,10 @@ public class DatabaseServicePage {
   By clickDatabase = By.xpath("//tr[@data-testid='column']/td/a");
   By deleteDatabase = By.cssSelector("[data-testid='delete-button']");
   By databaseTable = By.cssSelector("[data-testid='Databases']");
+  By testConnection = By.cssSelector("[data-testid='test-connection-btn']");
+  By connectionSuccessfulCheck = By.xpath("//span[@class='tw-ml-2'][text()='Connection test was successful']");
+  By dbtDropdown = By.cssSelector("[data-testid='dbt-source']");
+  By connectionScheme = By.cssSelector("[id='root_scheme']");
 
   public By ingestionInterval(String interval) {
     return By.xpath("//select[@id='ingestionType']/option[@value='" + interval + "']");
