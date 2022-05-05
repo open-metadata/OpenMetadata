@@ -62,16 +62,19 @@ class MssqlUsageSource(Source[TableQuery]):
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
                     row = {
-                        "query_type": query_dict["query"],
-                        "user_name": "",
-                        "start_time": "",
-                        "end_time": "",
-                        "aborted": False,
-                        "database_name": self.connection.database
-                        if self.connection.database
-                        else "default",
-                        "query_text": query_dict["query"],
-                        "schema_name": None,
+                        "query_type": query_dict.get("query"),
+                        "user_name": query_dict.get("user_name", ""),
+                        "start_time": query_dict.get("start_time", ""),
+                        "end_time": query_dict.get("end_time", ""),
+                        "aborted": query_dict.get("aborted", False),
+                        "database_name": query_dict.get(
+                            "database_name",
+                            self.connection.database
+                            if self.connection.database
+                            else "default",
+                        ),
+                        "query_text": query_dict.get("query"),
+                        "schema_name": query_dict.get("schema_name"),
                     }
                     yield row
         else:
