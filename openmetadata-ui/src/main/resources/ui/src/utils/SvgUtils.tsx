@@ -24,6 +24,7 @@ import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
 import IconArrowDownPrimary from '../assets/svg/arrow-down-primary.svg';
 import IconArrowRightPrimary from '../assets/svg/arrow-right-primary.svg';
+import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
@@ -275,6 +276,7 @@ export const Icons = {
   SUCCESS_BADGE: 'success-badge',
   FAIL_BADGE: 'fail-badge',
   PENDING_BADGE: 'pending-badge',
+  BOT_PROFILE: 'bot-profile',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -797,6 +799,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PENDING_BADGE:
       IconComponent = IconPendingBadge;
+
+      break;
+    case Icons.BOT_PROFILE:
+      IconComponent = IconBotProfile;
 
       break;
 

@@ -197,6 +197,7 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
+  BOTS: `/bots`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -405,6 +406,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
+  { name: 'Bots', to: '/bots', disabled: false },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
