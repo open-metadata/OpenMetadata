@@ -29,6 +29,7 @@ import Loader from '../../components/Loader/Loader';
 import { oidcTokenKey, ROUTES } from '../../constants/constants';
 import SigninPage from '../../pages/login';
 import PageNotFound from '../../pages/page-not-found';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
@@ -39,6 +40,7 @@ interface Props {
   childComponentType: ComponentType;
   children: ReactNode;
   userConfig: Record<string, string | boolean | WebStorageStateStore>;
+  onLoginFailure: () => void;
   onLoginSuccess: (user: OidcUser) => void;
   onLogoutSuccess: () => void;
 }
@@ -59,6 +61,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       children,
       userConfig,
       onLoginSuccess,
+      onLoginFailure,
       onLogoutSuccess,
     }: Props,
     ref
@@ -128,6 +131,10 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   <>
                     <Callback
                       userManager={userManager}
+                      onError={(error) => {
+                        showErrorToast(error?.message);
+                        onLoginFailure();
+                      }}
                       onSuccess={(user) => {
                         localStorage.setItem(oidcTokenKey, user.id_token);
                         setIsAuthenticated(true);

@@ -151,9 +151,8 @@ class BigquerySource(SQLSource):
                 return TableData(columns=cols, rows=rows)
             except Exception as err:
                 logger.error(err)
-                return []
-
-        super().fetch_sample_data(schema, table)
+        else:
+            return super().fetch_sample_data(schema, table)
 
     def _get_database(self, database: Optional[str]) -> Database:
         if not database:

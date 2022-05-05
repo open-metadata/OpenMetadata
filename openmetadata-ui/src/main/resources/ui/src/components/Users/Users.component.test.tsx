@@ -94,6 +94,19 @@ const mockUserData = {
       href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
     },
   ],
+  inheritedRoles: [
+    {
+      id: '3fa30148-72f6-4205-8cab-56696cc23440',
+      type: 'role',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/3fa30148-72f6-4205-8cab-56696cc23440',
+    },
+  ],
 };
 
 jest.mock('../common/avatar/Avatar', () => {
@@ -260,5 +273,17 @@ describe('Test User Component', () => {
     expect(obServerElement).toBeInTheDocument();
 
     expect(mockObserve).toHaveBeenCalled();
+  });
+
+  it('Should render inherited roles', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const inheritedRoles = await findByTestId(container, 'inherited-roles');
+
+    expect(inheritedRoles).toBeInTheDocument();
   });
 });

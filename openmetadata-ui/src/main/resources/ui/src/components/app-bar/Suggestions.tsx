@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
-import React, { useEffect, useRef, useState } from 'react';
+import { startCase } from 'lodash';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -24,10 +26,13 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 
 type SuggestionProp = {
   searchText: string;
   isOpen: boolean;
+  filters: Array<string>;
+  onFilterUpdateHandle: (filter: Filter) => void;
   setIsOpen: (value: boolean) => void;
 };
 
@@ -62,7 +67,13 @@ type Option = {
   _source: TableSource & DashboardSource & TopicSource & PipelineSource;
 };
 
-const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
+const Suggestions = ({
+  searchText,
+  isOpen,
+  setIsOpen,
+  filters,
+  onFilterUpdateHandle,
+}: SuggestionProp) => {
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -248,6 +259,26 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     );
   };
 
+  const getAdvanceFilters = () => {
+    return filters.map((filter, i) => {
+      return (
+        <div
+          className="tw-inline tw-border tw-rounded-2xl tw-border-main tw-px-1.5 tw-py-1 tw-mr-2 tw-cursor-pointer tw-mb-1 tw-z-50"
+          key={i}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            onFilterUpdateHandle({ key: filter, value: '' });
+          }}>
+          <span>{startCase(filter)}</span>
+          <FontAwesomeIcon
+            className="tw-text-primary tw-ml-1.5 tw-text-lg tw-align-middle"
+            icon="plus-circle"
+          />
+        </div>
+      );
+    });
+  };
+
   useEffect(() => {
     if (!isMounting.current) {
       getSuggestions(searchText)
@@ -275,9 +306,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   }, []);
 
   return (
-    <>
-      {options.length > 0 && isOpen ? (
-        <>
+    <Fragment>
+      {isOpen && (options.length > 0 || filters.length > 0) ? (
+        <Fragment>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
             onClick={() => setIsOpen(false)}
@@ -287,13 +318,16 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             aria-orientation="vertical"
             className="tw-origin-top-right tw-absolute tw-z-20
           tw-w-600 tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none tw-ml-4"
+        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
             {getEntitiesSuggestions()}
+            <div className="tw-flex tw-flex-wrap tw-my-3 tw-mx-2">
+              {getAdvanceFilters()}
+            </div>
           </div>
-        </>
+        </Fragment>
       ) : null}
-    </>
+    </Fragment>
   );
 };
 

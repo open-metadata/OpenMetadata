@@ -50,9 +50,9 @@ const mockTableheader = [
 const mockEntityFieldThreads = [
   {
     entityLink:
-      '<#E/table/bigquery_gcp.ecommerce.shopify.raw_product_catalog/columns/products/description>',
+      '<#E::table::bigquery_gcp.ecommerce.shopify.raw_product_catalog::columns::products::description>',
     count: 1,
-    entityField: 'columns/products/description',
+    entityField: 'columns::products::description',
   },
 ];
 

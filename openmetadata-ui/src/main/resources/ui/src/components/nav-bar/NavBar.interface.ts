@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 import { DropDownListItem } from '../dropdown/types';
 
 export interface NavBarProps {
@@ -28,4 +29,5 @@ export interface NavBarProps {
   handleSearchChange: (value: string) => void;
   handleOnClick: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onFilterUpdate: (filters: Array<Filter>) => void;
 }

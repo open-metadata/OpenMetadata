@@ -31,6 +31,15 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
+    RedashConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
+    SupersetConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
+    TableauConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -58,7 +67,10 @@ from metadata.utils.connection_clients import (
     GlueClient,
     KafkaClient,
     MetabaseClient,
+    RedashClient,
     SalesforceClient,
+    SupersetClient,
+    TableauClient,
 )
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
@@ -97,7 +109,7 @@ def create_generic_connection(connection, verbose: bool = False):
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient]:
+) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -364,6 +376,98 @@ def _(connection: MetabaseClient) -> None:
             connection.client["connection"].hostPort + "/api/dashboard",
             headers=connection.client["metabase_session"],
         )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: RedashConnection, verbose: bool = False):
+
+    from redash_toolbelt import Redash
+
+    try:
+        redash = Redash(connection.hostPort, connection.apiKey)
+        redash_client = RedashClient(redash)
+        return redash_client
+
+    except Exception as err:
+        logger.error(f"Failed to connect with error :  {err}")
+        logger.error(err)
+
+
+@test_connection.register
+def _(connection: RedashClient) -> None:
+    try:
+        connection.client.dashboards()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: SupersetConnection, verbose: bool = False):
+    from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
+
+    superset_connection = SupersetAPIClient(connection)
+    superset_client = SupersetClient(superset_connection)
+    return superset_client
+
+
+@test_connection.register
+def _(connection: SupersetClient) -> None:
+    try:
+        connection.client.fetch_menu()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: TableauConnection, verbose: bool = False):
+
+    from tableau_api_lib import TableauServerConnection
+
+    tableau_server_config = {
+        f"{connection.env}": {
+            "server": connection.hostPort,
+            "api_version": connection.apiVersion,
+            "site_name": connection.siteName,
+            "site_url": connection.siteName,
+        }
+    }
+    if connection.username and connection.password:
+        tableau_server_config[connection.env]["username"] = connection.username
+        tableau_server_config[connection.env][
+            "password"
+        ] = connection.password.get_secret_value()
+    elif connection.personalAccessTokenName and connection.personalAccessTokenSecret:
+        tableau_server_config[connection.env][
+            "personal_access_token_name"
+        ] = connection.personalAccessTokenName
+        tableau_server_config[connection.env][
+            "personal_access_token_secret"
+        ] = connection.personalAccessTokenSecret
+    try:
+        conn = TableauServerConnection(
+            config_json=tableau_server_config,
+            env=connection.env,
+        )
+        conn.sign_in().json()
+        return TableauClient(conn)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.error("%s: %s", repr(err), err)
+
+
+@test_connection.register
+def _(connection: TableauClient) -> None:
+    from tableau_api_lib.utils.querying import get_workbooks_dataframe
+
+    try:
+        connection.client.server_info()
 
     except Exception as err:
         raise SourceConnectionException(

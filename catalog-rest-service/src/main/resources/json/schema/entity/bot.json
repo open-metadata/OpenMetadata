@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/bots.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Bot",
-  "description": "This schema defines Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It runs as a special user in the system.",
+  "description": "This schema defines a Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It performs this task as a special user in the system.",
   "type": "object",
 
   "properties": {
@@ -21,6 +21,10 @@
     "description": {
       "description": "Description of the bot.",
       "type": "string"
+    },
+    "botUser" : {
+      "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
+      "$ref" : "../type/entityReference.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -48,5 +52,6 @@
       "default": false
     }
   },
+  "required": ["id", "name", "botUser"],
   "additionalProperties": false
 }

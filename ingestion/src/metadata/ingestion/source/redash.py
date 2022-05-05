@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -33,6 +36,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connections import get_connection, test_connection
 
 
 @dataclass
@@ -63,12 +67,14 @@ class RedashSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-
+        self.source_config: DashboardServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
         self.connection_config = self.config.serviceConnection.__root__.config
         self.status = RedashSourceStatus()
-        self.client = Redash(
-            self.connection_config.hostPort, self.connection_config.apiKey
-        )
+        self.connection = get_connection(self.connection_config)
+        self.client = self.connection.client
+
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )

@@ -353,6 +353,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     saveUpdatedTopicData(updatedTopic)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setTopicDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTags(getTagsWithoutTier(res.data.tags));
