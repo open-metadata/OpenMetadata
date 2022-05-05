@@ -34,7 +34,7 @@ This is a sample config for Glue:
           },
           "database": "local_glue_db",
           "storageServiceName":"storage_name",
-	      "pipelineServiceName":"local_glue_pipeline"
+	  "pipelineServiceName":"local_glue_pipeline"
         }
       },
       "sourceConfig": {
