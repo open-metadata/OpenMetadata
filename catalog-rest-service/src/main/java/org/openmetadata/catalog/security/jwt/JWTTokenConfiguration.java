@@ -7,4 +7,5 @@ public class JWTTokenConfiguration {
   @Getter @Setter private String RSAPublicKey;
   @Getter @Setter private String RSAPrivateKey;
   @Getter @Setter private String JWTIssuer;
+  @Getter @Setter private String keyId;
 }

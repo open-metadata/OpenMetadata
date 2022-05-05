@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.dropwizard.util.Strings;
+import java.io.IOException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
@@ -36,13 +37,21 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
+import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
+  public static final String BOT_CLAIM = "isBot";
 
   private List<String> jwtPrincipalClaims;
   private JwkProvider jwkProvider;
@@ -89,7 +98,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // Check if expired
-    if (jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+    // if the expiresAt set to null, treat it as never expiring token
+    if (jwt.getExpiresAt() != null
+        && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw new AuthenticationException("Expired token!");
     }
 
@@ -121,7 +132,10 @@ public class JwtFilter implements ContainerRequestFilter {
                 () ->
                     new AuthenticationException(
                         "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
-
+    // validate bot token
+    if (jwt.getClaims().containsKey(BOT_CLAIM) && jwt.getClaims().get(BOT_CLAIM).asBoolean()) {
+      validateBotToken(tokenFromHeader, userName);
+    }
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
@@ -142,5 +156,19 @@ public class JwtFilter implements ContainerRequestFilter {
       return source.substring(TOKEN_PREFIX.length() + 1);
     }
     throw new AuthenticationException("Not Authorized! Token not present");
+  }
+
+  private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
+    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    User user = userRepository.getByName(null, userName, EntityUtil.Fields.EMPTY_FIELDS);
+    AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
+    if (authenticationMechanism != null) {
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
+      if (tokenFromHeader.equals(jwtAuthMechanism.getJWTToken())) {
+        return;
+      }
+    }
+    throw new AuthenticationException("Not Authorized! Invalid Token");
   }
 }

@@ -134,6 +134,8 @@ public class UserRepository extends EntityRepository<User> {
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
     user.setFollows(fields.contains("follows") ? getFollows(user) : null);
     user.setRoles(fields.contains("roles") ? getRoles(user) : null);
+    user.setAuthenticationMechanism(
+        fields.contains("authenticationMechanism") ? user.getAuthenticationMechanism() : null);
     return user.withInheritedRoles(fields.contains("roles") ? getInheritedRoles(user) : null);
   }
 

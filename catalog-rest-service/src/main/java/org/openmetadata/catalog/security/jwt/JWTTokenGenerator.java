@@ -12,7 +12,9 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
@@ -23,6 +25,7 @@ public class JWTTokenGenerator {
   private RSAPrivateKey privateKey;
   private RSAPublicKey publicKey;
   private String issuer;
+  private String kid;
 
   private JWTTokenGenerator() {
     if (instance != null) {
@@ -52,6 +55,7 @@ public class JWTTokenGenerator {
       KeyFactory kf = KeyFactory.getInstance("RSA");
       publicKey = (RSAPublicKey) kf.generatePublic(spec);
       issuer = jwtTokenConfiguration.getJWTIssuer();
+      kid = jwtTokenConfiguration.getKeyId();
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
     }
@@ -67,7 +71,9 @@ public class JWTTokenGenerator {
       Date expires = getExpiryDate(expiry);
       return JWT.create()
           .withIssuer(issuer)
+          .withKeyId(kid)
           .withClaim("sub", user.getName())
+          .withClaim("email", user.getEmail())
           .withClaim("isBot", true)
           .withIssuedAt(new Date(System.currentTimeMillis()))
           .withExpiresAt(expires)
@@ -97,5 +103,18 @@ public class JWTTokenGenerator {
         expiryDate = null;
     }
     return expiryDate != null ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()) : null;
+  }
+
+  public JWKSResponse getJWKSResponse() {
+    JWKSResponse jwksResponse = new JWKSResponse();
+    JWKSKey jwksKey = new JWKSKey();
+    if (publicKey != null) {
+      jwksKey.setKid(kid);
+      jwksKey.setKty(publicKey.getAlgorithm());
+      jwksKey.setN(Base64.getUrlEncoder().encodeToString(publicKey.getModulus().toByteArray()));
+      jwksKey.setE(Base64.getUrlEncoder().encodeToString(publicKey.getPublicExponent().toByteArray()));
+    }
+    jwksResponse.setJwsKeys(List.of(jwksKey));
+    return jwksResponse;
   }
 }

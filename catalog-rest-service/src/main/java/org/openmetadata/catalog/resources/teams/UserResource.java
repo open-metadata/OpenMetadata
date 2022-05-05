@@ -82,6 +82,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "users")
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
+  public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private JWTTokenGenerator jwtTokenGenerator;
 
   @Override
@@ -97,6 +98,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public UserResource(CollectionDAO dao, Authorizer authorizer) {
     super(User.class, new UserRepository(dao), authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    allowedFields.remove(USER_PROTECTED_FIELDS);
   }
 
   public static class UserList extends ResultList<User> {
@@ -365,7 +367,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response generateToken(
+  public JWTAuthMechanism generateToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
@@ -382,10 +384,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    ;
-    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
-    addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
+    jwtAuthMechanism =
+        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    return jwtAuthMechanism;
   }
 
   @PUT
@@ -439,7 +441,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
       throws IOException {
 
-    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
     if (!user.getIsBot()) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }

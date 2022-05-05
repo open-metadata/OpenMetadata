@@ -142,6 +142,7 @@ jwtTokenConfiguration:
   rsapublicKey: "src/test/resources/public_key.der"
   rsaprivateKey: "src/test/resources/private_key.der"
   jwtissuer: "open-metadata.org"
+  keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
 eventHandlerConfiguration:
   eventHandlerClassNames:
