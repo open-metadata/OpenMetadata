@@ -13,6 +13,7 @@ Interface definition for an Auth provider
 """
 import http.client
 import json
+import os.path
 import sys
 import traceback
 from abc import ABCMeta, abstractmethod
@@ -36,6 +37,9 @@ from metadata.generated.schema.security.client.googleSSOClientConfig import (
 )
 from metadata.generated.schema.security.client.oktaSSOClientConfig import (
     OktaSSOClientConfig,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
@@ -392,3 +396,36 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
     def get_access_token(self) -> Tuple[str, int]:
         self.auth_token()
         return self.generated_auth_token, self.expiry
+
+
+class OpenMetadataAuthenticationProvider(AuthenticationProvider):
+    """
+    OpenMetadata authentication implementation
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
+    def __init__(self, config: OpenMetadataConnection):
+        self.config = config
+        self.security_config: OpenMetadataJWTClientConfig = self.config.securityConfig
+        self.jwt_token = None
+
+    @classmethod
+    def create(cls, config: OpenMetadataConnection):
+        return cls(config)
+
+    def auth_token(self) -> None:
+        if not self.jwt_token:
+            if os.path.isfile(self.security_config.jwtToken):
+                with open(self.security_config.jwtToken, "r") as file:
+                    self.jwt_token = file.read().rstrip()
+            else:
+                self.jwt_token = self.security_config.jwtToken
+
+    def get_access_token(self):
+        self.auth_token()
+        return self.jwt_token

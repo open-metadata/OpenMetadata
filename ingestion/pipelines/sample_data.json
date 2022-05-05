@@ -17,7 +17,8 @@
   "workflowConfig": {
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
+      "authProvider": "openmetadata",
+      "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJpbmdlc3Rpb24tYm90IiwiaXNCb3QiOnRydWUsImlzcyI6Im9wZW4tbWV0YWRhdGEub3JnIiwiaWF0IjoxNjUxNzA1NDQ1LCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbi1tZXRhZGF0YS5vcmcifQ.DzIjkLY2BpW7ShQke4BMia1aivEOCO9QOfvvJOuaLLa29coPLRpViB6DvfKDEJolfqI8e5SftMKRoGdf2-mQjNoBUeBStVoRg9JyzkJF_hGVharxM3AILqPmtofm_dB6dRemlM4ydJ831EWHlaa0jH9xv5nXUe_o-1a8fYF3RfQ3pC6RlmWpI0kSUOo3OtrawKJkYw62AkpFbLKjexkjDvzqFp08BH8CcJeaoTx38K_VnOSimTZqyHslAaxKQupJSx_oYzYLnmavixZdSMb-CdYPTpJ6MpVNUHVv35b3hyGNgxtTMFygQZ6JUzJrqAldrdwZzb8ioV9WPUnsEDYSLg"
     }
   }
 }

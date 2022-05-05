@@ -127,24 +127,24 @@ migrationConfiguration:
 
 # Authorizer Configuration
 authorizerConfiguration:
-  className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
-  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
-  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  className: ${AUTHORIZER_CLASS_NAME:-"org.openmetadata.catalog.security.DefaultAuthorizer"}
+  containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-"org.openmetadata.catalog.security.JwtFilter"}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[harsha]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
 
 authenticationConfiguration:
-  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
-  # This will only be valid when provider type specified is customOidc
-  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
+  provider: ${AUTHENTICATION_PROVIDER:-google}
+  publicKeyUrls:
+    - "https://www.googleapis.com/oauth2/v3/certs"
+    - "http://localhost:8585/api/v1/config/jwks"
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
-  clientId: ${AUTHENTICATION_CLIENT_ID:-""}
-  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  clientId: ${AUTHENTICATION_CLIENT_ID:-709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-http://localhost:8585/callback}
 
 jwtTokenConfiguration:
-  rsapublicKey: ${RSA_PUBLIC_KEY:-""}
-  rsaprivateKey: ${RSA_PRIVATE_KEY:-""}
+  rsapublicKey: ${RSA_PUBLIC_KEY:-"/Users/harsha/Code/OpenMetadata/catalog-rest-service/src/test/resources/public_key.der"}
+  rsaprivateKey: ${RSA_PRIVATE_KEY:-"/Users/harsha/Code/OpenMetadata/catalog-rest-service/src/test/resources/private_key.der"}
   jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
