@@ -13,15 +13,9 @@
 package org.openmetadata.catalog.events;
 
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 
 public class EventHandlerConfiguration {
-  private Set<String> eventHandlerClassNames;
-
-  public Set<String> getEventHandlerClassNames() {
-    return eventHandlerClassNames;
-  }
-
-  public void setEventHandlerClassNames(Set<String> eventHandlerClassNames) {
-    this.eventHandlerClassNames = eventHandlerClassNames;
-  }
+  @Getter @Setter private Set<String> eventHandlerClassNames;
 }
