@@ -685,7 +685,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateThread create() {
-    String about = String.format("<#E::%s::pi9%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 
