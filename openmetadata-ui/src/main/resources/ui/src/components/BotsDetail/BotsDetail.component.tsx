@@ -20,7 +20,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getUserToken } from '../../axiosAPIs/userAPI';
+import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
 import { ROUTES } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -33,18 +33,51 @@ import Description from '../common/description/Description';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
   updateBotsDetails: (data: UserDetails) => void;
+  revokeTokenHandler: () => void;
 }
 
-const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
+const BotsDetail: FC<BotsDetailProp> = ({
+  botsData,
+  updateBotsDetails,
+  revokeTokenHandler,
+}) => {
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-  const [userToken, setUserToken] = useState<string>('');
+  const [botsToken, setBotsToken] = useState<string>('');
+  const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
+
+  const fetchBotsToken = () => {
+    getUserToken(botsData.id)
+      .then((res: AxiosResponse) => {
+        const { JWTToken } = res.data;
+        setBotsToken(JWTToken);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
+  const generateBotsToken = (data?: Record<string, string>) => {
+    const defaultData = {
+      JWTToken: 'string',
+      JWTTokenExpiry: '7',
+    };
+    generateUserToken(botsData.id, data ?? defaultData)
+      .then((res: AxiosResponse) => {
+        const { JWTToken } = res.data;
+        setBotsToken(JWTToken);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -62,10 +95,6 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
       updateBotsDetails({ description });
     }
     setIsDescriptionEdit(false);
-  };
-
-  const getTokenValue = () => {
-    return userToken;
   };
 
   const getDisplayNameComponent = () => {
@@ -179,9 +208,8 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
   };
 
   const getCopyComponent = () => {
-    const token = getTokenValue();
-    if (token) {
-      return <CopyToClipboardButton copyText={token} />;
+    if (botsToken) {
+      return <CopyToClipboardButton copyText={botsToken} />;
     } else {
       return null;
     }
@@ -192,9 +220,25 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
       <div className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4">
         <div className="tw-flex tw-justify-between tw-items-center">
           <h6 className="tw-mb-2 tw-self-center">JWT Token</h6>
-          <Button size="small" theme="primary" variant="outlined">
-            Generate new token
-          </Button>
+          <div className="tw-flex">
+            <Button
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={() => generateBotsToken()}>
+              {botsToken ? 'Re-generate token' : 'Generate new token'}
+            </Button>
+            {botsToken ? (
+              <Button
+                className="tw-ml-2"
+                size="small"
+                theme="primary"
+                variant="outlined"
+                onClick={() => setIsRevokingToken(true)}>
+                Revoke token
+              </Button>
+            ) : null}
+          </div>
         </div>
         <hr className="tw-mt-2" />
         <p className="tw-mt-4">
@@ -207,7 +251,7 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
             className="tw-form-inputs tw-p-1.5"
             placeholder="Generate new token..."
             type="password"
-            value={getTokenValue()}
+            value={botsToken}
           />
           {getCopyComponent()}
         </div>
@@ -217,14 +261,7 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
 
   useEffect(() => {
     if (botsData.id) {
-      getUserToken(botsData.id)
-        .then((res: AxiosResponse) => {
-          const { JWTToken } = res.data;
-          setUserToken(JWTToken);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err);
-        });
+      fetchBotsToken();
     }
   }, [botsData]);
 
@@ -246,6 +283,19 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
         rightPanel={fetchRightPanel()}>
         {getCenterLayout()}
       </PageLayout>
+      {isRevokingToken ? (
+        <ConfirmationModal
+          bodyText="Are you sure you want to revoke access for JWT token?"
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Are you sure?"
+          onCancel={() => setIsRevokingToken(false)}
+          onConfirm={() => {
+            revokeTokenHandler();
+            setIsRevokingToken(false);
+          }}
+        />
+      ) : null}
     </PageContainerV1>
   );
 };

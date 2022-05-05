@@ -127,3 +127,16 @@ export const deleteUser = (id: string) => {
 export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
   return APIClient.get(`/users/token/${id}`);
 };
+
+export const generateUserToken: Function = (
+  id: string,
+  data: Record<string, string>
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/users/generateToken/${id}`, data);
+};
+
+export const revokeUserToken: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/users/revokeToken/${id}`);
+};

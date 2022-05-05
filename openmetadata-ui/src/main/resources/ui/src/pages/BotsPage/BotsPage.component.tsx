@@ -15,7 +15,11 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
+import {
+  getUserByName,
+  revokeUserToken,
+  updateUserDetail,
+} from '../../axiosAPIs/userAPI';
 import BotsDetail from '../../components/BotsDetail/BotsDetail.component';
 import Loader from '../../components/Loader/Loader';
 import { UserDetails } from '../../components/Users/Users.interface';
@@ -66,6 +70,17 @@ const BotsPage = () => {
       });
   };
 
+  const revokeBotsToken = () => {
+    revokeUserToken(botsData.id)
+      .then((res: AxiosResponse) => {
+        const data = res.data;
+        setBotsData(data);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
   const ErrorPlaceholder = () => {
     return (
       <div
@@ -86,7 +101,11 @@ const BotsPage = () => {
       return <ErrorPlaceholder />;
     } else {
       return (
-        <BotsDetail botsData={botsData} updateBotsDetails={updateBotsDetails} />
+        <BotsDetail
+          botsData={botsData}
+          revokeTokenHandler={revokeBotsToken}
+          updateBotsDetails={updateBotsDetails}
+        />
       );
     }
   };
