@@ -3,7 +3,6 @@ package org.openmetadata.catalog.selenium.pages.glossary;
 import com.github.javafaker.Faker;
 import java.time.Duration;
 import java.util.ArrayList;
-import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -100,22 +99,6 @@ class GlossaryPageTest {
     Assert.assertEquals(reviewerCount.toString(), "2");
   }
 
-  @SneakyThrows
-  @Test
-  @Order(4)
-  void addReviewer() {
-    Events.click(webDriver, common.closeWhatsNew()); // Close What's new
-    Events.click(webDriver, common.headerSettings()); // Setting
-    Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.addGlossaryReviewer());
-    Events.click(webDriver, glossary.checkboxAddUser(4));
-    Events.click(webDriver, common.descriptionSaveButton());
-    Events.waitForElementToDisplay(webDriver, common.containsText("Adam Matthews"), 10, 2);
-    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
-    Assert.assertEquals(reviewerCount.toString(), "4");
-  }
-
   @Test
   @Order(6)
   void removeAddedTagsToGlossary() {
@@ -142,7 +125,7 @@ class GlossaryPageTest {
     Events.click(webDriver, common.headerSettingsMenu("Glossaries"));
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.addGlossaryReviewer());
-    for (int i = 1; i <= 4; i++) {
+    for (int i = 1; i <= 3; i++) {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
