@@ -13,7 +13,8 @@
     },
     "sourceConfig": {
       "config": {
-        "queryLogDuration": "1"
+        "queryLogDuration": "1",
+        "queryLogFilePath": "<path to query log file>"
       }
     }
   },

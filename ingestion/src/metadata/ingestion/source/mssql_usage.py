@@ -11,7 +11,7 @@
 """
 MSSQL usage module
 """
-
+import csv
 from typing import Any, Dict, Iterable
 
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -57,10 +57,27 @@ class MssqlUsageSource(Source[TableQuery]):
         return super().prepare()
 
     def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-
-        rows = self.engine.execute(self.sql_stmt)
-        for row in rows:
-            yield row
+        if self.config.sourceConfig.config.queryLogFilePath:
+            with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
+                for i in csv.DictReader(fin):
+                    query_dict = dict(i)
+                    row = {
+                        "query_type": query_dict["query"],
+                        "user_name": "",
+                        "start_time": "",
+                        "end_time": "",
+                        "aborted": False,
+                        "database_name": self.connection.database
+                        if self.connection.database
+                        else "default",
+                        "query_text": query_dict["query"],
+                        "schema_name": None,
+                    }
+                    yield row
+        else:
+            rows = self.engine.execute(self.sql_stmt)
+            for row in rows:
+                yield row
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -80,7 +97,7 @@ class MssqlUsageSource(Source[TableQuery]):
                 sql=row["query_text"],
                 service_name=self.config.serviceName,
             )
-            if row["schema_name"] is not None:
+            if not row["schema_name"]:
                 self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
             else:
                 self.report.scanned(f"{row['database_name']}")
