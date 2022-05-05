@@ -123,3 +123,7 @@ export const getUserCounts = () => {
 export const deleteUser = (id: string) => {
   return APIClient.delete(`/users/${id}`);
 };
+
+export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/users/token/${id}`);
+};

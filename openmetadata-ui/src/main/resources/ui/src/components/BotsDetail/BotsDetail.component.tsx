@@ -12,12 +12,21 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import { AxiosError, AxiosResponse } from 'axios';
+import React, {
+  FC,
+  Fragment,
+  HTMLAttributes,
+  useEffect,
+  useState,
+} from 'react';
+import { getUserToken } from '../../axiosAPIs/userAPI';
 import { ROUTES } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Description from '../common/description/Description';
@@ -35,6 +44,7 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
   const [displayName, setDisplayName] = useState(botsData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
+  const [userToken, setUserToken] = useState<string>('');
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -55,7 +65,7 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
   };
 
   const getTokenValue = () => {
-    return botsData.authenticationMechanism?.config?.JWTToken;
+    return userToken;
   };
 
   const getDisplayNameComponent = () => {
@@ -204,6 +214,19 @@ const BotsDetail: FC<BotsDetailProp> = ({ botsData, updateBotsDetails }) => {
       </div>
     );
   };
+
+  useEffect(() => {
+    if (botsData.id) {
+      getUserToken(botsData.id)
+        .then((res: AxiosResponse) => {
+          const { JWTToken } = res.data;
+          setUserToken(JWTToken);
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(err);
+        });
+    }
+  }, [botsData]);
 
   return (
     <PageContainerV1 className="tw-py-4">
