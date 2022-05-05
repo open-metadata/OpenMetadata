@@ -35,7 +35,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.4.0</mockito.version>
+    <mockito.version>4.5.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.2</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -58,13 +58,13 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
     <flyway.version>8.1.0</flyway.version>
-    <redshift-jdbc.version>2.1.0.6</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
-    <mysql.connector.version>8.0.28</mysql.connector.version>
-    <postgres.connector.version>42.3.3</postgres.connector.version>
+    <mysql.connector.version>8.0.29</mysql.connector.version>
+    <postgres.connector.version>42.3.5</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.22</lombok.version>
+    <lombok.version>1.18.24</lombok.version>
     <tomcat-jdbc.version>10.0.8</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
@@ -78,7 +78,7 @@
     <spring.version>5.3.19</spring.version>
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
-    <dropwizard-health.version>1.7.1</dropwizard-health.version>
+    <dropwizard-health.version>1.7.2</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
     <!--  upgrade only when we find how to import esnext modules in nodejs  -->
@@ -128,7 +128,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>${jackson.version}</version>
+        <version>2.13.2.2</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -415,7 +415,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.16</version>
+        <version>1.2.17</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -559,7 +559,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>10.1</version>
+              <version>10.2</version>
             </dependency>
           </dependencies>
         </plugin>

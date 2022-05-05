@@ -45,7 +45,7 @@ class CommonTests {
   static WebDriver webDriver;
   static Common common;
   static Actions actions;
-  static Faker faker = new Faker();
+  static final Faker faker = new Faker();
   static String tagCategoryDisplayName = faker.name().firstName();
   static WebDriverWait wait;
   static String url = Property.getInstance().getURL();
