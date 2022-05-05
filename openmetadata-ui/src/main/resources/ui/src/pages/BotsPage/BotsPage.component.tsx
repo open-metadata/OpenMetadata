@@ -28,6 +28,7 @@ const BotsPage = () => {
 
   const [botsData, setBotsData] = useState<User>({} as User);
   const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
 
   const fetchBotsData = () => {
     setIsLoading(true);
@@ -44,6 +45,7 @@ const BotsPage = () => {
           err,
           jsonData['api-error-messages']['fetch-user-details-error']
         );
+        setIsError(true);
       })
       .finally(() => setIsLoading(false));
   };
@@ -64,18 +66,36 @@ const BotsPage = () => {
       });
   };
 
+  const ErrorPlaceholder = () => {
+    return (
+      <div
+        className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
+        data-testid="error">
+        <p className="tw-text-base" data-testid="error-message">
+          No bots available with name{' '}
+          <span className="tw-font-medium" data-testid="username">
+            {botsName}
+          </span>{' '}
+        </p>
+      </div>
+    );
+  };
+
+  const getBotsDetailComponent = () => {
+    if (isError) {
+      return <ErrorPlaceholder />;
+    } else {
+      return (
+        <BotsDetail botsData={botsData} updateBotsDetails={updateBotsDetails} />
+      );
+    }
+  };
   useEffect(() => {
     fetchBotsData();
   }, [botsName]);
 
   return (
-    <Fragment>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <BotsDetail botsData={botsData} updateBotsDetails={updateBotsDetails} />
-      )}
-    </Fragment>
+    <Fragment>{isLoading ? <Loader /> : getBotsDetailComponent()}</Fragment>
   );
 };
 

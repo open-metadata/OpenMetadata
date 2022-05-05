@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import React, { FC, HTMLAttributes } from 'react';
+import React, { FC, Fragment, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getBotsPath } from '../../constants/constants';
 import { Bots } from '../../generated/entity/bots';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
@@ -60,24 +61,34 @@ const BotsList: FC<BotsListProp> = ({ bots }) => {
     );
   };
 
+  const getListComponent = () => {
+    if (!bots.length) {
+      return <ErrorPlaceHolder>No bots user available</ErrorPlaceHolder>;
+    } else {
+      return (
+        <Fragment>
+          <TitleBreadcrumb
+            className="tw-mb-2"
+            titleLinks={[
+              {
+                name: 'Bots',
+                url: '',
+                activeTitle: true,
+              },
+            ]}
+          />
+          <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
+            {bots.map((bot, key) => (
+              <BotCard bot={bot} key={key} />
+            ))}
+          </div>
+        </Fragment>
+      );
+    }
+  };
+
   return (
-    <PageLayout classes="tw-h-full tw-p-4">
-      <TitleBreadcrumb
-        className="tw-mb-2"
-        titleLinks={[
-          {
-            name: 'Bots',
-            url: '',
-            activeTitle: true,
-          },
-        ]}
-      />
-      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-        {bots.map((bot, key) => (
-          <BotCard bot={bot} key={key} />
-        ))}
-      </div>
-    </PageLayout>
+    <PageLayout classes="tw-h-full tw-p-4">{getListComponent()}</PageLayout>
   );
 };
 
