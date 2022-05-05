@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/authN/jwtAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JWTAuthMechanism",
+  "description": "User/Bot JWTAuthMechanism.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.teams.authn.JWTAuthMechanism",
+  "properties": {
+    "JWTToken": {
+      "description": "JWT Auth Token.",
+      "type": "string"
+    },
+    "JWTTokenExpiry": {
+      "javaType": "org.openmetadata.catalog.teams.authn.JWTTokenExpiry",
+      "description": "JWT Auth Token expiration in days",
+      "type": "string",
+      "enum": ["7", "30", "60", "90", "Unlimited"],
+      "javaEnums": [
+        {
+          "name": "Seven"
+        },
+        {
+          "name": "Thirty"
+        },
+        {
+          "name": "Sixty"
+        },
+        {
+          "name": "Ninety"
+        },
+        {
+          "name": "Unlimited"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["JWTToken", "JWTTokenExpiry"]
+}

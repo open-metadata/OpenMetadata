@@ -19,7 +19,7 @@ import Description from './Description';
 const mockEntityFieldThreads = [
   {
     entityLink:
-      '<#E/table/bigquery_gcp.shopify.raw_product_catalog/description>',
+      '<#E::table::bigquery_gcp.shopify.raw_product_catalog::description>',
     count: 1,
     entityField: 'description',
   },

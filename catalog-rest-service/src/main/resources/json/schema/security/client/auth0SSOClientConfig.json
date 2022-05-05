@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/security/client/auth0SSOClientConfig.json",
+  "$id": "https://open-metadata.org/schema/security/client/auth0SSOClientConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Auth0SSOClientConfig",
   "description": "Auth0 SSO client security configs.",

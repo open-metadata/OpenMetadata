@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import React, { useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
-import {
-  inPageSearchOptions,
-  isInPageSearchAllowed,
-} from '../../utils/RouterUtils';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import SearchOptions from '../app-bar/SearchOptions';
-import Suggestions from '../app-bar/Suggestions';
+import AdvanceSearch from '../AdvanceSearch/AdvanceSearch';
+import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 import Avatar from '../common/avatar/Avatar';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
@@ -44,16 +40,26 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  onFilterUpdate,
 }: NavBarProps) => {
-  const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [selectedFilters, setSelectedFilters] = useState<Array<Filter>>([]);
+
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
     return { color: normalLink };
   };
 
+  const onFilterChange = (filters: Array<Filter>) => {
+    setSelectedFilters(filters);
+  };
+
+  useEffect(() => {
+    onFilterUpdate(selectedFilters);
+  }, [selectedFilters]);
+
   return (
-    <>
+    <Fragment>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
         <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6 centered-layout">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
@@ -81,49 +87,17 @@ const NavBar = ({
           <div
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-auto"
             data-testid="appbar-item">
-            <span
-              className="tw-cursor-pointer tw-absolute tw-right-2.5 tw-top-2 tw-block tw-z-40 tw-w-4 tw-h-4 tw-text-center"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleOnClick();
-              }}>
-              <SVGIcons alt="icon-search" icon={searchIcon} />
-            </span>
-            <input
-              autoComplete="off"
-              className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards and Pipeline"
-              type="text"
-              value={searchValue}
-              onBlur={() => setSearchIcon('icon-searchv1')}
-              onChange={(e) => {
-                handleSearchChange(e.target.value);
-              }}
-              onFocus={() => setSearchIcon('icon-searchv1color')}
-              onKeyDown={handleKeyDown}
+            <AdvanceSearch
+              handleKeyDown={handleKeyDown}
+              handleOnClick={handleOnClick}
+              handleSearchBoxOpen={handleSearchBoxOpen}
+              handleSearchChange={handleSearchChange}
+              isSearchBoxOpen={isSearchBoxOpen}
+              isTourRoute={isTourRoute}
+              pathname={pathname}
+              searchValue={searchValue}
+              onFilterChange={onFilterChange}
             />
-            {!isTourRoute &&
-              searchValue &&
-              (isInPageSearchAllowed(pathname) ? (
-                <SearchOptions
-                  isOpen={isSearchBoxOpen}
-                  options={inPageSearchOptions(pathname)}
-                  searchText={searchValue}
-                  selectOption={(text) => {
-                    AppState.inPageSearchText = text;
-                  }}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ) : (
-                <Suggestions
-                  isOpen={isSearchBoxOpen}
-                  searchText={searchValue}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ))}
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
             <button
@@ -201,7 +175,7 @@ const NavBar = ({
           />
         )}
       </div>
-    </>
+    </Fragment>
   );
 };
 

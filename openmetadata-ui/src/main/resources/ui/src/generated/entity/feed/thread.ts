@@ -22,12 +22,12 @@
 export interface Thread {
   /**
    * Data asset about which this thread is created for with format
-   * <#E/{entities}/{entityName}/{field}/{fieldValue}.
+   * <#E::{entities}::{entityName}::{field}::{fieldValue}.
    */
   about: string;
   /**
    * User or team this thread is addressed to in format
-   * <#E/{entities}/{entityName}/{field}/{fieldValue}.
+   * <#E::{entities}::{entityName}::{field}::{fieldValue}.
    */
   addressedTo?: string;
   /**

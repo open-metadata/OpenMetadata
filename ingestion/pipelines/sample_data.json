@@ -17,7 +17,7 @@
   "workflowConfig": {
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
+      "authProvider": "no-auth",
     }
   }
 }
