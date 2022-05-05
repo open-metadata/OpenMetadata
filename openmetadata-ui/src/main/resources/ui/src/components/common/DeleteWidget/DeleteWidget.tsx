@@ -52,9 +52,7 @@ const DeleteWidget = ({
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
 
   const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = `Soft deleting will deactivate the ${getTitleCase(
-      entityName
-    )}. This will disable any discovery, read or write operations on ${entityName}`;
+    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
     const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
