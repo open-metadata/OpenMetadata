@@ -15,6 +15,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
@@ -23,7 +24,7 @@ import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 public class JWTTokenGenerator {
   private static volatile JWTTokenGenerator instance;
   private RSAPrivateKey privateKey;
-  private RSAPublicKey publicKey;
+  @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;
 
@@ -64,10 +65,6 @@ public class JWTTokenGenerator {
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
     }
-  }
-
-  public RSAPublicKey getPublicKey() {
-    return publicKey;
   }
 
   public String generateJWTToken(User user, JWTTokenExpiry expiry) {

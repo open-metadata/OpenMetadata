@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 public class CatalogSecurityContext implements SecurityContext {
-
   private final Principal principal;
   private final String scheme;
   private final String authenticationScheme;

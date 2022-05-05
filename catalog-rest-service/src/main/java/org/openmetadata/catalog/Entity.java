@@ -87,7 +87,7 @@ public final class Entity {
   public static final String MLMODEL = "mlmodel";
   // Not deleted to ensure the ordinal value of the entities after this remains the same
   public static final String UNUSED = "unused";
-  public static final String BOTS = "bots";
+  public static final String BOT = "bot";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
   public static final String GLOSSARY = "glossary";
@@ -122,7 +122,7 @@ public final class Entity {
           TEAM,
           ROLE,
           POLICY,
-          BOTS,
+          BOT,
           INGESTION_PIPELINE,
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
@@ -247,8 +247,7 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete, boolean internal)
-      throws IOException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId.toString(), recursive, hardDelete);
   }
