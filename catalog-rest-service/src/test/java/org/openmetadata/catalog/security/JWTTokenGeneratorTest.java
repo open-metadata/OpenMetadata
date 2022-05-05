@@ -36,8 +36,8 @@ public class JWTTokenGeneratorTest {
   public void setup(TestInfo test) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
     jwtTokenConfiguration = new JWTTokenConfiguration();
     jwtTokenConfiguration.setJWTIssuer("open-metadata.org");
-    jwtTokenConfiguration.setRSAPrivateKey(rsaPrivateKeyPath);
-    jwtTokenConfiguration.setRSAPublicKey(rsaPublicKeyPath);
+    jwtTokenConfiguration.setRSAPrivateKeyFilePath(rsaPrivateKeyPath);
+    jwtTokenConfiguration.setRSAPublicKeyFilePath(rsaPublicKeyPath);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     jwtTokenGenerator.init(jwtTokenConfiguration);
     ;
