@@ -30,3 +30,28 @@ export function escapeBackwardSlashChar<T>(formData: T): T {
 
   return formData;
 }
+
+export function removeAddnFieldsWithDefVal<T>(formData: T): T {
+  for (const key in formData) {
+    if (typeof formData[key as keyof T] === 'object') {
+      removeAddnFieldsWithDefVal(formData[key as keyof T]);
+    } else {
+      const data = formData[key as keyof T];
+      if (
+        key.startsWith('newKey') &&
+        data === ('New Value' as unknown as T[keyof T])
+      ) {
+        delete formData[key];
+      }
+    }
+  }
+
+  return formData;
+}
+
+export function FormatFormDataForSubmit<T>(formData: T): T {
+  escapeBackwardSlashChar(formData);
+  removeAddnFieldsWithDefVal(formData);
+
+  return formData;
+}
