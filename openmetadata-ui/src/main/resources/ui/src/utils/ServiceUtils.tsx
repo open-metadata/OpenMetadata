@@ -41,6 +41,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DEFAULT_SERVICE,
+  DELTALAKE,
   DRUID,
   DYNAMODB,
   GLUE,
@@ -55,11 +56,13 @@ import {
   ORACLE,
   PIPELINE_DEFAULT,
   POSTGRES,
+  POWERBI,
   PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
   REDSHIFT,
+  SALESFORCE,
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
@@ -147,6 +150,12 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.SQLite:
       return SQLITE;
 
+    case DatabaseServiceType.Salesforce:
+      return SALESFORCE;
+
+    case DatabaseServiceType.DeltaLake:
+      return DELTALAKE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -167,6 +176,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.Metabase:
       return METABASE;
+
+    case DashboardServiceType.PowerBI:
+      return POWERBI;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;

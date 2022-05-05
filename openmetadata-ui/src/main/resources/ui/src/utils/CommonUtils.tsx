@@ -42,6 +42,7 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
@@ -622,4 +623,16 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  */
 export const getEntityName = (entity: EntityReference) => {
   return entity?.displayName || entity?.name || '';
+};
+
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
+  } else {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata from OpenMetadata.`;
+  }
 };

@@ -129,7 +129,11 @@ const AddIngestion = ({
   >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
 
   const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfigSource | undefined),
+    () =>
+      getSourceTypeFromConfig(
+        configData as DbtConfigSource | undefined,
+        status === FormSubmitType.ADD ? DBT_SOURCES.local : ('' as DBT_SOURCES)
+      ),
     [configData]
   );
   const [dbtConfigSourceType, setDbtConfigSourceType] = useState<

@@ -63,6 +63,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { DataObj, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
+  getEntityDeleteMessage,
   getEntityMissingError,
   getEntityName,
   hasEditAccess,
@@ -642,32 +643,28 @@ const ServicePage: FunctionComponent = () => {
 
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
-        return `Deleting this ${service} will also delete ${pluralize(
-          instanceCount,
-          'database',
-          's'
-        )}`;
+        return getEntityDeleteMessage(
+          service || 'Service',
+          pluralize(instanceCount, 'database', 's')
+        );
 
       case ServiceCategory.MESSAGING_SERVICES:
-        return `Deleting this ${service} will also delete ${pluralize(
-          instanceCount,
-          'topic',
-          's'
-        )}`;
+        return getEntityDeleteMessage(
+          service || 'Service',
+          pluralize(instanceCount, 'topic', 's')
+        );
 
       case ServiceCategory.DASHBOARD_SERVICES:
-        return `Deleting this ${service} will also delete ${pluralize(
-          instanceCount,
-          'dashboard',
-          's'
-        )}`;
+        return getEntityDeleteMessage(
+          service || 'Service',
+          pluralize(instanceCount, 'dashboard', 's')
+        );
 
       case ServiceCategory.PIPELINE_SERVICES:
-        return `Deleting this ${service} will also delete ${pluralize(
-          instanceCount,
-          'pipeline',
-          's'
-        )}`;
+        return getEntityDeleteMessage(
+          service || 'Service',
+          pluralize(instanceCount, 'pipeline', 's')
+        );
 
       default:
         return;

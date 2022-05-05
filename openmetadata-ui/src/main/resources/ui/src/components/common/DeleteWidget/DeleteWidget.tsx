@@ -18,6 +18,7 @@ import { deleteEntity } from '../../../axiosAPIs/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import jsonData from '../../../jsons/en';
+import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -54,9 +55,7 @@ const DeleteWidget = ({
     const softDeleteText = `Soft deleting will deactivate the ${getTitleCase(
       entityName
     )}. This will disable any discovery, read or write operations on ${entityName}`;
-    const hardDeleteText = `Once you delete this ${getTitleCase(
-      entityType
-    )}, it will be removed permanently`;
+    const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
   };

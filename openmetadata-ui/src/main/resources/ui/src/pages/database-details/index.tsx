@@ -72,6 +72,7 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEntityDeleteMessage,
   getEntityName,
   hasEditAccess,
   isEven,
@@ -561,11 +562,15 @@ const DatabaseDetails: FunctionComponent = () => {
       return;
     }
 
-    return `Deleting this database will also delete ${pluralize(
-      databaseSchemaInstanceCount,
-      'schema',
-      's'
-    )} and ${pluralize(tableInstanceCount, 'table', 's')}.`;
+    const counts = [];
+    if (databaseSchemaInstanceCount) {
+      counts.push(pluralize(databaseSchemaInstanceCount, 'schema', 's'));
+    }
+    if (tableInstanceCount) {
+      counts.push(pluralize(tableInstanceCount, 'table', 's'));
+    }
+
+    return getEntityDeleteMessage('Database', counts.join(' and '));
   };
 
   useEffect(() => {
