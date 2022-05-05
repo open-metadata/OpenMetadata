@@ -34,6 +34,7 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import GenerateTokenModal from '../Modals/GenerateTokenModal/GenerateTokenModal';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
@@ -52,6 +53,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [botsToken, setBotsToken] = useState<string>('');
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
+  const [isRegeneratingToken, setIsRegeneratingToken] =
+    useState<boolean>(false);
+  const [generateToken, setGenerateToken] = useState<boolean>(false);
 
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
@@ -64,19 +68,26 @@ const BotsDetail: FC<BotsDetailProp> = ({
       });
   };
 
-  const generateBotsToken = (data?: Record<string, string>) => {
-    const defaultData = {
-      JWTToken: 'string',
-      JWTTokenExpiry: '7',
-    };
-    generateUserToken(botsData.id, data ?? defaultData)
+  const generateBotsToken = (data: Record<string, string>) => {
+    generateUserToken(botsData.id, data)
       .then((res: AxiosResponse) => {
         const { JWTToken } = res.data;
         setBotsToken(JWTToken);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
+      })
+      .finally(() => {
+        setGenerateToken(false);
       });
+  };
+
+  const handleTokenGeneration = () => {
+    if (botsToken) {
+      setIsRegeneratingToken(true);
+    } else {
+      setGenerateToken(true);
+    }
   };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,7 +236,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               size="small"
               theme="primary"
               variant="outlined"
-              onClick={() => generateBotsToken()}>
+              onClick={() => handleTokenGeneration()}>
               {botsToken ? 'Re-generate token' : 'Generate new token'}
             </Button>
             {botsToken ? (
@@ -293,6 +304,27 @@ const BotsDetail: FC<BotsDetailProp> = ({
           onConfirm={() => {
             revokeTokenHandler();
             setIsRevokingToken(false);
+          }}
+        />
+      ) : null}
+      {isRegeneratingToken ? (
+        <ConfirmationModal
+          bodyText="The re-generating token will rewrite the existing JWT token"
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header="Are you sure?"
+          onCancel={() => setIsRegeneratingToken(false)}
+          onConfirm={() => {
+            setIsRegeneratingToken(false);
+            setGenerateToken(true);
+          }}
+        />
+      ) : null}
+      {generateToken ? (
+        <GenerateTokenModal
+          onCancel={() => setGenerateToken(false)}
+          onConfirm={(data) => {
+            generateBotsToken(data);
           }}
         />
       ) : null}
