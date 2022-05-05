@@ -46,16 +46,21 @@ public class JWTTokenGenerator {
 
   public void init(JWTTokenConfiguration jwtTokenConfiguration) {
     try {
-      byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPrivateKey()));
-      PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
-      KeyFactory privateKF = KeyFactory.getInstance("RSA");
-      privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
-      byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPublicKey()));
-      X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
-      KeyFactory kf = KeyFactory.getInstance("RSA");
-      publicKey = (RSAPublicKey) kf.generatePublic(spec);
-      issuer = jwtTokenConfiguration.getJWTIssuer();
-      kid = jwtTokenConfiguration.getKeyId();
+      if (jwtTokenConfiguration.getRSAPrivateKey() != null
+          && !jwtTokenConfiguration.getRSAPrivateKey().isEmpty()
+          && jwtTokenConfiguration.getRSAPublicKey() != null
+          && !jwtTokenConfiguration.getRSAPublicKey().isEmpty()) {
+        byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPrivateKey()));
+        PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+        KeyFactory privateKF = KeyFactory.getInstance("RSA");
+        privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
+        byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPublicKey()));
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        publicKey = (RSAPublicKey) kf.generatePublic(spec);
+        issuer = jwtTokenConfiguration.getJWTIssuer();
+        kid = jwtTokenConfiguration.getKeyId();
+      }
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
     }
