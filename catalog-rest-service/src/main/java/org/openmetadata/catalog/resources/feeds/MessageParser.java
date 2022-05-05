@@ -30,12 +30,12 @@ public final class MessageParser {
 
   private static final String ENTITY_LINK_SEPARATOR = "::";
   // Pattern to match the following markdown entity links:
-  // <#E/{entityType}/{entityFQN}>  -- <#E/table/bigquery_gcp.shopify.raw_product_catalog>
-  // <#E/{entityType}/{entityFQN}/{fieldName}> -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/description>
-  // <#E/{entityType}/{entityFQN}/{fieldName}/{arrayFieldName}>
-  // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment>
-  // <#E/{entityType}/{entityFQN}/{fieldName}/{arrayFieldName}/{arrayFieldValue}>
-  // -- <#E/table/bigquery_gcp.shopify.raw_product_catalog/columns/comment/description>
+  // <#E::{entityType}::{entityFQN}>  -- <#E::table::bigquery_gcp.shopify.raw_product_catalog>
+  // <#E::{entityType}::{entityFQN}::{fieldName}> -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::description>
+  // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}>
+  // -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comment>
+  // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}::{arrayFieldValue}>
+  // -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comment::description>
   private static final Pattern ENTITY_LINK_PATTERN =
       Pattern.compile(
           "<#E"
@@ -133,7 +133,7 @@ public final class MessageParser {
 
     public static EntityLink parse(String link) {
       // Entity links also have support for fallback texts with "|"
-      // example: <#E/user/user1|[@User One](http://localhost:8585/user/user1)>
+      // example: <#E::user::user1|[@User One](http://localhost:8585/user/user1)>
       // Extract the entity link alone if the string has a fallback text
       if (link.contains("|")) {
         link = link.substring(0, link.indexOf("|")) + ">";
