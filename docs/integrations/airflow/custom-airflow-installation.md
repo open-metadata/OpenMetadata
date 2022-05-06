@@ -98,6 +98,14 @@ pip install "openmetadata-airflow-managed-apis"
 
 Then, check the Connector Modules guide above to learn how to install the `openmetadata-ingestion` package with the necessary plugins. They are necessary because even if we install the APIs, the Airflow instance needs to have the required libraries to connect to each source.
 
+On top of this installation, you'll need to follow these steps:
+
+1. Download the latest `openmetadata-airflow-apis-plugins` release from [here](https://github.com/open-metadata/OpenMetadata/releases)
+2. Untar it under `{AIRFLOW_HOME}` directory. This will create and setup a plugins directory under `{AIRFLOW_HOME}` .
+3. `cp -r {AIRFLOW_HOME}/plugins/dag_templates {AIRFLOW_HOME}`
+4. `mkdir -p {AIRFLOW_HOME}/dag_generated_configs`
+5. (re)start the airflow webserver and scheduler
+
 ### Configure the OpenMetadata Server
 
 Finally, you can check how to [Configure Airflow in the OpenMetadata Server](configure-airflow-in-the-openmetadata-server.md) to enable workflow deployments from the UI.
