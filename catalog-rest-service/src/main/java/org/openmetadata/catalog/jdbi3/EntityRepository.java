@@ -906,6 +906,10 @@ public abstract class EntityRepository<T> {
     return new Fields(allowedFields, fields);
   }
 
+  public final List<String> getAllowedFields() {
+    return allowedFields;
+  }
+
   enum Operation {
     PUT,
     PATCH,
