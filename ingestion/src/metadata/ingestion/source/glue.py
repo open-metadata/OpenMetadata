@@ -11,7 +11,7 @@
 
 import traceback
 import uuid
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -185,14 +185,7 @@ class GlueSource(Source[Entity]):
                     )
 
                 table_columns = self.get_columns(table["StorageDescriptor"])
-                location_entity = Location(
-                    name=table["Name"][:128],  # set location name as table name
-                    path=table["StorageDescriptor"]["Location"],
-                    locationType=location_type,
-                    service=EntityReference(
-                        id=self.storage_service.id, type="storageService"
-                    ),
-                )
+                location_entity = self.get_table_location(table, location_type)
 
                 table_type: TableType = TableType.Regular
                 if location_type == LocationType.Iceberg:
@@ -221,6 +214,30 @@ class GlueSource(Source[Entity]):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(err)
+
+    def get_table_location(
+        self, table: dict, location_type: LocationType
+    ) -> Optional[Location]:
+        """
+        Try to create the location or return None
+        :param table: Table dict from boto3
+        :param location_type: Table or Iceberg
+        :return: Location or None
+        """
+        try:
+            return Location(
+                name=table["Name"][:128],  # set location name as table name
+                path=table["StorageDescriptor"]["Location"],
+                locationType=location_type,
+                service=EntityReference(
+                    id=self.storage_service.id, type="storageService"
+                ),
+            )
+        except Exception as err:
+            logger.error(f"Cannot create location for {table['Name']} due to {err}")
+            logger.debug(traceback.format_exc())
+
+        return None
 
     def get_downstream_tasks(self, task_unique_id, tasks):
         downstream_tasks = []
