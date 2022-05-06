@@ -21,7 +21,10 @@ import java.util.Map;
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum ConnectionType {
   MYSQL("com.mysql.cj.jdbc.Driver"),
-  POSTGRES("org.postgresql.Driver");
+  POSTGRES("org.postgresql.Driver"),
+
+  // SINGLESTORE("com.singlestore.jdbc.Driver");
+  SINGLESTORE("com.singlestore.jdbc.Driver");
 
   public final String label;
 

@@ -16,6 +16,7 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.SINGLESTORE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
@@ -48,12 +49,14 @@ public interface EntityDAO<T> {
   /** Common queries for all entities implemented here. Do not override. */
   @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json :: jsonb)", connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = SINGLESTORE)
   void insert(@Define("table") String table, @Bind("json") String json);
 
   @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
       connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = SINGLESTORE)
   void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")

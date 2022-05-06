@@ -15,6 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.catalog.jdbi3.locator.ConnectionType.SINGLESTORE;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -340,6 +341,10 @@ public interface CollectionDAO {
         value =
             "INSERT INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = SINGLESTORE)
     void insert(
         @Bind("id") String id,
         @Bind("extension") String extension,
@@ -401,6 +406,10 @@ public interface CollectionDAO {
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT (fromId, toId, relation) DO NOTHING",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
+        connectionType = SINGLESTORE)
     int insert(
         @Bind("fromId") String fromId,
         @Bind("toId") String toId,
@@ -528,6 +537,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO thread_entity(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO thread_entity(json) VALUES (:json)", connectionType = SINGLESTORE)
     void insert(@Bind("json") String json);
 
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
@@ -634,6 +644,9 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE thread_entity SET json = :json where id = :id",
+        connectionType = SINGLESTORE)
     void update(@Bind("id") String id, @Bind("json") String json);
 
     @SqlQuery(
@@ -766,6 +779,10 @@ public interface CollectionDAO {
         value =
             "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation) ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation)",
+        connectionType = SINGLESTORE)
     void insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
@@ -785,6 +802,12 @@ public interface CollectionDAO {
                 + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
                 + "ON CONFLICT (fromFQN, toFQN, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, :json) "
+                + "ON DUPLICATE KEY UPDATE json = :json",
+        connectionType = SINGLESTORE)
     void upsert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
@@ -1307,6 +1330,10 @@ public interface CollectionDAO {
         value =
             "INSERT INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state) ON CONFLICT (source, tagFQN, targetFQN) DO NOTHING",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, targetFQN, labelType, state) VALUES (:source, :tagFQN, :targetFQN, :labelType, :state)",
+        connectionType = SINGLESTORE)
     void applyTag(
         @Bind("source") int source,
         @Bind("tagFQN") String tagFQN,
@@ -1334,6 +1361,16 @@ public interface CollectionDAO {
                 + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
                 + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
+                + "t.json::$description AS description1, "
+                + "g.json::$description AS description2 "
+                + "FROM tag_usage tu "
+                + "LEFT JOIN tag t ON tu.tagFQN = t.fullyQualifiedName AND tu.source = 0 "
+                + "LEFT JOIN glossary_term_entity g ON tu.tagFQN = g.fullyQualifiedName AND tu.source = 1 "
+                + "WHERE tu.targetFQN = :targetFQN ORDER BY tu.tagFQN",
+        connectionType = SINGLESTORE)
     List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
 
     @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%') AND source = :source")
@@ -1456,6 +1493,15 @@ public interface CollectionDAO {
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days'))",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY))",
+        connectionType = SINGLESTORE)
     void insert(
         @Bind("date") String date,
         @Bind("id") String id,
@@ -1480,6 +1526,16 @@ public interface CollectionDAO {
                 + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days')) "
                 + "ON CONFLICT (usageDate, id) DO UPDATE SET count1 = entity_usage.count1 + :count1, count7 = entity_usage.count7 + :count1, count30 = entity_usage.count30 + :count1",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY)) "
+                + "ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7 = count7 + :count1, count30 = count30 + :count1",
+        connectionType = SINGLESTORE)
     void insertOrUpdateCount(
         @Bind("date") String date,
         @Bind("id") String id,
@@ -1498,6 +1554,12 @@ public interface CollectionDAO {
                 + "percentile1, percentile7, percentile30 FROM entity_usage "
                 + "WHERE id = :id AND usageDate >= (:date :: date) - make_interval(days => :days) AND usageDate <= (:date :: date) ORDER BY usageDate DESC",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, usageDate, entityType, count1, count7, count30, "
+                + "percentile1, percentile7, percentile30 FROM entity_usage "
+                + "WHERE id = :id AND usageDate >= :date - INTERVAL :days DAY AND usageDate <= :date ORDER BY usageDate DESC",
+        connectionType = SINGLESTORE)
     List<UsageDetails> getUsageById(@Bind("id") String id, @Bind("date") String date, @Bind("days") int days);
 
     /** Get latest usage record */
@@ -1546,6 +1608,22 @@ public interface CollectionDAO {
                 + ") vals "
                 + "WHERE u.id = vals.id AND usageDate = (:date :: date);",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_usage u JOIN ( "
+                + "SELECT u1.id, "
+                + "(SELECT COUNT(*) FROM entity_usage as u2 WHERE u2.count1 <  u1.count1 AND u2.entityType = :entityType "
+                + "AND u2.usageDate = :date) as p1, "
+                + "(SELECT COUNT(*) FROM entity_usage as u3 WHERE u3.count7 <  u1.count7 AND u3.entityType = :entityType "
+                + "AND u3.usageDate = :date) as p7, "
+                + "(SELECT COUNT(*) FROM entity_usage as u4 WHERE u4.count30 <  u1.count30 AND u4.entityType = :entityType "
+                + "AND u4.usageDate = :date) as p30, "
+                + "(SELECT COUNT(*) FROM entity_usage WHERE entityType = :entityType AND usageDate = :date) as total "
+                + "FROM entity_usage u1 WHERE u1.entityType = :entityType AND u1.usageDate = :date"
+                + ") vals ON u.id = vals.id AND usageDate = :date "
+                + "SET u.percentile1 = ROUND(100 * p1/total, 2), u.percentile7 = ROUND(p7 * 100/total, 2), u.percentile30 ="
+                + " ROUND(p30*100/total, 2)",
+        connectionType = SINGLESTORE)
     void computePercentile(@Bind("entityType") String entityType, @Bind("date") String date);
 
     class UsageDetailsMapper implements RowMapper<UsageDetails> {
@@ -1683,6 +1761,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(value = "INSERT INTO change_event (json) VALUES (:json)", connectionType = SINGLESTORE)
     void insert(@Bind("json") String json);
 
     default List<String> list(String eventType, List<String> entityTypes, long timestamp) {

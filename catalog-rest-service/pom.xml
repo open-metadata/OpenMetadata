@@ -56,6 +56,10 @@
         <artifactId>postgresql</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.singlestore</groupId>
+      <artifactId>singlestore-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-core</artifactId>
     </dependency>
