@@ -186,7 +186,8 @@ class GlueSource(Source[Entity]):
 
                 table_columns = self.get_columns(table["StorageDescriptor"])
                 location_entity = Location(
-                    name=table["StorageDescriptor"]["Location"],
+                    name=table["Name"][:128],  # set location name as table name
+                    path=table["StorageDescriptor"]["Location"],
                     locationType=location_type,
                     service=EntityReference(
                         id=self.storage_service.id, type="storageService"
