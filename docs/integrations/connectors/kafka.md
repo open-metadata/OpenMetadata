@@ -40,7 +40,7 @@ metadata ingest -c ./examples/workflows/confluent_kafka.json
       "config": {
         "type": "Kafka",
         "bootstrapServers": "localhost:9092",
-        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "schemaRegistryURL": "http://localhost:8081",
         "consumerConfig": {},
         "schemaRegistryConfig": {}
       }
@@ -75,7 +75,7 @@ Add `metadata-rest` sink along with `metadata-server` config
       "config": {
         "type": "Kafka",
         "bootstrapServers": "localhost:9092",
-        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "schemaRegistryURL": "http://localhost:8081",
         "consumerConfig": {},
         "schemaRegistryConfig": {}
       }
