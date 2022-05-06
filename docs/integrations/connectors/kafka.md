@@ -9,7 +9,7 @@ description: This guide will help install Kafka connector and run manually
 
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
-1. Python 3.7 or above
+1. Python 3.8 or above
 {% endhint %}
 
 ### Install from PyPI
@@ -35,15 +35,23 @@ metadata ingest -c ./examples/workflows/confluent_kafka.json
 {
   "source": {
     "type": "kafka",
-    "config": {
-      "service_name": "local_kafka",
-      "bootstrap_servers": "192.168.1.32:9092",
-      "schema_registry_url": "http://192.168.1.32:8081",
-      "filter_pattern": {
-        "excludes": ["_confluent.*"]
+    "serviceName": "local_kafka",
+    "serviceConnection": {
+      "config": {
+        "type": "Kafka",
+        "bootstrapServers": "localhost:9092",
+        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "consumerConfig": {},
+        "schemaRegistryConfig": {}
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "topicFilterPattern": {
+          "excludes": ["_confluent.*"]
+        }
       }
     }
-  },
  ...
 ```
 {% endcode %}
@@ -62,12 +70,21 @@ Add `metadata-rest` sink along with `metadata-server` config
 {
   "source": {
     "type": "kafka",
-    "config": {
-      "service_name": "local_kafka",
-      "bootstrap_servers": "192.168.1.32:9092",
-      "schema_registry_url": "http://192.168.1.32:8081",
-      "filter_pattern": {
-        "excludes": ["_confluent.*"]
+    "serviceName": "local_kafka",
+    "serviceConnection": {
+      "config": {
+        "type": "Kafka",
+        "bootstrapServers": "localhost:9092",
+        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "consumerConfig": {},
+        "schemaRegistryConfig": {}
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "topicFilterPattern": {
+          "excludes": ["_confluent.*"]
+        }
       }
     }
   },
@@ -76,11 +93,10 @@ Add `metadata-rest` sink along with `metadata-server` config
     "config": {
     }
   },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
