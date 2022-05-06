@@ -274,6 +274,12 @@ public final class Entity {
     return new ArrayList<>(Arrays.asList(propertyOrder.value()));
   }
 
+  public static <T> List<String> getAllowedFields(Class<T> clz) {
+    String entityType = getEntityTypeFromClass(clz);
+    EntityRepository<?> repository = getEntityRepository(entityType);
+    return repository.getAllowedFields();
+  }
+
   /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
     private EntityList() {}
