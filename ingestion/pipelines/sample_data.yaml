@@ -12,5 +12,5 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://localhost:8585/api
+    hostPort: $HOST_PORT
     authProvider: no-auth

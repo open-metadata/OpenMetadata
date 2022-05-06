@@ -11,13 +11,12 @@
 
 import io
 import json
+import os
 import pathlib
-import re
 from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 
 import yaml
-from expandvars import UnboundVariable, expandvars
 from pydantic import BaseModel
 
 FQDN_SEPARATOR: str = "."
@@ -63,44 +62,6 @@ class JsonConfigurationMechanism(ConfigurationMechanism):
         return config
 
 
-def resolve_element(element: str) -> str:
-    if re.search("(\$\{).+(\})", element):  # noqa: W605
-        return expandvars(element, nounset=True)
-    elif element.startswith("$"):
-        try:
-            return expandvars(element, nounset=True)
-        except UnboundVariable:
-            return element
-    else:
-        return element
-
-
-def resolve_list(ele_list: list) -> list:
-    new_v = []
-    for ele in ele_list:
-        if isinstance(ele, str):
-            new_v.append(resolve_element(ele))  # type:ignore
-        elif isinstance(ele, list):
-            new_v.append(resolve_list(ele))  # type:ignore
-        elif isinstance(ele, dict):
-            resolve_env_variables(ele)
-            new_v.append(resolve_env_variables(ele))  # type:ignore
-        else:
-            new_v.append(ele)
-    return new_v
-
-
-def resolve_env_variables(config: dict) -> dict:
-    for k, v in config.items():
-        if isinstance(v, dict):
-            resolve_env_variables(v)
-        elif isinstance(v, list):
-            config[k] = resolve_list(v)
-        elif isinstance(v, str):
-            config[k] = resolve_element(v)
-    return config
-
-
 def load_config_file(config_file: pathlib.Path) -> dict:
     if not config_file.is_file():
         raise ConfigurationError(f"Cannot open config file {config_file}")
@@ -118,8 +79,7 @@ def load_config_file(config_file: pathlib.Path) -> dict:
         )
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()
-
-    config_fp = io.StringIO(raw_config)
+    expanded_config_file = os.path.expandvars(raw_config)
+    config_fp = io.StringIO(expanded_config_file)
     config = config_mech.load_config(config_fp)
-    resolve_env_variables(config)
     return config
