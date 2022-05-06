@@ -69,7 +69,7 @@ def load_config_file(config_file: pathlib.Path) -> dict:
     config_mech: ConfigurationMechanism
     if config_file.suffix in [".yaml", ".yml"]:
         config_mech = YamlConfigurationMechanism()
-    elif config_file.suffix == ".toml":
+    elif config_file.suffix == ".json":
         config_mech = JsonConfigurationMechanism()
     else:
         raise ConfigurationError(
