@@ -7,7 +7,11 @@
   "properties": {
     "name": {
       "description": "Name that identifies this Location.",
-      "$ref": "../../entity/data/location.json#/definitions/locationName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "path": {
+      "description": "Location full path",
+      "type": "string"
     },
     "description": {
       "description": "Description of the location instance.",

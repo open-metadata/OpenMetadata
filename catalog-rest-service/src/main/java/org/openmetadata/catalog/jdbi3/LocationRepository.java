@@ -42,9 +42,9 @@ import org.openmetadata.catalog.util.ResultList;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
-  private static final String LOCATION_PATCH_FIELDS = "owner,tags";
+  private static final String LOCATION_PATCH_FIELDS = "owner,tags,path";
   // Location fields that can be updated in a PUT request
-  private static final String LOCATION_UPDATE_FIELDS = "owner,tags";
+  private static final String LOCATION_UPDATE_FIELDS = "owner,tags,path";
 
   public LocationRepository(CollectionDAO dao) {
     super(
@@ -60,6 +60,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getService(location));
+    location.setPath(location.getPath());
     location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
     location.setTags(fields.contains(FIELD_TAGS) ? getTags(location.getFullyQualifiedName()) : null);
@@ -379,6 +380,7 @@ public class LocationRepository extends EntityRepository<Location> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("locationType", original.getEntity().getLocationType(), updated.getEntity().getLocationType());
+      recordChange("path", original.getEntity().getPath(), updated.getEntity().getPath());
     }
   }
 }
