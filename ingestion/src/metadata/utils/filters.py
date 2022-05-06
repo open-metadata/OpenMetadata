@@ -110,7 +110,7 @@ def filter_by_chart(
     chart_filter_pattern: Optional[FilterPattern], chart_name: str
 ) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the chart needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
@@ -138,7 +138,7 @@ def filter_by_dashboard(
     dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the dashboard needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
@@ -151,7 +151,7 @@ def filter_by_dashboard(
 
 def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the FQN needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
