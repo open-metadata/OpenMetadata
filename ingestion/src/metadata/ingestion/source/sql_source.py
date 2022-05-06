@@ -24,7 +24,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.config.common import TagRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -56,6 +55,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -288,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
-    ) -> Iterable[Union[OMetaDatabaseAndTable, TagRequest]]:
+    ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
         """
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities

@@ -19,7 +19,6 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
-from metadata.config.common import TagRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -42,6 +41,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
@@ -77,9 +77,9 @@ class SnowflakeSource(SQLSource):
                 self.engine = get_connection(self.service_connection)
                 yield inspect(self.engine)
 
-    def fetch_tags(self, schema, table: str):
+    def fetch_tags(self, schema, table_name: str):
         self.connection.execute(f"USE {self.service_connection.database}.{schema}")
-        result = self.connection.execute(FETCH_SNOWFLAKE_TAGS.format(table))
+        result = self.connection.execute(FETCH_SNOWFLAKE_TAGS.format(table_name))
         tags = []
         for res in result:
             logger.info("Ingesting Tags")
@@ -87,7 +87,7 @@ class SnowflakeSource(SQLSource):
             tag_category = row[2]
             primary_tag = row[3]
             tags.append(
-                TagRequest(
+                OMetaTagAndCategory(
                     category_name=CreateTagCategoryRequest(
                         name=tag_category,
                         description="SNOWFLAKE TAG NAME",
@@ -134,61 +134,61 @@ class SnowflakeSource(SQLSource):
         for inspector in self.get_databases():
             yield from self.fetch_tables(inspector=inspector, schema="")
 
-    def create_tags(self, schema: str, table_name: str, table_entity):
-        tag_category_list = self.fetch_tags(schema=schema, table=table_name)
-        table_entity.tags = []
-        for tags in tag_category_list:
-            yield tags
-            table_entity.tags.append(
-                TagLabel(
-                    tagFQN=get_fqdn(
-                        Tag,
-                        tags.category_name.name.__root__,
-                        tags.category_details.name.__root__,
-                    ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Tag",
-                )
+    def add_tags_to_table(self, schema: str, table_name: str, table_entity):
+        tag_category_list = self.fetch_tags(schema=schema, table_name=table_name)
+        tags = [
+            TagLabel(
+                tagFQN=get_fqdn(
+                    Tag,
+                    tags.category_name.name.__root__,
+                    tags.category_details.name.__root__,
+                ),
+                labelType="Automated",
+                state="Suggested",
+                source="Tag",
             )
+            for tags in tag_category_list
+        ]
+
+        table_entity.tags = tags
 
     def fetch_tables(
         self,
         inspector: Inspector,
         schema: str,
-    ) -> Iterable[Union[OMetaDatabaseAndTable, TagRequest]]:
+    ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
         entities = inspector.get_table_names()
-        for db, schema, entity, entity_type, comment in entities:
+        for db, schema, table_name, entity_type, comment in entities:
             try:
                 if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=entity
+                    self.source_config.tableFilterPattern, table_name=table_name
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{db}.{schema}.{entity}",
+                        f"{self.config.serviceName}.{db}.{schema}.{table_name}",
                         "{} pattern not allowed".format(entity_type),
                     )
                     continue
-                table_columns = self._get_columns(schema, entity, inspector)
-                view_definition = inspector.get_view_definition(entity, schema)
+                table_columns = self._get_columns(schema, table_name, inspector)
+                view_definition = inspector.get_view_definition(table_name, schema)
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
                 )
                 table_entity = Table(
                     id=uuid.uuid4(),
-                    name=entity,
+                    name=table_name,
                     tableType="Regular" if entity_type == "Base Table" else "View",
                     description=comment,
                     columns=table_columns,
                     viewDefinition=view_definition,
                 )
-                self.create_tags(
-                    schema=schema, table_name=entity, table_entity=table_entity
+                self.add_tags_to_table(
+                    schema=schema, table_name=table_name, table_entity=table_entity
                 )
                 if self.source_config.generateSampleData:
-                    table_data = self.fetch_sample_data(schema, entity)
+                    table_data = self.fetch_sample_data(schema, table_name)
                     table_entity.sampleData = table_data
                 if self.source_config.enableDataProfiler:
-                    profile = self.run_profiler(table=entity, schema=schema)
+                    profile = self.run_profiler(table=table_name, schema=schema)
                     table_entity.tableProfile = [profile] if profile else None
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(

@@ -19,22 +19,12 @@ from typing import IO, Any, Optional
 import yaml
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
-from metadata.generated.schema.api.tags.createTagCategory import (
-    CreateTagCategoryRequest,
-)
-
 FQDN_SEPARATOR: str = "."
 
 
 class ConfigModel(BaseModel):
     class Config:
         extra = "forbid"
-
-
-class TagRequest(BaseModel):
-    category_name: CreateTagCategoryRequest
-    category_details: CreateTagRequest
 
 
 class DynamicTypedConfig(ConfigModel):

@@ -16,7 +16,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 from sql_metadata import Parser
 
-from metadata.config.common import ConfigModel, TagRequest
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -47,6 +47,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
@@ -127,7 +128,7 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
-        elif isinstance(record, TagRequest):
+        elif isinstance(record, OMetaTagAndCategory):
             self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
@@ -396,7 +397,7 @@ class MetadataRestSink(Sink[Entity]):
         )
         return self.metadata.create_or_update(location_request)
 
-    def write_tag_category(self, record: TagRequest):
+    def write_tag_category(self, record: OMetaTagAndCategory):
         try:
             self.metadata.create_tag_category(tag_category_body=record.category_name)
         except Exception as err:
