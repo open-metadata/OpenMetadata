@@ -32,6 +32,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
@@ -64,6 +65,11 @@ class PostgresSource(SQLSource):
             for res in results:
                 row = list(res)
                 try:
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern, database_name=row[0]
+                    ):
+                        self.status.filter(row[0], "Database pattern not allowed")
+                        continue
                     logger.info(f"Ingesting from database: {row[0]}")
                     self.service_connection.database = row[0]
                     self.engine = get_connection(

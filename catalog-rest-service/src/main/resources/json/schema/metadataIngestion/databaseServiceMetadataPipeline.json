@@ -135,6 +135,10 @@
       "description": "Regex exclude tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
     "dbtConfigSource": {
       "title": "DBT Configuration Source",
       "description": "Available sources to fetch DBT catalog and manifest files.",
