@@ -109,36 +109,41 @@ Note: The `source.config` field in the configuration JSON will include the major
 {
   "source": {
     "type": "azuresql",
-    "config": {
-      "host_port": "hostname.domain.com:1433",
-      "scheme": "mssql+pyodbc",
-      "driver": "{ODBC Driver 17 for SQL Server}",
-      "username": "username",
-      "password": "strong_password",
-      "database": "azuresql_db",
-      "service_name": "local_azure_sql",
-      "query": "select top 50 * from {}.{}",
-      "data_profiler_enabled": "false",
-      "table_filter_pattern": {
-        "excludes": ["[\\w]*event_vw.*"]
+    "serviceName": "azuresql",
+    "serviceConnection": {
+      "config": {
+        "type": "AzureSQL",
+        "hostPort": "hostPort",
+        "database": "database_name",
+        "username": "username",
+        "password": " password",
+        "driver":"ODBC Driver 17 for SQL Server"
+      }
       },
-      "schema_filter_pattern": {
-        "excludes": ["azuresql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      "sourceConfig": {
+        "config": {
+          "schemaFilterPattern": {
+            "excludes": [
+              "mysql.*",
+              "information_schema.*",
+              "performance_schema.*",
+              "sys.*"
+            ]
+          }
+        }
+      }
+    },
+    "sink": {
+      "type": "metadata-rest",
+      "config": {}
+    },
+    "workflowConfig": {
+      "openMetadataServerConfig": {
+        "hostPort": "http://localhost:8585/api",
+        "authProvider": "no-auth"
       }
     }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
   }
-}  
 ```
 {% endcode %}
 
@@ -192,7 +197,7 @@ Edit the value for `source.config.password` with the password for your Azure SQL
 "password": "strong_password"
 ```
 
-#### service\_name
+#### serviceName
 
 OpenMetadata uniquely identifies services by their `service_name`. Edit the value for `source.config.service_name` with a name that distinguishes this deployment from other services, including other Azure SQL services that you might be ingesting metadata from.
 
