@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -262,7 +261,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     // create new request with few tasks removed
     updatedTasks.remove(taskEmptyDesc);
-    pipeline = updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(List.of(taskEmptyDesc)));
+    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
+    validateTasks(pipeline.getTasks(), updatedTasks);
   }
 
   @Test
@@ -501,7 +504,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
               .withTaskUrl(new URI("http://localhost:0"));
       new_tasks.add(task);
     }
-
+    request.setTasks(new_tasks);
     change = getChangeDescription(pipeline.getVersion());
     change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);

@@ -400,7 +400,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (newTasks || removedTasks) {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
-        majorVersionChange = majorVersionChange || !newTasks || !removedTasks;
         recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
       }
     }
