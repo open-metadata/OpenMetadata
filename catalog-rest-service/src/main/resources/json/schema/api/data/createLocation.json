@@ -10,7 +10,7 @@
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "path": {
-      "description": "Location full path",
+      "description": "Location full path.",
       "type": "string"
     },
     "description": {
