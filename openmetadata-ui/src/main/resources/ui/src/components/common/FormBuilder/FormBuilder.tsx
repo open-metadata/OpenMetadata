@@ -18,6 +18,7 @@ import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useCallback, useState } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
+import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
@@ -43,18 +44,19 @@ const FormBuilder: FunctionComponent<Props> = ({
   onCancel,
   onSubmit,
   onTestConnection,
+  uiSchema,
   ...props
 }: Props) => {
   let oForm: Form<ConfigData> | null;
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formData
+    formatFormDataForRender(formData)
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
     useState<LoadingState>('initial');
 
   const handleCancel = () => {
-    setLocalFormData(formData);
+    setLocalFormData(formatFormDataForRender(formData));
     if (onCancel) {
       onCancel();
     }
@@ -137,6 +139,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         oForm = form;
       }}
       schema={schema}
+      uiSchema={uiSchema}
       onChange={(e) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);
@@ -148,6 +151,17 @@ const FormBuilder: FunctionComponent<Props> = ({
           No Connection Configs available.
         </div>
       )}
+      {/* !isEmpty(schema) &&
+        schema.properties &&
+        schema.properties.connectionOptions && (
+          <Form
+            ObjectFieldTemplate={ObjectFieldTemplate}
+            className={classNames('rjsf', props.className, {
+              'no-header': !showFormHeader,
+            })}
+            schema={ConnectionOptionsSchema as JSONSchema7}
+          />
+        )*/}
       {!isEmpty(schema) && onTestConnection && (
         <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
           <div className="tw-self-center">{getConnectionTestingMessage()}</div>
