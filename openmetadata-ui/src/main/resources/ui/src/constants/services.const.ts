@@ -125,11 +125,6 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   { name: 'Connection Details', step: 3 },
 ];
 
-export const DATABASE_UI_SCHEMA = {
-  connectionOptions: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  connectionArguments: { 'ui:widget': 'hidden', 'ui:hideError': true },
-};
-
 export const COMMON_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },

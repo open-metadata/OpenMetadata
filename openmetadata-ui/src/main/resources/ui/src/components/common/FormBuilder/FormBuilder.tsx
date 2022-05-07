@@ -151,17 +151,6 @@ const FormBuilder: FunctionComponent<Props> = ({
           No Connection Configs available.
         </div>
       )}
-      {/* !isEmpty(schema) &&
-        schema.properties &&
-        schema.properties.connectionOptions && (
-          <Form
-            ObjectFieldTemplate={ObjectFieldTemplate}
-            className={classNames('rjsf', props.className, {
-              'no-header': !showFormHeader,
-            })}
-            schema={ConnectionOptionsSchema as JSONSchema7}
-          />
-        )*/}
       {!isEmpty(schema) && onTestConnection && (
         <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
           <div className="tw-self-center">{getConnectionTestingMessage()}</div>
