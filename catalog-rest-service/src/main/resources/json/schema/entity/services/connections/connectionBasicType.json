@@ -8,7 +8,7 @@
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
       "description": "Additional connection options that can be sent to service during the connection.",
       "type": "object",
-      "patternProperties": {
+      "additionalProperties": {
         ".{1,}": { "type": "string" }
       }
     },
@@ -16,7 +16,7 @@
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionArguments",
       "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
       "type": "object",
-      "patternProperties": {
+      "additionalProperties": {
         ".{1,}": { "type": "string" }
       }
     },
