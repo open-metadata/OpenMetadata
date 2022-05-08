@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -256,9 +257,26 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
-    def write_topics(self, topic: CreateTopicRequest) -> None:
+    def write_topics(self, topic: Topic) -> None:
         try:
-            created_topic = self.metadata.create_or_update(topic)
+            topic_request = CreateTopicRequest(
+                name=topic.name,
+                service=topic.service,
+                partitions=topic.partitions,
+                replicationFactor=topic.replicationFactor,
+                maximumMessageSize=topic.maximumMessageSize,
+                retentionTime=topic.retentionTime,
+                cleanupPolicies=topic.cleanupPolicies,
+                topicConfig=topic.topicConfig,
+            )
+            if topic.schemaType:
+                topic_request.schemaType = topic.schemaType
+                topic_request.schemaText = topic.schemaText
+            created_topic = self.metadata.create_or_update(topic_request)
+
+            if topic.sampleData:
+                self.metadata.ingest_topic_sample_data(created_topic, topic.sampleData)
+
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
             self.status.records_written(f"Topic: {created_topic.name.__root__}")
         except (APIError, ValidationError) as err:

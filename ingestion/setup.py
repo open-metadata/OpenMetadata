@@ -93,7 +93,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl==0.4.3",
         "presto-types-parser==0.0.2",
     },
-    "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
+    "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0", "avro-python3"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk==21.12.2"},
     "mssql": {"sqlalchemy-pytds>=0.3"},

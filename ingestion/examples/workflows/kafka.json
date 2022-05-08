@@ -5,15 +5,18 @@
     "serviceConnection": {
       "config": {
         "type": "Kafka",
-        "bootstrapServers": "localhost:9092",
-        "schemaRegistryURL": "http://192.168.1.43:8081",
+        "bootstrapServers": "136.243.150.188:9092",
+        "schemaRegistryURL": "http://136.243.150.188:8081",
         "consumerConfig": {},
         "schemaRegistryConfig": {}
       }
     },
     "sourceConfig": {
       "config": {
-        "topicFilterPattern": {}
+        "topicFilterPattern": {
+          "excludes": ["_confluent.*"]
+        },
+        "generateSampleData": true
       }
     }
   },

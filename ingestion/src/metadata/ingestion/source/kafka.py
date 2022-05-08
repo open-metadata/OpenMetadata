@@ -10,6 +10,9 @@
 #  limitations under the License.
 
 import concurrent.futures
+import sys
+import traceback
+import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
@@ -21,7 +24,11 @@ from confluent_kafka.schema_registry.schema_registry_client import (
 )
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import SchemaType
+from metadata.generated.schema.entity.data.topic import (
+    SchemaType,
+    Topic,
+    TopicSampleData,
+)
 
 # This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
@@ -80,10 +87,12 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.service = self.metadata.get_service_or_create(
             entity=MessagingService, config=config
         )
-
+        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.connection: KafkaClient = get_connection(self.service_connection)
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
+        if self.generate_sample_data:
+            self.consumer_client = self.connection.consumer_client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -98,7 +107,7 @@ class KafkaSource(Source[CreateTopicRequest]):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[CreateTopicRequest]:
+    def next_record(self) -> Iterable[Topic]:
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
             try:
@@ -108,7 +117,8 @@ class KafkaSource(Source[CreateTopicRequest]):
                     logger.info("Fetching topic schema {}".format(topic_name))
                     topic_schema = self._parse_topic_metadata(topic_name)
                     logger.info("Fetching topic config {}".format(topic_name))
-                    topic_request = CreateTopicRequest(
+                    topic = Topic(
+                        id=uuid.uuid4(),
                         name=topic_name,
                         service=EntityReference(
                             id=self.service.id, type="messagingService"
@@ -129,40 +139,42 @@ class KafkaSource(Source[CreateTopicRequest]):
                         iter(topic_configResource.values())
                     ):
                         config_response = j.result(timeout=10)
-                        topic_request.maximumMessageSize = config_response.get(
+                        topic.maximumMessageSize = config_response.get(
                             "max.message.bytes"
                         ).value
-                        topic_request.minimumInSyncReplicas = config_response.get(
+                        topic.minimumInSyncReplicas = config_response.get(
                             "min.insync.replicas"
                         ).value
-                        topic_request.retentionTime = config_response.get(
-                            "retention.ms"
-                        ).value
-                        topic_request.cleanupPolicies = [
+                        topic.retentionTime = config_response.get("retention.ms").value
+                        topic.cleanupPolicies = [
                             config_response.get("cleanup.policy").value
                         ]
                         topic_config = {}
                         for key, conf_response in config_response.items():
                             topic_config[key] = conf_response.value
-                        topic_request.topicConfig = topic_config
+                        topic.topicConfig = topic_config
 
                     if topic_schema is not None:
-                        topic_request.schemaText = topic_schema.schema_str
+                        topic.schemaText = topic_schema.schema_str
                         if topic_schema.schema_type == "AVRO":
-                            topic_request.schemaType = SchemaType.Avro.name
+                            topic.schemaType = SchemaType.Avro.name
                         elif topic_schema.schema_type == "PROTOBUF":
-                            topic_request.schemaType = SchemaType.Protobuf.name
+                            topic.schemaType = SchemaType.Protobuf.name
                         elif topic_schema.schema_type == "JSON":
-                            topic_request.schemaType = SchemaType.JSON.name
+                            topic.schemaType = SchemaType.JSON.name
                         else:
-                            topic_request.schemaType = SchemaType.Other.name
+                            topic.schemaType = SchemaType.Other.name
 
-                    self.status.topic_scanned(topic_request.name.__root__)
-                    yield topic_request
+                    if self.generate_sample_data:
+                        topic.sampleData = self._get_sample_data(topic_name)
+                    self.status.topic_scanned(topic.name.__root__)
+                    yield topic
                 else:
                     self.status.dropped(topic_name)
             except Exception as err:
                 logger.error(repr(err))
+                logger.debug(traceback.format_exc())
+                logger.debug(sys.exc_info()[2])
                 self.status.failure(topic_name, repr(err))
 
     def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
@@ -178,11 +190,40 @@ class KafkaSource(Source[CreateTopicRequest]):
 
         return schema
 
+    def _get_sample_data(self, topic_name):
+        try:
+            self.consumer_client.subscribe([topic_name], on_assign=self.on_assign)
+            logger.info("Kafka consumer polling for sample messages")
+            messages = self.consumer_client.poll(5)
+            print(messages)
+            topic_sample_data = TopicSampleData(
+                messages=messages.value if messages else []
+            )
+            self.consumer_client.unsubscribe()
+            return topic_sample_data
+        except Exception as e:
+            logger.error(f"Failed to fetch sample data from topic {topic_name}")
+            logger.error(traceback.format_exc())
+            logger.error(sys.exc_info()[2])
+        return None
+
+    def on_assign(self, a_consumer, partitions):
+        # get offset tuple from the first partition
+        new_partitions = []
+        for partition in partitions:
+            last_offset = a_consumer.get_watermark_offsets(partition)
+            offset = last_offset[1]
+            if offset > 0:
+                partition.offset = offset - 10 if offset > 10 else offset
+            new_partitions.append(partition)
+        self.consumer_client.assign(new_partitions)
+
     def get_status(self):
         return self.status
 
     def close(self):
-        pass
+        if self.consumer_client:
+            self.consumer_client.close()
 
     def test_connection(self) -> None:
         test_connection(self.connection)
