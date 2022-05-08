@@ -35,7 +35,7 @@ import { ConfigData } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
-import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
+import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -71,12 +71,12 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {
-    const updatedFormData = escapeBackwardSlashChar(data.formData);
+    const updatedFormData = formatFormDataForSubmit(data.formData);
     onSave({ ...data, formData: updatedFormData });
   };
 
   const handleTestConnection = (formData: ConfigData) => {
-    const updatedFormData = escapeBackwardSlashChar(formData);
+    const updatedFormData = formatFormDataForSubmit(formData);
 
     return new Promise<void>((resolve, reject) => {
       TestConnection(updatedFormData, 'Database')

@@ -54,7 +54,7 @@ const App: FunctionComponent = () => {
             <AppRouter />
           </AuthProvider>
         </Router>
-        <ToastContainer {...toastOptions} />
+        <ToastContainer {...toastOptions} newestOnTop />
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ from metadata.ingestion.api.common import logger
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connection_clients import KafkaClient
-from metadata.utils.connections import test_connection
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
 from metadata.utils.helpers import get_messaging_service_or_create
 
@@ -80,17 +80,10 @@ class KafkaSource(Source[CreateTopicRequest]):
         self.service = self.metadata.get_service_or_create(
             entity=MessagingService, config=config
         )
-        self.service_connection.schemaRegistryConfig[
-            "url"
-        ] = self.service_connection.schemaRegistryURL
-        self.schema_registry_client = SchemaRegistryClient(
-            self.service_connection.schemaRegistryConfig
-        )
-        admin_client_config = self.service_connection.consumerConfig
-        admin_client_config[
-            "bootstrap.servers"
-        ] = self.service_connection.bootstrapServers
-        self.admin_client = AdminClient(admin_client_config)
+
+        self.connection: KafkaClient = get_connection(self.service_connection)
+        self.admin_client = self.connection.admin_client
+        self.schema_registry_client = self.connection.schema_registry_client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -192,6 +185,4 @@ class KafkaSource(Source[CreateTopicRequest]):
         pass
 
     def test_connection(self) -> None:
-        test_connection(KafkaClient(client=self.admin_client))
-        if self.service_connection.schemaRegistryURL:
-            test_connection(KafkaClient(client=self.schema_registry_client))
+        test_connection(self.connection)

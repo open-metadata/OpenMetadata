@@ -126,7 +126,6 @@ migrationConfiguration:
   path: "./bootstrap/sql"
 
 # Authorizer Configuration
-# Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
