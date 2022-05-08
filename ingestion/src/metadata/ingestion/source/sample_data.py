@@ -377,6 +377,7 @@ class SampleDataSource(Source[Entity]):
             location_ev = Location(
                 id=uuid.uuid4(),
                 name=location["name"],
+                path=location["path"],
                 displayName=location["displayName"],
                 description=location["description"],
                 locationType=location["locationType"],
@@ -420,7 +421,8 @@ class SampleDataSource(Source[Entity]):
                 )
             location_metadata = Location(
                 id=uuid.uuid4(),
-                name="s3://glue_bucket/dwh/schema/" + table["name"],
+                name=table["name"],
+                path="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
                 locationType=location_type,
                 service=EntityReference(

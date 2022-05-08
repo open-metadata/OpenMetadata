@@ -16,4 +16,6 @@ import { ToastOptions } from 'react-toastify';
 export const toastOptions: ToastOptions = {
   autoClose: false,
   hideProgressBar: true,
+  draggable: false,
+  closeOnClick: false,
 };

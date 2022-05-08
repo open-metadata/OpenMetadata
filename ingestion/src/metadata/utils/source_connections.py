@@ -272,9 +272,7 @@ def _(connection: BigQueryConnection):
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:
-        return (
-            f"{connection.scheme.value}://{connection.credentials.gcsConfig.projectId}"
-        )
+        return f"{connection.scheme.value}://{project_id}"
     return f"{connection.scheme.value}://"
 
 
