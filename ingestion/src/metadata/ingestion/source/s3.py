@@ -77,12 +77,13 @@ class S3Source(Source[Entity]):
             for bucket in buckets_response["Buckets"]:
                 bucket_name = bucket["Name"]
                 self.status.scanned(bucket_name)
-                location_name = self._get_bucket_name_with_prefix(bucket_name)
+                location_path = self._get_bucket_name_with_prefix(bucket_name)
                 location_id = uuid.uuid4()
                 location = Location(
                     id=location_id,
-                    name=location_name,
-                    displayName=location_name,
+                    name=bucket_name,
+                    path=location_path,
+                    displayName=bucket_name,
                     locationType=LocationType.Bucket,
                     service=EntityReference(
                         id=self.service.id,
