@@ -14,9 +14,9 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Form, { FormProps } from '@rjsf/core';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useCallback, useState } from 'react';
+import React, { FunctionComponent, useState } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -74,34 +74,19 @@ const FormBuilder: FunctionComponent<Props> = ({
       setConnectionTestingState('waiting');
       onTestConnection(localFormData)
         .then(() => {
-          setTimeout(() => {
-            setConnectionTestingState('success');
-          }, 500);
+          setConnectionTestingState('success');
         })
         .catch(() => {
-          setTimeout(() => {
-            setConnectionTestingState('initial');
-          }, 500);
+          setConnectionTestingState('initial');
         })
         .finally(() => {
-          setTimeout(() => {
-            setConnectionTesting(false);
-          }, 500);
+          setConnectionTesting(false);
         });
     }
   };
-  const debouncedOnChange = useCallback(
-    (updatedData: ConfigData): void => {
-      setLocalFormData(updatedData);
-    },
-    [setLocalFormData]
-  );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
   const handleChange = (updatedData: ConfigData) => {
-    debounceOnSearch(updatedData);
+    setLocalFormData(updatedData);
   };
 
   const getConnectionTestingMessage = () => {
