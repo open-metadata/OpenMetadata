@@ -14,7 +14,7 @@
 import React, { FC, Fragment, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getBotsPath } from '../../constants/constants';
-import { Bots } from '../../generated/entity/bots';
+import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -24,7 +24,7 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout from '../containers/PageLayout';
 
 interface BotsListProp extends HTMLAttributes<HTMLDivElement> {
-  bots: Array<Bots>;
+  bots: Array<User>;
 }
 
 const BotsList: FC<BotsListProp> = ({ bots }) => {
@@ -36,7 +36,7 @@ const BotsList: FC<BotsListProp> = ({ bots }) => {
     history.push(botsPath);
   };
 
-  const BotCard = ({ bot }: { bot: Bots }) => {
+  const BotCard = ({ bot }: { bot: User }) => {
     return (
       <div className="tw-bg-white tw-shadow tw-border tw-border-main tw-rounded tw-p-3">
         <div className="tw-flex">

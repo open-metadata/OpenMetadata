@@ -16,13 +16,12 @@ import React, { Fragment, useEffect, useState } from 'react';
 import { getUsers } from '../../axiosAPIs/userAPI';
 import BotsList from '../../components/BotsList/BotsList';
 import Loader from '../../components/Loader/Loader';
-import { Bots } from '../../generated/entity/bots';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotsListPage = () => {
-  const [bots, setBots] = useState<Array<Bots>>([]);
+  const [bots, setBots] = useState<Array<User>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const fetchBots = () => {
