@@ -8,13 +8,7 @@ These instructions have been tested on MacOS, Windows 10, and Ubuntu 20.04.
 
 Please ensure that your host system meets the requirements listed below. Then continue to the procedure for installing OpenMetadata.
 
-### Python (version 3.8.0 or greater)
 
-Please use the following command to check the version of Python you have.
-
-```
-python3 --version
-```
 
 ### Docker (version 20.10.0 or greater)
 
@@ -65,7 +59,7 @@ Docker Compose version v2.2.3
 
 ### `compose` Command for Docker (version v2.1.1 or greater)
 
-The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.
+The Docker `compose` the package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI).&#x20;
 
 **MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
 
@@ -106,54 +100,19 @@ sudo apt install python3-pip  python3-venv
 
 ## Setup and Launch OpenMetadata
 
-### 1. Create a directory for OpenMetadata
+### 1. Run the below commands to bring OpenMetadata docker up and running
 
 Create a new directory for OpenMetadata and navigate into that directory.
 
 ```
 mkdir openmetadata-docker && cd openmetadata-docker
-```
-
-### 2. Download docker-compose.yaml file from latest release
-
-Download docker-compose.yml from [OpenMetadata Releases](https://github.com/open-metadata/OpenMetadata/releases/tag/0.10.0-release)&#x20;
-
-![](../../.gitbook/assets/docker-compose-release.jpg)
-
-Run the following command to download the file
-
-```
-wget https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-release/docker-compose.yml
-```
-
-### 3.  Start the docker containers
-
-```
+curl --silent --output docker-compose.yml https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-release/docker-compose.yml
 docker compose up -d
 ```
 
-This will create a docker network and four containers for the following services:
 
-* MySQL to store the metadata catalog
-* Elasticsearch to maintain the metadata index which enables you to search the catalog
-* Apache Airflow which OpenMetadata uses for metadata ingestion
-* The OpenMetadata UI and API server
 
-After starting the Docker containers, you should see an output similar to the following.
-
-```
-[+] Running 5/5
- ⠿ Network ometa_network                 Created                                                                                                                                                       0.1s
- ⠿ Container openmetadata_elasticsearch  Created                                                                                                                                                       0.2s
- ⠿ Container openmetadata_mysql          Created                                                                                                                                                       0.1s
- ⠿ Container openmetadata_ingestion      Created                                                                                                                                                       0.1s
- ⠿ Container openmetadata_server         Created                                                                                                                                                       0.1s
-Attaching to openmetadata_elasticsearch, openmetadata_ingestion, openmetadata_mysql, openmetadata_server
-```
-
-After the containers are up and running, it will launch Airflow tasks to ingest sample metadata and usage data to experiment with. This might take several minutes, depending on your system.
-
-### 7.  Verify all containers are up and running&#x20;
+### 2.  Verify all containers are up and running&#x20;
 
 ```
 docker ps 
@@ -170,9 +129,9 @@ ca8e590de33f   local-metadata_mysql                                   "/entrypoi
 
 ```
 
-### 8. Begin using OpenMetadata
+### 3. Begin using OpenMetadata
 
-Finally, visit the following url to begin exploring OpenMetadata.
+Finally, visit the following URL to begin exploring OpenMetadata.
 
 ```
 http://localhost:8585
