@@ -584,3 +584,13 @@ export const getIngestionName = (
     return `${serviceName}_${type}`;
   }
 };
+
+export const shouldTestConnection = (
+  serviceType: string,
+  serviceCategory: ServiceCategory
+) => {
+  return (
+    serviceType !== DatabaseServiceType.SampleData &&
+    serviceCategory !== ServiceCategory.PIPELINE_SERVICES
+  );
+};

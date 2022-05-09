@@ -30,6 +30,10 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
+  databaseFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   dashboardFilterPattern: {
     includes: [],
     excludes: [],
@@ -62,6 +66,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   enableDataProfiler: false,
   ingestSampleData: false,
   markDeletedTables: false,
+  showDatabaseFilter: false,
   showDashboardFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
