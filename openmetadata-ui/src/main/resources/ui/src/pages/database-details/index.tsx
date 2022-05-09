@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
+import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
 import React, {
@@ -88,7 +88,10 @@ import {
   getEntityFieldThreadCounts,
   getUpdatedThread,
 } from '../../utils/FeedUtils';
-import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
+import {
+  getExplorePathWithInitFilters,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
@@ -273,6 +276,10 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
 
           setSlashedDatabaseName([
+            {
+              name: startCase(ServiceCategory.DATABASE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+            },
             {
               name: service.name,
               url: service.name

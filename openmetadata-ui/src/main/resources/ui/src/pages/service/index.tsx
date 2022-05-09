@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNil, isUndefined } from 'lodash';
+import { isNil, isUndefined, startCase } from 'lodash';
 import { ExtraInfo, ServicesData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -70,6 +70,7 @@ import {
   pluralize,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
   getIsIngestionEnable,
@@ -687,6 +688,10 @@ const ServicePage: FunctionComponent = () => {
           setServiceDetails(resService.data);
           setDescription(description);
           setSlashedTableName([
+            {
+              name: startCase(serviceName || ''),
+              url: getServicesWithTabPath(serviceName || ''),
+            },
             {
               name: getEntityName(resService.data),
               url: '',
