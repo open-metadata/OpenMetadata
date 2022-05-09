@@ -329,32 +329,6 @@ const BotsDetail: FC<BotsDetailProp> = ({
               />
               {getCopyComponent()}
             </div>
-            <div className="tw-mt-4 tw-bg-white" data-testid="danger-zone">
-              <div className="tw-border tw-border-error-70 tw-rounded tw-mt-3">
-                <div className="tw-flex tw-justify-between tw-px-5 tw-py-3">
-                  <div className="tw-w-10/12" data-testid="danger-zone-text">
-                    <p
-                      className="tw-text-sm tw-mb-1 tw-font-medium"
-                      data-testid="danger-zone-text-title">
-                      Revoke token
-                    </p>
-                    <p
-                      className="tw-text-grey-muted tw-text-xs"
-                      data-testid="danger-zone-text-para">
-                      Once you revoke this token, it will be removed
-                      permanently.
-                    </p>
-                  </div>
-
-                  <button
-                    className="tw-px-3 tw-py-1 tw-h-auto tw-self-center tw-font-medium tw-delete-outline-button"
-                    data-testid="delete-button"
-                    onClick={() => setIsRevokingToken(true)}>
-                    Revoke token
-                  </button>
-                </div>
-              </div>
-            </div>
           </Fragment>
         );
       } else {
@@ -383,6 +357,16 @@ const BotsDetail: FC<BotsDetailProp> = ({
                 onClick={() => handleTokenGeneration()}>
                 {botsToken ? 'Re-generate token' : 'Generate new token'}
               </Button>
+              {botsToken ? (
+                <Button
+                  className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
+                  data-testid="delete-button"
+                  size="custom"
+                  variant="outlined"
+                  onClick={() => setIsRevokingToken(true)}>
+                  Revoke token
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>
