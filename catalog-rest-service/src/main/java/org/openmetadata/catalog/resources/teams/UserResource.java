@@ -67,6 +67,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -364,14 +365,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
             responseCode = "200",
             description = "The user ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public JWTAuthMechanism generateToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
-      JWTAuthMechanism jwtAuthMechanism)
+      JWTTokenExpiry jwtTokenExpiry)
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
@@ -379,8 +380,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
     }
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
-    String token = jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry());
-    jwtAuthMechanism.setJWTToken(token);
+    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, jwtTokenExpiry);
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);

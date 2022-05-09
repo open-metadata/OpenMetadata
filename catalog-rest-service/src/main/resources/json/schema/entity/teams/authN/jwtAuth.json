@@ -32,6 +32,10 @@
           "name": "Unlimited"
         }
       ]
+    },
+    "JWTTokenExpiresAt": {
+      "description": "JWT Auth Token expiration time.",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
     }
   },
   "additionalProperties": false,
