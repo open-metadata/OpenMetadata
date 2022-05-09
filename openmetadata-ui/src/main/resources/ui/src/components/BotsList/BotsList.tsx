@@ -63,7 +63,7 @@ const BotsList: FC<BotsListProp> = ({ bots }) => {
 
   const getListComponent = () => {
     if (!bots.length) {
-      return <ErrorPlaceHolder>No bots user available</ErrorPlaceHolder>;
+      return <ErrorPlaceHolder>No bots are available</ErrorPlaceHolder>;
     } else {
       return (
         <Fragment>

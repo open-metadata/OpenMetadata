@@ -84,7 +84,7 @@ const GenerateTokenModal: FC<Prop> = ({ className, onCancel, onConfirm }) => {
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header')}>
           <p className="tw-modal-title" data-testid="modal-header">
-            New JWT token
+            Generate JWT token
           </p>
         </div>
         <div

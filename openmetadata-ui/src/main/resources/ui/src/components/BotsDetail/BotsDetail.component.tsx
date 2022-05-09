@@ -209,9 +209,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
         <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
           <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
           <p className="tw-mb-2">
-            Anyone who has your REST API key will be able to send notifications
-            from your app. Do not expose the REST API key in your application
-            code. Do not share it on GitHub or anywhere else online.
+            Anyone who has your JWT Token will be able to send REST API requests
+            to the OpenMetadata Server. Do not expose the JWT Token in your
+            application code. Do not share it on GitHub or anywhere else online.
           </p>
         </div>
       </div>
@@ -309,7 +309,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
       ) : null}
       {isRegeneratingToken ? (
         <ConfirmationModal
-          bodyText="The re-generating token will rewrite the existing JWT token"
+          bodyText="Generating a new token will revoke the existing JWT token. Are you sure you want to proceed?"
           cancelText="Cancel"
           confirmText="Confirm"
           header="Are you sure?"
