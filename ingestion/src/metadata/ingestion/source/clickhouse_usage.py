@@ -13,7 +13,7 @@ Clickhouse usage module
 """
 
 import ast
-from typing import Any, Dict, Iterable
+from typing import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
@@ -27,14 +27,15 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.ingestion.source.usage_source import UsageSource
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
 
-class ClickhouseUsageSource(Source[TableQuery]):
+class ClickhouseUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
-        super().__init__()
+        super().__init__(config, metadata_config)
         self.config = config
         self.connection = config.serviceConnection.__root__.config
         start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
@@ -55,15 +56,6 @@ class ClickhouseUsageSource(Source[TableQuery]):
             )
 
         return cls(config, metadata_config)
-
-    def prepare(self):
-        return super().prepare()
-
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-
-        rows = self.engine.execute(self.sql_stmt)
-        for row in rows:
-            yield row
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -89,20 +81,3 @@ class ClickhouseUsageSource(Source[TableQuery]):
                 service_name=self.config.serviceName,
             )
             yield table_query
-
-    def get_report(self):
-        """
-        get report
-
-        Returns:
-        """
-        return self.report
-
-    def close(self):
-        pass
-
-    def get_status(self) -> SourceStatus:
-        return self.report
-
-    def test_connection(self) -> None:
-        test_connection(self.engine)

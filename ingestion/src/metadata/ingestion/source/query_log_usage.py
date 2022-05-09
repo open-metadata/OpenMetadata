@@ -9,11 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MSSQL usage module
+Common Query Log Connector
 """
-from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
-    MssqlConnection,
-)
+from datetime import datetime
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -21,28 +20,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.usage_source import UsageSource
 
-# This import verifies that the dependencies are available.
-from metadata.utils.helpers import get_start_and_end
-from metadata.utils.sql_queries import MSSQL_SQL_USAGE_STATEMENT
 
-
-class MssqlUsageSource(UsageSource):
+class QueryLogUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(config.sourceConfig.config.queryLogDuration)
-        self.analysis_date = start
-        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
+        self.analysis_date = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MssqlConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, MssqlConnection):
-            raise InvalidSourceException(
-                f"Expected MssqlConnection, but got {connection}"
-            )
         return cls(config, metadata_config)
