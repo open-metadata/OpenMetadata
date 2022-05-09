@@ -601,7 +601,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.UNIQUE
         return constraint
 
-    def fetch_tags(self, schema: str, table_name: str):
+    def fetch_tags(self, schema: str, table_name: str, column_name: str = ""):
         return []
 
     def _get_columns(
@@ -720,6 +720,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             children=children if children else None,
                             arrayDataType=arr_data_type,
                         )
+                        tag_category_list = self.fetch_tags(
+                            schema=schema, table_name=table, column_name=column["name"]
+                        )
+                        om_column.tags = []
+                        for tags in tag_category_list:
+                            om_column.tags.append(
+                                TagLabel(
+                                    tagFQN=get_fqdn(
+                                        Tag,
+                                        tags.category_name.name.__root__,
+                                        tags.category_details.name.__root__,
+                                    ),
+                                    labelType="Automated",
+                                    state="Suggested",
+                                    source="Tag",
+                                )
+                            )
                     else:
                         parsed_string["dataLength"] = self._check_col_length(
                             parsed_string["dataType"], column["type"]

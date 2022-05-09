@@ -31,25 +31,24 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.tags.tagCategory import Tag
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_queries import FETCH_SNOWFLAKE_METADATA, FETCH_SNOWFLAKE_TAGS
+from metadata.utils.sql_queries import (
+    FETCH_SNOWFLAKE_ALL_TAGS,
+    FETCH_SNOWFLAKE_METADATA,
+)
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["VARIANT"] = VARIANT
@@ -77,15 +76,24 @@ class SnowflakeSource(SQLSource):
                 self.engine = get_connection(self.service_connection)
                 yield inspect(self.engine)
 
-    def fetch_tags(self, schema, table_name: str):
+    def fetch_tags(self, schema, table_name: str, column_name: str = ""):
         self.connection.execute(f"USE {self.service_connection.database}.{schema}")
-        result = self.connection.execute(FETCH_SNOWFLAKE_TAGS.format(table_name))
+        try:
+            result = self.connection.execute(
+                FETCH_SNOWFLAKE_ALL_TAGS.format(table_name)
+            )
+        except Exception as err:
+            logger.warning("Trying tags for tables with quotes")
+            result = self.connection.execute(
+                FETCH_SNOWFLAKE_ALL_TAGS.format(f'"{table_name}"')
+            )
         tags = []
         for res in result:
-            logger.info("Ingesting Tags")
             row = list(res)
             tag_category = row[2]
             primary_tag = row[3]
+            if row[4] == "COLUMN" or column_name and row[9] != column_name:
+                continue
             tags.append(
                 OMetaTagAndCategory(
                     category_name=CreateTagCategoryRequest(
@@ -97,6 +105,9 @@ class SnowflakeSource(SQLSource):
                         name=primary_tag, description="SNOWFLAKE TAG VALUE"
                     ),
                 )
+            )
+            logger.info(
+                f"Tag Category {tag_category}, Primary Tag {primary_tag} Ingested"
             )
         return tags
 
