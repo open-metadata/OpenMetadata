@@ -18,6 +18,10 @@ export interface DatabaseServiceQueryUsagePipelineClass {
    */
   queryLogDuration?: number;
   /**
+   * Configuration to set the file path for query logs
+   */
+  queryLogFilePath?: string;
+  /**
    * Configuration to set the limit for query logs
    */
   resultLimit?: number;

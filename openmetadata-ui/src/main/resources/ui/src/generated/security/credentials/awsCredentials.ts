@@ -13,38 +13,27 @@
  */
 
 /**
- * Metabase Connection Config
+ * AWS credentials configs.
  */
-export interface MetabaseConnection {
+export interface AwsCredentials {
   /**
-   * Database Service Name for creation of lineage
+   * AWS Access key ID.
    */
-  dbServiceName?: string;
+  awsAccessKeyId: string;
   /**
-   * Host and Port of the Metabase instance.
+   * AWS Region
    */
-  hostPort: string;
+  awsRegion: string;
   /**
-   * Password to connect to Metabase.
+   * AWS Secret Access Key.
    */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
+  awsSecretAccessKey: string;
   /**
-   * Service Type
+   * AWS Session Token.
    */
-  type?: MetabaseType;
+  awsSessionToken?: string;
   /**
-   * Username to connect to Metabase. This user should have privileges to read all the
-   * metadata in Metabase.
+   * EndPoint URL for the AWS
    */
-  username: string;
-}
-
-/**
- * Service Type
- *
- * Metabase service type
- */
-export enum MetabaseType {
-  Metabase = 'Metabase',
+  endPointURL?: string;
 }

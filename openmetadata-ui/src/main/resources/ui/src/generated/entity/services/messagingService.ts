@@ -133,6 +133,14 @@ export interface Connection {
    */
   bootstrapServers?: string;
   /**
+   * Confluent Kafka Consumer Config
+   */
+  consumerConfig?: { [key: string]: any };
+  /**
+   * Confluent Kafka Schema Registry Config.
+   */
+  schemaRegistryConfig?: { [key: string]: any };
+  /**
    * Confluent Kafka Schema Registry URL.
    */
   schemaRegistryURL?: string;

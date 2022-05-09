@@ -19,20 +19,20 @@ export interface RedashConnection {
   /**
    * API key of the redash instance to access.
    */
-  apiKey?: string;
+  apiKey: string;
   /**
-   * URL for the redash instance
+   * URL for the Redash instance
    */
-  redashURL?: string;
+  hostPort: string;
   supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: RedashType;
   /**
-   * username for the Redash
+   * Username for Redash
    */
-  username?: string;
+  username: string;
 }
 
 /**

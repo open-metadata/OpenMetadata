@@ -16,25 +16,25 @@
  * Oracle Database Connection Config
  */
 export interface OracleConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Oracle.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Oracle.
+   * Host and port of the Oracle service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
    * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
    * sent, not both.
    */
   oracleServiceName?: string;
   /**
-   * password to connect  to the Oracle.
+   * Password to connect to Oracle.
    */
   password?: string;
   /**
@@ -42,15 +42,16 @@ export interface OracleConnection {
    */
   scheme?: OracleScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: OracleType;
   /**
-   * username to connect  to the Oracle. This user should have privileges to read all the
-   * metadata in Oracle.
+   * Username to connect to Oracle. This user should have privileges to read all the metadata
+   * in Oracle.
    */
-  username?: string;
+  username: string;
 }
 
 /**
