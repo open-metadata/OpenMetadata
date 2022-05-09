@@ -48,6 +48,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
@@ -128,6 +129,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
+        elif isinstance(record, OMetaTagAndCategory):
+            self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
         elif isinstance(record, OMetaTableTest):
@@ -176,6 +179,7 @@ class MetadataRestSink(Sink[Entity]):
                 description=db_schema_and_table.table.description,
                 databaseSchema=db_schema_ref,
                 tableConstraints=db_schema_and_table.table.tableConstraints,
+                tags=db_schema_and_table.table.tags,
             )
             if db_schema_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
@@ -248,7 +252,7 @@ class MetadataRestSink(Sink[Entity]):
             )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(
+                "Failed to ingest table {} in database {}".format(
                     db_schema_and_table.table.name.__root__,
                     db_schema_and_table.database.name.__root__,
                 )
@@ -410,6 +414,21 @@ class MetadataRestSink(Sink[Entity]):
             service=location.service,
         )
         return self.metadata.create_or_update(location_request)
+
+    def write_tag_category(self, record: OMetaTagAndCategory):
+        try:
+            self.metadata.create_tag_category(tag_category_body=record.category_name)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+        try:
+            self.metadata.create_primary_tag(
+                category_name=record.category_name.name.__root__,
+                primary_tag_body=record.category_details,
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:

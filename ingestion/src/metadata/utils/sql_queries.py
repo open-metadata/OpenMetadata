@@ -304,3 +304,12 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         and CAST(type,'Int8') <> 3
         and CAST(type,'Int8') <> 4
 """
+
+
+FETCH_SNOWFLAKE_ALL_TAGS = (
+    "select * from table(information_schema.TAG_REFERENCES_ALL_COLUMNS('{}', 'table'));"
+)
+
+FETCH_SNOWFLAKE_METADATA = """
+select TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables
+"""

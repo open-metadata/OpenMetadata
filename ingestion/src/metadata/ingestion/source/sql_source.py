@@ -17,14 +17,13 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -56,6 +55,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -262,8 +262,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status.scanned(fqn)
 
     def next_record(self) -> Iterable[Entity]:
-        inspectors = self.get_databases()
-        for inspector in inspectors:
+        for inspector in self.get_databases():
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
@@ -289,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
-    ) -> Iterable[OMetaDatabaseAndTable]:
+    ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
         """
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
@@ -356,9 +355,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
-
                 self.register_record(table_schema_and_db)
-
                 yield table_schema_and_db
             except Exception as err:
                 logger.debug(traceback.format_exc())
@@ -604,6 +601,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.UNIQUE
         return constraint
 
+    def fetch_tags(self, schema: str, table_name: str, column_name: str = ""):
+        return []
+
     def _get_columns(
         self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
@@ -720,6 +720,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             children=children if children else None,
                             arrayDataType=arr_data_type,
                         )
+                        tag_category_list = self.fetch_tags(
+                            schema=schema, table_name=table, column_name=column["name"]
+                        )
+                        om_column.tags = []
+                        for tags in tag_category_list:
+                            om_column.tags.append(
+                                TagLabel(
+                                    tagFQN=get_fqdn(
+                                        Tag,
+                                        tags.category_name.name.__root__,
+                                        tags.category_details.name.__root__,
+                                    ),
+                                    labelType="Automated",
+                                    state="Suggested",
+                                    source="Tag",
+                                )
+                            )
                     else:
                         parsed_string["dataLength"] = self._check_col_length(
                             parsed_string["dataType"], column["type"]

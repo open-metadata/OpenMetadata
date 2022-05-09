@@ -704,7 +704,6 @@ def test_snowflake():
         "serviceConnection": {
             "config": {
                 "type": "Snowflake",
-                "hostPort": "account.region.service.snowflakecomputing.com",
                 "username": "username",
                 "password": "password",
                 "database": "database_name",
