@@ -219,11 +219,13 @@ def _(connection: TrinoConnection):
         session = Session()
         session.proxies = connection.proxies
         if connection.connectionArguments:
-            return {**connection.connectionArguments, "http_session": session}
+            connection_args = connection.connectionArguments.dict()
+            connection_args.update({"http_session": session})
+            return connection_args
         else:
             return {"http_session": session}
     else:
-        return connection.connectionArguments
+        return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
