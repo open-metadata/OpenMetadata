@@ -181,7 +181,7 @@ class SnowflakeSource(SQLSource):
                     columns=table_columns,
                     viewDefinition=view_definition,
                 )
-                self.add_tags_to_table(
+                yield from self.add_tags_to_table(
                     schema=schema, table_name=table_name, table_entity=table_entity
                 )
                 if self.source_config.generateSampleData:
