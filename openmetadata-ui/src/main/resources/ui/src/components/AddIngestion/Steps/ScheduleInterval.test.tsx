@@ -36,6 +36,7 @@ const mockScheduleIntervalProps: ScheduleIntervalProps = {
   handleEndDateChange: jest.fn(),
   onBack: jest.fn(),
   onDeploy: jest.fn(),
+  submitButtonLabel: 'Add',
 };
 
 describe('Test ScheduleInterval component', () => {

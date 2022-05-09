@@ -46,6 +46,12 @@ const AddService = ({
   onAddServiceSave,
   newServiceData,
   onAddIngestionSave,
+  ingestionProgress,
+  isIngestionCreated,
+  isIngestionDeployed,
+  ingestionAction,
+  showDeployButton,
+  onIngestionDeploy,
 }: AddServiceProps) => {
   const history = useHistory();
   const [addIngestion, setAddIngestion] = useState(false);
@@ -237,6 +243,10 @@ const AddService = ({
     );
   };
 
+  const isDeployed = () => {
+    return activeIngestionStep >= 3 && !showDeployButton;
+  };
+
   const fetchRightPanel = () => {
     const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
 
@@ -245,7 +255,8 @@ const AddService = ({
       addIngestion,
       `${serviceName}_${PipelineType.Metadata}`,
       serviceName,
-      PipelineType.Metadata
+      PipelineType.Metadata,
+      isDeployed()
     );
   };
 
@@ -261,12 +272,18 @@ const AddService = ({
             handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
             heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
             pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
             serviceData={newServiceData as DataObj}
             setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showDeployButton}
             status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
+            onIngestionDeploy={onIngestionDeploy}
           />
         ) : (
           addNewService()
