@@ -321,7 +321,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
           <Fragment>
             <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
               <input
-                readOnly
+                disabled
                 className="tw-form-inputs tw-p-1.5"
                 placeholder="Generate new token..."
                 type="password"
