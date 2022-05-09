@@ -151,6 +151,7 @@ class DatabaseServicePageTest {
     Events.waitForElementToDisplay(webDriver, databaseServicePage.databaseTable(), 10, 2);
     Events.click(webDriver, common.ingestion());
     try {
+      wait.until(ExpectedConditions.elementToBeClickable(databaseServicePage.runIngestion()));
       Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
     } catch (NoSuchElementException | TimeoutException e) {
       Assert.fail("Ingestion is not created");

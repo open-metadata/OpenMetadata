@@ -121,6 +121,7 @@ class MyDataPageTest {
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/dashboards/");
     webDriver.navigate().back();
+    wait.until(ExpectedConditions.elementToBeClickable(myDataPage.pipelines()));
     Events.click(webDriver, myDataPage.pipelines());
     url = webDriver.getCurrentUrl();
     Assert.assertEquals(url, "http://localhost:8585/explore/pipelines/");
