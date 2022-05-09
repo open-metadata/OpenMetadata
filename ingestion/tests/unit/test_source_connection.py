@@ -115,6 +115,7 @@ class SouceConnectionTest(TestCase):
         assert expected_args == get_connection_args(trino_conn_obj)
 
         # connection arguments without connectionArguments and with proxies
+        expected_args = {}
         trino_conn_obj = TrinoConnection(
             username="user",
             password=None,
@@ -125,7 +126,10 @@ class SouceConnectionTest(TestCase):
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
         )
-        assert "http_session" in get_connection_args(trino_conn_obj)
+        conn_args = get_connection_args(trino_conn_obj)
+        assert "http_session" in conn_args
+        conn_args.pop("http_session")
+        assert expected_args == conn_args
 
         # connection arguments with connectionArguments and with proxies
         expected_args = {"user": "user-to-be-impersonated"}
