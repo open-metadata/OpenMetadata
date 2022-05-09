@@ -78,6 +78,7 @@ class AppState {
   }
   updateUserDetails(data: User) {
     this.userDetails = data;
+    this.nonSecureUserDetails = data;
   }
   updateNewUser(data: NewUser) {
     this.newUser = data;
