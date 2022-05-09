@@ -223,7 +223,7 @@ def _(connection: TrinoConnection):
         else:
             return {"http_session": session}
     else:
-        return connection.connectionArguments
+        return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
