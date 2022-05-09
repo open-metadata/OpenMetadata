@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
+import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -55,6 +56,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -209,6 +211,10 @@ const TopicDetailsPage: FunctionComponent = () => {
           setRetentionSize(retentionSize);
           setDeleted(deleted);
           setSlashedTopicName([
+            {
+              name: startCase(ServiceCategory.MESSAGING_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.MESSAGING_SERVICES),
+            },
             {
               name: service.name,
               url: service.name

@@ -64,6 +64,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
       />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
+      <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />

@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize } from 'lodash';
+import { capitalize, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -23,6 +23,8 @@ import {
 import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
@@ -41,7 +43,11 @@ import { PipelineType } from '../../generated/entity/services/ingestionPipelines
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getServiceIngestionStepGuide } from '../../utils/ServiceUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import {
+  getServiceIngestionStepGuide,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
@@ -60,6 +66,9 @@ const AddIngestionPage = () => {
   );
   const [ingestionId, setIngestionId] = useState('');
   const [showIngestionButton, setShowIngestionButton] = useState(false);
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
@@ -172,6 +181,26 @@ const AddIngestionPage = () => {
     return ingestion && !showIngestionButton;
   };
 
+  useEffect(() => {
+    setSlashedBreadcrumb([
+      {
+        name: startCase(serviceCategory),
+        url: getServicesWithTabPath(serviceCategory),
+      },
+      {
+        name: serviceData?.name || '',
+        url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
+        imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
+        activeTitle: true,
+      },
+      {
+        name: `Add ${capitalize(ingestionType)} Ingestion`,
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, [serviceCategory, ingestionType, serviceData]);
+
   const renderAddIngestionPage = () => {
     if (isLoading) {
       return <Loader />;
@@ -185,6 +214,7 @@ const AddIngestionPage = () => {
       return (
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
           layout={PageLayoutType['2ColRTL']}
           rightPanel={getServiceIngestionStepGuide(
             activeIngestionStep,

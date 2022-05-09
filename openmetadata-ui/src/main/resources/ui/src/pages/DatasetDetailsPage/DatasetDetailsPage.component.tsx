@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -99,6 +99,7 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -300,6 +301,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setFollowers(followers);
           setDeleted(deleted);
           setSlashedTableName([
+            {
+              name: startCase(ServiceCategory.DATABASE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+            },
             {
               name: service.name,
               url: service.name
