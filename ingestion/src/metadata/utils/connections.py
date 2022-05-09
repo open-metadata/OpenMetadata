@@ -238,8 +238,8 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
-    from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.admin import AdminClient, ConfigResource
+    from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
         Schema,
         SchemaRegistryClient,
