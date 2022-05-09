@@ -22,7 +22,11 @@ export interface DBTFormCommonProps {
   okText: string;
   cancelText: string;
   onCancel: () => void;
-  onSubmit: (data?: DbtConfigSource) => void;
+  onSubmit: (
+    data?: DbtConfigSource,
+    source?: DBT_SOURCES,
+    gcsType?: GCS_CONFIG
+  ) => void;
 }
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {

@@ -22,7 +22,7 @@ import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import { DBTSources } from './DBTFormConstants';
-import { DBT_SOURCES } from './DBTFormEnum';
+import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 import { DBTGCSConfig } from './DBTGCSConfig';
 import { DBTHttpConfig } from './DBTHttpConfig';
 import { DBTLocalConfig } from './DBTLocalConfig';
@@ -40,6 +40,8 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   onSubmit,
 }: DBTConfigFormProps) => {
   const [dbtConfig, setDbtConfig] = useState<DbtConfigSource>(data);
+  const [dbtSource, setDbtSource] = useState<DBT_SOURCES>(source);
+  const [dbtGcsType, setDbtGcsType] = useState<GCS_CONFIG | undefined>(gcsType);
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
@@ -48,6 +50,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     setDbtConfig((pre) => {
       return { ...pre, [key]: val };
     });
+  };
+
+  const handleSubmit = (dbtData?: DbtConfigSource) => {
+    onSubmit(dbtData, dbtSource, dbtGcsType);
   };
 
   const getLocalConfigFields = () => {
@@ -64,7 +70,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         okText={okText}
         onCancel={onCancel}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
       />
     );
   };
@@ -83,7 +89,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         okText={okText}
         onCancel={onCancel}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
       />
     );
   };
@@ -102,7 +108,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         okText={okText}
         onCancel={onCancel}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
       />
     );
   };
@@ -113,7 +119,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         cancelText={cancelText}
         dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
-        gcsType={gcsType}
+        gcsType={dbtGcsType}
         handleGcsTypeChange={(type) => {
           handleGcsTypeChange && handleGcsTypeChange(type);
         }}
@@ -125,13 +131,13 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         okText={okText}
         onCancel={onCancel}
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
       />
     );
   };
 
   const getFields = () => {
-    switch (source) {
+    switch (dbtSource) {
       case DBT_SOURCES.local: {
         return getLocalConfigFields();
       }
@@ -167,7 +173,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
                 size="regular"
                 theme="primary"
                 variant="contained"
-                onClick={() => onSubmit()}>
+                onClick={() => handleSubmit()}>
                 <span>{okText}</span>
               </Button>
             </Field>
@@ -178,8 +184,20 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   useEffect(() => {
+    setDbtSource(source);
+  }, [source]);
+
+  useEffect(() => {
+    setDbtGcsType(gcsType);
+  }, [gcsType]);
+
+  useEffect(() => {
+    setDbtConfig(dbtSource === source ? data : {});
+  }, [dbtSource, dbtGcsType]);
+
+  useEffect(() => {
     setDbtConfig(data);
-  }, [data, source, gcsType]);
+  }, [data]);
 
   return (
     <Fragment>
@@ -196,7 +214,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           id="dbt-source"
           name="dbt-source"
           placeholder="Select DBT Source"
-          value={source}
+          value={dbtSource}
           onChange={(e) => {
             handleSourceChange &&
               handleSourceChange(e.target.value as DBT_SOURCES);
