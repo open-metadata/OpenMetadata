@@ -41,10 +41,8 @@ import {
   addToRecentSearched,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
-import { prepareQueryParams } from '../../utils/FilterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { Filter } from '../AdvanceSearch/AdvanceSearch.interface';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 
@@ -66,12 +64,10 @@ const Appbar: React.FC = (): JSX.Element => {
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
 
   const [version, setVersion] = useState<string>('');
-
-  const [advanceFilters, setAdvanceFilters] = useState<Array<Filter>>([]);
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -79,10 +75,6 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
-  };
-
-  const onFilterUpdate = (filters: Array<Filter>) => {
-    setAdvanceFilters(filters);
   };
 
   const supportLinks = [
@@ -234,33 +226,18 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
-  const prepareSearchString = () => {
-    const filterObject = advanceFilters.reduce((filterObj, item) => {
-      if (item.value) {
-        return { ...filterObj, [item.key]: item.value.split(',') };
-      } else {
-        return filterObj;
-      }
-    }, {});
-
-    return prepareQueryParams(filterObject, filterObject);
-  };
-
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    const explorePath = getExplorePathWithSearch(
-      value,
-      // this is for if user is searching from another page
-      location.pathname.startsWith(ROUTES.EXPLORE)
-        ? appState.explorePageTab
-        : 'tables'
+    history.push(
+      getExplorePathWithSearch(
+        value,
+        // this is for if user is searching from another page
+        location.pathname.startsWith(ROUTES.EXPLORE)
+          ? appState.explorePageTab
+          : 'tables'
+      )
     );
-
-    history.push({
-      pathname: explorePath,
-      search: prepareSearchString(),
-    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -327,7 +304,6 @@ const Appbar: React.FC = (): JSX.Element => {
           settingDropdown={navLinkSettings}
           supportDropdown={supportLinks}
           username={getUserName()}
-          onFilterUpdate={onFilterUpdate}
         />
       ) : null}
     </>

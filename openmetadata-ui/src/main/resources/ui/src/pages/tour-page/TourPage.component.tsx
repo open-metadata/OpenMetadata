@@ -267,7 +267,6 @@ const TourPage = () => {
         settingDropdown={[]}
         supportDropdown={[]}
         username="User"
-        onFilterUpdate={handleFilterChange}
       />
       <Tour steps={getSteps(TOUR_SEARCH_TERM, clearSearchTerm)} />
       {getCurrentPage(currentPage)}
