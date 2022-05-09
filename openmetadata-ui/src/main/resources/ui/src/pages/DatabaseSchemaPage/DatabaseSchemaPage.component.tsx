@@ -571,7 +571,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
     return getEntityDeleteMessage(
       'Database Schema',
-      pluralize(tableInstanceCount, 'Table', 's')
+      pluralize(tableInstanceCount, 'Table')
     );
   };
 

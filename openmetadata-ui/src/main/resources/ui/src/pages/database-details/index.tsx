@@ -564,10 +564,10 @@ const DatabaseDetails: FunctionComponent = () => {
 
     const counts = [];
     if (databaseSchemaInstanceCount) {
-      counts.push(pluralize(databaseSchemaInstanceCount, 'Schema', 's'));
+      counts.push(pluralize(databaseSchemaInstanceCount, 'Schema'));
     }
     if (tableInstanceCount) {
-      counts.push(pluralize(tableInstanceCount, 'Table', 's'));
+      counts.push(pluralize(tableInstanceCount, 'Table'));
     }
 
     return getEntityDeleteMessage('Database', counts.join(' and '));

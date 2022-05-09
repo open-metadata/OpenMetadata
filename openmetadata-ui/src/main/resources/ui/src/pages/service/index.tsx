@@ -645,25 +645,25 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.DATABASE_SERVICES:
         return getEntityDeleteMessage(
           service || 'Service',
-          pluralize(instanceCount, 'Database', 's')
+          pluralize(instanceCount, 'Database')
         );
 
       case ServiceCategory.MESSAGING_SERVICES:
         return getEntityDeleteMessage(
           service || 'Service',
-          pluralize(instanceCount, 'Topic', 's')
+          pluralize(instanceCount, 'Topic')
         );
 
       case ServiceCategory.DASHBOARD_SERVICES:
         return getEntityDeleteMessage(
           service || 'Service',
-          pluralize(instanceCount, 'Dashboard', 's')
+          pluralize(instanceCount, 'Dashboard')
         );
 
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityDeleteMessage(
           service || 'Service',
-          pluralize(instanceCount, 'Pipeline', 's')
+          pluralize(instanceCount, 'Pipeline')
         );
 
       default:

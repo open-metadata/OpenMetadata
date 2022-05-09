@@ -397,7 +397,7 @@ const DashboardDetails = ({
 
     return getEntityDeleteMessage(
       EntityType.DASHBOARD,
-      pluralize(charts.length, 'Chart', 's')
+      pluralize(charts.length, 'Chart')
     );
   };
 
