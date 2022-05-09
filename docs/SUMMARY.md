@@ -152,6 +152,9 @@
 ## 🚀 Deploy
 
 * [Local Deployment](deploy/local-deployment.md)
+* [Deploy on Docker](deploy/deploy-on-docker/README.md)
+  * [Deploy OpenMetadata on Docker](deploy/deploy-on-docker/deploy-openmetadata-on-docker.md)
+  * [Binding Named Volumes](deploy/deploy-on-docker/binding-named-volumes.md)
 * [Deploy on Bare Metal](../deploy/deploy-on-bare-metal/README.md)
   * [Deploy OpenMetadata on Bare Metal](../deploy/deploy-on-bare-metal/run-in-production.md)
 * [Deploy on Kubernetes](../deploy/deploy-on-kubernetes/README.md)
@@ -193,9 +196,6 @@
       * [Configure OpenMetadata Server](deploy/secure-openmetadata/azure-sso/configure-openmetadata/configure-openmetadata-server.md)
       * [Configure OpenMetadata Helm](deploy/secure-openmetadata/azure-sso/configure-openmetadata/configure-openmetadata-helm.md)
     * [Configure Ingestion](deploy/secure-openmetadata/azure-sso/configure-ingestion.md)
-* [Deploy on Docker](deploy/deploy-on-docker/README.md)
-  * [Deploy OpenMetadata on Docker](deploy/deploy-on-docker/deploy-openmetadata-on-docker.md)
-  * [Binding Named Volumes](deploy/deploy-on-docker/binding-named-volumes.md)
 * [Reference](../deploy/reference/README.md)
   * [Server Configuration Parameters](../deploy/reference/configuration.md)
   * [Connector Configuration Parameters](../deploy/reference/connector-configuration.md)
