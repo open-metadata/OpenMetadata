@@ -256,7 +256,7 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
         schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
         admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
         admin_client_config["group.id"] = "openmetadata-consumer"
-        admin_client_config["auto.offset.reset"] = "latest"
+        admin_client_config["auto.offset.reset"] = "earliest"
         consumer_client = AvroConsumer(admin_client_config)
 
     return KafkaClient(

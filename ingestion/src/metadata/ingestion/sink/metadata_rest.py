@@ -110,7 +110,7 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, CreateTopicRequest):
+        elif isinstance(record, Topic):
             self.write_topics(record)
         elif isinstance(record, Chart):
             self.write_charts(record)

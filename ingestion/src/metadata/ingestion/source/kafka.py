@@ -158,6 +158,8 @@ class KafkaSource(Source[CreateTopicRequest]):
                         topic.schemaText = topic_schema.schema_str
                         if topic_schema.schema_type == "AVRO":
                             topic.schemaType = SchemaType.Avro.name
+                            if self.generate_sample_data:
+                                topic.sampleData = self._get_sample_data(topic.name)
                         elif topic_schema.schema_type == "PROTOBUF":
                             topic.schemaType = SchemaType.Protobuf.name
                         elif topic_schema.schema_type == "JSON":
@@ -165,8 +167,6 @@ class KafkaSource(Source[CreateTopicRequest]):
                         else:
                             topic.schemaType = SchemaType.Other.name
 
-                    if self.generate_sample_data:
-                        topic.sampleData = self._get_sample_data(topic_name)
                     self.status.topic_scanned(topic.name.__root__)
                     yield topic
                 else:
@@ -192,17 +192,22 @@ class KafkaSource(Source[CreateTopicRequest]):
 
     def _get_sample_data(self, topic_name):
         try:
-            self.consumer_client.subscribe([topic_name], on_assign=self.on_assign)
+            self.consumer_client.subscribe(
+                [topic_name.__root__], on_assign=self.on_assign
+            )
             logger.info("Kafka consumer polling for sample messages")
-            messages = self.consumer_client.poll(5)
+            messages = self.consumer_client.poll(100)
             print(messages)
+            print(messages.value())
             topic_sample_data = TopicSampleData(
-                messages=messages.value if messages else []
+                messages=[messages.value()] if messages else []
             )
             self.consumer_client.unsubscribe()
             return topic_sample_data
         except Exception as e:
-            logger.error(f"Failed to fetch sample data from topic {topic_name}")
+            logger.error(
+                f"Failed to fetch sample data from topic {topic_name.__root__}"
+            )
             logger.error(traceback.format_exc())
             logger.error(sys.exc_info()[2])
         return None
@@ -215,6 +220,7 @@ class KafkaSource(Source[CreateTopicRequest]):
             offset = last_offset[1]
             if offset > 0:
                 partition.offset = offset - 10 if offset > 10 else offset
+                print(partition.offset)
             new_partitions.append(partition)
         self.consumer_client.assign(new_partitions)
 
