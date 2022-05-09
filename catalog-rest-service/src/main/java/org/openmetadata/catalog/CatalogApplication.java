@@ -151,7 +151,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-
   }
 
   @SneakyThrows
