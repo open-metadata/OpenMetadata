@@ -14,7 +14,7 @@ Snowflake usage module
 
 import traceback
 from datetime import timedelta
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -26,12 +26,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.usage_source import UsageSource
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
@@ -39,8 +38,7 @@ from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 logger = ingestion_logger()
 
 
-class SnowflakeUsageSource(Source[TableQuery]):
-
+class SnowflakeUsageSource(UsageSource):
     # SELECT statement from mysql information_schema
     # to extract table and column metadata
     SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT
@@ -55,13 +53,10 @@ class SnowflakeUsageSource(Source[TableQuery]):
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
-        super().__init__()
-        self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
+        super().__init__(config, metadata_config)
         start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
         end = end + timedelta(days=1)
         self.analysis_date = start
-        self.metadata_config = metadata_config
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=start,
             end_date=end,
@@ -69,8 +64,6 @@ class SnowflakeUsageSource(Source[TableQuery]):
         )
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
-        self.report = SQLSourceStatus()
-        self.engine = get_connection(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):
@@ -81,15 +74,6 @@ class SnowflakeUsageSource(Source[TableQuery]):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
-
-    def prepare(self):
-        pass
-
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-
-        rows = self.engine.execute(self.sql_stmt)
-        for row in rows:
-            yield row
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -121,20 +105,3 @@ class SnowflakeUsageSource(Source[TableQuery]):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.debug(repr(err))
-
-    def get_report(self):
-        """
-        get report
-
-        Returns:
-        """
-        return self.report
-
-    def test_connection(self) -> None:
-        test_connection(self.engine)
-
-    def close(self):
-        pass
-
-    def get_status(self) -> SourceStatus:
-        return self.report

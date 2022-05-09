@@ -11,20 +11,10 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes } from 'react';
-
-export interface Filter {
-  key: string;
-  value: string;
-}
-export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleSearchBoxOpen: (value: boolean) => void;
-  onFilterChange: (filters: Array<Filter>) => void;
+export enum IngestionActionMessage {
+  CREATING = 'Creating',
+  UPDATING = 'Updating',
+  DEPLOYING = 'Deploying',
+  DEPLOYED = 'Successfully deployed',
+  DEPLOYING_ERROR = 'Error while deploying',
 }

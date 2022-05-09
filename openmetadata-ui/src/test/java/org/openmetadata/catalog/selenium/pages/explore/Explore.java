@@ -185,7 +185,7 @@ class Explore {
 
   @Test
   @Order(6)
-  void checkBasics() throws Exception {
+  void checkBasics() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     try {

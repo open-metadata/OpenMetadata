@@ -70,6 +70,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEntityDeleteMessage,
   getEntityName,
   getPartialNameFromTableFQN,
   hasEditAccess,
@@ -568,11 +569,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       return;
     }
 
-    return `Deleting this databaseSchema will also delete ${pluralize(
-      tableInstanceCount,
-      'table',
-      's'
-    )}.`;
+    return getEntityDeleteMessage(
+      'Database Schema',
+      pluralize(tableInstanceCount, 'Table')
+    );
   };
 
   useEffect(() => {

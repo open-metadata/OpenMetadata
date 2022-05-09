@@ -77,7 +77,7 @@ class MyDataPageTest {
 
   @Test
   @Order(3)
-  void checkRecentViews() throws Exception {
+  void checkRecentViews() {
     checkWhatsNew();
     WebElement recentViews = webDriver.findElement(common.containsText("No recently viewed data."));
     if (!recentViews.isDisplayed()) {
@@ -87,7 +87,7 @@ class MyDataPageTest {
 
   @Test
   @Order(4)
-  void checkRecentSearch() throws Exception {
+  void checkRecentSearch() {
     checkWhatsNew();
     WebElement recentSearch = webDriver.findElement(common.containsText("No searched terms."));
     if (!recentSearch.isDisplayed()) {
@@ -97,7 +97,7 @@ class MyDataPageTest {
 
   @Test
   @Order(5)
-  void checkMyDataTab() throws Exception {
+  void checkMyDataTab() {
     checkWhatsNew();
     WebElement myDataResults = webDriver.findElement(common.containsText("You have not owned anything yet."));
     if (!myDataResults.isDisplayed()) {
@@ -107,7 +107,7 @@ class MyDataPageTest {
 
   @Test
   @Order(6)
-  void checkFollowingTab() throws Exception {
+  void checkFollowingTab() {
     checkWhatsNew();
     WebElement followResults = webDriver.findElement(common.containsText("You have not followed anything yet."));
     if (!followResults.isDisplayed()) {

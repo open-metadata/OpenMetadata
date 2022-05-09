@@ -163,7 +163,6 @@ module.exports = {
         'screen-xxl': '1440px',
         'full-hd': '1080px',
         600: '600px',
-        'search-filter': '60px',
       },
       minWidth: {
         badgeCount: '30px',

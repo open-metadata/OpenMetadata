@@ -529,6 +529,7 @@ public abstract class EntityRepository<T> {
       cleanup(entityInterface);
       changeType = RestUtil.ENTITY_DELETED;
     }
+    LOG.info("{} deleted {} {}", hardDelete ? "Hard" : "Soft", entityInterface.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
   }
 
@@ -546,8 +547,12 @@ public abstract class EntityRepository<T> {
     }
     // Delete all the contained entities
     for (EntityReference entityReference : contains) {
-      LOG.info("Recursively deleting {} {}", entityReference.getType(), entityReference.getId());
-      Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete, true);
+      LOG.info(
+          "Recursively {} deleting {} {}",
+          hardDelete ? "hard" : "soft",
+          entityReference.getType(),
+          entityReference.getId());
+      Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete);
     }
   }
 
@@ -899,6 +904,10 @@ public abstract class EntityRepository<T> {
 
   public final Fields getFields(String fields) {
     return new Fields(allowedFields, fields);
+  }
+
+  public final List<String> getAllowedFields() {
+    return allowedFields;
   }
 
   enum Operation {

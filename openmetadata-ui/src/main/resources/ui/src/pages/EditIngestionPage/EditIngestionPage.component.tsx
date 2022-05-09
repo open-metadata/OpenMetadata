@@ -16,6 +16,7 @@ import { capitalize } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  deployIngestionPipelineById,
   getIngestionPipelineByFqn,
   updateIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
@@ -25,8 +26,14 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  DEPLOYED_PROGRESS_VAL,
+  getServiceDetailsPath,
+  INGESTION_PROGRESS_END_VAL,
+  INGESTION_PROGRESS_START_VAL,
+} from '../../constants/constants';
 import { FormSubmitType } from '../../enums/form.enum';
+import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -51,6 +58,13 @@ const EditIngestionPage = () => {
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsloading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | JSX.Element>('');
+  const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isIngestionCreated, setIsIngestionCreated] = useState(false);
+  const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
+  const [ingestionAction, setIngestionAction] = useState(
+    IngestionActionMessage.UPDATING
+  );
+  const [showIngestionButton, setShowIngestionButton] = useState(false);
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
@@ -81,7 +95,7 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getIngestionPipelineByFqn(ingestionFQN)
+      getIngestionPipelineByFqn(ingestionFQN, ['pipelineStatuses'])
         .then((res: AxiosResponse) => {
           if (res.data) {
             setIngestionData(res.data);
@@ -109,7 +123,34 @@ const EditIngestionPage = () => {
     Promise.allSettled(promises).finally(() => setIsloading(false));
   };
 
+  const onIngestionDeploy = () => {
+    return new Promise<void>((resolve) => {
+      setIsIngestionCreated(true);
+      setIngestionProgress(INGESTION_PROGRESS_END_VAL);
+      setIngestionAction(IngestionActionMessage.DEPLOYING);
+
+      deployIngestionPipelineById(ingestionData.id as string)
+        .then(() => {
+          setIsIngestionDeployed(true);
+          setShowIngestionButton(false);
+          setIngestionProgress(DEPLOYED_PROGRESS_VAL);
+          setIngestionAction(IngestionActionMessage.DEPLOYED);
+        })
+        .catch((err: AxiosError) => {
+          setShowIngestionButton(true);
+          setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
+          showErrorToast(
+            err || jsonData['api-error-messages']['deploy-ingestion-error']
+          );
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const onEditIngestionSave = (data: IngestionPipeline) => {
+    if (!ingestionData.deployed) {
+      setIngestionProgress(INGESTION_PROGRESS_START_VAL);
+    }
     const {
       airflowConfig,
       description,
@@ -135,6 +176,9 @@ const EditIngestionPage = () => {
       return updateIngestionPipeline(updateData as CreateIngestionPipeline)
         .then((res: AxiosResponse) => {
           if (res.data) {
+            if (!ingestionData.deployed) {
+              onIngestionDeploy();
+            }
             resolve();
           } else {
             throw jsonData['api-error-messages']['update-ingestion-error'];
@@ -156,6 +200,15 @@ const EditIngestionPage = () => {
     );
   };
 
+  const isDeployed = () => {
+    const ingestion =
+      ingestionType === PipelineType.Metadata
+        ? activeIngestionStep >= 3
+        : activeIngestionStep >= 2;
+
+    return ingestion && !showIngestionButton && !ingestionData.deployed;
+  };
+
   const renderEditIngestionPage = () => {
     if (isLoading) {
       return <Loader />;
@@ -171,7 +224,9 @@ const EditIngestionPage = () => {
             true,
             ingestionData?.name || '',
             '',
-            ingestionType as PipelineType
+            ingestionType as PipelineType,
+            isDeployed(),
+            true
           )}>
           <div className="tw-form-container">
             <AddIngestion
@@ -180,11 +235,17 @@ const EditIngestionPage = () => {
               handleCancelClick={goToService}
               handleViewServiceClick={goToService}
               heading={`Edit ${capitalize(ingestionType)} Ingestion`}
+              ingestionAction={ingestionAction}
+              ingestionProgress={ingestionProgress}
+              isIngestionCreated={isIngestionCreated}
+              isIngestionDeployed={isIngestionDeployed}
               pipelineType={ingestionType as PipelineType}
               serviceCategory={serviceCategory as ServiceCategory}
               serviceData={serviceData as DataObj}
               setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+              showDeployButton={showIngestionButton}
               status={FormSubmitType.EDIT}
+              onIngestionDeploy={onIngestionDeploy}
               onSuccessSave={goToService}
               onUpdateIngestion={onEditIngestionSave}
             />

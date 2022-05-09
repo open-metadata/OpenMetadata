@@ -12,14 +12,7 @@
  */
 
 import classNames from 'classnames';
-import {
-  camelCase,
-  isEmpty,
-  isNil,
-  isString,
-  isUndefined,
-  startCase,
-} from 'lodash';
+import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -550,5 +543,5 @@ export const isColumnTestSupported = (dataType: string) => {
 };
 
 export const getTitleCase = (text?: string) => {
-  return text ? startCase(camelCase(text)) : '';
+  return text ? startCase(text) : '';
 };

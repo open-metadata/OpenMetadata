@@ -384,6 +384,7 @@ class MetadataRestSink(Sink[Entity]):
     def _create_location(self, location: Location) -> Location:
         location_request = CreateLocationRequest(
             name=location.name,
+            path=location.path,
             description=location.description,
             locationType=location.locationType,
             tags=location.tags,
