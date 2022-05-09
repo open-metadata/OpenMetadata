@@ -129,8 +129,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    SnowflakeConnection snowflakeConnection =
-        new SnowflakeConnection().withHostPort("localhost:3300").withUsername("test");
+    SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
@@ -184,11 +183,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     DatabaseConnection oldDatabaseConnection = create.getConnection();
 
     SnowflakeConnection snowflakeConnection =
-        new SnowflakeConnection()
-            .withDatabase("test")
-            .withHostPort("host:9000")
-            .withPassword("password")
-            .withUsername("username");
+        new SnowflakeConnection().withDatabase("test").withPassword("password").withUsername("username");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
 
     // Update database connection to a new connection
@@ -415,7 +410,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   public static void validateSnowflakeConnection(
       SnowflakeConnection expectedSnowflakeConnection, SnowflakeConnection actualSnowflakeConnection) {
-    assertEquals(expectedSnowflakeConnection.getHostPort(), actualSnowflakeConnection.getHostPort());
     assertEquals(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
     assertEquals(expectedSnowflakeConnection.getUsername(), actualSnowflakeConnection.getUsername());
     assertEquals(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());
