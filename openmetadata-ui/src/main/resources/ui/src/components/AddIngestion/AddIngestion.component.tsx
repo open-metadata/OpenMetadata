@@ -171,7 +171,7 @@ const AddIngestion = ({
       true
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
-    isUndefined(data?.loggerLevel) ?? data?.loggerLevel === LogLevels.Debug
+    isUndefined(data?.loggerLevel) || data?.loggerLevel === LogLevels.Debug
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
