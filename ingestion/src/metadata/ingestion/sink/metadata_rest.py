@@ -251,7 +251,7 @@ class MetadataRestSink(Sink[Entity]):
             )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(
+                "Failed to ingest table {} in database {}".format(
                     db_schema_and_table.table.name.__root__,
                     db_schema_and_table.database.name.__root__,
                 )

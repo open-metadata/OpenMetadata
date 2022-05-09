@@ -136,21 +136,21 @@ class SnowflakeSource(SQLSource):
 
     def add_tags_to_table(self, schema: str, table_name: str, table_entity):
         tag_category_list = self.fetch_tags(schema=schema, table_name=table_name)
-        tags = [
-            TagLabel(
-                tagFQN=get_fqdn(
-                    Tag,
-                    tags.category_name.name.__root__,
-                    tags.category_details.name.__root__,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Tag",
+        table_entity.tags = []
+        for tags in tag_category_list:
+            yield tags
+            table_entity.tags.append(
+                TagLabel(
+                    tagFQN=get_fqdn(
+                        Tag,
+                        tags.category_name.name.__root__,
+                        tags.category_details.name.__root__,
+                    ),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
             )
-            for tags in tag_category_list
-        ]
-
-        table_entity.tags = tags
 
     def fetch_tables(
         self,

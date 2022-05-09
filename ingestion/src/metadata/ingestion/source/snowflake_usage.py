@@ -14,7 +14,9 @@ Snowflake usage module
 
 import traceback
 from datetime import timedelta
-from typing import Iterable, Iterator, Union
+from typing import Any, Dict, Iterable, Iterator, Union
+
+from sqlalchemy import inspect
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -31,6 +33,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.usage_source import UsageSource
+from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
@@ -74,6 +77,21 @@ class SnowflakeUsageSource(UsageSource):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
+        if self.config.serviceConnection.__root__.config.database:
+            yield from super(SnowflakeUsageSource, self)._get_raw_extract_iter()
+        else:
+            query = "SHOW DATABASES"
+            results = self.engine.execute(query)
+            for res in results:
+                row = list(res)
+                use_db_query = f"USE DATABASE {row[1]}"
+                self.engine.execute(use_db_query)
+                logger.info(f"Ingesting from database: {row[1]}")
+                self.config.serviceConnection.__root__.config.database = row[1]
+                self.engine = get_connection(self.connection)
+                yield inspect(self.engine)
 
     def next_record(self) -> Iterable[TableQuery]:
         """

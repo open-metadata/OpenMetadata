@@ -228,7 +228,34 @@ def _(connection: TrinoConnection):
 
 @get_connection_url.register
 def _(connection: SnowflakeConnection):
-    connect_string = get_connection_url_common(connection)
+    url = f"{connection.scheme.value}://"
+
+    if connection.username:
+        url += f"{connection.username}"
+        if not connection.password:
+            connection.password = SecretStr("")
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
+        url += "@"
+
+    url += connection.account
+    url += f"/{connection.database}" if connection.database else ""
+
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
     options = {
         "account": connection.account,
         "warehouse": connection.warehouse,
@@ -236,8 +263,8 @@ def _(connection: SnowflakeConnection):
     }
     params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
     if params:
-        connect_string = f"{connect_string}?{params}"
-    return connect_string
+        url = f"{url}?{params}"
+    return url
 
 
 @get_connection_url.register
