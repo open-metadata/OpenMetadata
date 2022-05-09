@@ -21,11 +21,11 @@ export interface MetabaseConnection {
    */
   dbServiceName?: string;
   /**
-   * Host and Port of Metabase instance.
+   * Host and Port of the Metabase instance.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Metabase.
+   * Password to connect to Metabase.
    */
   password?: string;
   supportsMetadataExtraction?: boolean;
@@ -34,10 +34,10 @@ export interface MetabaseConnection {
    */
   type?: MetabaseType;
   /**
-   * username to connect  to the Metabase. This user should have privileges to read all the
+   * Username to connect to Metabase. This user should have privileges to read all the
    * metadata in Metabase.
    */
-  username?: string;
+  username: string;
 }
 
 /**

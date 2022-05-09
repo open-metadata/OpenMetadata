@@ -219,30 +219,33 @@ def _(connection: TrinoConnection):
         session = Session()
         session.proxies = connection.proxies
         if connection.connectionArguments:
-            return {**connection.connectionArguments, "http_session": session}
+            connection_args = connection.connectionArguments.dict()
+            connection_args.update({"http_session": session})
+            return connection_args
         else:
             return {"http_session": session}
     else:
-        return connection.connectionArguments
+        return connection.connectionArguments if connection.connectionArguments else {}
 
 
 @get_connection_url.register
 def _(connection: SnowflakeConnection):
-
     url = f"{connection.scheme.value}://"
 
     if connection.username:
         url += f"{connection.username}"
         if not connection.password:
             connection.password = SecretStr("")
-        url += f":{quote_plus(connection.password.get_secret_value())}"
-
+        url += (
+            f":{quote_plus(connection.password.get_secret_value())}"
+            if connection
+            else ""
+        )
         url += "@"
 
     url += connection.account
     url += f"/{connection.database}" if connection.database else ""
-    if connection.warehouse:
-        url += "?warehouse=" + connection.warehouse
+
     options = (
         connection.connectionOptions.dict()
         if connection.connectionOptions
@@ -254,6 +257,14 @@ def _(connection: SnowflakeConnection):
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
+        url = f"{url}?{params}"
+    options = {
+        "account": connection.account,
+        "warehouse": connection.warehouse,
+        "role": connection.role,
+    }
+    params = "&".join(f"{key}={value}" for (key, value) in options.items() if value)
+    if params:
         url = f"{url}?{params}"
     return url
 

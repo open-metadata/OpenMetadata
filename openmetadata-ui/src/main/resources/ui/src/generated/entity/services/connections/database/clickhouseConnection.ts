@@ -16,24 +16,24 @@
  * Clickhouse Connection Config
  */
 export interface ClickhouseConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Clickhouse.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Clickhouse SQL connection duration
+   * Clickhouse SQL connection duration.
    */
   duration?: number;
   /**
-   * Host and port of the Clickhouse
+   * Host and port of the Clickhouse service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect to the Clickhouse.
+   * Password to connect to Clickhouse.
    */
   password?: string;
   /**
@@ -41,16 +41,17 @@ export interface ClickhouseConnection {
    */
   scheme?: ClickhouseScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
   type?: ClickhouseType;
   /**
-   * username to connect  to the Clickhouse. This user should have privileges to read all the
+   * Username to connect to Clickhouse. This user should have privileges to read all the
    * metadata in Clickhouse.
    */
-  username?: string;
+  username: string;
 }
 
 /**

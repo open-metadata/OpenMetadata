@@ -16,20 +16,20 @@
  * SingleStore Database Connection Config
  */
 export interface SingleStoreConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MySQL.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * Host and port of the SingleStore service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the MYSQL.
+   * Password to connect to SingleStore.
    */
   password?: string;
   /**
@@ -37,15 +37,16 @@ export interface SingleStoreConnection {
    */
   scheme?: SingleStoreScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: SingleStoreType;
   /**
-   * username to connect  to the MySQL. This user should have privileges to read all the
+   * Username to connect to SingleStore. This user should have privileges to read all the
    * metadata in MySQL.
    */
-  username?: string;
+  username: string;
 }
 
 /**

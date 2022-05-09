@@ -21,19 +21,19 @@ export interface SupersetConnection {
    */
   connectionOptions?: { [key: string]: any };
   /**
-   * Database Service to create lineage
+   * Database Service Name to create lineage
    */
-  dbServiceConnection?: string;
+  dbServiceName?: string;
   /**
-   * URL for the superset instance
+   * URL for the superset instance.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password for the Superset
+   * Password for Superset.
    */
   password?: string;
   /**
-   * authenticaiton provider for the Superset
+   * Authentication provider for the Superset service.
    */
   provider?: string;
   supportsMetadataExtraction?: boolean;
@@ -42,9 +42,9 @@ export interface SupersetConnection {
    */
   type?: SupersetType;
   /**
-   * username for the Superset
+   * Username for Superset.
    */
-  username?: string;
+  username: string;
 }
 
 /**

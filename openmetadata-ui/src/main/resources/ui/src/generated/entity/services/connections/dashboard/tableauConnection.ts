@@ -17,40 +17,44 @@
  */
 export interface TableauConnection {
   /**
-   * Tableau API version
+   * Tableau API version.
    */
-  apiVersion?: string;
+  apiVersion: string;
   /**
-   * Tableau Environment Name
+   * Database Service Name in order to add data lineage.
    */
-  env?: string;
+  dbServiceName?: string;
   /**
-   * Tableau Server
+   * Tableau Environment Name.
+   */
+  env: string;
+  /**
+   * Tableau Server.
    */
   hostPort?: string;
   /**
-   * password for the Tableau
+   * Password for Tableau.
    */
   password?: string;
   /**
-   * Personal Access Token Name
+   * Personal Access Token Name.
    */
   personalAccessTokenName?: string;
   /**
-   * Personal Access Token Secret
+   * Personal Access Token Secret.
    */
   personalAccessTokenSecret?: string;
   /**
-   * Tableau Site Name
+   * Tableau Site Name.
    */
-  siteName?: string;
+  siteName: string;
   supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
   type?: TableauType;
   /**
-   * username for the Tableau
+   * Username for Tableau.
    */
   username?: string;
 }

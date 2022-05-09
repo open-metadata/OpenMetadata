@@ -20,20 +20,20 @@ export interface PrestoConnection {
    * Presto catalog
    */
   catalog?: string;
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Postgres.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Postgres.
+   * Host and port of the Presto service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Postgres.
+   * Password to connect to Presto.
    */
   password?: string;
   /**
@@ -41,15 +41,16 @@ export interface PrestoConnection {
    */
   scheme?: PrestoScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: PrestoType;
   /**
-   * username to connect  to the Postgres. This user should have privileges to read all the
-   * metadata in Postgres.
+   * Username to connect to Presto. This user should have privileges to read all the metadata
+   * in Postgres.
    */
-  username?: string;
+  username: string;
 }
 
 /**

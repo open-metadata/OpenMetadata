@@ -239,22 +239,31 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     Prepare Kafka Admin Client and Schema Registry Client
     """
     from confluent_kafka.admin import AdminClient, ConfigResource
+    from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
         Schema,
         SchemaRegistryClient,
     )
 
-    schema_registry_client = None
-    if connection.schemaRegistryURL:
-        connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
-        schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
-
     admin_client_config = connection.consumerConfig
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
     admin_client = AdminClient(admin_client_config)
 
+    schema_registry_client = None
+    consumer_client = None
+    if connection.schemaRegistryURL:
+        connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
+        schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
+        admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
+        admin_client_config["group.id"] = "openmetadata-consumer-1"
+        admin_client_config["auto.offset.reset"] = "earliest"
+        admin_client_config["enable.auto.commit"] = False
+        consumer_client = AvroConsumer(admin_client_config)
+
     return KafkaClient(
-        admin_client=admin_client, schema_registry_client=schema_registry_client
+        admin_client=admin_client,
+        schema_registry_client=schema_registry_client,
+        consumer_client=consumer_client,
     )
 
 

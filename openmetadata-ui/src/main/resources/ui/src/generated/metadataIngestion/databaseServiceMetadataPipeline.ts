@@ -14,6 +14,10 @@
 
 export interface DatabaseServiceMetadataPipelineClass {
   /**
+   * Regex to only fetch databases that matches the pattern.
+   */
+  databaseFilterPattern?: FilterPattern;
+  /**
    * Available sources to fetch DBT catalog and manifest files.
    */
   dbtConfigSource?: any[] | boolean | number | null | DbtConfigSource | string;
@@ -57,6 +61,26 @@ export interface DatabaseServiceMetadataPipelineClass {
 }
 
 /**
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch dashboards or charts that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ */
+export interface FilterPattern {
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
+}
+
+/**
  * DBT Catalog and Manifest file path config.
  *
  * DBT Catalog and Manifest HTTP path configuration.
@@ -78,7 +102,22 @@ export interface DbtConfigSource {
    * DBT manifest http file path to extract dbt models and associate with tables.
    */
   dbtManifestHttpPath?: string;
+  dbtPrefixConfig?: DBTBucketDetails;
   dbtSecurityConfig?: SCredentials;
+}
+
+/**
+ * Details of the bucket where the dbt files are stored
+ */
+export interface DBTBucketDetails {
+  /**
+   * Name of the bucket where the dbt files are stored
+   */
+  dbtBucketName?: string;
+  /**
+   * Path of the folder where the dbt files are stored
+   */
+  dbtObjectPrefix?: string;
 }
 
 /**
@@ -157,24 +196,6 @@ export interface GCSCredentialsValues {
    * Google Cloud service account type.
    */
   type?: string;
-}
-
-/**
- * Regex to only fetch tables or databases that matches the pattern.
- *
- * Regex to only fetch dashboards or charts that matches the pattern.
- *
- * Regex exclude tables or databases that matches the pattern.
- */
-export interface FilterPattern {
-  /**
-   * List of strings/regex patterns to match and exclude only database entities that match.
-   */
-  excludes?: string[];
-  /**
-   * List of strings/regex patterns to match and include only database entities that match.
-   */
-  includes?: string[];
 }
 
 /**

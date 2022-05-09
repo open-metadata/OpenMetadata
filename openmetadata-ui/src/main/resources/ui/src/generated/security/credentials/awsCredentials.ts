@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,20 +12,28 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes } from 'react';
-
-export interface Filter {
-  key: string;
-  value: string;
-}
-export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleSearchBoxOpen: (value: boolean) => void;
-  onFilterChange: (filters: Array<Filter>) => void;
+/**
+ * AWS credentials configs.
+ */
+export interface AwsCredentials {
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId: string;
+  /**
+   * AWS Region
+   */
+  awsRegion: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
 }

@@ -17,23 +17,23 @@
  */
 export interface PowerBIConnection {
   /**
-   * client_id for the PowerBI.
+   * client_id for PowerBI.
    */
-  clientId?: string;
+  clientId: string;
   /**
-   * clientSecret for the PowerBI.
+   * clientSecret for PowerBI.
    */
-  clientSecret?: string;
+  clientSecret: string;
   /**
-   * Credentials for the PowerBI.
+   * Credentials for PowerBI.
    */
   credentials?: string;
   /**
-   * Dashboard URL for the power BI.
+   * Dashboard URL for PowerBI service.
    */
-  dashboardURL?: string;
+  hostPort: string;
   /**
-   * Dashboard redirect URI for the PowerBI.
+   * Dashboard redirect URI for the PowerBI service.
    */
   redirectURI?: string;
   /**

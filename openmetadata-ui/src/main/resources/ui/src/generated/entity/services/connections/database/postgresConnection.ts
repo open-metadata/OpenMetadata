@@ -16,20 +16,20 @@
  * Postgres Database Connection Config
  */
 export interface PostgresConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Postgres.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Postgres.
+   * Host and port of the Postgres service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Postgres.
+   * Password to connect to Postgres.
    */
   password?: string;
   /**
@@ -37,15 +37,16 @@ export interface PostgresConnection {
    */
   scheme?: PostgresScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: PostgresType;
   /**
-   * username to connect  to the Postgres. This user should have privileges to read all the
+   * Username to connect to Postgres. This user should have privileges to read all the
    * metadata in Postgres.
    */
-  username?: string;
+  username: string;
 }
 
 /**

@@ -781,16 +781,14 @@ body .profiler-graph .recharts-active-dot circle {
 /* Hide scrollbar for Chrome, Safari and Opera */
 #center::-webkit-scrollbar,
 #left-panel::-webkit-scrollbar,
-#right-panel::-webkit-scrollbar,
-#advance-filters::-webkit-scrollbar {
+#right-panel::-webkit-scrollbar {
   display: none;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
 #center,
 #left-panel,
-#right-panel,
-#advance-filters {
+#right-panel {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
