@@ -5,8 +5,8 @@
     "serviceConnection": {
       "config": {
         "type": "Kafka",
-        "bootstrapServers": "136.243.150.188:9092",
-        "schemaRegistryURL": "http://136.243.150.188:8081",
+        "bootstrapServers": "localhost:9092",
+        "schemaRegistryURL": "http://localhost:8081",
         "consumerConfig": {},
         "schemaRegistryConfig": {}
       }
