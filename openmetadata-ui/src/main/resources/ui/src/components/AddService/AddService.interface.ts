@@ -20,4 +20,10 @@ export interface AddServiceProps {
   onAddServiceSave: (service: DataObj) => Promise<void>;
   onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
   newServiceData: DataObj | undefined;
+  isIngestionDeployed: boolean;
+  isIngestionCreated: boolean;
+  ingestionProgress: number;
+  ingestionAction: string;
+  showDeployButton?: boolean;
+  onIngestionDeploy?: () => Promise<void>;
 }

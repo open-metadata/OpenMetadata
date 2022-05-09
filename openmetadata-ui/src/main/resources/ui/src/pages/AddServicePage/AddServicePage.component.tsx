@@ -16,11 +16,18 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  deployIngestionPipelineById,
   getIngestionPipelineByFqn,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { postService } from '../../axiosAPIs/serviceAPI';
 import AddService from '../../components/AddService/AddService.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
+import {
+  DEPLOYED_PROGRESS_VAL,
+  INGESTION_PROGRESS_END_VAL,
+  INGESTION_PROGRESS_START_VAL,
+} from '../../constants/constants';
+import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
@@ -30,6 +37,14 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const AddServicePage = () => {
   const { serviceCategory } = useParams<{ [key: string]: string }>();
   const [newServiceData, setNewServiceData] = useState<DataObj>();
+  const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isIngestionCreated, setIsIngestionCreated] = useState(false);
+  const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
+  const [ingestionAction, setIngestionAction] = useState(
+    IngestionActionMessage.CREATING
+  );
+  const [ingestionId, setIngestionId] = useState('');
+  const [showIngestionButton, setShowIngestionButton] = useState(false);
 
   const onAddServiceSave = (data: DataObj) => {
     return new Promise<void>((resolve, reject) => {
@@ -55,12 +70,39 @@ const AddServicePage = () => {
     });
   };
 
+  const onIngestionDeploy = (id?: string) => {
+    return new Promise<void>((resolve) => {
+      setIsIngestionCreated(true);
+      setIngestionProgress(INGESTION_PROGRESS_END_VAL);
+      setIngestionAction(IngestionActionMessage.DEPLOYING);
+
+      deployIngestionPipelineById(id ?? ingestionId)
+        .then(() => {
+          setIsIngestionDeployed(true);
+          setShowIngestionButton(false);
+          setIngestionProgress(DEPLOYED_PROGRESS_VAL);
+          setIngestionAction(IngestionActionMessage.DEPLOYED);
+        })
+        .catch((err: AxiosError) => {
+          setShowIngestionButton(true);
+          setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
+          showErrorToast(
+            err || jsonData['api-error-messages']['deploy-ingestion-error']
+          );
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const onAddIngestionSave = (data: CreateIngestionPipeline) => {
+    setIngestionProgress(INGESTION_PROGRESS_START_VAL);
+
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            resolve();
+            setIngestionId(res.data.id);
+            onIngestionDeploy(res.data.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -97,10 +139,16 @@ const AddServicePage = () => {
   return (
     <PageContainerV1>
       <AddService
+        ingestionAction={ingestionAction}
+        ingestionProgress={ingestionProgress}
+        isIngestionCreated={isIngestionCreated}
+        isIngestionDeployed={isIngestionDeployed}
         newServiceData={newServiceData}
         serviceCategory={serviceCategory as ServiceCategory}
+        showDeployButton={showIngestionButton}
         onAddIngestionSave={onAddIngestionSave}
         onAddServiceSave={onAddServiceSave}
+        onIngestionDeploy={onIngestionDeploy}
       />
     </PageContainerV1>
   );
