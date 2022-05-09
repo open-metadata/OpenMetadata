@@ -601,7 +601,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             constraint = Constraint.UNIQUE
         return constraint
 
-    def fetch_tags(self, schema: str, table: str):
+    def fetch_tags(self, schema: str, table_name: str):
         return []
 
     def _get_columns(
