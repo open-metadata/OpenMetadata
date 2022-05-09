@@ -14,7 +14,6 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -142,7 +141,7 @@ class DashboardServiceTestPage {
 
   @Test
   @Order(4)
-  void checkConnectionConfigTab() throws InterruptedException, IOException {
+  void checkConnectionConfigTab() throws InterruptedException {
     openDashboardServicePage();
     Thread.sleep(2000);
     Events.click(webDriver, common.containsText(serviceName));

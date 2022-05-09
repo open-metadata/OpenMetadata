@@ -259,6 +259,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change = getChangeDescription(pipeline.getVersion());
     // create a request with same tasks we shouldn't see any change
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    // create new request with few tasks removed
+    updatedTasks.remove(taskEmptyDesc);
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(List.of(taskEmptyDesc)));
+    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
+    validateTasks(pipeline.getTasks(), updatedTasks);
   }
 
   @Test
@@ -484,11 +491,24 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
-    // TODO update this once task removal is figured out
-    // remove a task
-    // TASKS.remove(0);
-    // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
-    // updateAndCheckEntity(request.withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(3, pipeline.getTasks().size());
+
+    List<Task> new_tasks = new ArrayList<>();
+    for (int i = 1; i < 3; i++) { // remove task0
+      Task task =
+          new Task()
+              .withName("task" + i)
+              .withDescription("description")
+              .withDisplayName("displayName")
+              .withTaskUrl(new URI("http://localhost:0"));
+      new_tasks.add(task);
+    }
+    request.setTasks(new_tasks);
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
+    pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(2, pipeline.getTasks().size());
   }
 
   @Override
