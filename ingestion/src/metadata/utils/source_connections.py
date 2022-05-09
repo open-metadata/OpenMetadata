@@ -207,10 +207,7 @@ def _(connection: PrestoConnection):
 
 @singledispatch
 def get_connection_args(connection):
-    if connection.connectionArguments:
-        return connection.connectionArguments
-    else:
-        return {}
+    return connection.connectionArguments or {}
 
 
 @get_connection_args.register

@@ -95,9 +95,7 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-    options = connection.connectionOptions
-    if not options:
-        options = ConnectionOptions()
+    options = connection.connectionOptions or ConnectionOptions()
 
     engine = create_engine(
         get_connection_url(connection),
