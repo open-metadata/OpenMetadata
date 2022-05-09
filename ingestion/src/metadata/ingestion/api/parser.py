@@ -99,6 +99,53 @@ def get_connection_class(
     return connection_class
 
 
+def get_auth_class(auth_provider: str) -> T:
+    """
+    Build the auth provider path, import and return it
+    :param auth_provider: e.g., Google
+    :return: e.g., GoogleSSOClientConfig
+    """
+    print(__name__)
+
+
+def parse_workflow_source(config_dict: dict) -> None:
+    """
+    Validate the parsing of the source in the config dict.
+    This is our first stop as most issues happen when
+    passing the source information.
+
+    :param config_dict: JSON configuration
+    """
+    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
+    source_type = config_dict["source"]["serviceConnection"]["config"]["type"]
+    logger.error(
+        f"Error parsing the Workflow Configuration for {source_type} ingestion"
+    )
+
+    service_type = get_service_type(source_type)
+    connection_class = get_connection_class(source_type, service_type)
+
+    # Parse the dictionary with the scoped class
+    connection_class.parse_obj(config_dict["source"]["serviceConnection"]["config"])
+
+
+def parse_server_config(config_dict: dict) -> None:
+    """
+    Validate the parsing of openMetadataServerConfig.
+    This is valuable to make sure there are no issues
+    when setting up auth providers.
+
+    :param config_dict: JSON configuration
+    """
+    # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
+    auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"]["authProvider"]
+    logger.error(
+        f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
+    )
+
+    auth_class = get_auth_class(auth_provider)
+
+
 def parse_workflow_config_gracefully(
     config_dict: dict,
 ) -> Optional[OpenMetadataWorkflowConfig]:
@@ -113,19 +160,8 @@ def parse_workflow_config_gracefully(
 
     try:
         workflow_config = OpenMetadataWorkflowConfig.parse_obj(config_dict)
-
         return workflow_config
 
     except ValidationError:
+        parse_workflow_source(config_dict)
 
-        # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-        source_type = config_dict["source"]["serviceConnection"]["config"]["type"]
-        logger.error(
-            f"Error parsing the Workflow Configuration for {source_type} ingestion"
-        )
-
-        service_type = get_service_type(source_type)
-        connection_class = get_connection_class(source_type, service_type)
-
-        # Parse the dictionary with the scoped class
-        connection_class.parse_obj(config_dict["source"]["serviceConnection"]["config"])
