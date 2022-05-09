@@ -62,6 +62,7 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 
 jest.mock('../../utils/RouterUtils', () => ({
   getAddServicePath: jest.fn(),
+  getServicesWithTabPath: jest.fn(),
 }));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
