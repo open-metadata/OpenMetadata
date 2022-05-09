@@ -610,7 +610,7 @@ const ServicesPage = () => {
                 <div
                   className="tw-flex tw-justify-end"
                   data-testid="service-icon">
-                  {getServiceLogo(service.serviceType || '', 'tw-h-8 tw-w-8')}
+                  {getServiceLogo(service.serviceType || '', 'tw-h-8')}
                 </div>
               </div>
             </div>

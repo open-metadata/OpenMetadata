@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
@@ -35,7 +35,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
               {link.imgSrc ? (
                 <img
                   alt=""
-                  className="tw-inline tw-h-5 tw-w-5 tw-mr-2"
+                  className="tw-inline tw-h-5 tw-mr-2"
                   src={link.imgSrc}
                 />
               ) : null}
