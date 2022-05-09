@@ -19,7 +19,6 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from confluent_kafka.avro import AvroConsumer
 from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
@@ -239,6 +238,7 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     """
     Prepare Kafka Admin Client and Schema Registry Client
     """
+    from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.admin import AdminClient, ConfigResource
     from confluent_kafka.schema_registry.schema_registry_client import (
         Schema,
