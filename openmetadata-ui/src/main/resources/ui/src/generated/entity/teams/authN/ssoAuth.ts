@@ -13,38 +13,22 @@
  */
 
 /**
- * Metabase Connection Config
+ * User/Bot SSOAuthN.
  */
-export interface MetabaseConnection {
+export interface SsoAuth {
   /**
-   * Database Service Name for creation of lineage
+   * Type of database service such as Amundsen, Atlas...
    */
-  dbServiceName?: string;
-  /**
-   * Host and Port of the Metabase instance.
-   */
-  hostPort: string;
-  /**
-   * Password to connect to Metabase.
-   */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: MetabaseType;
-  /**
-   * Username to connect to Metabase. This user should have privileges to read all the
-   * metadata in Metabase.
-   */
-  username: string;
+  ssoServiceType?: SsoServiceType;
 }
 
 /**
- * Service Type
- *
- * Metabase service type
+ * Type of database service such as Amundsen, Atlas...
  */
-export enum MetabaseType {
-  Metabase = 'Metabase',
+export enum SsoServiceType {
+  Auth0 = 'Auth0',
+  Azure = 'Azure',
+  CustomOIDC = 'CustomOIDC',
+  Google = 'Google',
+  Okta = 'Okta',
 }

@@ -13,38 +13,26 @@
  */
 
 /**
- * Metabase Connection Config
+ * User/Bot JWTAuthMechanism.
  */
-export interface MetabaseConnection {
+export interface JwtAuth {
   /**
-   * Database Service Name for creation of lineage
+   * JWT Auth Token.
    */
-  dbServiceName?: string;
+  JWTToken: string;
   /**
-   * Host and Port of the Metabase instance.
+   * JWT Auth Token expiration in days
    */
-  hostPort: string;
-  /**
-   * Password to connect to Metabase.
-   */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: MetabaseType;
-  /**
-   * Username to connect to Metabase. This user should have privileges to read all the
-   * metadata in Metabase.
-   */
-  username: string;
+  JWTTokenExpiry: JWTTokenExpiry;
 }
 
 /**
- * Service Type
- *
- * Metabase service type
+ * JWT Auth Token expiration in days
  */
-export enum MetabaseType {
-  Metabase = 'Metabase',
+export enum JWTTokenExpiry {
+  The30 = '30',
+  The60 = '60',
+  The7 = '7',
+  The90 = '90',
+  Unlimited = 'Unlimited',
 }

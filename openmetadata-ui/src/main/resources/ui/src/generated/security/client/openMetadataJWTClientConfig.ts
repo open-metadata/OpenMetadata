@@ -13,38 +13,11 @@
  */
 
 /**
- * Metabase Connection Config
+ * openMetadataJWTClientConfig security configs.
  */
-export interface MetabaseConnection {
+export interface OpenMetadataJWTClientConfig {
   /**
-   * Database Service Name for creation of lineage
+   * OpenMetadata generated JWT token.
    */
-  dbServiceName?: string;
-  /**
-   * Host and Port of the Metabase instance.
-   */
-  hostPort: string;
-  /**
-   * Password to connect to Metabase.
-   */
-  password?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: MetabaseType;
-  /**
-   * Username to connect to Metabase. This user should have privileges to read all the
-   * metadata in Metabase.
-   */
-  username: string;
-}
-
-/**
- * Service Type
- *
- * Metabase service type
- */
-export enum MetabaseType {
-  Metabase = 'Metabase',
+  jwtToken: string;
 }

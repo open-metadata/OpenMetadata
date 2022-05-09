@@ -30,6 +30,10 @@ export interface CreateLocation {
    */
   owner?: EntityReference;
   /**
+   * Location full path.
+   */
+  path?: string;
+  /**
    * Link to the pipeline service where this location is used
    */
   service: EntityReference;

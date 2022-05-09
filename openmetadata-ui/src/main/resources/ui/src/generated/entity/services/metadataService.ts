@@ -57,7 +57,7 @@ export interface MetadataService {
   /**
    * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
    */
-  serviceType: Type;
+  serviceType: MetadataServiceType;
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -118,19 +118,25 @@ export interface FieldChange {
  * Metadata Service Connection.
  */
 export interface MetadataConnection {
-  config?: AmundsenConnection;
+  config?: Connection;
 }
 
 /**
  * Amundsen Connection Config
+ *
+ * Metadata to ElasticSeach Connection Config
+ *
+ * OpenMetadata Connection Config
  */
-export interface AmundsenConnection {
+export interface Connection {
   /**
    * Enable Encyption for the Amundsen Neo4j Connection.
    */
   encrypted?: boolean;
   /**
    * Host and port of the Amundsen Neo4j Connection.
+   *
+   * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */
   hostPort?: string;
   /**
@@ -149,7 +155,7 @@ export interface AmundsenConnection {
   /**
    * Service Type
    */
-  type?: Type;
+  type?: MetadataServiceType;
   /**
    * username to connect to the Amundsen Neo4j Connection.
    */
@@ -158,6 +164,143 @@ export interface AmundsenConnection {
    * Enable SSL validation for the Amundsen Neo4j Connection.
    */
   validateSSL?: boolean;
+  /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
+   * OpenMetadata server API version to use.
+   */
+  apiVersion?: string;
+  /**
+   * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
+   * the one configured on OpenMetadaata server.
+   */
+  authProvider?: AuthProvider;
+  /**
+   * OpenMetadata Client security configuration.
+   */
+  securityConfig?: ClientConfig;
+}
+
+/**
+ * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
+ * the one configured on OpenMetadaata server.
+ */
+export enum AuthProvider {
+  Auth0 = 'auth0',
+  Azure = 'azure',
+  CustomOidc = 'custom-oidc',
+  Google = 'google',
+  NoAuth = 'no-auth',
+  Okta = 'okta',
+  Openmetadata = 'openmetadata',
+}
+
+/**
+ * OpenMetadata Client security configuration.
+ *
+ * Google SSO client security configs.
+ *
+ * Okta SSO client security configs.
+ *
+ * Auth0 SSO client security configs.
+ *
+ * Azure SSO Client security config to connect to OpenMetadata.
+ *
+ * Custom OIDC SSO client security configs.
+ *
+ * openMetadataJWTClientConfig security configs.
+ */
+export interface ClientConfig {
+  /**
+   * Google SSO audience URL
+   */
+  audience?: string;
+  /**
+   * Google SSO client secret key path or contents.
+   *
+   * Auth0 Client Secret Key.
+   *
+   * Custom OIDC Client Secret Key.
+   */
+  secretKey?: string;
+  /**
+   * Okta Client ID.
+   *
+   * Auth0 Client ID.
+   *
+   * Azure Client ID.
+   *
+   * Custom OIDC Client ID.
+   */
+  clientId?: string;
+  /**
+   * Okta Service account Email.
+   */
+  email?: string;
+  /**
+   * Okta org url.
+   */
+  orgURL?: string;
+  /**
+   * Okta Private Key.
+   */
+  privateKey?: string;
+  /**
+   * Okta client scopes.
+   *
+   * Azure Client ID.
+   */
+  scopes?: string[];
+  /**
+   * Auth0 Domain.
+   */
+  domain?: string;
+  /**
+   * Azure SSO Authority
+   */
+  authority?: string;
+  /**
+   * Azure SSO client secret key
+   */
+  clientSecret?: string;
+  /**
+   * Custom OIDC token endpoint.
+   */
+  tokenEndpoint?: string;
+  /**
+   * OpenMetadata generated JWT token.
+   */
+  jwtToken?: string;
 }
 
 /**
@@ -165,12 +308,18 @@ export interface AmundsenConnection {
  *
  * Amundsen service type
  *
+ * Metadata to Elastic Seach type
+ *
+ * OpenMetadata service type
+ *
  * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  *
  * Type of database service such as Amundsen, Atlas...
  */
-export enum Type {
+export enum MetadataServiceType {
   Amundsen = 'Amundsen',
+  MetadataES = 'MetadataES',
+  OpenMetadata = 'OpenMetadata',
 }
 
 /**

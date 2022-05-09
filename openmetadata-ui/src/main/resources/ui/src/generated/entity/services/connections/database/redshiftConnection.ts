@@ -16,20 +16,20 @@
  * Redshift  Connection Config
  */
 export interface RedshiftConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Redshift.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
-  database?: string;
+  database: string;
   /**
-   * Host and port of the Redshift.
+   * Host and port of the Redshift service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Redshift.
+   * Password to connect to Redshift.
    */
   password?: string;
   /**
@@ -37,15 +37,17 @@ export interface RedshiftConnection {
    */
   scheme?: RedshiftScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
   type?: RedshiftType;
   /**
-   * username to connect  to the Redshift. This user should have privileges to read all the
+   * Username to connect to Redshift. This user should have privileges to read all the
    * metadata in Redshift.
    */
-  username?: string;
+  username: string;
 }
 
 /**

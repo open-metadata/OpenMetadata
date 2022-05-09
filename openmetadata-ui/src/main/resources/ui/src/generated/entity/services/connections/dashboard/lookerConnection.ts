@@ -21,11 +21,11 @@ export interface LookerConnection {
    */
   env?: string;
   /**
-   * URL to Looker instance.
+   * URL to the Looker instance.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Looker.
+   * Password to connect to Looker.
    */
   password?: string;
   supportsMetadataExtraction?: boolean;
@@ -34,10 +34,10 @@ export interface LookerConnection {
    */
   type?: LookerType;
   /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
+   * Username to connect to Looker. This user should have privileges to read all the metadata
+   * in Looker.
    */
-  username?: string;
+  username: string;
 }
 
 /**
