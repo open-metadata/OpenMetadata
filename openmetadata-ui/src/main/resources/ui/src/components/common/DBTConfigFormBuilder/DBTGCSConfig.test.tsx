@@ -18,6 +18,7 @@ import { DBTGCSConfig } from './DBTGCSConfig';
 
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
+const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 
 const mockProps = {
@@ -26,6 +27,7 @@ const mockProps = {
   gcsType: GCS_CONFIG.GCSValues,
   onCancel: mockCancel,
   onSubmit: mockSubmit,
+  handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
 };
 

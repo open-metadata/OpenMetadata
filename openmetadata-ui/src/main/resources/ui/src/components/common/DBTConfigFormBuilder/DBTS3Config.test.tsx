@@ -17,6 +17,7 @@ import { DBTS3Config } from './DBTS3Config';
 
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
+const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 
 const mockProps = {
@@ -24,6 +25,7 @@ const mockProps = {
   cancelText: 'Back',
   onCancel: mockCancel,
   onSubmit: mockSubmit,
+  handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
 };
 
