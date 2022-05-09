@@ -13,77 +13,31 @@
  */
 
 /**
- * Create Messaging service entity request
+ * Create bot API request
  */
-export interface CreateMessagingService {
-  connection: MessagingConnection;
+export interface CreateBot {
   /**
-   * Description of messaging service entity.
+   * Bot user created for this bot on behalf of which the bot performs all the operations,
+   * such as updating description, responding on the conversation threads, etc.
+   */
+  botUser: EntityReference;
+  /**
+   * Description of the bot.
    */
   description?: string;
   /**
-   * Name that identifies the this entity instance uniquely
+   * Name used for display purposes. Example 'FirstName LastName'.
+   */
+  displayName?: string;
+  /**
+   * Name of the bot.
    */
   name: string;
-  /**
-   * Owner of this messaging service.
-   */
-  owner?: EntityReference;
-  serviceType: MessagingServiceType;
 }
 
 /**
- * Dashboard Connection.
- */
-export interface MessagingConnection {
-  config?: Connection;
-}
-
-/**
- * Kafka Connection Config
- *
- * Pulsar Connection Config
- */
-export interface Connection {
-  /**
-   * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
-   */
-  bootstrapServers?: string;
-  /**
-   * Confluent Kafka Consumer Config
-   */
-  consumerConfig?: { [key: string]: any };
-  /**
-   * Confluent Kafka Schema Registry Config.
-   */
-  schemaRegistryConfig?: { [key: string]: any };
-  /**
-   * Confluent Kafka Schema Registry URL.
-   */
-  schemaRegistryURL?: string;
-  supportsMetadataExtraction?: boolean;
-  /**
-   * Service Type
-   */
-  type?: MessagingServiceType;
-}
-
-/**
- * Service Type
- *
- * Kafka service type
- *
- * Pulsar service type
- *
- * Type of messaging service - Kafka or Pulsar.
- */
-export enum MessagingServiceType {
-  Kafka = 'Kafka',
-  Pulsar = 'Pulsar',
-}
-
-/**
- * Owner of this messaging service.
+ * Bot user created for this bot on behalf of which the bot performs all the operations,
+ * such as updating description, responding on the conversation threads, etc.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

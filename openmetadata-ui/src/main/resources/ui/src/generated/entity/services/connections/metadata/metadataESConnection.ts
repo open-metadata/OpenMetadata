@@ -13,45 +13,53 @@
  */
 
 /**
- * PowerBI Connection Config
+ * Metadata to ElasticSeach Connection Config
  */
-export interface PowerBIConnection {
+export interface MetadataESConnection {
   /**
-   * client_id for PowerBI.
+   * Include Dashboards for Indexing
    */
-  clientId: string;
+  includeDashboards?: boolean;
   /**
-   * clientSecret for PowerBI.
+   * Include Glossary Terms for Indexing
    */
-  clientSecret: string;
+  includeGlossaryTerms?: boolean;
   /**
-   * Credentials for PowerBI.
+   * Include Pipelines for Indexing
    */
-  credentials?: string;
+  includePipelines?: boolean;
   /**
-   * Dashboard URL for PowerBI service.
+   * Include Tables for Indexing
    */
-  hostPort: string;
+  includeTables?: boolean;
   /**
-   * Dashboard redirect URI for the PowerBI service.
+   * Include Teams for Indexing
    */
-  redirectURI?: string;
+  includeTeams?: boolean;
   /**
-   * PowerBI secrets.
+   * Include Topics for Indexing
    */
-  scope?: string[];
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
   supportsMetadataExtraction?: boolean;
   /**
    * Service Type
    */
-  type?: PowerBIType;
+  type?: MetadataESType;
 }
 
 /**
  * Service Type
  *
- * PowerBI service type
+ * Metadata to Elastic Seach type
  */
-export enum PowerBIType {
-  PowerBI = 'PowerBI',
+export enum MetadataESType {
+  MetadataES = 'MetadataES',
 }

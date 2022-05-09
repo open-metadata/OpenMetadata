@@ -30,9 +30,46 @@ export interface OpenMetadataConnection {
    */
   hostPort: string;
   /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
    * OpenMetadata Client security configuration.
    */
-  securityConfig?: SsoClientConfig;
+  securityConfig?: ClientConfig;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: OpenmetadataType;
 }
 
 /**
@@ -46,6 +83,7 @@ export enum AuthProvider {
   Google = 'google',
   NoAuth = 'no-auth',
   Okta = 'okta',
+  Openmetadata = 'openmetadata',
 }
 
 /**
@@ -60,8 +98,10 @@ export enum AuthProvider {
  * Azure SSO Client security config to connect to OpenMetadata.
  *
  * Custom OIDC SSO client security configs.
+ *
+ * openMetadataJWTClientConfig security configs.
  */
-export interface SsoClientConfig {
+export interface ClientConfig {
   /**
    * Google SSO audience URL
    */
@@ -118,4 +158,17 @@ export interface SsoClientConfig {
    * Custom OIDC token endpoint.
    */
   tokenEndpoint?: string;
+  /**
+   * OpenMetadata generated JWT token.
+   */
+  jwtToken?: string;
+}
+
+/**
+ * Service Type
+ *
+ * OpenMetadata service type
+ */
+export enum OpenmetadataType {
+  OpenMetadata = 'OpenMetadata',
 }

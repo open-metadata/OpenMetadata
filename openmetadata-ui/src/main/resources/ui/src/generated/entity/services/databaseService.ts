@@ -134,7 +134,7 @@ export interface DatabaseConnection {
  *
  * Databricks Connection Config
  *
- * DB2 Connection Config
+ * Db2 Connection Config
  *
  * DeltaLake Database Connection Config
  *
@@ -175,84 +175,24 @@ export interface DatabaseConnection {
  * Sample Data Connection Config
  */
 export interface Connection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Athena.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Azure SQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Clickhouse.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Databricks.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in DB2.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Druid.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Glue.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Hive.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MariaDB.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MsSQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in SingleStore.
-   *
+   * GCS Credentials
+   */
+  credentials?: GCSCredentials;
+  /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
    * attempts to scan all the databases.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Oracle.
+   * attempts to scan all the databases in Databricks.
    *
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Postgres.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Redshift.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MySQL.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Snowflake.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in the selected catalog in Trino.
-   *
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Vertica.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases in the selected catalog.
    */
   database?: string;
   /**
@@ -260,58 +200,71 @@ export interface Connection {
    */
   enablePolicyTagImport?: boolean;
   /**
-   * BigQuery APIs URL
+   * BigQuery APIs URL.
    *
-   * Host and port of the Athena
+   * Host and port of the Athena service.
    *
-   * Host and port of the Clickhouse
+   * Host and port of the AzureSQL service.
    *
-   * Host and port of the Databricks
+   * Host and port of the Clickhouse service.
    *
-   * Host and port of the DB2
+   * Host and port of the Databricks service.
    *
-   * Host and port of the Druid
+   * Host and port of the DB2 service.
    *
-   * Host and port of the DynamoDB
+   * Host and port of the Druid service.
    *
-   * Host and port of the Glue
+   * Host and port of the Hive service.
    *
-   * Host and port of the Hive.
+   * Host and port of the MariaDB service.
    *
-   * Host and port of the data source.
+   * Host and port of the MSSQL service.
    *
-   * Host and port of the MsSQL.
+   * Host and port of the MySQL service.
    *
-   * Host and port of the data source. Blank for in-memory database.
+   * Host and port of the SQLite service. Blank for in-memory database.
    *
-   * Host and port of the Oracle.
+   * Host and port of the Oracle service.
    *
-   * Host and port of the Postgres.
+   * Host and port of the Postgres service.
    *
-   * Host and port of the Redshift.
+   * Host and port of the Presto service.
+   *
+   * Host and port of the Redshift service.
+   *
+   * Host and port of the Salesforce service.
+   *
+   * Host and port of the SingleStore service.
+   *
+   * Host and port of the Snowflake service.
+   *
+   * Host and port of the Trino service.
+   *
+   * Host and port of the Vertica service.
    */
   hostPort?: string;
   /**
-   * Column name on which bigquery table will be partitioned
+   * Column name on which the BigQuery table will be partitioned.
    */
   partitionField?: string;
   /**
-   * Partitioning query for bigquery tables
+   * Partitioning query for BigQuery tables.
    */
   partitionQuery?: string;
   /**
-   * Duration for partitioning bigquery tables
+   * Duration for partitioning BigQuery tables.
    */
   partitionQueryDuration?: number;
   /**
-   * Google BigQuery project id.
+   * BigQuery project ID. Only required if using credentials path instead of values.
    */
-  projectID?: string;
+  projectId?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: Scheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
@@ -322,102 +275,66 @@ export interface Connection {
    */
   type?: DatabaseServiceType;
   /**
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Athena.
+   * Username to connect to Bigquery. This user should have privileges to read all the
+   * metadata in Bigquery.
    *
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Azure SQL.
+   * Username to connect to AzureSQL. This user should have privileges to read the metadata.
    *
-   * username to connect  to the Clickhouse. This user should have privileges to read all the
+   * Username to connect to Clickhouse. This user should have privileges to read all the
    * metadata in Clickhouse.
    *
-   * username to connect  to the Databricks. This user should have privileges to read all the
+   * Username to connect to Databricks. This user should have privileges to read all the
    * metadata in Databricks.
    *
-   * username to connect  to the DB2. This user should have privileges to read all the
-   * metadata in DB2.
+   * Username to connect to DB2. This user should have privileges to read all the metadata in
+   * DB2.
    *
-   * username to connect  to the Druid. This user should have privileges to read all the
-   * metadata in Druid.
+   * Username to connect to Druid. This user should have privileges to read all the metadata
+   * in Druid.
    *
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Hive.
+   * Username to connect to Hive. This user should have privileges to read all the metadata in
+   * Hive.
    *
-   * username to connect  to the MariaDB. This user should have privileges to read all the
-   * metadata in MariaDB.
+   * Username to connect to MariaDB. This user should have privileges to read all the metadata
+   * in MariaDB.
    *
-   * username to connect  to the MsSQL. This user should have privileges to read all the
-   * metadata in MsSQL.
+   * Username to connect to MSSQL. This user should have privileges to read all the metadata
+   * in MsSQL.
    *
-   * username to connect  to the SingleStore. This user should have privileges to read all the
-   * metadata in SingleStore.
+   * Username to connect to MySQL. This user should have privileges to read all the metadata
+   * in Mysql.
    *
-   * username to connect  to the SQLite. Blank for in-memory database.
+   * Username to connect to SQLite. Blank for in-memory database.
    *
-   * username to connect  to the Oracle. This user should have privileges to read all the
-   * metadata in Oracle.
+   * Username to connect to Oracle. This user should have privileges to read all the metadata
+   * in Oracle.
    *
-   * username to connect  to the Postgres. This user should have privileges to read all the
+   * Username to connect to Postgres. This user should have privileges to read all the
    * metadata in Postgres.
    *
-   * username to connect  to the Redshift. This user should have privileges to read all the
+   * Username to connect to Presto. This user should have privileges to read all the metadata
+   * in Postgres.
+   *
+   * Username to connect to Redshift. This user should have privileges to read all the
    * metadata in Redshift.
    *
-   * username to connect  to the MySQL. This user should have privileges to read all the
+   * Username to connect to the Salesforce. This user should have privileges to read all the
+   * metadata in Redshift.
+   *
+   * Username to connect to SingleStore. This user should have privileges to read all the
    * metadata in MySQL.
    *
-   * username to connect  to the Snowflake. This user should have privileges to read all the
+   * Username to connect to Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    *
-   * username to connect to Trino. This user should have privileges to read all the metadata
+   * Username to connect to Trino. This user should have privileges to read all the metadata
    * in Trino.
    *
-   * username to connect  to the Vertica. This user should have privileges to read all the
-   * metadata in Vertica.
+   * Username to connect to Vertica. This user should have privileges to read all the metadata
+   * in Vertica.
    */
   username?: string;
-  /**
-   * AWS Athena AWS Region.
-   *
-   * AWS Region Name.
-   */
-  awsRegion?: string;
-  /**
-   * password to connect  to the Athena.
-   *
-   * password to connect to the Clickhouse.
-   *
-   * password to connect to the Databricks.
-   *
-   * password to connect to the DB2.
-   *
-   * password to connect to the Druid.
-   *
-   * password to connect  to the Hive.
-   *
-   * password to connect  to the MariaDB.
-   *
-   * password to connect  to the MsSQL.
-   *
-   * password to connect  to the SingleStore.
-   *
-   * password to connect to SQLite. Blank for in-memory database.
-   *
-   * password to connect  to the Oracle.
-   *
-   * password to connect  to the Postgres.
-   *
-   * password to connect  to the Redshift.
-   *
-   * password to connect  to the MYSQL.
-   *
-   * password to connect  to the Snowflake.
-   *
-   * password to connect  to the Trino.
-   *
-   * password to connect  to the Vertica.
-   */
-  password?: string;
+  awsConfig?: AWSCredentials;
   /**
    * S3 Staging Directory.
    */
@@ -427,47 +344,73 @@ export interface Connection {
    */
   workgroup?: string;
   /**
-   * SQLAlchemy driver for Azure SQL
+   * SQLAlchemy driver for AzureSQL.
    */
   driver?: string;
   /**
-   * Clickhouse SQL connection duration
+   * Password to connect to AzureSQL.
+   *
+   * Password to connect to Clickhouse.
+   *
+   * Password to connect to Databricks.
+   *
+   * Password to connect to DB2.
+   *
+   * Password to connect to Druid.
+   *
+   * Password to connect to Hive.
+   *
+   * Password to connect to MariaDB.
+   *
+   * Password to connect to MSSQL.
+   *
+   * Password to connect to MySQL.
+   *
+   * Password to connect to SQLite. Blank for in-memory database.
+   *
+   * Password to connect to Oracle.
+   *
+   * Password to connect to Postgres.
+   *
+   * Password to connect to Presto.
+   *
+   * Password to connect to Redshift.
+   *
+   * Password to connect to the Salesforce.
+   *
+   * Password to connect to SingleStore.
+   *
+   * Password to connect to Snowflake.
+   *
+   * Password to connect to Trino.
+   *
+   * Password to connect to Vertica.
+   */
+  password?: string;
+  /**
+   * Clickhouse SQL connection duration.
    */
   duration?: number;
   /**
-   * Generated Token to connect to Databricks
+   * Databricks compute resources URL.
+   */
+  httpPath?: string;
+  /**
+   * Generated Token to connect to Databricks.
    */
   token?: string;
   /**
-   * pySpark App Name
+   * pySpark App Name.
    */
   appName?: string;
   /**
-   * File path of local Hive Metastore.
+   * File path of the local Hive Metastore.
    */
   metastoreFilePath?: string;
   /**
-   * Host and port of remote Hive Metastore.
+   * Host and port of the remote Hive Metastore.
    */
   metastoreHostPort?: string;
-  /**
-   * AWS Access key ID.
-   */
-  awsAccessKeyId?: any;
-  /**
-   * AWS Secret Access Key.
-   */
-  awsSecretAccessKey?: string;
-  /**
-   * AWS Session Token.
-   */
-  awsSessionToken?: string;
-  /**
-   * EndPoint URL for the Dynamo DB
-   *
-   * EndPoint URL for the Glue
-   */
-  endPointURL?: string;
   /**
    * AWS pipelineServiceName Name.
    */
@@ -512,9 +455,17 @@ export interface Connection {
    */
   account?: string;
   /**
+   * Connection to Snowflake instance via Private Key
+   */
+  privateKey?: string;
+  /**
    * Snowflake Role.
    */
   role?: string;
+  /**
+   * Snowflake Passphrase Key used with Private Key
+   */
+  snowflakePrivatekeyPassphrase?: string;
   /**
    * Snowflake warehouse.
    */
@@ -522,15 +473,99 @@ export interface Connection {
   /**
    * URL parameters for connection to the Trino data source
    */
-  params?: { [key: string]: any };
+  params?: { [key: string]: string };
   /**
    * Proxies for the connection to Trino data source
    */
-  proxies?: { [key: string]: any };
+  proxies?: { [key: string]: string };
   /**
    * Sample Data File Path
    */
   sampleDataFolder?: string;
+}
+
+/**
+ * AWS credentials configs.
+ */
+export interface AWSCredentials {
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId: string;
+  /**
+   * AWS Region
+   */
+  awsRegion: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
+}
+
+/**
+ * GCS Credentials
+ *
+ * GCS credentials configs.
+ */
+export interface GCSCredentials {
+  /**
+   * GCS configs.
+   */
+  gcsConfig: GCSCredentialsValues | string;
+}
+
+/**
+ * GCS Credentials.
+ */
+export interface GCSCredentialsValues {
+  /**
+   * Google Cloud auth provider certificate.
+   */
+  authProviderX509CertUrl?: string;
+  /**
+   * Google Cloud auth uri.
+   */
+  authUri?: string;
+  /**
+   * Google Cloud email.
+   */
+  clientEmail?: string;
+  /**
+   * Google Cloud Client ID.
+   */
+  clientId?: string;
+  /**
+   * Google Cloud client certificate uri.
+   */
+  clientX509CertUrl?: string;
+  /**
+   * Google Cloud private key.
+   */
+  privateKey?: string;
+  /**
+   * Google Cloud private key id.
+   */
+  privateKeyId?: string;
+  /**
+   * Google Cloud project id.
+   */
+  projectId?: string;
+  /**
+   * Google Cloud token uri.
+   */
+  tokenUri?: string;
+  /**
+   * Google Cloud service account type.
+   */
+  type?: string;
 }
 
 /**

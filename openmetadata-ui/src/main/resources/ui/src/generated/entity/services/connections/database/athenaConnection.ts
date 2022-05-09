@@ -16,26 +16,19 @@
  * AWS Athena Connection Config
  */
 export interface AthenaConnection {
-  /**
-   * AWS Athena AWS Region.
-   */
-  awsRegion?: string;
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  awsConfig?: AWSCredentials;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Athena.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Athena
+   * Host and port of the Athena service.
    */
   hostPort?: string;
-  /**
-   * password to connect  to the Athena.
-   */
-  password?: string;
   /**
    * S3 Staging Directory.
    */
@@ -45,19 +38,41 @@ export interface AthenaConnection {
    */
   scheme?: AthenaScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: AthenaType;
   /**
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Athena.
-   */
-  username?: string;
-  /**
    * Athena workgroup.
    */
   workgroup?: string;
+}
+
+/**
+ * AWS credentials configs.
+ */
+export interface AWSCredentials {
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId: string;
+  /**
+   * AWS Region
+   */
+  awsRegion: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
 }
 
 /**

@@ -16,12 +16,16 @@
  * Google BigQuery Connection Config
  */
 export interface BigQueryConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
+  /**
+   * GCS Credentials
+   */
+  credentials: GCSCredentials;
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Athena.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
@@ -29,30 +33,31 @@ export interface BigQueryConnection {
    */
   enablePolicyTagImport?: boolean;
   /**
-   * BigQuery APIs URL
+   * BigQuery APIs URL.
    */
   hostPort?: string;
   /**
-   * Column name on which bigquery table will be partitioned
+   * Column name on which the BigQuery table will be partitioned.
    */
   partitionField?: string;
   /**
-   * Partitioning query for bigquery tables
+   * Partitioning query for BigQuery tables.
    */
   partitionQuery?: string;
   /**
-   * Duration for partitioning bigquery tables
+   * Duration for partitioning BigQuery tables.
    */
   partitionQueryDuration?: number;
   /**
-   * Google BigQuery project id.
+   * BigQuery project ID. Only required if using credentials path instead of values.
    */
-  projectID?: string;
+  projectId?: string;
   /**
    * SQLAlchemy driver scheme options.
    */
   scheme?: BigqueryScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * OpenMetadata Tag category name if enablePolicyTagImport is set to true.
@@ -63,10 +68,68 @@ export interface BigQueryConnection {
    */
   type?: BigqueryType;
   /**
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Athena.
+   * Username to connect to Bigquery. This user should have privileges to read all the
+   * metadata in Bigquery.
    */
   username?: string;
+}
+
+/**
+ * GCS Credentials
+ *
+ * GCS credentials configs.
+ */
+export interface GCSCredentials {
+  /**
+   * GCS configs.
+   */
+  gcsConfig: GCSCredentialsValues | string;
+}
+
+/**
+ * GCS Credentials.
+ */
+export interface GCSCredentialsValues {
+  /**
+   * Google Cloud auth provider certificate.
+   */
+  authProviderX509CertUrl?: string;
+  /**
+   * Google Cloud auth uri.
+   */
+  authUri?: string;
+  /**
+   * Google Cloud email.
+   */
+  clientEmail?: string;
+  /**
+   * Google Cloud Client ID.
+   */
+  clientId?: string;
+  /**
+   * Google Cloud client certificate uri.
+   */
+  clientX509CertUrl?: string;
+  /**
+   * Google Cloud private key.
+   */
+  privateKey?: string;
+  /**
+   * Google Cloud private key id.
+   */
+  privateKeyId?: string;
+  /**
+   * Google Cloud project id.
+   */
+  projectId?: string;
+  /**
+   * Google Cloud token uri.
+   */
+  tokenUri?: string;
+  /**
+   * Google Cloud service account type.
+   */
+  type?: string;
 }
 
 /**
