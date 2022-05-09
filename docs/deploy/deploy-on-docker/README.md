@@ -114,7 +114,9 @@ curl --silent --output docker-compose.yml https://github.com/open-metadata/OpenM
 docker compose up -d
 ```
 
-
+{% hint style="info" %}
+For a secure OpenMetadata instance, follow the [Enable Security](enable-security.md) guide
+{% endhint %}
 
 ### 2.  Verify all containers are up and running&#x20;
 
