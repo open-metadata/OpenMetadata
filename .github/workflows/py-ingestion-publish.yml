@@ -41,10 +41,13 @@ jobs:
             twine check dist/*; \
             twine upload -r testpypi dist/*
   publish:
+    needs: [publish-test]
     runs-on: ubuntu-latest
     environment: release
     steps:
       - uses: actions/checkout@v2
+        with:
+          approvers: akash-jain-10, pmbrull, harshach
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
