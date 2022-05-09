@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 import confluent_kafka
+from confluent_avro import AvroKeyValueSerde, SchemaRegistry
 from confluent_kafka.admin import AdminClient, ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import (
     Schema,
@@ -192,16 +193,21 @@ class KafkaSource(Source[CreateTopicRequest]):
 
     def _get_sample_data(self, topic_name):
         try:
-            self.consumer_client.subscribe(
-                [topic_name.__root__], on_assign=self.on_assign
+            self.consumer_client.subscribe([topic_name.__root__])
+            registry_client = SchemaRegistry(
+                self.service_connection.schemaRegistryURL,
+                headers={"Content-Type": "application/vnd.schemaregistry.v1+json"},
             )
+            avro_serde = AvroKeyValueSerde(registry_client, topic_name.__root__)
             logger.info("Kafka consumer polling for sample messages")
-            messages = self.consumer_client.poll(100)
-            print(messages)
-            print(messages.value())
-            topic_sample_data = TopicSampleData(
-                messages=[messages.value()] if messages else []
-            )
+            messages = self.consumer_client.consume(num_messages=10, timeout=10)
+            sample_data = []
+            if len(messages) > 0:
+                for message in messages:
+                    sample_data.append(
+                        str(avro_serde.value.deserialize(message.value()))
+                    )
+            topic_sample_data = TopicSampleData(messages=sample_data)
             self.consumer_client.unsubscribe()
             return topic_sample_data
         except Exception as e:
@@ -218,9 +224,9 @@ class KafkaSource(Source[CreateTopicRequest]):
         for partition in partitions:
             last_offset = a_consumer.get_watermark_offsets(partition)
             offset = last_offset[1]
+            print(offset)
             if offset > 0:
                 partition.offset = offset - 10 if offset > 10 else offset
-                print(partition.offset)
             new_partitions.append(partition)
         self.consumer_client.assign(new_partitions)
 
