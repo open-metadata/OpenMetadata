@@ -104,3 +104,10 @@ export const getExplorePathWithInitFilters = (
     ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
     : path;
 };
+
+export const getServicesWithTabPath = (serviceCat: string) => {
+  let path = ROUTES.SERVICES_WITH_TAB;
+  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
+
+  return path;
+};
