@@ -13,6 +13,9 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
+import classNames from 'classnames';
+import { isNil } from 'lodash';
+import moment from 'moment';
 import React, {
   FC,
   Fragment,
@@ -20,27 +23,33 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import Select, { SingleValue } from 'react-select';
 import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
 import { ROUTES } from '../../constants/constants';
-import { User } from '../../generated/entity/teams/user';
+import { JWTTokenExpiry, User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
-import { getEntityName } from '../../utils/CommonUtils';
+import { getEntityName, requiredField } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import Description from '../common/description/Description';
+import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import GenerateTokenModal from '../Modals/GenerateTokenModal/GenerateTokenModal';
 import { UserDetails } from '../Users/Users.interface';
 
 interface BotsDetailProp extends HTMLAttributes<HTMLDivElement> {
   botsData: User;
   updateBotsDetails: (data: UserDetails) => void;
   revokeTokenHandler: () => void;
+}
+
+interface Option {
+  value: string;
+  label: string;
 }
 
 const BotsDetail: FC<BotsDetailProp> = ({
@@ -56,6 +65,40 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const [isRegeneratingToken, setIsRegeneratingToken] =
     useState<boolean>(false);
   const [generateToken, setGenerateToken] = useState<boolean>(false);
+  const [selectedExpiry, setSelectedExpiry] = useState('7');
+
+  const getJWTTokenExpiryOptions = () => {
+    return Object.keys(JWTTokenExpiry).map((expiry) => {
+      const expiryValue = JWTTokenExpiry[expiry as keyof typeof JWTTokenExpiry];
+
+      return { label: `${expiryValue} days`, value: expiryValue };
+    });
+  };
+
+  const getExpiryDateText = () => {
+    if (selectedExpiry === JWTTokenExpiry.Unlimited) {
+      return <p className="tw-mt-2">The token will never expire!</p>;
+    } else {
+      return (
+        <p className="tw-mt-2">
+          The token will expire on{' '}
+          {moment().add(selectedExpiry, 'days').format('ddd Do MMMM, YYYY')}
+        </p>
+      );
+    }
+  };
+
+  const handleOnChange = (
+    value: SingleValue<unknown>,
+    { action }: { action: string }
+  ) => {
+    if (isNil(value) || action === 'clear') {
+      setSelectedExpiry('');
+    } else {
+      const selectedValue = value as Option;
+      setSelectedExpiry(selectedValue.value);
+    }
+  };
 
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
@@ -88,6 +131,14 @@ const BotsDetail: FC<BotsDetailProp> = ({
     } else {
       setGenerateToken(true);
     }
+  };
+
+  const handleGenerate = () => {
+    const data = {
+      JWTToken: 'string',
+      JWTTokenExpiry: selectedExpiry,
+    };
+    generateBotsToken(data);
   };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,46 +277,103 @@ const BotsDetail: FC<BotsDetailProp> = ({
     }
   };
 
+  const centerLayout = () => {
+    if (generateToken) {
+      return (
+        <div className="tw-mt-4">
+          <div data-testid="filter-dropdown">
+            <label htmlFor="expiration">{requiredField('Expiration')}</label>
+            <Select
+              defaultValue={{ label: '7 days', value: '7' }}
+              id="expiration"
+              isSearchable={false}
+              options={getJWTTokenExpiryOptions()}
+              styles={reactSingleSelectCustomStyle}
+              onChange={handleOnChange}
+            />
+            {getExpiryDateText()}
+          </div>
+          <div className="tw-flex tw-justify-end">
+            <Button
+              className={classNames('tw-mr-2')}
+              data-testid="discard-button"
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={() => setGenerateToken(false)}>
+              Cancel
+            </Button>
+            <Button
+              data-testid="confirm-button"
+              size="regular"
+              theme="primary"
+              type="submit"
+              variant="contained"
+              onClick={handleGenerate}>
+              Generate
+            </Button>
+          </div>
+        </div>
+      );
+    } else {
+      if (botsToken) {
+        return (
+          <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
+            <input
+              readOnly
+              className="tw-form-inputs tw-p-1.5"
+              placeholder="Generate new token..."
+              type="password"
+              value={botsToken}
+            />
+            {getCopyComponent()}
+          </div>
+        );
+      } else {
+        return (
+          <div className="tw-no-description tw-text-sm tw-mt-4">
+            No token available
+          </div>
+        );
+      }
+    }
+  };
+
   const getCenterLayout = () => {
     return (
       <div className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4">
         <div className="tw-flex tw-justify-between tw-items-center">
-          <h6 className="tw-mb-2 tw-self-center">JWT Token</h6>
-          <div className="tw-flex">
-            <Button
-              size="small"
-              theme="primary"
-              variant="outlined"
-              onClick={() => handleTokenGeneration()}>
-              {botsToken ? 'Re-generate token' : 'Generate new token'}
-            </Button>
-            {botsToken ? (
+          <h6 className="tw-mb-2 tw-self-center">
+            {generateToken ? 'Generate JWT token' : 'JWT Token'}
+          </h6>
+          {!generateToken ? (
+            <div className="tw-flex">
               <Button
-                className="tw-ml-2"
                 size="small"
                 theme="primary"
                 variant="outlined"
-                onClick={() => setIsRevokingToken(true)}>
-                Revoke token
+                onClick={() => handleTokenGeneration()}>
+                {botsToken ? 'Re-generate token' : 'Generate new token'}
               </Button>
-            ) : null}
-          </div>
+              {botsToken ? (
+                <Button
+                  className="tw-ml-2"
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={() => setIsRevokingToken(true)}>
+                  Revoke token
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <hr className="tw-mt-2" />
         <p className="tw-mt-4">
           Token you have generated that can be used to access the OpenMetadata
           API.
         </p>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mt-4">
-          <input
-            readOnly
-            className="tw-form-inputs tw-p-1.5"
-            placeholder="Generate new token..."
-            type="password"
-            value={botsToken}
-          />
-          {getCopyComponent()}
-        </div>
+        {centerLayout()}
       </div>
     );
   };
@@ -317,14 +425,6 @@ const BotsDetail: FC<BotsDetailProp> = ({
           onConfirm={() => {
             setIsRegeneratingToken(false);
             setGenerateToken(true);
-          }}
-        />
-      ) : null}
-      {generateToken ? (
-        <GenerateTokenModal
-          onCancel={() => setGenerateToken(false)}
-          onConfirm={(data) => {
-            generateBotsToken(data);
           }}
         />
       ) : null}
