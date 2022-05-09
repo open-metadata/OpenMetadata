@@ -67,6 +67,7 @@ const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 const PLACEHOLDER_USER_NAME = ':username';
+const PLACEHOLDER_BOTS_NAME = ':botsName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -204,6 +205,8 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
+  BOTS: `/bots`,
+  BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -400,6 +403,13 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
+export const getBotsPath = (botsName: string) => {
+  let path = ROUTES.BOTS_PROFILE;
+  path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -412,6 +422,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
+  { name: 'Bots', to: '/bots', disabled: false },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
