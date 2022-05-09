@@ -115,8 +115,7 @@ services:
       - "localhost:172.16.239.10"
       - "elasticsearch:172.16.239.11"
      volumes:
-      - openmetadata-secure-volume:/security/private
-      - openmetadata-secure-volume:/security/public
+      - openmetadata-secure-volume:/security
 
   ingestion:
     build:
