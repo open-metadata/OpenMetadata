@@ -46,8 +46,6 @@ jobs:
     environment: release
     steps:
       - uses: actions/checkout@v2
-        with:
-          approvers: akash-jain-10, pmbrull, harshach
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
