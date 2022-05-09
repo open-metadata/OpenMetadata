@@ -34,7 +34,9 @@ from metadata.generated.schema.entity.services.metadataService import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+    WorkflowConfig,
 )
+from metadata.ingestion.ometa.provider_registry import PROVIDER_CLASS_MAP
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -99,15 +101,6 @@ def get_connection_class(
     return connection_class
 
 
-def get_auth_class(auth_provider: str) -> T:
-    """
-    Build the auth provider path, import and return it
-    :param auth_provider: e.g., Google
-    :return: e.g., GoogleSSOClientConfig
-    """
-    print(__name__)
-
-
 def parse_workflow_source(config_dict: dict) -> None:
     """
     Validate the parsing of the source in the config dict.
@@ -138,12 +131,25 @@ def parse_server_config(config_dict: dict) -> None:
     :param config_dict: JSON configuration
     """
     # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
-    auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"]["authProvider"]
+    auth_provider = config_dict["workflowConfig"]["openMetadataServerConfig"][
+        "authProvider"
+    ]
     logger.error(
         f"Error parsing the Workflow Server Configuration with {auth_provider} auth provider"
     )
 
-    auth_class = get_auth_class(auth_provider)
+    # If the error comes from the security config:
+    auth_class = PROVIDER_CLASS_MAP.get(auth_provider)
+    security_config = (
+        config_dict.get("workflowConfig")
+        .get("openMetadataServerConfig")
+        .get("securityConfig")
+    )
+    if auth_class and security_config:
+        auth_class.parse_obj(security_config)
+
+    # If the security config is properly configured, let's raise the ValidationError of the whole WorkflowConfig
+    WorkflowConfig.parse_obj(config_dict["workflowConfig"])
 
 
 def parse_workflow_config_gracefully(
@@ -164,4 +170,4 @@ def parse_workflow_config_gracefully(
 
     except ValidationError:
         parse_workflow_source(config_dict)
-
+        parse_server_config(config_dict)
