@@ -151,7 +151,6 @@
 
 ## 🚀 Deploy
 
-* [Local Deployment](deploy/local-deployment.md)
 * [Deploy on Docker](deploy/deploy-on-docker/README.md)
   * [Binding Named Volumes](deploy/deploy-on-docker/binding-named-volumes.md)
 * [Deploy on Bare Metal](../deploy/deploy-on-bare-metal/README.md)
