@@ -192,6 +192,18 @@ describe('Test TopicDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
+  it('Check if active tab is sample data', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const sampleData = await findByTestId(container, 'sample-data');
+
+    expect(sampleData).toBeInTheDocument();
+  });
+
   it('Check if active tab is config', async () => {
     const { container } = render(
       <TopicDetails {...TopicDetailsProps} activeTab={4} />,

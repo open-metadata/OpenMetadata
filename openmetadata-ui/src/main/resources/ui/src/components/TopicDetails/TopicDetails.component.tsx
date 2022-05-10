@@ -440,10 +440,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </div>
             )}
             {activeTab === 3 && (
-              <SampleDataTopic
-                isLoading={isSampleDataLoading}
-                sampleData={sampleData}
-              />
+              <div data-testid="sample-data">
+                <SampleDataTopic
+                  isLoading={isSampleDataLoading}
+                  sampleData={sampleData}
+                />
+              </div>
             )}
             {activeTab === 4 && (
               <div data-testid="config">
