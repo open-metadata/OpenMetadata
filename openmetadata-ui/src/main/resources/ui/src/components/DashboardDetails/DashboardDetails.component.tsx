@@ -261,7 +261,9 @@ const DashboardDetails = ({
         : dashboardDetails.tags;
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        owner: newOwner ? newOwner : dashboardDetails.owner,
+        owner: newOwner
+          ? { ...dashboardDetails.owner, ...newOwner }
+          : dashboardDetails.owner,
         tags: tierTag,
       };
 

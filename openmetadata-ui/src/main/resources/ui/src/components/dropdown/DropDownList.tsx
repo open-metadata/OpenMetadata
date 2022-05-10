@@ -65,7 +65,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   const getEmptyTextElement = (): JSX.Element => {
     return (
-      <div className="tw-text-grey-muted tw-px-4 tw-py-2">
+      <div
+        className="tw-text-grey-muted tw-px-4 tw-py-2"
+        data-testid="empty-list">
         <p className={widthClass}>
           {searchText ? 'No match found' : 'No data available'}
         </p>

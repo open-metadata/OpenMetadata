@@ -270,7 +270,9 @@ const PipelineDetails = ({
         : pipelineDetails.tags;
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? newOwner : pipelineDetails.owner,
+        owner: newOwner
+          ? { ...pipelineDetails.owner, ...newOwner }
+          : pipelineDetails.owner,
         tags: tierTag,
       };
 
