@@ -31,7 +31,7 @@ RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 
 RUN airflow db init
-RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
+RUN cp -r /ingestion/airflow.cfg /airflow/airflow.cfg
 RUN cp -r /om-airflow/plugins /airflow/plugins
 RUN cp -r /om-airflow/plugins/dag_templates /airflow/
 RUN mkdir -p /airflow/dag_generated_configs
