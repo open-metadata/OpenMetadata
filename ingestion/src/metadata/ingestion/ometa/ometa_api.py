@@ -141,6 +141,7 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
+    tags_path = "tags"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -240,13 +241,28 @@ class OpenMetadata(
         if issubclass(entity, Report):
             return "/reports"
 
-        if issubclass(entity, (Tag, TagCategory)):
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                    TagCategory,
+                    self.get_create_entity_type(TagCategory),
+                ]
+            ),
+        ):
             return "/tags"
 
-        if issubclass(entity, Glossary):
+        if issubclass(
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+        ):
             return "/glossaries"
 
-        if issubclass(entity, GlossaryTerm):
+        if issubclass(
+            entity,
+            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
+        ):
             return "/glossaryTerms"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
@@ -315,6 +331,9 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
+        if "tag" in entity.__name__.lower():
+            return self.tags_path
+
         if (
             "user" in entity.__name__.lower()
             or "role" in entity.__name__.lower()
@@ -362,7 +381,11 @@ class OpenMetadata(
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name.lower()
+        file_name = (
+            class_name.lower()
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("tagcategory", "tagCategory")
+        )
 
         class_path = ".".join(
             [
