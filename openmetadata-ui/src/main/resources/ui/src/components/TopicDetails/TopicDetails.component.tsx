@@ -392,7 +392,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
+                    <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
                         entityFieldThreads={getEntityFieldThreadCounts(
