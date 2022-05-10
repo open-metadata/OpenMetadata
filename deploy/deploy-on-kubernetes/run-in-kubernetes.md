@@ -20,6 +20,10 @@ description: This guide will help you run OpenMetadata using Helm Charts
 Note, OpenMetadata only supports Helm 3
 {% endhint %}
 
+{% hint style="success" %}
+This guide assumes your helm chart release names are _openmetadata_ and _openmetadata-dependencies and kubernetes namespace used is default._
+{% endhint %}
+
 ## Quickstart
 
 Assuming Kubernetes setup is done and your Kubernetes context points to a correct Kubernetes cluster, first we create kubernetes secrets that contains MySQL and Airflow passwords as secrets.
