@@ -19,6 +19,10 @@ from typing import IO, Any, Optional
 import yaml
 from pydantic import BaseModel
 
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
 FQDN_SEPARATOR: str = "."
 
 
@@ -50,16 +54,26 @@ class YamlConfigurationMechanism(ConfigurationMechanism):
     """load configuration from yaml files"""
 
     def load_config(self, config_fp: IO) -> dict:
-        config = yaml.safe_load(config_fp)
-        return config
+        try:
+            config = yaml.safe_load(config_fp)
+            return config
+        except yaml.error.YAMLError:
+            msg = "YAML Configuration file is not a valid YAML"
+            logger.error(msg)
+            raise ConfigurationError(msg)
 
 
 class JsonConfigurationMechanism(ConfigurationMechanism):
     """load configuration from json files"""
 
     def load_config(self, config_fp: IO) -> dict:
-        config = json.load(config_fp)
-        return config
+        try:
+            config = json.load(config_fp)
+            return config
+        except json.decoder.JSONDecodeError:
+            msg = "JSON Configuration file is not a valid JSON"
+            logger.error(msg)
+            raise ConfigurationError(msg)
 
 
 def load_config_file(config_file: pathlib.Path) -> dict:
