@@ -31,7 +31,6 @@ const TeamsAndUsers = ({
   users,
   isUsersLoading,
   admins,
-  bots,
   activeUserTab,
   userSearchTerm,
   selectedUserList,
@@ -77,10 +76,6 @@ const TeamsAndUsers = ({
     {
       name: UserType.ADMINS,
       data: admins,
-    },
-    {
-      name: UserType.BOTS,
-      data: bots,
     },
   ];
 

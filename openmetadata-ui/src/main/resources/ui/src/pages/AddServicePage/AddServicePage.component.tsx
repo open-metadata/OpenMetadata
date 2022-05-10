@@ -12,7 +12,8 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import React, { useState } from 'react';
+import { startCase } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
@@ -21,6 +22,7 @@ import {
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { postService } from '../../axiosAPIs/serviceAPI';
 import AddService from '../../components/AddService/AddService.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import {
   DEPLOYED_PROGRESS_VAL,
@@ -32,6 +34,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
@@ -45,6 +48,14 @@ const AddServicePage = () => {
   );
   const [ingestionId, setIngestionId] = useState('');
   const [showIngestionButton, setShowIngestionButton] = useState(false);
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
+  const [addIngestion, setAddIngestion] = useState(false);
+
+  const handleAddIngestion = (value: boolean) => {
+    setAddIngestion(value);
+  };
 
   const onAddServiceSave = (data: DataObj) => {
     return new Promise<void>((resolve, reject) => {
@@ -136,9 +147,25 @@ const AddServicePage = () => {
     });
   };
 
+  useEffect(() => {
+    setSlashedBreadcrumb([
+      {
+        name: startCase(serviceCategory),
+        url: getServicesWithTabPath(serviceCategory),
+      },
+      {
+        name: addIngestion ? 'Add New Ingestion' : 'Add New Service',
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, [serviceCategory, addIngestion]);
+
   return (
     <PageContainerV1>
       <AddService
+        addIngestion={addIngestion}
+        handleAddIngestion={handleAddIngestion}
         ingestionAction={ingestionAction}
         ingestionProgress={ingestionProgress}
         isIngestionCreated={isIngestionCreated}
@@ -146,6 +173,7 @@ const AddServicePage = () => {
         newServiceData={newServiceData}
         serviceCategory={serviceCategory as ServiceCategory}
         showDeployButton={showIngestionButton}
+        slashedBreadcrumb={slashedBreadcrumb}
         onAddIngestionSave={onAddIngestionSave}
         onAddServiceSave={onAddServiceSave}
         onIngestionDeploy={onIngestionDeploy}

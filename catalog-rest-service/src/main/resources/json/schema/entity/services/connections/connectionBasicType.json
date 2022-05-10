@@ -6,10 +6,10 @@
   "definitions": {
     "connectionOptions": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
-      "description": "Additional connection options that can be sent to service during the connection.",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
       "type": "object",
       "additionalProperties": {
-        ".{1,}": { "type": "string" }
+        "type": "string"
       }
     },
     "connectionArguments": {
