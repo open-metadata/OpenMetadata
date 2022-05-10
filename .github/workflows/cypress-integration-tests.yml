@@ -47,8 +47,12 @@ jobs:
         timeout-minutes: 20
 
       - name: Run Cypress Tests
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn run cypress:run
+        uses: cypress-io/github-action@v2
+        with:
+          install: false
+          working-directory: openmetadata-ui/src/main/resources/ui/
+          wait-on: 'http://localhost:8585'
+          command: yarn run cypress:run
         env:
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}
           # Recommended: pass the GitHub token lets this action correctly
