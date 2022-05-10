@@ -103,7 +103,10 @@ const testServiceCreationAndIngestion = (
   testIngestionsTab();
   // the latest run should be success
   cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-    if ($ingestionStatus.text() === 'Running') {
+    if (
+      $ingestionStatus.text() === 'Running' ||
+      $ingestionStatus.text() === ''
+    ) {
       // retry after waiting for 30 seconds
       cy.wait(30000);
       cy.reload();
@@ -136,8 +139,6 @@ describe('login with SSO', () => {
     });
 
     it('shows homepage', () => {
-      cy.contains('Explore Data').should('be.visible');
-      cy.contains('Welcome to OpenMetadata!').should('be.visible');
       cy.get('[data-testid="tables"]').should('be.visible');
     });
 
