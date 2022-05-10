@@ -49,11 +49,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import logger
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import exit_after
 from metadata.utils.connection_clients import KafkaClient
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_topic
-from metadata.utils.helpers import get_messaging_service_or_create
 
 
 @dataclass
