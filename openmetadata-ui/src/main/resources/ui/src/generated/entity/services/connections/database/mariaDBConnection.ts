@@ -16,20 +16,20 @@
  * MariaDB Database Connection Config
  */
 export interface MariaDBConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MariaDB.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * Host and port of the MariaDB service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the MariaDB.
+   * Password to connect to MariaDB.
    */
   password?: string;
   /**
@@ -37,15 +37,16 @@ export interface MariaDBConnection {
    */
   scheme?: MariaDBScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: MariaDBType;
   /**
-   * username to connect  to the MariaDB. This user should have privileges to read all the
-   * metadata in MariaDB.
+   * Username to connect to MariaDB. This user should have privileges to read all the metadata
+   * in MariaDB.
    */
-  username?: string;
+  username: string;
 }
 
 /**

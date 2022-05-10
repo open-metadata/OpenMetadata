@@ -55,7 +55,6 @@ class AppState {
       updateUsers: action,
       updateUserPermissions: action,
       updateExplorePageTab: action,
-      updateInPageSearchText: action,
       getCurrentUserDetails: action,
       getAllUsers: action,
       getAllTeams: action,
@@ -79,6 +78,7 @@ class AppState {
   }
   updateUserDetails(data: User) {
     this.userDetails = data;
+    this.nonSecureUserDetails = data;
   }
   updateNewUser(data: NewUser) {
     this.newUser = data;
@@ -94,9 +94,6 @@ class AppState {
   }
   updateExplorePageTab(tab: string) {
     this.explorePageTab = tab;
-  }
-  updateInPageSearchText(text: string) {
-    this.inPageSearchText = text;
   }
 
   getCurrentUserDetails() {

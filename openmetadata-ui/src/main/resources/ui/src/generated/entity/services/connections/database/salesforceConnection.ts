@@ -16,14 +16,14 @@
  * Salesforce Connection Config
  */
 export interface SalesforceConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
-   * Host and port of the Redshift.
+   * Host and port of the Salesforce service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Redshift.
+   * Password to connect to the Salesforce.
    */
   password?: string;
   /**
@@ -39,15 +39,16 @@ export interface SalesforceConnection {
    */
   sobjectName?: string;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: SalesforceType;
   /**
-   * username to connect  to the Redshift. This user should have privileges to read all the
+   * Username to connect to the Salesforce. This user should have privileges to read all the
    * metadata in Redshift.
    */
-  username?: string;
+  username: string;
 }
 
 /**

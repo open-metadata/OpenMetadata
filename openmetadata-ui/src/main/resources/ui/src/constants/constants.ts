@@ -14,6 +14,9 @@
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
+export const PRIMERY_COLOR = '#7147E8';
+export const LITE_GRAY_COLOR = '#DBE0EB';
+
 export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -22,6 +25,9 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
+export const INGESTION_PROGRESS_START_VAL = 20;
+export const INGESTION_PROGRESS_END_VAL = 80;
+export const DEPLOYED_PROGRESS_VAL = 100;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const oidcTokenKey = 'oidcIdToken';
@@ -61,6 +67,7 @@ const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 const PLACEHOLDER_USER_NAME = ':username';
+const PLACEHOLDER_BOTS_NAME = ':botsName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -163,6 +170,7 @@ export const ROUTES = {
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
+  SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
   ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   USERS: '/users',
@@ -197,6 +205,8 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
+  BOTS: `/bots`,
+  BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -393,6 +403,13 @@ export const getAddGlossaryTermsPath = (
   return path;
 };
 
+export const getBotsPath = (botsName: string) => {
+  let path = ROUTES.BOTS_PROFILE;
+  path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -405,6 +422,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
+  { name: 'Bots', to: '/bots', disabled: false },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },

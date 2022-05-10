@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
-import { faTimesCircle } from '@fortawesome/free-regular-svg-icons';
+import { library } from '@fortawesome/fontawesome-svg-core';
 import {
   faCheck,
   faCheckCircle,
   faCheckSquare,
   faChevronDown,
   faChevronRight,
+  faChevronUp,
   faPlus,
-  faPlusCircle,
   faSearch,
   faTimes,
 } from '@fortawesome/free-solid-svg-icons';
@@ -42,8 +41,7 @@ const App: FunctionComponent = () => {
     faCheckCircle,
     faChevronDown,
     faChevronRight,
-    faTimesCircle as IconDefinition,
-    faPlusCircle
+    faChevronUp
   );
 
   return (
@@ -54,7 +52,7 @@ const App: FunctionComponent = () => {
             <AppRouter />
           </AuthProvider>
         </Router>
-        <ToastContainer {...toastOptions} />
+        <ToastContainer {...toastOptions} newestOnTop />
       </div>
     </div>
   );

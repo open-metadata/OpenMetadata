@@ -320,7 +320,10 @@ class OrmProfilerProcessor(Processor[Table]):
             return None
 
         # Compute all validations against the profiler results
-        for table_test in my_record_tests.table_tests:
+        table_tests = my_record_tests.table_tests or []
+        column_tests = my_record_tests.column_tests or []
+
+        for table_test in table_tests:
             test_case_result = self.run_table_test(
                 table=table,
                 orm_table=orm_table,
@@ -330,7 +333,7 @@ class OrmProfilerProcessor(Processor[Table]):
             if test_case_result:
                 table_test.result = test_case_result
 
-        for column_test in my_record_tests.column_tests:
+        for column_test in column_tests:
             test_case_result = self.run_column_test(
                 table=table,
                 orm_table=orm_table,

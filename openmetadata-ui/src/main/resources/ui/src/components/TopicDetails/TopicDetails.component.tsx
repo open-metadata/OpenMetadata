@@ -12,7 +12,7 @@
  */
 
 import { EntityTags } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
@@ -43,6 +43,7 @@ import PageContainer from '../containers/PageContainer';
 import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
+import SampleDataTopic from '../SampleDataTopic/SampleDataTopic';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
 
@@ -83,6 +84,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  isSampleDataLoading,
+  sampleData,
 }: TopicDetailsProps) => {
   const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
@@ -169,6 +172,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       count: feedCount,
     },
     {
+      name: 'Sample Data',
+      icon: {
+        alt: 'sample_data',
+        name: 'sample-data',
+        title: 'Sample Data',
+        selectedName: 'sample-data-color',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Config',
       icon: {
         alt: 'config',
@@ -177,7 +191,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-configcolor',
       },
       isProtected: false,
-      position: 3,
+      position: 4,
     },
     {
       name: 'Manage',
@@ -190,7 +204,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 4,
+      position: 5,
     },
   ];
   const extraInfo = [
@@ -400,12 +414,20 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     />
                   </div>
                 </div>
-                {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                <div
-                  className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                  data-testid="schema">
-                  <SchemaEditor value={schemaText} />
-                </div>
+                {schemaText ? (
+                  <Fragment>
+                    {getInfoBadge([{ key: 'Schema', value: schemaType }])}
+                    <div
+                      className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
+                      data-testid="schema">
+                      <SchemaEditor value={schemaText} />
+                    </div>
+                  </Fragment>
+                ) : (
+                  <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                    No schema data available
+                  </div>
+                )}
               </>
             )}
             {activeTab === 2 && (
@@ -426,11 +448,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               </div>
             )}
             {activeTab === 3 && (
+              <div data-testid="sample-data">
+                <SampleDataTopic
+                  isLoading={isSampleDataLoading}
+                  sampleData={sampleData}
+                />
+              </div>
+            )}
+            {activeTab === 4 && (
               <div data-testid="config">
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               </div>
             )}
-            {activeTab === 4 && !deleted && (
+            {activeTab === 5 && !deleted && (
               <div>
                 <ManageTabComponent
                   allowDelete

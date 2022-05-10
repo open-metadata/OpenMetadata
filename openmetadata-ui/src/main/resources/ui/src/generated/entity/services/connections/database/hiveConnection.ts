@@ -20,20 +20,20 @@ export interface HiveConnection {
    * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
    */
   authOptions?: string;
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Hive.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Hive.
+   * Host and port of the Hive service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Hive.
+   * Password to connect to Hive.
    */
   password?: string;
   /**
@@ -41,13 +41,14 @@ export interface HiveConnection {
    */
   scheme?: HiveScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: HiveType;
   /**
-   * username to connect  to the Athena. This user should have privileges to read all the
-   * metadata in Hive.
+   * Username to connect to Hive. This user should have privileges to read all the metadata in
+   * Hive.
    */
   username?: string;
 }

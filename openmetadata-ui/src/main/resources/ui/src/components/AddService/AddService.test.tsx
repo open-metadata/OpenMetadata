@@ -42,6 +42,10 @@ jest.mock('../AddIngestion/AddIngestion.component', () => () => (
   <>AddIngestion</>
 ));
 
+jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => () => (
+  <>TitleBreadcrumb.component</>
+));
+
 jest.mock('../ServiceConfig/ConnectionConfigForm', () => () => (
   <>ConnectionConfigForm</>
 ));
@@ -50,8 +54,20 @@ describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(
       <AddService
+        addIngestion={false}
+        handleAddIngestion={jest.fn()}
+        ingestionAction="Creating"
+        ingestionProgress={0}
+        isIngestionCreated={false}
+        isIngestionDeployed={false}
         newServiceData={undefined}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        slashedBreadcrumb={[
+          {
+            name: 'breadcrumb',
+            url: '',
+          },
+        ]}
         onAddIngestionSave={jest.fn()}
         onAddServiceSave={jest.fn()}
       />

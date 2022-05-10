@@ -14,6 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -70,6 +71,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEntityDeleteMessage,
   getEntityName,
   getPartialNameFromTableFQN,
   hasEditAccess,
@@ -87,6 +89,7 @@ import {
   getEntityFieldThreadCounts,
   getUpdatedThread,
 } from '../../utils/FeedUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getEntityLink } from '../../utils/TableUtils';
@@ -248,6 +251,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setTableData(tables);
           setTableInstanceCount(tables?.length || 0);
           setSlashedTableName([
+            {
+              name: startCase(ServiceCategory.DATABASE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+            },
             {
               name: service.name,
               url: service.name
@@ -568,11 +575,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       return;
     }
 
-    return `Deleting this databaseSchema will also delete ${pluralize(
-      tableInstanceCount,
-      'table',
-      's'
-    )}.`;
+    return getEntityDeleteMessage(
+      'Database Schema',
+      pluralize(tableInstanceCount, 'Table')
+    );
   };
 
   useEffect(() => {

@@ -16,20 +16,20 @@
  * Mssql Database Connection Config
  */
 export interface MssqlConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in MsSQL.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the MsSQL.
+   * Host and port of the MSSQL service.
    */
   hostPort: string;
   /**
-   * password to connect  to the MsSQL.
+   * Password to connect to MSSQL.
    */
   password?: string;
   /**
@@ -37,6 +37,7 @@ export interface MssqlConnection {
    */
   scheme?: MssqlScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * Service Type
@@ -47,8 +48,8 @@ export interface MssqlConnection {
    */
   uriString?: string;
   /**
-   * username to connect  to the MsSQL. This user should have privileges to read all the
-   * metadata in MsSQL.
+   * Username to connect to MSSQL. This user should have privileges to read all the metadata
+   * in MsSQL.
    */
   username: string;
 }

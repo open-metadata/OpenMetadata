@@ -41,6 +41,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DEFAULT_SERVICE,
+  DELTALAKE,
   DRUID,
   DYNAMODB,
   GLUE,
@@ -55,11 +56,13 @@ import {
   ORACLE,
   PIPELINE_DEFAULT,
   POSTGRES,
+  POWERBI,
   PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
   REDSHIFT,
+  SALESFORCE,
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
@@ -147,6 +150,12 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.SQLite:
       return SQLITE;
 
+    case DatabaseServiceType.Salesforce:
+      return SALESFORCE;
+
+    case DatabaseServiceType.DeltaLake:
+      return DELTALAKE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -167,6 +176,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.Metabase:
       return METABASE;
+
+    case DashboardServiceType.PowerBI:
+      return POWERBI;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
@@ -495,7 +507,9 @@ export const getServiceIngestionStepGuide = (
   isIngestion: boolean,
   ingestionName: string,
   serviceName: string,
-  ingestionType: IngestionPipelineType
+  ingestionType: IngestionPipelineType,
+  showDeployTitle: boolean,
+  isUpdated = false
 ) => {
   let guide;
   if (isIngestion) {
@@ -521,11 +535,23 @@ export const getServiceIngestionStepGuide = (
     guide = addServiceGuide.find((item) => item.step === step);
   }
 
+  const getTitle = (title: string) => {
+    const update =
+      isUpdated && showDeployTitle
+        ? title.replace('Added', 'Updated & Deployed')
+        : title.replace('Added', 'Updated');
+    const newTitle = showDeployTitle
+      ? title.replace('Added', 'Added & Deployed')
+      : title;
+
+    return isUpdated ? update : newTitle;
+  };
+
   return (
     <>
       {guide && (
         <>
-          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
           <div className="tw-mb-5">
             {isIngestion
               ? getFormattedGuideText(
@@ -557,4 +583,14 @@ export const getIngestionName = (
   } else {
     return `${serviceName}_${type}`;
   }
+};
+
+export const shouldTestConnection = (
+  serviceType: string,
+  serviceCategory: ServiceCategory
+) => {
+  return (
+    serviceType !== DatabaseServiceType.SampleData &&
+    serviceCategory !== ServiceCategory.PIPELINE_SERVICES
+  );
 };

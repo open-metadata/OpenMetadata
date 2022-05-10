@@ -28,6 +28,11 @@ const mockSecurityConfigGCSValue = {
   gcsConfig: {},
 };
 
+const mockPrefixConfig = {
+  dbtBucketName: 'Test Bucket',
+  dbtObjectPrefix: 'Test Prefix',
+};
+
 // const mockSecurityConfigGCSPath = {
 //   gcsConfig: 'gcsConfigPath',
 // };
@@ -41,6 +46,7 @@ const mockData = {
     ...mockSecurityConfigS3,
     ...mockSecurityConfigGCSValue,
   },
+  dbtPrefixConfig: mockPrefixConfig,
 };
 
 jest.mock('./DBTLocalConfig', () => ({
@@ -80,26 +86,34 @@ jest.mock('./DBTHttpConfig', () => ({
 jest.mock('./DBTS3Config', () => ({
   DBTS3Config: jest
     .fn()
-    .mockImplementation(({ handleSecurityConfigChange }) => (
-      <div
-        data-testid="dbt-s3"
-        onClick={() => {
-          handleSecurityConfigChange(mockSecurityConfigS3);
-        }}>
-        DBT S3 Config
-      </div>
-    )),
+    .mockImplementation(
+      ({ handleSecurityConfigChange, handlePrefixConfigChange }) => (
+        <div
+          data-testid="dbt-s3"
+          onClick={() => {
+            handleSecurityConfigChange(mockSecurityConfigS3);
+            handlePrefixConfigChange(mockPrefixConfig);
+          }}>
+          DBT S3 Config
+        </div>
+      )
+    ),
 }));
 
 jest.mock('./DBTGCSConfig', () => ({
   DBTGCSConfig: jest
     .fn()
     .mockImplementation(
-      ({ handleSecurityConfigChange, handleGcsTypeChange }) => (
+      ({
+        handleSecurityConfigChange,
+        handlePrefixConfigChange,
+        handleGcsTypeChange,
+      }) => (
         <div
           data-testid="dbt-gcs"
           onClick={() => {
             handleSecurityConfigChange(mockSecurityConfigS3);
+            handlePrefixConfigChange(mockPrefixConfig);
           }}
           onMouseDown={() => {
             handleGcsTypeChange(GCS_CONFIG.GCSValues);

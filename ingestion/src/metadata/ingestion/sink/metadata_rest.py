@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -47,6 +48,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
@@ -109,7 +111,7 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: Entity) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, CreateTopicRequest):
+        elif isinstance(record, Topic):
             self.write_topics(record)
         elif isinstance(record, Chart):
             self.write_charts(record)
@@ -127,6 +129,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_users(record)
         elif isinstance(record, CreateMlModelRequest):
             self.write_ml_model(record)
+        elif isinstance(record, OMetaTagAndCategory):
+            self.write_tag_category(record)
         elif isinstance(record, DeleteTable):
             self.delete_table(record)
         elif isinstance(record, OMetaTableTest):
@@ -175,6 +179,7 @@ class MetadataRestSink(Sink[Entity]):
                 description=db_schema_and_table.table.description,
                 databaseSchema=db_schema_ref,
                 tableConstraints=db_schema_and_table.table.tableConstraints,
+                tags=db_schema_and_table.table.tags,
             )
             if db_schema_and_table.table.viewDefinition:
                 table_request.viewDefinition = (
@@ -247,7 +252,7 @@ class MetadataRestSink(Sink[Entity]):
             )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(
+                "Failed to ingest table {} in database {}".format(
                     db_schema_and_table.table.name.__root__,
                     db_schema_and_table.database.name.__root__,
                 )
@@ -256,9 +261,26 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Table: {db_schema_and_table.table.name.__root__}")
 
-    def write_topics(self, topic: CreateTopicRequest) -> None:
+    def write_topics(self, topic: Topic) -> None:
         try:
-            created_topic = self.metadata.create_or_update(topic)
+            topic_request = CreateTopicRequest(
+                name=topic.name,
+                service=topic.service,
+                partitions=topic.partitions,
+                replicationFactor=topic.replicationFactor,
+                maximumMessageSize=topic.maximumMessageSize,
+                retentionTime=topic.retentionTime,
+                cleanupPolicies=topic.cleanupPolicies,
+                topicConfig=topic.topicConfig,
+            )
+            if topic.schemaType:
+                topic_request.schemaType = topic.schemaType
+                topic_request.schemaText = topic.schemaText
+            created_topic = self.metadata.create_or_update(topic_request)
+
+            if topic.sampleData:
+                self.metadata.ingest_topic_sample_data(created_topic, topic.sampleData)
+
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
             self.status.records_written(f"Topic: {created_topic.name.__root__}")
         except (APIError, ValidationError) as err:
@@ -384,6 +406,7 @@ class MetadataRestSink(Sink[Entity]):
     def _create_location(self, location: Location) -> Location:
         location_request = CreateLocationRequest(
             name=location.name,
+            path=location.path,
             description=location.description,
             locationType=location.locationType,
             tags=location.tags,
@@ -391,6 +414,21 @@ class MetadataRestSink(Sink[Entity]):
             service=location.service,
         )
         return self.metadata.create_or_update(location_request)
+
+    def write_tag_category(self, record: OMetaTagAndCategory):
+        try:
+            self.metadata.create_tag_category(tag_category_body=record.category_name)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+        try:
+            self.metadata.create_primary_tag(
+                category_name=record.category_name.name.__root__,
+                primary_tag_body=record.category_details,
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:

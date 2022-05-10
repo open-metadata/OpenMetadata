@@ -63,7 +63,6 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
-import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -88,7 +87,6 @@ import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.security.AuthenticationException;
-import org.openmetadata.catalog.security.jwt.JWKSResponse;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -111,7 +109,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   public UserResourceTest() {
     super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
     this.supportsAuthorizedMetadataOperations = false;
-    this.supportsFieldsQueryParam = false;
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
@@ -697,7 +694,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             authHeaders("ingestion-bot-jwt@email.com"));
     JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
-        getResource(String.format("users/generateToken/%s", user.getId())), authMechanism, OK, ADMIN_AUTH_HEADERS);
+        getResource(String.format("users/generateToken/%s", user.getId())),
+        JWTTokenExpiry.Seven,
+        OK,
+        ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
     JWTAuthMechanism jwtAuthMechanism =
@@ -718,8 +718,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   private DecodedJWT decodedJWT(String token) throws MalformedURLException, JwkException, HttpResponseException {
-    WebTarget target = getConfigResource("jwks");
-    JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
     DecodedJWT jwt;
     try {
       jwt = JWT.decode(token);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,20 +12,23 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes } from 'react';
-
-export interface Filter {
-  key: string;
-  value: string;
+/**
+ * User/Bot SSOAuthN.
+ */
+export interface SsoAuth {
+  /**
+   * Type of database service such as Amundsen, Atlas...
+   */
+  ssoServiceType?: SsoServiceType;
 }
-export interface AdvanceSearchProp extends HTMLAttributes<HTMLDivElement> {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleSearchBoxOpen: (value: boolean) => void;
-  onFilterChange: (filters: Array<Filter>) => void;
+
+/**
+ * Type of database service such as Amundsen, Atlas...
+ */
+export enum SsoServiceType {
+  Auth0 = 'Auth0',
+  Azure = 'Azure',
+  CustomOIDC = 'CustomOIDC',
+  Google = 'Google',
+  Okta = 'Okta',
 }

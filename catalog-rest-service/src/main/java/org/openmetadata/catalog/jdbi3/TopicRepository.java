@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -34,9 +35,11 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
+import org.openmetadata.catalog.type.topic.TopicSampleData;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
@@ -98,6 +101,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
+    topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
     return topic;
   }
 
@@ -120,6 +124,24 @@ public class TopicRepository extends EntityRepository<Topic> {
       addRelationship(service.getId(), topic.getId(), service.getType(), Entity.TOPIC, Relationship.CONTAINS);
       topic.setService(service);
     }
+  }
+
+  private TopicSampleData getSampleData(Topic topic) throws IOException {
+    return JsonUtils.readValue(
+        daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
+        TopicSampleData.class);
+  }
+
+  @Transaction
+  public Topic addSampleData(UUID topicId, TopicSampleData sampleData) throws IOException {
+    // Validate the request content
+    Topic topic = daoCollection.topicDAO().findEntityById(topicId);
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
+    setFields(topic, Fields.EMPTY_FIELDS);
+    return topic.withSampleData(sampleData);
   }
 
   public static class TopicEntityInterface extends EntityInterface<Topic> {

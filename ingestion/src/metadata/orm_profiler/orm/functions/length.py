@@ -40,5 +40,6 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.MariaDB)
 @compiles(LenFn, Dialects.Athena)
 @compiles(LenFn, Dialects.Trino)
+@compiles(LenFn, Dialects.Presto)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)

@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -377,6 +378,7 @@ class SampleDataSource(Source[Entity]):
             location_ev = Location(
                 id=uuid.uuid4(),
                 name=location["name"],
+                path=location["path"],
                 displayName=location["displayName"],
                 description=location["description"],
                 locationType=location["locationType"],
@@ -420,7 +422,8 @@ class SampleDataSource(Source[Entity]):
                 )
             location_metadata = Location(
                 id=uuid.uuid4(),
-                name="s3://glue_bucket/dwh/schema/" + table["name"],
+                name=table["name"],
+                path="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
                 locationType=location_type,
                 service=EntityReference(
@@ -469,7 +472,7 @@ class SampleDataSource(Source[Entity]):
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicRequest(**topic)
+            create_topic = Topic(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 

@@ -43,14 +43,9 @@
       "type": "string",
       "format": "password"
     },
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Host and port of the Snowflake service.",
-      "type": "string"
-    },
     "account": {
       "title": "Account",
-      "description": "Snowflake Account.",
+      "description": "If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp",
       "type": "string"
     },
     "role": {

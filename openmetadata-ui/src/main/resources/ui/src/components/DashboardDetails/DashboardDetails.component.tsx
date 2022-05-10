@@ -29,6 +29,7 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityDeleteMessage,
   getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
@@ -390,11 +391,14 @@ const DashboardDetails = ({
   };
 
   const getDeleteEntityMessage = () => {
-    return `Deleting this ${EntityType.DASHBOARD} will also delete ${pluralize(
-      charts.length,
-      'chart',
-      's'
-    )}`;
+    if (!charts.length) {
+      return;
+    }
+
+    return getEntityDeleteMessage(
+      EntityType.DASHBOARD,
+      pluralize(charts.length, 'Chart')
+    );
   };
 
   const getLoader = () => {

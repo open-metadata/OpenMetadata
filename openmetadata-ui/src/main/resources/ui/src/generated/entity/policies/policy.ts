@@ -320,13 +320,17 @@ export interface Location {
   id?: string;
   locationType?: LocationType;
   /**
-   * Name of a location without the service. For example s3://bucket/path1/path2.
+   * Name of a location
    */
   name: string;
   /**
    * Owner of this location.
    */
   owner?: OwnerElement;
+  /**
+   * Location full path
+   */
+  path?: string;
   /**
    * Link to the database cluster/service where this database is hosted in.
    */

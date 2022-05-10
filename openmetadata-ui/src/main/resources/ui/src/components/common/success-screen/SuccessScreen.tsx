@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isUndefined } from 'lodash';
 import React from 'react';
 import { FormSubmitType } from '../../../enums/form.enum';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -18,18 +19,23 @@ import { Button } from '../../buttons/Button/Button';
 
 type SuccessScreenProps = {
   name: string;
+  successMessage?: JSX.Element;
   showIngestionButton: boolean;
+  showDeployButton?: boolean;
   state: FormSubmitType;
   handleIngestionClick?: () => void;
   handleViewServiceClick: () => void;
+  handleDeployClick?: () => void;
 };
 
 const SuccessScreen = ({
   name,
-  state,
   showIngestionButton,
+  showDeployButton = false,
   handleIngestionClick,
   handleViewServiceClick,
+  handleDeployClick,
+  successMessage,
 }: SuccessScreenProps) => {
   return (
     <div
@@ -44,11 +50,14 @@ const SuccessScreen = ({
         />
       </div>
       <p className="tw-mb-7" data-testid="success-line">
-        <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-        <span>
-          has been {state === FormSubmitType.EDIT ? 'updated' : 'created'}{' '}
-          successfully
-        </span>
+        {isUndefined(successMessage) ? (
+          <span>
+            <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
+            <span>has been created successfully</span>
+          </span>
+        ) : (
+          successMessage
+        )}
       </p>
 
       <div>
@@ -70,6 +79,18 @@ const SuccessScreen = ({
             variant="contained"
             onClick={handleIngestionClick}>
             <span>Add Ingestion</span>
+          </Button>
+        )}
+
+        {showDeployButton && (
+          <Button
+            className="tw-ml-3.5"
+            data-testid="add-ingestion-button"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleDeployClick}>
+            <span>Deploy</span>
           </Button>
         )}
       </div>

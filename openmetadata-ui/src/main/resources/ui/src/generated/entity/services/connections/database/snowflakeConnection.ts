@@ -19,23 +19,27 @@ export interface SnowflakeConnection {
   /**
    * Snowflake Account.
    */
-  account?: string;
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  account: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Snowflake.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * Host and port of the Snowflake service.
    */
   hostPort?: string;
   /**
-   * password to connect  to the Snowflake.
+   * Password to connect to Snowflake.
    */
   password?: string;
+  /**
+   * Connection to Snowflake instance via Private Key
+   */
+  privateKey?: string;
   /**
    * Snowflake Role.
    */
@@ -44,17 +48,22 @@ export interface SnowflakeConnection {
    * SQLAlchemy driver scheme options.
    */
   scheme?: SnowflakeScheme;
+  /**
+   * Snowflake Passphrase Key used with Private Key
+   */
+  snowflakePrivatekeyPassphrase?: string;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
   type?: SnowflakeType;
   /**
-   * username to connect  to the Snowflake. This user should have privileges to read all the
+   * Username to connect to Snowflake. This user should have privileges to read all the
    * metadata in Snowflake.
    */
-  username?: string;
+  username: string;
   /**
    * Snowflake warehouse.
    */

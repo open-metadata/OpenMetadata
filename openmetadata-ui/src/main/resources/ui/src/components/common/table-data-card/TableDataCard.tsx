@@ -139,7 +139,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         <div className="tw-flex tw-items-center">
           <img
             alt=""
-            className="tw-inline tw-h-5 tw-w-5"
+            className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">

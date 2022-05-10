@@ -89,12 +89,13 @@ class GcsSource(Source[Entity]):
         try:
             for bucket in self.gcs.list_buckets():
                 self.status.scanned(bucket.name)
-                location_name = self._get_bucket_name_with_prefix(bucket.name)
+                location_path = self._get_bucket_name_with_prefix(bucket.name)
                 location_id = uuid.uuid4()
                 location = Location(
                     id=location_id,
-                    name=location_name,
-                    displayName=location_name,
+                    name=bucket.name,
+                    path=location_path,
+                    displayName=bucket.name,
                     locationType=LocationType.Bucket,
                     service=EntityReference(
                         id=self.service.id,

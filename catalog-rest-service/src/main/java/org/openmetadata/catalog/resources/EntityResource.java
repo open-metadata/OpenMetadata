@@ -36,7 +36,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
 
   public EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
-    allowedFields = Entity.getEntityFields(entityClass);
+    allowedFields = Entity.getAllowedFields(entityClass);
     supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
     this.authorizer = authorizer;

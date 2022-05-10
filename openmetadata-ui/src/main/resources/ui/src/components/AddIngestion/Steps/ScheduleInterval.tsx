@@ -27,6 +27,7 @@ const ScheduleInterval = ({
   handleStartDateChange,
   endDate,
   handleEndDateChange,
+  submitButtonLabel,
   onBack,
   onDeploy,
 }: ScheduleIntervalProps) => {
@@ -103,7 +104,7 @@ const ScheduleInterval = ({
             theme="primary"
             variant="contained"
             onClick={onDeploy}>
-            <span>Deploy</span>
+            <span>{submitButtonLabel}</span>
           </Button>
         )}
       </Field>

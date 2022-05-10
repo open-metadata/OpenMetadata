@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isUndefined, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -42,7 +43,7 @@ import {
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic } from '../../generated/entity/data/topic';
+import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -55,6 +56,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -100,6 +102,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+
+  const [sampleData, setSampleData] = useState<TopicSampleData>();
+  const [isSampleDataLoading, setIsSampleDataLoading] =
+    useState<boolean>(false);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -157,6 +163,47 @@ const TopicDetailsPage: FunctionComponent = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.ACTIVITY_FEED: {
+        fetchActivityFeed();
+
+        break;
+      }
+
+      case TabSpecificField.SAMPLE_DATA: {
+        if (!isUndefined(sampleData)) {
+          break;
+        } else {
+          setIsSampleDataLoading(true);
+          getTopicByFqn(topicFQN, tabField)
+            .then((res: AxiosResponse) => {
+              if (res.data) {
+                const { sampleData } = res.data;
+                setSampleData(sampleData);
+              } else {
+                showErrorToast(
+                  jsonData['api-error-messages']['fetch-sample-data-error']
+                );
+              }
+            })
+            .catch((err: AxiosError) => {
+              showErrorToast(
+                err,
+                jsonData['api-error-messages']['fetch-sample-data-error']
+              );
+            })
+            .finally(() => setIsSampleDataLoading(false));
+
+          break;
+        }
+      }
+
+      default:
+        break;
+    }
+  };
+
   const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
     const jsonPatch = compare(topicDetails, updatedData);
 
@@ -209,6 +256,10 @@ const TopicDetailsPage: FunctionComponent = () => {
           setRetentionSize(retentionSize);
           setDeleted(deleted);
           setSlashedTopicName([
+            {
+              name: startCase(ServiceCategory.MESSAGING_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.MESSAGING_SERVICES),
+            },
             {
               name: service.name,
               url: service.name
@@ -472,12 +523,12 @@ const TopicDetailsPage: FunctionComponent = () => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
     }
-    if (TabSpecificField.ACTIVITY_FEED === tab) {
-      fetchActivityFeed();
-    } else {
-      setEntityThread([]);
-    }
+    setEntityThread([]);
   }, [tab]);
+
+  useEffect(() => {
+    fetchTabSpecificData(topicDetailsTabs[activeTab - 1].field);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchTopicDetail(topicFQN);
@@ -508,6 +559,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           fetchFeedHandler={fetchActivityFeed}
           followTopicHandler={followTopic}
           followers={followers}
+          isSampleDataLoading={isSampleDataLoading}
           isentityThreadLoading={isentityThreadLoading}
           maximumMessageSize={maximumMessageSize}
           owner={owner as EntityReference}
@@ -516,6 +568,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           postFeedHandler={postFeedHandler}
           replicationFactor={replicationFactor}
           retentionSize={retentionSize}
+          sampleData={sampleData}
           schemaText={schemaText}
           schemaType={schemaType}
           setActiveTabHandler={activeTabHandler}

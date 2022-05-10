@@ -6,10 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Location",
   "definitions": {
-    "locationName": {
-      "description": "Local name (not fully qualified name) of a location.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
     "locationType": {
       "javaType": "org.openmetadata.catalog.type.LocationType",
       "description": "This schema defines the type used for describing different types of Location.",
@@ -40,8 +36,12 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of a location without the service. For example s3://bucket/path1/path2.",
-      "$ref": "#/definitions/locationName"
+      "description": "Name of a location",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "path": {
+      "description": "Location full path",
+      "type": "string"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",

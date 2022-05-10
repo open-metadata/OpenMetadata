@@ -13,23 +13,23 @@
  */
 
 /**
- * DB2 Connection Config
+ * Db2 Connection Config
  */
 export interface Db2Connection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in DB2.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the DB2
+   * Host and port of the DB2 service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect to the DB2.
+   * Password to connect to DB2.
    */
   password?: string;
   /**
@@ -37,15 +37,16 @@ export interface Db2Connection {
    */
   scheme?: Db2Scheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: Db2Type;
   /**
-   * username to connect  to the DB2. This user should have privileges to read all the
-   * metadata in DB2.
+   * Username to connect to DB2. This user should have privileges to read all the metadata in
+   * DB2.
    */
-  username?: string;
+  username: string;
 }
 
 /**

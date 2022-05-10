@@ -23,9 +23,15 @@ export const addIngestionPipeline = (
 };
 
 export const getIngestionPipelineByFqn = (
-  fqn: string
+  fqn: string,
+  arrQueryFields?: Array<string>
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/services/ingestionPipelines/name/${fqn}`);
+  const url = getURLWithQueryFields(
+    `/services/ingestionPipelines/name/${fqn}`,
+    arrQueryFields
+  );
+
+  return APIClient.get(url);
 };
 
 export const getIngestionPipelines = (
@@ -47,6 +53,12 @@ export const triggerIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/services/ingestionPipelines/trigger/${id}`);
+};
+
+export const deployIngestionPipelineById = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.post(`/services/ingestionPipelines/deploy/${id}`);
 };
 
 export const deleteIngestionPipelineById = (

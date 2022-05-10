@@ -77,8 +77,8 @@ const SelectServiceType = ({
                 key={type}
                 onClick={() => handleServiceTypeClick(type)}>
                 <div className="tw-mb-2.5">
-                  <div className="tw-w-9" data-testid="service-icon">
-                    {getServiceLogo(type || '', 'tw-h-9 tw-w-9')}
+                  <div data-testid="service-icon">
+                    {getServiceLogo(type || '', 'tw-h-9')}
                   </div>
                   <div className="tw-absolute tw-top-0 tw-right-1.5">
                     {type === selectServiceType && (

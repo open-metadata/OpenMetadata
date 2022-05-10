@@ -33,6 +33,21 @@
       "javaType": "org.openmetadata.catalog.type.topic.TopicConfig",
       "description": "Contains key/value pair of topic configuration.",
       "type": "object"
+    },
+    "topicSampleData": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.topic.TopicSampleData",
+      "description": "This schema defines the type to capture sample data for a topic.",
+      "properties": {
+        "messages": {
+          "description": "List of local sample messages for a topic.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -120,6 +135,11 @@
     "topicConfig": {
       "description": "Contains key/value pair of topic configuration.",
       "$ref": "#/definitions/topicConfig"
+    },
+    "sampleData": {
+      "description": "Sample data for a topic.",
+      "$ref": "#/definitions/topicSampleData",
+      "default": null
     },
     "owner": {
       "description": "Owner of this topic.",

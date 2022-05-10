@@ -21,6 +21,8 @@ import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPag
 import AddIngestionPage from '../pages/AddIngestionPage/AddIngestionPage.component';
 import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
 import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
+import BotsListPage from '../pages/BotsListpage/BotsListpage.component';
+import BotsPage from '../pages/BotsPage/BotsPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
@@ -64,6 +66,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
       />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
+      <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE} />
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
@@ -163,6 +166,13 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CreateUserPage}
         path={ROUTES.CREATE_USER}
       />
+      <AdminProtectedRoute exact component={BotsListPage} path={ROUTES.BOTS} />
+      <AdminProtectedRoute
+        exact
+        component={BotsPage}
+        path={ROUTES.BOTS_PROFILE}
+      />
+
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

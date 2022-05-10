@@ -108,11 +108,7 @@ public final class TestUtils {
             .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
     SNOWFLAKE_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(
-                new SnowflakeConnection()
-                    .withHostPort("snowflake:1000")
-                    .withUsername("snowflake")
-                    .withPassword("snowflake"));
+            .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
   }
 
   static {

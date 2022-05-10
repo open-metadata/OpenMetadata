@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
 import {
@@ -69,7 +69,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
-import { getAddServicePath } from '../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -98,13 +101,15 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
+  const { serviceCategory } = useParams<{ [key: string]: string }>();
   const history = useHistory();
 
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [serviceName, setServiceName] =
-    useState<ServiceTypes>('databaseServices');
+  const [serviceName, setServiceName] = useState<ServiceTypes>(
+    (serviceCategory as ServiceTypes) ?? 'databaseServices'
+  );
   const [paging, setPaging] = useState<ServicePagingRecord>({
     databaseServices: pagingObject,
     messagingServices: pagingObject,
@@ -374,6 +379,7 @@ const ServicesPage = () => {
   const handleTabChange = (tabName: ServiceTypes) => {
     setSearchText('');
     setServiceName(tabName);
+    history.push(getServicesWithTabPath(tabName));
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
   };
 
@@ -424,7 +430,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="brokers">
-                {getBrokers(messagingService.connection.config)}
+                {getBrokers(messagingService.connection?.config)}
               </span>
             </div>
           </>
@@ -610,7 +616,7 @@ const ServicesPage = () => {
                 <div
                   className="tw-flex tw-justify-end"
                   data-testid="service-icon">
-                  {getServiceLogo(service.serviceType || '', 'tw-h-8 tw-w-8')}
+                  {getServiceLogo(service.serviceType || '', 'tw-h-8')}
                 </div>
               </div>
             </div>
