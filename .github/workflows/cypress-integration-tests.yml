@@ -37,6 +37,14 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
 
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: openmetadata-ui/src/main/resources/ui/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Generating Data Models
         run: make install_dev generate
 
@@ -50,10 +58,12 @@ jobs:
         uses: cypress-io/github-action@v2
         with:
           install: false
+          record: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           command: yarn run cypress:run
         env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks

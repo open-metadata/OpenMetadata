@@ -174,7 +174,7 @@ describe('login with SSO', () => {
         const connectionInput = () => {
           cy.get('#root_username').type('openmetadata_user');
           cy.get('#root_password').type('openmetadata_password');
-          cy.get('#root_hostPort').type('host.docker.internal:3306');
+          cy.get('#root_hostPort').type('172.16.239.10:3306');
           cy.get('#root_database').type('openmetadata_db');
         };
 
