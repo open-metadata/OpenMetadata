@@ -27,7 +27,6 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
-    container: cypress/browsers:node12.18.3-chrome87-ff82
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -38,11 +37,6 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
 
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.8'
-
       - name: Generating Data Models
         run: make install_dev generate
 
@@ -52,52 +46,9 @@ jobs:
         run: ./docker/run_local_docker.sh
         timeout-minutes: 20
 
-      - name: Cypress install
-        uses: cypress-io/github-action@v2
-        with:
-          # Disable running of tests within install job
-          runTests: false
-
-      - name: Save build folder
-        uses: actions/upload-artifact@v2
-        with:
-          name: build
-          if-no-files-found: error
-          path: openmetadata-ui/src/main/resources/ui/
-
-
-  ui-chrome-tests:
-    runs-on: ubuntu-latest
-    container: cypress/browsers:node12.18.3-chrome87-ff82
-    needs: install
-    strategy:
-      fail-fast: false
-      matrix:
-        # run copies of the current job in parallel
-        containers: [ 1, 2, 3, 4, 5 ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Download the build folders
-        uses: actions/download-artifact@v2
-        with:
-          name: build
-          path: build
-
-      - name: 'UI Tests - Chrome'
-        uses: cypress-io/github-action@v2
-        with:
-          # we have already installed all dependencies above
-          install: false
-          start: yarn mock-api
-          wait-on: 'http://localhost:8585'
-          wait-on-timeout: 120
-          browser: chrome
-          record: true
-          parallel: true
-          group: 'UI - Chrome'
-          spec: openmetadata-ui/src/main/resources/ui/cypress/integration/*
+      - name: Run Cypress Tests
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn run cypress:run
         env:
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}
           # Recommended: pass the GitHub token lets this action correctly
