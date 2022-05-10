@@ -46,6 +46,12 @@ NAME        	URL
 open-metadata	https://helm.open-metadata.org/
 ```
 
+Assuming kubectl context points to the correct kubernetes cluster, first create kubernetes secrets that contain airflow mysql password as secrets.
+
+```
+kubectl create secret generic airflow-mysql-secrets --from-literal=airflow-mysql-password=airflow_pass
+```
+
 Deploy the dependencies by running the following command.
 
 ```
@@ -63,9 +69,9 @@ helm install openmetadata-dependencies open-metadata/openmetadata-dependencies -
 Run `kubectl get pods` to check whether all the pods for the dependencies are running. You should get a result similar to below.
 
 ```
-NAME                            READY   STATUS    RESTARTS   AGE
-elasticsearch-0                 1/1     Running   0          3m56s
-mysql-0                         1/1     Running   0          3m56s
+NAME                              READY   STATUS    RESTARTS   AGE
+elasticsearch-0                   1/1     Running   0          4m56s
+mysql-0                           1/1     Running   0          4m56s
 ```
 
 Next, deploy OpenMetadata by running the following command.
@@ -90,8 +96,15 @@ To expose the OpenMetadata UI on a local Kubernetes instance, run this command.
 
 ```
 kubectl port-forward <openmetadata-front end pod name> 8585:8585
+
 ```
 {% endhint %}
+
+### Next Steps
+
+1. Visit the [Features](../../docs/overview/features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ## Troubleshooting
 
@@ -126,6 +139,17 @@ kubectl logs <POD_NAME> --namespace <NAMESPACE_NAME>
 ```
 
 For more information, visit the kubectl logs command line reference documentation [here](https://kubernetes.io/docs/tasks/debug-application-cluster/debug-running-pod/).
+
+### Uninstall OpenMetadata Helm Charts
+
+Use the below command to uninstall OpenMetadata Helm Charts completely.
+
+```
+helm uninstall openmetadata
+helm uninstall openmetadata-dependencies
+```
+
+MySql and ElasticSearch OpenMetadata Dependencies as deployed as StatefulSets and have persistent volumes (pv) and and persistent volume claims (pvc). These will need to be manually cleaned after helm uninstall. You can use `kubectl delete CLI` command for the same.
 
 ## Enable Security
 

@@ -13,7 +13,3 @@ description: >-
 {% content-ref url="values.yaml.md" %}
 [values.yaml.md](values.yaml.md)
 {% endcontent-ref %}
-
-{% content-ref url="../../docs/deploy/secure-openmetadata/" %}
-[secure-openmetadata](../../docs/deploy/secure-openmetadata/)
-{% endcontent-ref %}
