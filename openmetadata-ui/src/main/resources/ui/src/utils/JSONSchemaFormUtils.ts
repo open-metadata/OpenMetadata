@@ -74,7 +74,6 @@ export function formatFormDataForSubmit<T>(formData: T): T {
   formData = cloneDeep(formData);
   formData = escapeBackwardSlashChar(formData);
   formData = formatAdditionalProperties(formData);
-  formData = formatConnectionFields(formData, 'connectionOptions');
   formData = formatConnectionFields(formData, 'connectionArguments');
 
   return formData;
@@ -101,7 +100,6 @@ function formatConnectionFieldsForRender<T>(formData: T, field: string): T {
 
 export function formatFormDataForRender<T>(formData: T): T {
   formData = cloneDeep(formData);
-  formData = formatConnectionFieldsForRender(formData, 'connectionOptions');
   formData = formatConnectionFieldsForRender(formData, 'connectionArguments');
 
   return formData;

@@ -44,7 +44,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
-  static final String USER_PATCH_FIELDS = "profile,roles,teams";
+  static final String USER_PATCH_FIELDS = "profile,roles,teams,inheritedRoles,authenticationMechanism";
   static final String USER_UPDATE_FIELDS = "profile,roles,teams";
 
   public UserRepository(CollectionDAO dao) {
@@ -78,7 +78,11 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withId(original.getId()).withName(original.getName()).withInheritedRoles(original.getInheritedRoles());
+    updated
+        .withId(original.getId())
+        .withName(original.getName())
+        .withInheritedRoles(original.getInheritedRoles())
+        .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
 
   private List<EntityReference> getTeamDefaultRoles(User user) throws IOException {

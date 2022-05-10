@@ -43,7 +43,10 @@ export type DbtConfigHttp = Pick<
   'dbtCatalogHttpPath' | 'dbtManifestHttpPath'
 >;
 
-export type DbtConfigS3GCS = Pick<DbtConfigSource, 'dbtSecurityConfig'>;
+export type DbtConfigS3GCS = Pick<
+  DbtConfigSource,
+  'dbtSecurityConfig' | 'dbtPrefixConfig'
+>;
 
 export type DbtS3Creds = Pick<
   SCredentials,

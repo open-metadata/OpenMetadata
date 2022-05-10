@@ -101,6 +101,11 @@ const AddIngestion = ({
       (data?.source.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
     )
   );
+  const [showDatabaseFilter, setShowDatabaseFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.databaseFilterPattern
+    )
+  );
   const [showSchemaFilter, setShowSchemaFilter] = useState(
     !isUndefined(
       (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern
@@ -137,11 +142,7 @@ const AddIngestion = ({
   >(showDBTConfig ? (configData as DbtConfigSource) : undefined);
 
   const sourceTypeData = useMemo(
-    () =>
-      getSourceTypeFromConfig(
-        configData as DbtConfigSource | undefined,
-        status === FormSubmitType.ADD ? DBT_SOURCES.local : ('' as DBT_SOURCES)
-      ),
+    () => getSourceTypeFromConfig(configData as DbtConfigSource | undefined),
     [configData]
   );
   const [dbtConfigSourceType, setDbtConfigSourceType] = useState<
@@ -170,12 +171,17 @@ const AddIngestion = ({
       true
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
-    isUndefined(data?.loggerLevel) ?? data?.loggerLevel === LogLevels.Debug
+    isUndefined(data?.loggerLevel) || data?.loggerLevel === LogLevels.Debug
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.source.sourceConfig.config as ConfigClass)
         ?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN
+    );
+  const [databaseFilterPattern, setDatabaseFilterPattern] =
+    useState<FilterPattern>(
+      (data?.source.sourceConfig.config as ConfigClass)
+        ?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
     );
   const [schemaFilterPattern, setSchemaFilterPattern] = useState<FilterPattern>(
     (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
@@ -230,6 +236,10 @@ const AddIngestion = ({
         });
 
         break;
+      case FilterPatternEnum.DATABASE:
+        setDatabaseFilterPattern({ ...databaseFilterPattern, includes: value });
+
+        break;
       case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, includes: value });
 
@@ -261,6 +271,10 @@ const AddIngestion = ({
         });
 
         break;
+      case FilterPatternEnum.DATABASE:
+        setDatabaseFilterPattern({ ...databaseFilterPattern, excludes: value });
+
+        break;
       case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, excludes: value });
 
@@ -288,6 +302,10 @@ const AddIngestion = ({
     switch (type) {
       case FilterPatternEnum.DASHBOARD:
         setShowDashboardFilter(value);
+
+        break;
+      case FilterPatternEnum.DATABASE:
+        setShowDatabaseFilter(value);
 
         break;
       case FilterPatternEnum.SCHEMA:
@@ -377,6 +395,7 @@ const AddIngestion = ({
           enableDataProfiler: enableDataProfiler,
           generateSampleData: ingestSampleData,
           includeViews: includeView,
+          databaseFilterPattern: getFilterPatternData(databaseFilterPattern),
           schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
           tableFilterPattern: getFilterPatternData(tableFilterPattern),
           chartFilterPattern: getFilterPatternData(chartFilterPattern),
@@ -529,6 +548,7 @@ const AddIngestion = ({
           <ConfigureIngestion
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
+            databaseFilterPattern={databaseFilterPattern}
             description={description}
             enableDataProfiler={enableDataProfiler}
             enableDebugLog={enableDebugLog}
@@ -559,6 +579,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
+            showDatabaseFilter={showDatabaseFilter}
             showFqnFilter={showFqnFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}

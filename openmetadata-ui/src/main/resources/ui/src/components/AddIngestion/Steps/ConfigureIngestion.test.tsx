@@ -30,6 +30,10 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
+  databaseFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   dashboardFilterPattern: {
     includes: [],
     excludes: [],
@@ -63,6 +67,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestSampleData: false,
   markDeletedTables: false,
   showDashboardFilter: false,
+  showDatabaseFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
   showTopicFilter: false,
@@ -111,7 +116,7 @@ describe('Test ConfigureIngestion component', () => {
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(filterPatternComponents.length).toBe(2);
+    expect(filterPatternComponents.length).toBe(3);
     expect(toggleSwitchs.length).toBe(5);
   });
 });

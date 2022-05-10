@@ -10,8 +10,8 @@
 #  limitations under the License.
 """Metadata source module"""
 
-from dataclasses import dataclass, field
-from typing import Iterable, List
+import logging
+from typing import Iterable
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -19,65 +19,53 @@ from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.metadata import MetadataSource
 
-logger = ingestion_logger()
-
-
-@dataclass
-class MetadataSourceStatus(SourceStatus):
-    """Metadata Source class -- extends SourceStatus class
-
-    Attributes:
-        success:
-        failures:
-        warnings:
-    """
-
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-
-    def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
-        """scanned entity method
-
-        Args:
-            entity_name (str):
-        """
-        self.success.append(entity_name)
-        logger.info("%s Scanned: %s", entity_class_name, entity_name)
-
-    # pylint: disable=unused-argument
-    def filtered(
-        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
-    ) -> None:
-        """filtered methods
-
-        Args:
-            table_name (str):
-            err (str):
-        """
-        self.warnings.append(table_name)
-        logger.warning("Dropped Entity %s due to %s", table_name, err)
+logger = logging.getLogger(__name__)
 
 
-class MetadataSource(Source[Entity]):
-    """Metadata source class
+class PolicyWrapper:
+    policy_dict: dict
+
+    def __init__(self, policy_dict) -> None:
+        self.policy_dict = policy_dict
+
+
+class TagWrapper:
+    tag_dict: dict
+
+    def __init__(self, tag_dict) -> None:
+        self.tag_dict = tag_dict
+
+
+class MessagingServiceWrapper:
+    messaging_service_dict: dict
+
+    def __init__(self, messaging_service_dict) -> None:
+        self.messaging_service_dict = messaging_service_dict
+
+
+class DatabaseServiceWrapper:
+    database_service_dict: dict
+
+    def __init__(self, database_service_dict) -> None:
+        self.database_service_dict = database_service_dict
+
+
+class MigrateSource(MetadataSource):
+    """OpenmetadataSource class
 
     Args:
         config:
@@ -102,22 +90,20 @@ class MetadataSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-        self.config = config
-        self.metadata_config = metadata_config
-        self.service_connection = config.serviceConnection.__root__.config
-        self.status = MetadataSourceStatus()
-        self.wrote_something = False
-        self.metadata = None
-        self.tables = None
-        self.topics = None
-
-    def prepare(self):
-        pass
+        super().__init__(config, metadata_config)
+        self.metadata = OpenMetadata(
+            OpenMetadataConnection.parse_obj(self.service_connection)
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        raise NotImplementedError("Create Method not implemented")
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: OpenMetadataConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, OpenMetadataConnection):
+            raise InvalidSourceException(
+                f"Expected OpenMetadataConnection, but got {connection}"
+            )
+        return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
         if self.service_connection.includeTables:
@@ -177,27 +163,16 @@ class MetadataSource(Source[Entity]):
             )
 
         if self.service_connection.includePolicy:
-            yield from self.fetch_entities(
-                entity_class=Policy,
-                fields=[],
-            )
+            yield from self.fetch_policy()
+
         if self.service_connection.includeTags:
-            yield from self.fetch_entities(
-                entity_class=Tag,
-                fields=[],
-            )
+            yield from self.fetch_tags()
 
         if self.service_connection.includeMessagingServices:
-            yield from self.fetch_entities(
-                entity_class=MessagingService,
-                fields=["owner"],
-            )
+            yield from self.fetch_messaging_services()
 
         if self.service_connection.includeDatabaseServices:
-            yield from self.fetch_entities(
-                entity_class=DatabaseService,
-                fields=["owner"],
-            )
+            yield from self.fetch_database_services()
 
         if self.service_connection.includePipelineServices:
             yield from self.fetch_entities(
@@ -205,27 +180,27 @@ class MetadataSource(Source[Entity]):
                 fields=["owner"],
             )
 
-    def fetch_entities(self, entity_class, fields):
-        after = None
-        while True:
-            entities_list = self.metadata.list_entities(
-                entity=entity_class,
-                fields=fields,
-                after=after,
-                limit=self.service_connection.limitRecords,
-            )
-            for entity in entities_list.entities:
-                self.status.scanned_entity(entity_class.__name__, entity.name)
-                yield entity
-            if entities_list.after is None:
-                break
-            after = entities_list.after
+    def fetch_policy(self):
+        policy_entities = self.metadata.client.get("/policies")
+        for policy in policy_entities.get("data"):
+            yield PolicyWrapper(policy)
 
-    def get_status(self) -> SourceStatus:
-        return self.status
+    def fetch_tags(self):
+        tag_entities = self.metadata.client.get("/tags")
+        for tag in tag_entities.get("data"):
+            tag_detailed_entity = self.metadata.client.get(f"/tags/{tag.get('name')}")
+            yield TagWrapper(tag_detailed_entity)
 
-    def close(self):
-        pass
+    def fetch_messaging_services(self):
+        service_entities = self.metadata.client.get(
+            "/services/messagingServices?fields=owner"
+        )
+        for service in service_entities.get("data"):
+            yield MessagingServiceWrapper(service)
 
-    def test_connection(self) -> None:
-        pass
+    def fetch_database_services(self):
+        service_entities = self.metadata.client.get(
+            "/services/databaseServices?fields=owner"
+        )
+        for service in service_entities.get("data"):
+            yield DatabaseServiceWrapper(service)

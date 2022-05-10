@@ -83,6 +83,8 @@ export const bytesToSize = (bytes: number) => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   if (bytes === 0) {
     return `${bytes} ${sizes[0]}`;
+  } else if (bytes < 0) {
+    return `N/A`;
   } else {
     const i = parseInt(
       Math.floor(Math.log(bytes) / Math.log(1024)).toString(),

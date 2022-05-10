@@ -13,6 +13,7 @@
 
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import {
+  DBTBucketDetails,
   DbtConfigSource,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -35,15 +36,18 @@ import {
 
 interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleSecurityConfigChange: (value: SCredentials) => void;
+  handlePrefixConfigChange: (value: DBTBucketDetails) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
+  dbtPrefixConfig,
   okText,
   cancelText,
   onCancel,
   onSubmit,
   handleSecurityConfigChange,
+  handlePrefixConfigChange,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -52,6 +56,14 @@ export const DBTS3Config: FunctionComponent<Props> = ({
     };
     delete updatedCreds.gcsConfig;
     handleSecurityConfigChange(updatedCreds);
+  };
+
+  const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
+    const updatedBucket: DBTBucketDetails = {
+      ...dbtPrefixConfig,
+      [key]: val,
+    };
+    handlePrefixConfigChange(updatedBucket);
   };
 
   const [errors, setErrors] = useState<ErrorDbtS3>();
@@ -68,7 +80,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig };
+    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -172,6 +184,44 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           onChange={(e) => updateS3Creds('endPointURL', e.target.value)}
         />
         {errors?.endPointURL && errorMsg(errors.endPointURL)}
+      </Field>
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbt-bucket-name">
+          DBT Bucket Name
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          Name of the bucket where the dbt files are stored.
+        </p>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="dbt-bucket-name"
+          id="dbt-bucket-name"
+          name="dbt-bucket-name"
+          type="text"
+          value={dbtPrefixConfig?.dbtBucketName}
+          onChange={(e) => updateDbtBucket('dbtBucketName', e.target.value)}
+        />
+      </Field>
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbt-object-prefix">
+          DBT Object Prefix
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          Path of the folder where the dbt files are stored.
+        </p>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="dbt-object-prefix"
+          id="dbt-object-prefix"
+          name="dbt-object-prefix"
+          type="text"
+          value={dbtPrefixConfig?.dbtObjectPrefix}
+          onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
+        />
       </Field>
       {getSeparator('')}
 

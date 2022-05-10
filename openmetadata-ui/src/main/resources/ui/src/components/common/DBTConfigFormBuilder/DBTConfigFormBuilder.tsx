@@ -13,6 +13,7 @@
 
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import {
+  DBTBucketDetails,
   DbtConfigSource,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -42,7 +43,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
-    val?: string | SCredentials
+    val?: string | SCredentials | DBTBucketDetails
   ) => {
     setDbtConfig((pre) => {
       return { ...pre, [key]: val };
@@ -91,7 +92,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTS3Config
         cancelText={cancelText}
+        dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
+        handlePrefixConfigChange={(val) => {
+          updateDbtConfig('dbtPrefixConfig', val);
+        }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
         }}
@@ -106,11 +111,14 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTGCSConfig
         cancelText={cancelText}
+        dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
         gcsType={gcsType}
         handleGcsTypeChange={(type) => {
           handleGcsTypeChange && handleGcsTypeChange(type);
-          setDbtConfig(data);
+        }}
+        handlePrefixConfigChange={(val) => {
+          updateDbtConfig('dbtPrefixConfig', val);
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
