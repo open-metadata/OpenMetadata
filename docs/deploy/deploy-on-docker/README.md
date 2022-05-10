@@ -110,7 +110,7 @@ Create a new directory for OpenMetadata and navigate into that directory.
 
 ```
 mkdir openmetadata-docker && cd openmetadata-docker
-curl --silent --output docker-compose.yml https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-release/docker-compose.yml
+curl --silent --o curl -SL https://github.com/open-metadata/OpenMetadata/releases/download/0.10.0-release/docker-compose.yml -o docker-compose.yml -s
 docker compose up -d
 ```
 
