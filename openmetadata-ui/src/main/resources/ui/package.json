@@ -110,7 +110,9 @@
     "commit-check": "yarn run pretty && yarn run build-check && yarn run build",
     "json2ts": "./json2ts.sh ../../../../../catalog-rest-service/src/main/resources/json/schema ./src/generated && yarn run lint:fix",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
-    "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4"
+    "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "browserslist": {
     "production": [
@@ -159,6 +161,8 @@
     "connect-api-mocker": "^1.10.0",
     "copy-webpack-plugin": "^7.0.0",
     "css-loader": "3.4.2",
+    "cypress": "^9.6.0",
+    "dotenv": "^16.0.0",
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-config-react-app": "^5.2.1",
