@@ -44,6 +44,11 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
 
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
       - name: Generating Data Models
         run: make install_dev generate
 
