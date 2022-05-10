@@ -360,7 +360,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
     const updatedData = {
       ...databaseSchema,
-      owner,
+      owner: { ...databaseSchema?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
