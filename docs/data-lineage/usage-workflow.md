@@ -12,7 +12,7 @@ This workflow is available ONLY for the following connectors:
 * [Snowflake](../integrations/connectors/snowflake/)
 * [MSSQL](../integrations/connectors/mssql/)
 * [Redshift](../integrations/connectors/redshift/)
-* [Clickhouse](../integrations/connectors/clickhouse/)
+* [Clickhouse](broken-reference)
 
 ## UI Configuration
 
