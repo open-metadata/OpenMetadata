@@ -103,10 +103,7 @@ const testServiceCreationAndIngestion = (
   testIngestionsTab();
   // the latest run should be success
   cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-    if (
-      $ingestionStatus.text() === 'Running' ||
-      $ingestionStatus.text() === ''
-    ) {
+    if ($ingestionStatus.text() === 'Running') {
       // retry after waiting for 30 seconds
       cy.wait(30000);
       cy.reload();
