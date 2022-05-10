@@ -32,13 +32,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Save build folder
-        uses: actions/upload-artifact@v2
-        with:
-          name: build
-          if-no-files-found: error
-          path: build
-
       - name: Cypress install
         uses: cypress-io/github-action@v2
         with:
@@ -60,6 +53,13 @@ jobs:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh
         timeout-minutes: 20
+
+      - name: Save build folder
+        uses: actions/upload-artifact@v2
+        with:
+          name: build
+          if-no-files-found: error
+          path: openmetadata-ui/src/main/resources/ui/
 
 
   ui-chrome-tests:
@@ -86,7 +86,7 @@ jobs:
         with:
           # we have already installed all dependencies above
           install: false
-          start: yarn start:ci
+          start: yarn mock-api
           wait-on: 'http://localhost:8585'
           wait-on-timeout: 120
           browser: chrome
