@@ -78,11 +78,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const getSearchedListByGroup = (
     groupName?: string
   ): Array<DropDownListItem> => {
-    const results = searchedList.filter((item) => {
+    return searchedList.filter((item) => {
       return groupName ? item.group === groupName : !item.group;
     });
-
-    return results;
   };
 
   const getDropDownElement = (item: DropDownListItem, index: number) => {
@@ -169,6 +167,16 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         )}
       </>
     );
+  };
+
+  const getListElementsByGroup = () => {
+    if (groupType === 'label') {
+      return listGroups.map((grp, index) => {
+        return <div key={index}>{getListElementsByLabels(grp)}</div>;
+      });
+    } else {
+      return getListElementsByTab(listGroups[activeTab - 1]);
+    }
   };
 
   useEffect(() => {
@@ -278,13 +286,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                   className="tw-py-1 tw-max-h-60 tw-overflow-y-auto"
                   role="none">
                   {getListElements()}
-                  {groupType === 'label'
-                    ? listGroups.map((grp, index) => {
-                        return (
-                          <div key={index}>{getListElementsByLabels(grp)}</div>
-                        );
-                      })
-                    : getListElementsByTab(listGroups[activeTab - 1])}
+                  {getListElementsByGroup()}
                 </div>
               </>
             )}
