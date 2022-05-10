@@ -18,6 +18,7 @@ import {
   faCheckSquare,
   faChevronDown,
   faChevronRight,
+  faChevronUp,
   faPlus,
   faSearch,
   faTimes,
@@ -39,7 +40,8 @@ const App: FunctionComponent = () => {
     faCheckSquare,
     faCheckCircle,
     faChevronDown,
-    faChevronRight
+    faChevronRight,
+    faChevronUp
   );
 
   return (

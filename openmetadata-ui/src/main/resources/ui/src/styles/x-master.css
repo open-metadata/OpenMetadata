@@ -931,3 +931,17 @@ code {
 .page-not-found-container::before {
   background-color: #fff;
 }
+
+.topic-sample-data > .CodeMirror {
+  height: auto !important;
+}
+
+.topic-sample-data-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-height: 18px;
+  max-height: 54px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
