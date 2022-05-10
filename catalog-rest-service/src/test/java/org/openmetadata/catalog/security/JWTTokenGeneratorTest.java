@@ -22,6 +22,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 @Slf4j
@@ -44,29 +45,30 @@ public class JWTTokenGeneratorTest {
   }
 
   @Test
-  void testGenerateJWTToken() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
+  void testGenerateJWTToken() {
     User user =
         new User()
             .withEmail("ingestion-bot@open-metadata.org")
             .withName("ingestion-bot")
             .withDisplayName("ingestion-bot");
-    String token = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
-    DecodedJWT jwt = decodedJWT(token);
+    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertEquals(jwt.getClaims().get("sub").asString(), "ingestion-bot");
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);
-    token = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Ninety);
-    jwt = decodedJWT(token);
+    jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Ninety);
+    jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     date = jwt.getExpiresAt();
     daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 89);
-    token = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Unlimited);
-    jwt = decodedJWT(token);
+    jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Unlimited);
+    jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertNull(jwt.getExpiresAt());
+    assertNull(jwtAuthMechanism.getJWTTokenExpiresAt());
   }
 
-  private DecodedJWT decodedJWT(String token) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+  private DecodedJWT decodedJWT(String token) {
     RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
     Algorithm algorithm = Algorithm.RSA256(publicKey, null);
     JWTVerifier verifier = JWT.require(algorithm).withIssuer(jwtTokenConfiguration.getJWTIssuer()).build();
