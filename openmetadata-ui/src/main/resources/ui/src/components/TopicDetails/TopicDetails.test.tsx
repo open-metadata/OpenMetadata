@@ -194,7 +194,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is config', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={3} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -206,7 +206,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }
