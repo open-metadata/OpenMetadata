@@ -395,7 +395,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const handleUpdateOwner = (owner: Database['owner']) => {
     const updatedData = {
       ...database,
-      owner,
+      owner: { ...database?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
