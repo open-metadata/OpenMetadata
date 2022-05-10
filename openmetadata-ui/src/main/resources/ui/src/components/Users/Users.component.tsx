@@ -48,8 +48,8 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
-import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
@@ -528,12 +528,15 @@ const Users = ({
               <img
                 alt="profile"
                 className="tw-rounded-full tw-w-full"
+                referrerPolicy="no-referrer"
                 src={userData.profile?.images?.image}
               />
             </div>
           ) : (
-            <Avatar
-              name={userData?.displayName || userData.name}
+            <ProfilePicture
+              displayName={userData?.displayName || userData.name}
+              id={userData?.id || ''}
+              name={userData?.name || ''}
               textClass="tw-text-5xl"
               width="112"
             />

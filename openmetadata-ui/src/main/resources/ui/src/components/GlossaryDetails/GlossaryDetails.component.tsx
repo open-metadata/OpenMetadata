@@ -35,9 +35,9 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -277,8 +277,10 @@ const GlossaryDetails = ({
       <div className="tw-mb-3 tw-flex tw-items-center">
         {glossary.owner && getEntityName(glossary.owner) && (
           <div className="tw-inline-block tw-mr-2">
-            <Avatar
-              name={getEntityName(glossary.owner)}
+            <ProfilePicture
+              displayName={getEntityName(glossary.owner)}
+              id={glossary.owner?.id || ''}
+              name={glossary.owner?.name || ''}
               textClass="tw-text-xs"
               width="20"
             />

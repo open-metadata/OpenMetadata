@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import UserDataCard from './UserDataCard';
 
 const mockItem = {
-  description: 'description1',
+  displayName: 'description1',
   name: 'name1',
   id: 'id1',
   email: 'string@email.com',

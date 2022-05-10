@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser, UserPermissions } from 'Models';
+import { reactLocalStorage } from 'reactjs-localstorage';
+import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { CurrentTourPageType } from './enums/tour.enum';
 import { Role } from './generated/entity/teams/role';
 import {
   EntityReference as UserTeams,
   User,
 } from './generated/entity/teams/user';
+import { ImageList } from './generated/type/profile';
 
 class AppState {
   users: Array<User> = [];
@@ -36,6 +39,15 @@ class AppState {
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
   userPermissions: UserPermissions = {} as UserPermissions;
+  userProfilePics: Array<{
+    id: string;
+    name: string;
+    profile: ImageList['image512'];
+  }> = [];
+  userProfilePicsLoading: Array<{
+    id: string;
+    name: string;
+  }> = [];
 
   inPageSearchText = '';
   explorePageTab = 'tables';
@@ -60,6 +72,13 @@ class AppState {
       getAllTeams: action,
       getAllRoles: action,
       getAllPermissions: action,
+      getUserProfilePic: action,
+      updateUserProfilePic: action,
+      loadUserProfilePics: action,
+      getProfilePicsLoading: action,
+      updateProfilePicsLoading: action,
+      isProfilePicLoading: action,
+      removeProfilePicsLoading: action,
     });
   }
 
@@ -96,6 +115,98 @@ class AppState {
     this.explorePageTab = tab;
   }
 
+  updateUserProfilePic(
+    id?: string,
+    username?: string,
+    profile?: ImageList['image512']
+  ) {
+    if (!id && !username) {
+      return;
+    }
+
+    const filteredList = this.userProfilePics.filter((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id !== id;
+      } else {
+        return item.name !== username;
+      }
+    });
+    this.userProfilePics = [
+      ...filteredList,
+      {
+        id: id || '',
+        name: username || '',
+        profile,
+      },
+    ];
+
+    reactLocalStorage.setObject(LOCALSTORAGE_USER_PROFILES, {
+      data: this.userProfilePics,
+    });
+
+    return profile;
+  }
+
+  updateProfilePicsLoading(id?: string, username?: string) {
+    if (!id && !username) {
+      return;
+    }
+
+    const alreadyLoading = !isUndefined(
+      this.userProfilePicsLoading.find((item) => {
+        // compare id only if present
+        if (item.id && id) {
+          return item.id === id;
+        } else {
+          return item.name === username;
+        }
+      })
+    );
+
+    if (!alreadyLoading) {
+      this.userProfilePicsLoading = [
+        ...this.userProfilePicsLoading,
+        {
+          id: id || '',
+          name: username || '',
+        },
+      ];
+    }
+  }
+
+  removeProfilePicsLoading(id?: string, username?: string) {
+    if (!id && !username) {
+      return;
+    }
+
+    const filteredList = this.userProfilePicsLoading.filter((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id !== id;
+      } else {
+        return item.name !== username;
+      }
+    });
+
+    this.userProfilePicsLoading = filteredList;
+  }
+
+  loadUserProfilePics() {
+    const { data } = reactLocalStorage.getObject(
+      LOCALSTORAGE_USER_PROFILES
+    ) as {
+      data: Array<{
+        id: string;
+        name: string;
+        profile: ImageList['image512'];
+      }>;
+    };
+    if (data) {
+      this.userProfilePics = data;
+    }
+  }
+
   getCurrentUserDetails() {
     if (!isEmpty(this.userDetails) && !isNil(this.userDetails)) {
       return this.userDetails;
@@ -107,6 +218,40 @@ class AppState {
     } else {
       return;
     }
+  }
+
+  getUserProfilePic(id?: string, username?: string) {
+    const data = this.userProfilePics.find((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id === id;
+      } else {
+        return item.name === username;
+      }
+    });
+
+    return data?.profile;
+  }
+
+  getAllUserProfilePics() {
+    return this.userProfilePics;
+  }
+
+  getProfilePicsLoading() {
+    return this.userProfilePicsLoading;
+  }
+
+  isProfilePicLoading(id?: string, username?: string) {
+    const data = this.userProfilePicsLoading.find((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id === id;
+      } else {
+        return item.name === username;
+      }
+    });
+
+    return Boolean(data);
   }
 
   getAllUsers() {

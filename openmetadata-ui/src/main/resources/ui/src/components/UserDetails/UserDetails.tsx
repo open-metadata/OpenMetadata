@@ -77,7 +77,7 @@ const UserDetails = ({
             data-testid="user-card-container">
             {selectedUserList.map((user, index) => {
               const User = {
-                description: getEntityName(user as unknown as EntityReference),
+                displayName: getEntityName(user as unknown as EntityReference),
                 name: user.name || '',
                 id: user.id,
                 email: user.email || '',

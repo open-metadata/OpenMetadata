@@ -51,6 +51,7 @@ import {
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
@@ -191,6 +192,10 @@ const ServicePage: FunctionComponent = () => {
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        serviceDetails?.owner?.type === OwnerType.USER
+          ? serviceDetails?.owner?.name
+          : undefined,
     },
   ];
 

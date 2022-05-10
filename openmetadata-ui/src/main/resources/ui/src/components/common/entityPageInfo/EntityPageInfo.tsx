@@ -34,9 +34,9 @@ import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
-import Avatar from '../avatar/Avatar';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
+import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 import FollowersModal from './FollowersModal';
@@ -157,8 +157,10 @@ const EntityPageInfo = ({
             })}>
             {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower, index) => (
               <div className="tw-flex" key={index}>
-                <Avatar
-                  name={(follower?.displayName || follower?.name) as string}
+                <ProfilePicture
+                  displayName={follower?.displayName || follower?.name}
+                  id={follower?.id || ''}
+                  name={follower?.name || ''}
                   width="20"
                 />
                 <span className="tw-self-center tw-ml-2">

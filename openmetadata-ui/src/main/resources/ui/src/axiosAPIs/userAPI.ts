@@ -64,6 +64,15 @@ export const getUserByName = (
   return APIClient.get(url);
 };
 
+export const getUserById = (
+  id: string,
+  arrQueryFields?: string
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/users/${id}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
 export const getLoggedInUser = (arrQueryFields?: string) => {
   const url = getURLWithQueryFields('/users/loggedInUser', arrQueryFields);
 
@@ -96,10 +105,6 @@ export const updateUserTeam: Function = (
   options: Array<string>
 ): Promise<AxiosResponse> => {
   return APIClient.post(`/users/${id}/teams`, options);
-};
-
-export const getUserById: Function = (id: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/users/${id}`);
 };
 
 export const createUser = (

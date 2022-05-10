@@ -495,6 +495,7 @@ declare module 'Models' {
     openInNewTab?: boolean;
     showLabel?: boolean;
     avatarWidth?: string;
+    profileName?: string;
   };
 
   export type TourSteps = {
@@ -603,4 +604,6 @@ declare module 'Models' {
     count: number;
     entityField: string;
   }
+
+  export type ImageShape = 'circle' | 'square';
 }
