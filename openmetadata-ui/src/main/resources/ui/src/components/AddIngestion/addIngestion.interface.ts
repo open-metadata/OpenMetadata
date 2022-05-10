@@ -104,6 +104,7 @@ export type ScheduleIntervalProps = {
   handleStartDateChange: (value: string) => void;
   endDate: string;
   submitButtonLabel: string;
+  isStartDateDisabled?: boolean;
   handleEndDateChange: (value: string) => void;
   onBack: () => void;
   onDeploy: () => void;

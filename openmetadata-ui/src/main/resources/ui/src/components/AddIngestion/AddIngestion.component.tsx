@@ -617,6 +617,7 @@ const AddIngestion = ({
               setRepeatFrequency(value)
             }
             handleStartDateChange={(value: string) => setStartDate(value)}
+            isStartDateDisabled={!isUndefined(data)}
             repeatFrequency={repeatFrequency}
             startDate={startDate as string}
             status={saveState}

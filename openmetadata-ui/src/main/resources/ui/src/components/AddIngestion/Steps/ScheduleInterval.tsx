@@ -28,13 +28,14 @@ const ScheduleInterval = ({
   endDate,
   handleEndDateChange,
   submitButtonLabel,
+  isStartDateDisabled = false,
   onBack,
   onDeploy,
 }: ScheduleIntervalProps) => {
   return (
     <div data-testid="schedule-intervel-container">
       <Field>
-        <div className="tw-flex tw-mt-2 tw-ml-3">
+        <div>
           <CronEditor
             value={repeatFrequency}
             onChange={handleRepeatFrequencyChange}
@@ -47,6 +48,7 @@ const ScheduleInterval = ({
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
             data-testid="start-date"
+            disabled={isStartDateDisabled}
             type="date"
             value={startDate}
             onChange={(e) => {
