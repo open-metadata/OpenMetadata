@@ -28,6 +28,7 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
+  databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
   tableFilterPattern,
@@ -40,6 +41,7 @@ const ConfigureIngestion = ({
   enableDataProfiler,
   ingestSampleData,
   pipelineType,
+  showDatabaseFilter,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
@@ -154,6 +156,17 @@ const ConfigureIngestion = ({
       case ServiceCategory.DATABASE_SERVICES:
         return (
           <Fragment>
+            <FilterPattern
+              checked={showDatabaseFilter}
+              excludePattern={databaseFilterPattern?.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.DATABASE)
+              }
+              includePattern={databaseFilterPattern?.includes ?? []}
+              type={FilterPatternEnum.DATABASE}
+            />
             <FilterPattern
               checked={showSchemaFilter}
               excludePattern={schemaFilterPattern?.excludes ?? []}

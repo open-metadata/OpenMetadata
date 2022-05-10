@@ -17,6 +17,7 @@ import { DBTS3Config } from './DBTS3Config';
 
 const mockCancel = jest.fn();
 const mockSubmit = jest.fn();
+const mockPrefixConfigChange = jest.fn();
 const mockSecurityConfigChange = jest.fn();
 
 const mockProps = {
@@ -24,6 +25,7 @@ const mockProps = {
   cancelText: 'Back',
   onCancel: mockCancel,
   onSubmit: mockSubmit,
+  handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
 };
 
@@ -35,12 +37,16 @@ describe('Test DBT S3 Config Form', () => {
     const inputRegion = getByTestId(container, 'aws-region');
     const inputSessionToken = getByTestId(container, 'aws-session-token');
     const inputEndpointUrl = getByTestId(container, 'endpoint-url');
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
 
     expect(inputAccessKeyId).toBeInTheDocument();
     expect(inputSecretKey).toBeInTheDocument();
     expect(inputRegion).toBeInTheDocument();
     expect(inputSessionToken).toBeInTheDocument();
     expect(inputEndpointUrl).toBeInTheDocument();
+    expect(inputBucketName).toBeInTheDocument();
+    expect(inputObjPrefix).toBeInTheDocument();
   });
 
   it('access-key should render data', async () => {
@@ -100,6 +106,34 @@ describe('Test DBT S3 Config Form', () => {
     expect(inputEndpointUrl).toHaveValue('EndpointUrl');
   });
 
+  it('dbt-bucket-name should render data', async () => {
+    const { container } = render(
+      <DBTS3Config
+        {...mockProps}
+        dbtPrefixConfig={{
+          dbtBucketName: 'Test Bucket',
+        }}
+      />
+    );
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+
+    expect(inputBucketName).toHaveValue('Test Bucket');
+  });
+
+  it('dbt-object-prefix should render data', async () => {
+    const { container } = render(
+      <DBTS3Config
+        {...mockProps}
+        dbtPrefixConfig={{
+          dbtObjectPrefix: 'Test Prefix',
+        }}
+      />
+    );
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
+
+    expect(inputObjPrefix).toHaveValue('Test Prefix');
+  });
+
   it('security config should change', async () => {
     const { container } = render(<DBTS3Config {...mockProps} />);
     const inputAccessKeyId = getByTestId(container, 'aws-access-key-id');
@@ -141,6 +175,26 @@ describe('Test DBT S3 Config Form', () => {
     expect(mockSecurityConfigChange).toBeCalledTimes(5);
   });
 
+  it('prefix config should change', async () => {
+    const { container } = render(<DBTS3Config {...mockProps} />);
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
+
+    fireEvent.change(inputBucketName, {
+      target: {
+        value: 'Test Bucket',
+      },
+    });
+
+    fireEvent.change(inputObjPrefix, {
+      target: {
+        value: 'Test Prefix',
+      },
+    });
+
+    expect(mockPrefixConfigChange).toBeCalledTimes(2);
+  });
+
   it('should show errors on submit', async () => {
     const { container } = render(<DBTS3Config {...mockProps} />);
     const submitBtn = getByTestId(container, 'submit-btn');
@@ -154,6 +208,10 @@ describe('Test DBT S3 Config Form', () => {
     const { container } = render(
       <DBTS3Config
         {...mockProps}
+        dbtPrefixConfig={{
+          dbtBucketName: 'Test Bucket',
+          dbtObjectPrefix: 'Test Prefix',
+        }}
         dbtSecurityConfig={{
           awsAccessKeyId: 'AccessKeyId',
           awsSecretAccessKey: 'SecretKey',

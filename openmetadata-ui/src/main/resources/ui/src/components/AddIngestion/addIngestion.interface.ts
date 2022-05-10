@@ -56,6 +56,7 @@ export interface ConfigureIngestionProps {
   ingestionName: string;
   description?: string;
   serviceCategory: ServiceCategory;
+  databaseFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
   schemaFilterPattern: FilterPattern;
   tableFilterPattern: FilterPattern;
@@ -68,6 +69,7 @@ export interface ConfigureIngestionProps {
   enableDebugLog: boolean;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
+  showDatabaseFilter: boolean;
   showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;

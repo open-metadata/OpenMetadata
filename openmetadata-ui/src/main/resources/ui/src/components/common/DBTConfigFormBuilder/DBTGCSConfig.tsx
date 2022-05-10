@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isString } from 'lodash';
+import { isEmpty, isObject, isString } from 'lodash';
 import React, {
   Fragment,
   FunctionComponent,
@@ -20,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  DBTBucketDetails,
   DbtConfigSource,
   GCSCredentialsValues,
   SCredentials,
@@ -48,10 +49,12 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   gcsType?: GCS_CONFIG;
   handleGcsTypeChange?: (type: GCS_CONFIG) => void;
   handleSecurityConfigChange: (value?: SCredentials) => void;
+  handlePrefixConfigChange: (value: DBTBucketDetails) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtSecurityConfig,
+  dbtPrefixConfig,
   gcsType = GCS_CONFIG.GCSValues,
   okText,
   cancelText,
@@ -59,13 +62,16 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   onSubmit,
   handleGcsTypeChange,
   handleSecurityConfigChange,
+  handlePrefixConfigChange,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
     key: keyof GCSCredentialsValues,
     val: string
   ) => {
-    const gcsConfig = dbtSecurityConfig?.gcsConfig || {};
+    const gcsConfig = isObject(dbtSecurityConfig?.gcsConfig)
+      ? dbtSecurityConfig?.gcsConfig
+      : {};
     const updatedCreds: SCredentials = {
       gcsConfig: {
         ...(gcsConfig as GCSCredentialsValues),
@@ -73,6 +79,14 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       },
     };
     handleSecurityConfigChange(updatedCreds);
+  };
+
+  const updateDbtBucket = (key: keyof DBTBucketDetails, val: string) => {
+    const updatedBucket: DBTBucketDetails = {
+      ...dbtPrefixConfig,
+      [key]: val,
+    };
+    handlePrefixConfigChange(updatedBucket);
   };
 
   const updateGCSCredsPath = (val: string) => {
@@ -114,7 +128,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   };
 
   const handleSubmit = () => {
-    const submitData = { dbtSecurityConfig };
+    const submitData = { dbtSecurityConfig, dbtPrefixConfig };
     if (validate(submitData)) {
       onSubmit(submitData);
     }
@@ -395,7 +409,44 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       {gcsType === GCS_CONFIG.GCSValues
         ? gcsCredConfigs(dbtSecurityConfig?.gcsConfig as GCSCredentialsValues)
         : gcsCredPath(dbtSecurityConfig?.gcsConfig as string)}
-
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbt-bucket-name">
+          DBT Bucket Name
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          Name of the bucket where the dbt files are stored.
+        </p>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="dbt-bucket-name"
+          id="dbt-bucket-name"
+          name="dbt-bucket-name"
+          type="text"
+          value={dbtPrefixConfig?.dbtBucketName}
+          onChange={(e) => updateDbtBucket('dbtBucketName', e.target.value)}
+        />
+      </Field>
+      <Field>
+        <label
+          className="tw-block tw-form-label tw-mb-1"
+          htmlFor="dbt-object-prefix">
+          DBT Object Prefix
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
+          Path of the folder where the dbt files are stored.
+        </p>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="dbt-object-prefix"
+          id="dbt-object-prefix"
+          name="dbt-object-prefix"
+          type="text"
+          value={dbtPrefixConfig?.dbtObjectPrefix}
+          onChange={(e) => updateDbtBucket('dbtObjectPrefix', e.target.value)}
+        />
+      </Field>
       {getSeparator('')}
 
       <Field className="tw-flex tw-justify-end">
