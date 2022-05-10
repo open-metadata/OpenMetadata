@@ -84,7 +84,7 @@ class OMetaServerMixin:
         server_version = self.get_server_version()
         client_version = self.get_client_version()
 
-        if not server_version == client_version:
+        if server_version != client_version:
             raise VersionMismatchException(
                 f"Server version is {server_version} vs. Client version {client_version}. Both should match."
             )
