@@ -28,6 +28,7 @@ const MessageCard = ({ message }: { message: string }) => {
   return (
     <div
       className="tw-bg-white tw-shadow tw-rounded tw-p-2 tw-mb-6 tw-border tw-border-main"
+      data-testid="message-card"
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="tw-flex">
         <div className="tw-mr-3 tw-cursor-pointer">
@@ -78,7 +79,9 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
     );
   } else {
     return (
-      <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+      <div
+        className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        data-testid="no-data">
         No sample data available
       </div>
     );

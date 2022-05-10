@@ -56,7 +56,7 @@ const TopicDetailsProps = {
   maximumMessageSize: 0,
   replicationFactor: 0,
   retentionSize: 0,
-  schemaText: '',
+  schemaText: 'schema text',
   schemaType: 'Avro',
   serviceType: '',
   users: [],
