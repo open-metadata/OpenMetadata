@@ -39,8 +39,8 @@ describe('Test SampleData Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const noData = getByTestId('no-data');
+    const noDataPlaceHolder = getByTestId('no-data');
 
-    expect(noData).toBeInTheDocument();
+    expect(noDataPlaceHolder).toBeInTheDocument();
   });
 });
