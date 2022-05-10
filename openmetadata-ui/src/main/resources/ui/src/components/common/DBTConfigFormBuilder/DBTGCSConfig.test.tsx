@@ -51,6 +51,8 @@ describe('Test DBT GCS Config Form', () => {
       container,
       'client-x509-certificate-uri'
     );
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
 
     expect(selectGcsConfig).toBeInTheDocument();
     expect(inputCredsType).toBeInTheDocument();
@@ -63,6 +65,8 @@ describe('Test DBT GCS Config Form', () => {
     expect(inputTokenUri).toBeInTheDocument();
     expect(inputAuthCertUri).toBeInTheDocument();
     expect(inputClientCertUri).toBeInTheDocument();
+    expect(inputBucketName).toBeInTheDocument();
+    expect(inputObjPrefix).toBeInTheDocument();
   });
 
   it('Fields should render for gcs credential path', async () => {
@@ -239,6 +243,34 @@ describe('Test DBT GCS Config Form', () => {
     expect(inputCredsPath).toHaveValue('GcsCredPath');
   });
 
+  it('dbt-bucket-name should render data', async () => {
+    const { container } = render(
+      <DBTGCSConfig
+        {...mockProps}
+        dbtPrefixConfig={{
+          dbtBucketName: 'Test Bucket',
+        }}
+      />
+    );
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+
+    expect(inputBucketName).toHaveValue('Test Bucket');
+  });
+
+  it('dbt-object-prefix should render data', async () => {
+    const { container } = render(
+      <DBTGCSConfig
+        {...mockProps}
+        dbtPrefixConfig={{
+          dbtObjectPrefix: 'Test Prefix',
+        }}
+      />
+    );
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
+
+    expect(inputObjPrefix).toHaveValue('Test Prefix');
+  });
+
   it('security config should change', async () => {
     const { container } = render(<DBTGCSConfig {...mockProps} />);
     const inputCredsType = getByTestId(container, 'credential-type');
@@ -321,6 +353,26 @@ describe('Test DBT GCS Config Form', () => {
     expect(mockSecurityConfigChange).toBeCalledTimes(10);
   });
 
+  it('prefix config should change', async () => {
+    const { container } = render(<DBTGCSConfig {...mockProps} />);
+    const inputBucketName = getByTestId(container, 'dbt-bucket-name');
+    const inputObjPrefix = getByTestId(container, 'dbt-object-prefix');
+
+    fireEvent.change(inputBucketName, {
+      target: {
+        value: 'Test Bucket',
+      },
+    });
+
+    fireEvent.change(inputObjPrefix, {
+      target: {
+        value: 'Test Prefix',
+      },
+    });
+
+    expect(mockPrefixConfigChange).toBeCalledTimes(2);
+  });
+
   it('should show errors on submit', async () => {
     const { container } = render(<DBTGCSConfig {...mockProps} />);
     const submitBtn = getByTestId(container, 'submit-btn');
@@ -334,6 +386,10 @@ describe('Test DBT GCS Config Form', () => {
     const { container } = render(
       <DBTGCSConfig
         {...mockProps}
+        dbtPrefixConfig={{
+          dbtBucketName: 'Test Bucket',
+          dbtObjectPrefix: 'Test Prefix',
+        }}
         dbtSecurityConfig={{
           gcsConfig: {
             type: 'CredsType',
