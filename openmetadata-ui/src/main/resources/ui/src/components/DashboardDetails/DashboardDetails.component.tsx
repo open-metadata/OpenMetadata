@@ -678,7 +678,7 @@ const DashboardDetails = ({
                 <ManageTabComponent
                   allowDelete
                   currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
+                  currentUser={owner}
                   deletEntityMessage={getDeleteEntityMessage()}
                   entityId={dashboardDetails.id}
                   entityName={dashboardDetails.name}

@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -35,7 +36,7 @@ interface OwnerWidgetProps {
   ownerName: string;
   entityType?: string;
   statusOwner: Status;
-  owner: string;
+  owner?: EntityReference;
   listOwners: {
     name: string;
     value: string;
@@ -153,11 +154,12 @@ const OwnerWidget = ({
               {listVisible && (
                 <DropDownList
                   horzPosRight
+                  showEmptyList
                   showSearchBar
                   dropDownList={listOwners}
                   groupType="tab"
                   listGroups={getOwnerGroup()}
-                  value={owner}
+                  value={owner?.id || ''}
                   onSelect={handleOwnerSelection}
                 />
               )}

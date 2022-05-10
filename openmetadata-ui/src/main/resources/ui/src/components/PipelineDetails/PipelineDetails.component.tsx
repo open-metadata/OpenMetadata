@@ -596,7 +596,7 @@ const PipelineDetails = ({
                 <ManageTabComponent
                   allowDelete
                   currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
+                  currentUser={owner}
                   entityId={pipelineDetails.id}
                   entityName={pipelineDetails.name}
                   entityType={EntityType.PIPELINE}

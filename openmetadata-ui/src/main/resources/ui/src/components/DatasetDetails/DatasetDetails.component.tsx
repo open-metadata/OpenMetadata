@@ -745,7 +745,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <ManageTab
                   allowDelete
                   currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
+                  currentUser={owner}
                   entityId={tableDetails.id}
                   entityName={tableDetails.name}
                   entityType={EntityType.TABLE}

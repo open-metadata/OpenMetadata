@@ -807,7 +807,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     allowDelete
                     hideTier
                     isRecursiveDelete
-                    currentUser={database?.owner?.id}
+                    currentUser={database?.owner}
                     deletEntityMessage={getDeleteEntityMessage()}
                     entityId={database?.id}
                     entityName={database?.name}
