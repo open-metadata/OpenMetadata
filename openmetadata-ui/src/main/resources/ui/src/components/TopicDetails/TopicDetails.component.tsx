@@ -12,7 +12,7 @@
  */
 
 import { EntityTags } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
@@ -414,12 +414,20 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     />
                   </div>
                 </div>
-                {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                <div
-                  className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                  data-testid="schema">
-                  <SchemaEditor value={schemaText} />
-                </div>
+                {schemaText ? (
+                  <Fragment>
+                    {getInfoBadge([{ key: 'Schema', value: schemaType }])}
+                    <div
+                      className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
+                      data-testid="schema">
+                      <SchemaEditor value={schemaText} />
+                    </div>
+                  </Fragment>
+                ) : (
+                  <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                    No schema data available
+                  </div>
+                )}
               </>
             )}
             {activeTab === 2 && (
