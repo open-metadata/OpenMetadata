@@ -132,6 +132,10 @@ export interface AuthMechanism {
    */
   JWTToken?: string;
   /**
+   * JWT Auth Token expiration time.
+   */
+  JWTTokenExpiresAt?: number;
+  /**
    * JWT Auth Token expiration in days
    */
   JWTTokenExpiry?: JWTTokenExpiry;
