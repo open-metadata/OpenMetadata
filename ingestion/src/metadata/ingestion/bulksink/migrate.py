@@ -219,7 +219,7 @@ class MigrateBulkSink(BulkSink):
                         table.get("database").get("name"),
                     )
                 )
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
                 self.status.failure("Table: {}".format(table.get("name")))
 
