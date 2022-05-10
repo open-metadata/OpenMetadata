@@ -1,0 +1,368 @@
+---
+description: Use your own Airflow instance to schedule and run the Athena Connector.
+---
+
+# Run Athena Connector using Airflow SDK
+
+Configure and schedule Athena **metadata** and **profiler** workflows using your own Airflow instances.
+
+### **Install the Python module for this connector**
+
+Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
+
+```javascript
+pip3 install 'openmetadata-ingestion[athena]'
+```
+
+## Metadata Ingestion
+
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json) you can find the structure to create a connection to Athena.
+
+In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
+
+The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
+
+### 1. Create a configuration file using template JSON
+
+Create a new file called `athena.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+
+Copy and paste the configuration template below into the `athena.json` the file you created.
+
+{% code title="athena.json" %}
+```json
+{
+    "source": {
+        "type": "athena",
+        "serviceName": "local_athena",
+        "serviceConnection": {
+            "config": {
+                "type": "Athena",
+                "database": "database_name",
+                "awsConfig": {
+                    "awsAccessKeyId": "access key id",
+                    "awsSecretAccessKey": "access secret key",
+                    "awsRegion": "aws region name"
+                },
+                "s3StagingDir": "s3 directory for datasource",
+                "workgroup": "workgroup name"
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "enableDataProfiler": false
+            }
+        }
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {}
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "no-auth"
+        }
+    }
+}
+```
+{% endcode %}
+
+### 2. Configure service settings
+
+In this step, we will configure the Athena service settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Athena service as desired.
+
+#### Source Configuration - Source Config
+
+The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
+
+* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
+* **includeTables**: `true` or `false`, to ingest table data. Default is true.
+* **includeViews**: `true` or `false`, to ingest views definitions.
+* **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
+* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
+* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+
+```
+"tableFilterPattern": {
+  "includes": ["users", "type_test"]
+}
+```
+
+#### Sink Configuration
+
+To send the metadata to OpenMetadata, it needs to be specified as `"type": "metadata-rest"`.
+
+#### Workflow Configuration
+
+The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
+
+For a simple, local installation using our docker containers, this looks like:
+
+```
+"workflowConfig": {
+  "openMetadataServerConfig": {
+    "hostPort": "http://localhost:8585/api",
+    "authProvider": "no-auth"
+  }
+}
+```
+
+#### OpenMetadata Security Providers
+
+We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
+
+```
+"workflowConfig": {
+    "openMetadataServerConfig": {
+        "hostPort": "http://localhost:8585/api",
+        "authProvider": "auth0",
+        "securityConfig": {
+            "clientId": "<client ID>",
+            "secretKey": "<secret key>",
+            "domain": "<domain>"
+        }
+    }
+}
+```
+
+#### &#x20;Edit a Python script to define your ingestion DAG
+
+Copy and paste the code below into a file called `openmetadata-airflow.py`.
+
+```python
+import json
+from datetime import timedelta
+
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from airflow.utils.dates import days_ago
+
+from metadata.ingestion.api.workflow import Workflow
+
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(seconds=10),
+    "execution_timeout": timedelta(minutes=60),
+}
+
+config = """
+  ## REPLACE THIS LINE WITH YOUR CONFIGURATION JSON
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "openmetadata_athena_connector",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="ingest_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
+```
+
+#### 11. Copy your configuration JSON into the ingestion script
+
+In steps 3 - 9 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 10 as directed by the comment below.
+
+```
+config = """
+  ## REPLACE THIS LINE WITH YOUR CONFIGURATION JSON
+"""
+```
+
+#### 12. Run the script to create your ingestion DAG
+
+Run the following command to create your ingestion DAG in Airflow.
+
+```
+python openmetadata-airflow.py
+```
+
+## Data Profiler and Quality Tests
+
+The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
+
+### 1. Define the JSON configuration
+
+This is a sample config for the profiler:
+
+```json
+{
+    "source": {
+        "type": "athena",
+        "serviceName": "<service name>",
+        "serviceConnection": {
+            "config": {
+                "type": "Athena",
+                "database": "database_name",
+                "awsConfig": {
+                    "awsAccessKeyId": "access key id",
+                    "awsSecretAccessKey": "access secret key",
+                    "awsRegion": "aws region name"
+                },
+                "s3StagingDir": "s3 directory for datasource",
+                "workgroup": "workgroup name"
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "Profiler",
+                "fqnFilterPattern": "<table FQN filtering regex>"
+            }
+        }
+    },
+    "processor": {
+        "type": "orm-profiler",
+        "config": {}
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {}
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "<OpenMetadata host and port>",
+            "authProvider": "<OpenMetadata auth provider>"
+        }
+    }
+}
+```
+
+#### Source Configuration
+
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json).
+* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
+
+Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+
+```
+"fqnFilterPattern": {
+  "includes": ["service.database.schema.*"]
+}
+```
+
+#### Processor
+
+To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
+
+```json
+ "processor": {
+    "type": "orm-profiler",
+    "config": {
+        "test_suite": {
+            "name": "<Test Suite name>",
+            "tests": [
+                {
+                    "table": "<Table FQN>",
+                    "table_tests": [
+                        {
+                            "testCase": {
+                                "config": {
+                                    "value": 100
+                                },
+                                "tableTestType": "tableRowCountToEqual"
+                            }
+                        }
+                    ],
+                    "column_tests": [
+                        {
+                            "columnName": "<Column Name>",
+                            "testCase": {
+                                "config": {
+                                    "minValue": 0,
+                                    "maxValue": 99
+                                },
+                                "columnTestType": "columnValuesToBeBetween"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+     }
+  },
+```
+
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference).
+
+#### Workflow Configuration
+
+The same as the [metadata](run-athena-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
+
+### 2. Prepare the Ingestion DAG
+
+Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
+
+```python
+import json
+from datetime import timedelta
+
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from airflow.utils.dates import days_ago
+
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+
+
+default_args = {
+    "owner": "user_name",
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(seconds=10),
+    "execution_timeout": timedelta(minutes=60),
+}
+
+config = """
+<your JSON configuration>
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = json.loads(config)
+    workflow = ProfilerWorkflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "profiler_example",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="profile_and_test_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
+```
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
