@@ -91,10 +91,10 @@ const AddIngestion = ({
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
-  const [startDate, setStartDate] = useState(
+  const [startDate] = useState(
     data?.airflowConfig.startDate ?? getCurrentDate()
   );
-  const [endDate, setEndDate] = useState(data?.airflowConfig?.endDate ?? '');
+  const [endDate] = useState(data?.airflowConfig?.endDate ?? '');
 
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
@@ -654,14 +654,10 @@ const AddIngestion = ({
 
         {activeIngestionStep === 3 && (
           <ScheduleInterval
-            endDate={endDate as string}
-            handleEndDateChange={(value: string) => setEndDate(value)}
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
             }
-            handleStartDateChange={(value: string) => setStartDate(value)}
             repeatFrequency={repeatFrequency}
-            startDate={startDate as string}
             status={saveState}
             submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}
             onBack={handlePrev}
