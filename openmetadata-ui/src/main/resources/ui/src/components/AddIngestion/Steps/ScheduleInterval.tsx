@@ -23,12 +23,7 @@ const ScheduleInterval = ({
   status,
   repeatFrequency,
   handleRepeatFrequencyChange,
-  startDate,
-  handleStartDateChange,
-  endDate,
-  handleEndDateChange,
   submitButtonLabel,
-  isStartDateDisabled = false,
   onBack,
   onDeploy,
 }: ScheduleIntervalProps) => {
@@ -42,34 +37,6 @@ const ScheduleInterval = ({
           />
         </div>
       </Field>
-      <div className="tw-grid tw-grid-cols-2 tw-gap-x-4">
-        <Field>
-          <label htmlFor="startDate">Start date (UTC):</label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="start-date"
-            disabled={isStartDateDisabled}
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              handleStartDateChange(e.target.value);
-            }}
-          />
-        </Field>
-        <Field>
-          <label htmlFor="endDate">End date (UTC):</label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            data-testid="end-date"
-            min={startDate}
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              handleEndDateChange(e.target.value);
-            }}
-          />
-        </Field>
-      </div>
       <Field className="tw-flex tw-justify-end tw-mt-5">
         <Button
           className="tw-mr-2"

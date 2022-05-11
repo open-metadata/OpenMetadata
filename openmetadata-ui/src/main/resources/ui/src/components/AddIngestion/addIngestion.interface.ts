@@ -100,12 +100,7 @@ export type ScheduleIntervalProps = {
   status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
-  startDate: string;
-  handleStartDateChange: (value: string) => void;
-  endDate: string;
   submitButtonLabel: string;
-  isStartDateDisabled?: boolean;
-  handleEndDateChange: (value: string) => void;
   onBack: () => void;
   onDeploy: () => void;
 };
