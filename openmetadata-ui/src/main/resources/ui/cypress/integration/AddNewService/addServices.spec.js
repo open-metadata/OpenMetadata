@@ -57,7 +57,15 @@ const testServiceCreationAndIngestion = (
   cy.get('[data-testid="schema-filter-pattern-checkbox"]').should('be.visible');
   cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
 
+  // Set all the sliders to off to disable sample data, data profiler etc.
+  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+    .should('exist')
+    .click();
+  cy.get('[data-testid="toggle-button-data-profiler"]').should('exist').click();
+  cy.get('[data-testid="toggle-button-mark-deleted"]').should('exist').click();
+
   addIngestionInput();
+
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   // Configure DBT Model
@@ -84,13 +92,13 @@ const testServiceCreationAndIngestion = (
 
   // wait for ingestion to run
   cy.clock();
-  cy.wait(30000);
+  cy.wait(10000);
 
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
   // ingestions page
-  const retryTimes = 10;
+  const retryTimes = 15;
   let retryCount = 0;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -211,7 +219,7 @@ describe('login with SSO', () => {
           cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
           cy.get('[data-testid="filter-pattern-includes-schema"]')
             .should('be.visible')
-            .type('testschema');
+            .type('TESTSCHEMA');
         };
 
         testServiceCreationAndIngestion(
