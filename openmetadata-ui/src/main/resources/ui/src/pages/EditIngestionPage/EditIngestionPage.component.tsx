@@ -213,7 +213,7 @@ const EditIngestionPage = () => {
         ? activeIngestionStep >= 3
         : activeIngestionStep >= 2;
 
-    return ingestion && !showIngestionButton && !ingestionData.deployed;
+    return ingestion && !showIngestionButton;
   };
 
   useEffect(() => {
