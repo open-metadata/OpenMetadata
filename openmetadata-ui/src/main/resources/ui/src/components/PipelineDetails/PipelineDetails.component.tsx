@@ -270,7 +270,9 @@ const PipelineDetails = ({
         : pipelineDetails.tags;
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? newOwner : pipelineDetails.owner,
+        owner: newOwner
+          ? { ...pipelineDetails.owner, ...newOwner }
+          : pipelineDetails.owner,
         tags: tierTag,
       };
 
@@ -599,7 +601,7 @@ const PipelineDetails = ({
                   <ManageTabComponent
                     allowDelete
                     currentTier={tier?.tagFQN}
-                    currentUser={owner?.id}
+                    currentUser={owner}
                     entityId={pipelineDetails.id}
                     entityName={pipelineDetails.name}
                     entityType={EntityType.PIPELINE}

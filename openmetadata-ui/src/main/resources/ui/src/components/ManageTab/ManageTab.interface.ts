@@ -12,18 +12,19 @@
  */
 
 import { TableDetail } from 'Models';
+import { EntityReference } from '../../generated/type/entityReference';
 
 export interface ManageProps {
   currentTier?: string;
-  currentUser?: string;
+  currentUser?: EntityReference;
   manageSectionType?: string;
   hideTier?: boolean;
   hideOwner?: boolean;
   isJoinable?: boolean;
   allowSoftDelete?: boolean;
   onSave?: (
-    owner: TableDetail['owner'],
-    tier: TableDetail['tier'],
+    owner?: EntityReference,
+    tier?: TableDetail['tier'],
     isJoinable?: boolean
   ) => Promise<void>;
   handleIsJoinable?: (bool: boolean) => void;

@@ -1011,7 +1011,7 @@ const ServicePage: FunctionComponent = () => {
                       allowDelete
                       hideTier
                       isRecursiveDelete
-                      currentUser={serviceDetails?.owner?.id}
+                      currentUser={serviceDetails?.owner}
                       deletEntityMessage={getDeleteEntityMessage()}
                       entityId={serviceDetails?.id}
                       entityName={serviceDetails?.name}

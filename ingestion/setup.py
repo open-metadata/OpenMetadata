@@ -102,6 +102,7 @@ plugins: Dict[str, Set[str]] = {
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk==21.12.2"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
+    "pymssql": {"pymssql~=2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},

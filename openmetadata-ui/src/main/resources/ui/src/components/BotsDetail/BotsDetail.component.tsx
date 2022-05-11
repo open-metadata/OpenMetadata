@@ -61,6 +61,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [botsToken, setBotsToken] = useState<string>('');
+  const [botsTokenExpiry, setBotsTokenExpiry] = useState<string>();
   const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
   const [isRegeneratingToken, setIsRegeneratingToken] =
     useState<boolean>(false);
@@ -103,19 +104,21 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const fetchBotsToken = () => {
     getUserToken(botsData.id)
       .then((res: AxiosResponse) => {
-        const { JWTToken } = res.data;
+        const { JWTToken, JWTTokenExpiresAt } = res.data;
         setBotsToken(JWTToken);
+        setBotsTokenExpiry(JWTTokenExpiresAt);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
       });
   };
 
-  const generateBotsToken = (data: Record<string, string>) => {
+  const generateBotsToken = (data: string) => {
     generateUserToken(botsData.id, data)
       .then((res: AxiosResponse) => {
-        const { JWTToken } = res.data;
+        const { JWTToken, JWTTokenExpiresAt } = res.data;
         setBotsToken(JWTToken);
+        setBotsTokenExpiry(JWTTokenExpiresAt);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -134,11 +137,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
   };
 
   const handleGenerate = () => {
-    const data = {
-      JWTToken: 'string',
-      JWTTokenExpiry: selectedExpiry,
-    };
-    generateBotsToken(data);
+    generateBotsToken(selectedExpiry);
   };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,6 +276,18 @@ const BotsDetail: FC<BotsDetailProp> = ({
     }
   };
 
+  const getBotsTokenExpiryDate = () => {
+    if (botsTokenExpiry) {
+      return (
+        <p className="tw-text-grey-muted tw-mt-2 tw-italic">
+          Expires on {moment(botsTokenExpiry).format('ddd Do MMMM, YYYY')}
+        </p>
+      );
+    } else {
+      return null;
+    }
+  };
+
   const centerLayout = () => {
     if (generateToken) {
       return (
@@ -329,6 +340,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               />
               {getCopyComponent()}
             </div>
+            {getBotsTokenExpiryDate()}
           </Fragment>
         );
       } else {

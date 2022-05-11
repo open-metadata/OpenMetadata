@@ -71,6 +71,11 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
+# Cypress artifacts
+openmetadata-ui/src/main/resources/ui/cypress/screenshots
+openmetadata-ui/src/main/resources/ui/cypress/videos
+openmetadata-ui/src/main/resources/ui/cypress/fixtures
+
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
 

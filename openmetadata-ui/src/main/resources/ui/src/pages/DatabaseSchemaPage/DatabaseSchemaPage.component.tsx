@@ -360,7 +360,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
     const updatedData = {
       ...databaseSchema,
-      owner,
+      owner: { ...databaseSchema?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
@@ -691,7 +691,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     allowDelete
                     hideTier
                     isRecursiveDelete
-                    currentUser={databaseSchema?.owner?.id}
+                    currentUser={databaseSchema?.owner}
                     deletEntityMessage={getDeleteEntityMessage()}
                     entityId={databaseSchema?.id}
                     entityName={databaseSchema?.name}

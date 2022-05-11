@@ -58,6 +58,7 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
@@ -121,6 +122,7 @@ class OpenMetadata(
     GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
+    OMetaServerMixin,
     Generic[T, C],
 ):
     """
@@ -165,6 +167,8 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
+
+        self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """

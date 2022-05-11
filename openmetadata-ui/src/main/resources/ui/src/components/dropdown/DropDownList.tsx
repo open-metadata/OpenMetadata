@@ -27,6 +27,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   horzPosRight,
   searchString = '',
   showSearchBar = false,
+  showEmptyList = false,
   value,
   onSelect,
   groupType = 'label',
@@ -62,6 +63,18 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     setSearchText(text || '');
   };
 
+  const getEmptyTextElement = (): JSX.Element => {
+    return (
+      <div
+        className="tw-text-grey-muted tw-px-4 tw-py-2"
+        data-testid="empty-list">
+        <p className={widthClass}>
+          {searchText ? 'No match found' : 'No data available'}
+        </p>
+      </div>
+    );
+  };
+
   const getSearchedListByGroup = (
     groupName?: string
   ): Array<DropDownListItem> => {
@@ -93,6 +106,77 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         </p>
       </div>
     );
+  };
+
+  const getListElements = (): JSX.Element => {
+    const results = getSearchedListByGroup();
+
+    if (!results.length && showEmptyList && !listGroups.length) {
+      return getEmptyTextElement();
+    }
+
+    return (
+      <>
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByLabels = (groupName: string) => {
+    const results = getSearchedListByGroup(groupName);
+    const groupLabel = (
+      <span className="tw-flex tw-my-1 tw-text-grey-muted">
+        <hr className="tw-mt-2 tw-w-full" />
+        <span className="tw-text-xs tw-px-0.5">{groupName}</span>{' '}
+        <hr className="tw-mt-2 tw-w-full" />
+      </span>
+    );
+
+    if (!results.length && showEmptyList) {
+      return (
+        <>
+          {groupLabel}
+          {getEmptyTextElement()}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {results.length > 0 && groupLabel}
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByTab = (groupTab: string) => {
+    const results = getSearchedListByGroup(groupTab);
+
+    if (!results.length && showEmptyList) {
+      return getEmptyTextElement();
+    }
+
+    return (
+      <>
+        {results.map((item: DropDownListItem, index: number) =>
+          getDropDownElement(item, index)
+        )}
+      </>
+    );
+  };
+
+  const getListElementsByGroup = () => {
+    if (groupType === 'label') {
+      return listGroups.map((grp, index) => {
+        return <div key={index}>{getListElementsByLabels(grp)}</div>;
+      });
+    } else {
+      return getListElementsByTab(listGroups[activeTab - 1]);
+    }
   };
 
   useEffect(() => {
@@ -138,7 +222,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   return (
     <>
-      {searchedList.length > 0 && (
+      {(searchedList.length > 0 || showEmptyList) && (
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
@@ -201,38 +285,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                 <div
                   className="tw-py-1 tw-max-h-60 tw-overflow-y-auto"
                   role="none">
-                  {getSearchedListByGroup().map(
-                    (item: DropDownListItem, index: number) =>
-                      getDropDownElement(item, index)
-                  )}
-                  {groupType === 'label' ? (
-                    listGroups.map((grp, index) => {
-                      return (
-                        <div key={index}>
-                          {getSearchedListByGroup(grp).length > 0 && (
-                            <span className="tw-flex tw-my-1 tw-text-grey-muted">
-                              <hr className="tw-mt-2 tw-w-full " />
-                              <span className="tw-text-xs tw-px-0.5">
-                                {grp}
-                              </span>{' '}
-                              <hr className="tw-mt-2 tw-w-full" />
-                            </span>
-                          )}
-                          {getSearchedListByGroup(grp).map(
-                            (item: DropDownListItem, index: number) =>
-                              getDropDownElement(item, index)
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <>
-                      {getSearchedListByGroup(listGroups[activeTab - 1]).map(
-                        (item: DropDownListItem, index: number) =>
-                          getDropDownElement(item, index)
-                      )}
-                    </>
-                  )}
+                  {getListElements()}
+                  {getListElementsByGroup()}
                 </div>
               </>
             )}
