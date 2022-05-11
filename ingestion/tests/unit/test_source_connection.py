@@ -382,26 +382,25 @@ class SouceConnectionTest(TestCase):
 
     def test_snowflake_url(self):
         # connection arguments without db
-        expected_url = (
-            "snowflake://openmetadata_user:@account.region_name.cloud_service"
-        )
+        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
         snowflake_conn_obj = SnowflakeConnection(
             scheme=SnowflakeScheme.snowflake,
-            username="openmetadata_user",
-            account="account.region_name.cloud_service",
-            database=None,
+            username="coding",
+            password="Abhi",
+            warehouse="COMPUTE_WH",
+            account="ue18849.us-east-2.aws",
         )
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
         # connection arguments with db
-        expected_url = (
-            "snowflake://openmetadata_user:@account.region_name.cloud_service/default"
-        )
+        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
         snowflake_conn_obj = SnowflakeConnection(
-            username="openmetadata_user",
-            account="account.region_name.cloud_service",
             scheme=SnowflakeScheme.snowflake,
-            database="default",
+            username="coding",
+            password="Abhi",
+            database="testdb",
+            warehouse="COMPUTE_WH",
+            account="ue18849.us-east-2.aws",
         )
         assert expected_url == get_connection_url(snowflake_conn_obj)
 
@@ -586,7 +585,6 @@ class SouceConnectionTest(TestCase):
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
             password=None,
-            hostPort="localhost:443",
             database="tiny",
             connectionArguments=None,
             scheme=SnowflakeScheme.snowflake,
@@ -599,7 +597,6 @@ class SouceConnectionTest(TestCase):
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
             password=None,
-            hostPort="localhost:443",
             database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SnowflakeScheme.snowflake,
