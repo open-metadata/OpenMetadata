@@ -74,6 +74,7 @@ import {
   VERTICA,
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
+import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -593,4 +594,16 @@ export const shouldTestConnection = (
     serviceType !== DatabaseServiceType.SampleData &&
     serviceCategory !== ServiceCategory.PIPELINE_SERVICES
   );
+};
+
+export const getTestConnectionType = (serviceCat: ServiceCategory) => {
+  switch (serviceCat) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return ConnectionType.Messaging;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return ConnectionType.Dashboard;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return ConnectionType.Database;
+  }
 };
