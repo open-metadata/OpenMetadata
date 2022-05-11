@@ -42,7 +42,7 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -77,7 +77,6 @@ class SnowflakeSource(SQLSource):
                 yield inspect(self.engine)
 
     def fetch_tags(self, schema, table_name: str, column_name: str = ""):
-        self.connection.execute(f"USE {self.service_connection.database}.{schema}")
         try:
             result = self.connection.execute(
                 FETCH_SNOWFLAKE_ALL_TAGS.format(table_name)
@@ -143,7 +142,16 @@ class SnowflakeSource(SQLSource):
 
     def next_record(self) -> Iterable[Entity]:
         for inspector in self.get_databases():
-            yield from self.fetch_tables(inspector=inspector, schema="")
+            for schema in inspector.get_schema_names():
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema_name=schema
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{self.service_connection.database}.{schema}",
+                        "{} pattern not allowed".format("Schema"),
+                    )
+                    continue
+                yield from self.fetch_tables(inspector=inspector, schema=schema)
 
     def add_tags_to_table(self, schema: str, table_name: str, table_entity):
         tag_category_list = self.fetch_tags(schema=schema, table_name=table_name)
@@ -168,16 +176,19 @@ class SnowflakeSource(SQLSource):
         inspector: Inspector,
         schema: str,
     ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
-        entities = inspector.get_table_names()
-        for db, schema, table_name, entity_type, comment in entities:
+        self.connection.execute(f"USE {self.service_connection.database}.{schema}")
+        entities = inspector.get_table_names(schema)
+        for table_name, entity_type, comment in entities:
             try:
                 if filter_by_table(
                     self.source_config.tableFilterPattern, table_name=table_name
                 ):
                     self.status.filter(
-                        f"{self.config.serviceName}.{db}.{schema}.{table_name}",
+                        f"{self.config.serviceName}.{self.service_connection.database}.{schema}.{table_name}",
                         "{} pattern not allowed".format(entity_type),
                     )
+                    continue
+                if entity_type == "VIEW" and not self.source_config.includeViews:
                     continue
                 table_columns = self._get_columns(schema, table_name, inspector)
                 view_definition = inspector.get_view_definition(table_name, schema)
@@ -214,8 +225,8 @@ class SnowflakeSource(SQLSource):
                 logger.error(err)
 
 
-def get_table_names(self, connection, schema=None, **kw):
-    result = connection.execute(FETCH_SNOWFLAKE_METADATA)
+def get_table_names(self, connection, schema, **kw):
+    result = connection.execute(FETCH_SNOWFLAKE_METADATA.format(schema))
     return result.fetchall()
 
 

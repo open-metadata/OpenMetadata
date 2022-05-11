@@ -21,6 +21,9 @@ from sqlalchemy import inspect
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -55,7 +58,7 @@ class SnowflakeUsageSource(UsageSource):
     SERVICE_TYPE = DatabaseServiceType.Snowflake.value
     DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
-    def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
         end = end + timedelta(days=1)
@@ -91,7 +94,9 @@ class SnowflakeUsageSource(UsageSource):
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.connection)
-                yield inspect(self.engine)
+                rows = self.engine.execute(self.sql_stmt)
+                for row in rows:
+                    yield row
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -112,8 +117,8 @@ class SnowflakeUsageSource(UsageSource):
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
-                if not row["database_name"] and self.service_connection.database:
-                    TableQuery.database = self.service_connection.database
+                if not row["database_name"] and self.connection.database:
+                    TableQuery.database = self.connection.database
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
