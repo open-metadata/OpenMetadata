@@ -44,7 +44,6 @@ This is a sample config for Snowflake:
         "serviceConnection": {
             "config": {
                 "type": "Snowflake",
-                "hostPort": "<hostPort>",
                 "username": "<username>",
                 "password": "<password>",
                 "database": "<database>",
@@ -89,7 +88,6 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 * **username**: Enter the username of your Snowflake user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Snowflake user in the _Password_ field.
-* **hostPort**: Enter the fully qualified hostname and port number for your Snowflake deployment in the _Host and Port_ field.
 * **account**: Enter the details for the Snowflake _Account_.
 * **role**: Enter the details of the Snowflake Account _Role_. This is an optional detail.
 * **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
@@ -188,7 +186,6 @@ This is a sample config for Snowflake Usage:
         "serviceConnection": {
             "config": {
                 "type": "Snowflake",
-                "hostPort": "<hostPort>",
                 "username": "<username>",
                 "password": "<password>",
                 "database": "<database>",

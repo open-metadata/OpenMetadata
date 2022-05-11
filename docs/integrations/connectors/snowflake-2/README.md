@@ -237,7 +237,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

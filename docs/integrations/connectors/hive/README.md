@@ -83,7 +83,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (17) (2) (1).png>)
 
 <details>
 
@@ -223,7 +223,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (2).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
