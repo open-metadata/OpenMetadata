@@ -90,18 +90,20 @@ const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').click();
 
   // ingestions page
+  const retryTimes = 10;
+  let retryCount = 0;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
     cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
       'have.text',
       1
     );
-    cy.get('[data-testid="Ingestions"]').click();
+    // click on the tab only for the first time
+    if (retryCount === 0) {
+      cy.get('[data-testid="Ingestions"]').click();
+    }
     cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
   };
-
-  const retryTimes = 10;
-  let retryCount = 0;
   const checkSuccessState = () => {
     testIngestionsTab();
     retryCount++;
