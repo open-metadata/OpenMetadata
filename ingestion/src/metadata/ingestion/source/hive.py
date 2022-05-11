@@ -62,7 +62,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         if charlen:
             charlen = charlen.group(1)
             if attype == "decimal":
-                print(charlen)
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
             else:
