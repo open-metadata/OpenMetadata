@@ -27,6 +27,7 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    environment: cypress
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -36,14 +37,6 @@ jobs:
         with:
           java-version: '11'
           distribution: 'adopt'
-
-      - name: Cache node modules
-        uses: actions/cache@v2
-        with:
-          path: openmetadata-ui/src/main/resources/ui/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
 
       - name: Generating Data Models
         run: make install_dev generate
