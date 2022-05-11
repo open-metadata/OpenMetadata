@@ -14,6 +14,16 @@ import re
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
 
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
 
 complex_data_types = ["struct", "map", "array", "union"]
@@ -93,18 +103,6 @@ def get_table_names(self, connection, schema=None, **kw):
 
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_names = get_table_names
-
-
-from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
-    HiveConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.source import InvalidSourceException
 
 
 class HiveSource(SQLSource):
