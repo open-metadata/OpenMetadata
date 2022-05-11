@@ -18,24 +18,46 @@ from metadata.ingestion.source.sql_source import SQLSource
 
 complex_data_types = ["struct", "map", "array", "union"]
 
+_type_map.update(
+    {
+        "binary": types.BINARY,
+        "char": types.CHAR,
+        "varchar": types.VARCHAR,
+    }
+)
+
 
 def get_columns(self, connection, table_name, schema=None, **kw):
     rows = self._get_table_columns(connection, table_name, schema)
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
+    args = ()
     for (col_name, col_type, comment) in rows:
         if col_name == "# Partition Information":
             break
+
         col_raw_type = col_type
+        attype = re.sub(r"\(.*\)", "", col_type)
         col_type = re.search(r"^\w+", col_type).group(0)
         try:
             coltype = _type_map[col_type]
+
         except KeyError:
             util.warn(
                 "Did not recognize type '%s' of column '%s'" % (col_type, col_name)
             )
             coltype = types.NullType
+        charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
+        if charlen:
+            charlen = charlen.group(1)
+            if attype == "decimal":
+                print(charlen)
+                prec, scale = charlen.split(",")
+                args = (int(prec), int(scale))
+            else:
+                args = (int(charlen),)
+            coltype = coltype(*args)
 
         result.append(
             {
