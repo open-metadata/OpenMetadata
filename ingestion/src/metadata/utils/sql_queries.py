@@ -311,5 +311,5 @@ FETCH_SNOWFLAKE_ALL_TAGS = (
 )
 
 FETCH_SNOWFLAKE_METADATA = """
-select TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables
+select TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables where TABLE_SCHEMA = '{}' 
 """
