@@ -19,7 +19,9 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
 import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.catalog.util.EntityUtil.stringMatch;
+import static org.openmetadata.catalog.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.catalog.util.EntityUtil.termReferenceMatch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -28,6 +30,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
@@ -337,6 +340,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReferences(original.getEntity(), updated.getEntity());
       updateRelatedTerms(original.getEntity(), updated.getEntity());
       updateReviewers(original.getEntity(), updated.getEntity());
+    }
+
+    @Override
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+        throws IOException {
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      origTags = listOrEmpty(origTags);
+      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if its empty.
+      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
+      if (origTags.isEmpty() && updatedTags.isEmpty()) {
+        return; // Nothing to update
+      }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+
+      if (operation.isPut()) {
+        // PUT operation merges tags in the request with what already exists
+        EntityUtil.mergeTags(updatedTags, origTags);
+      }
+
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      updatedTags.sort(compareTagLabel);
+      List<String> targetFQNList = daoCollection.tagUsageDAO().tagTargetFQN(fqn);
+      targetFQNList.add(fqn);
+      for (String targetFQN : targetFQNList) {
+        applyTags(updatedTags, targetFQN);
+      }
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
