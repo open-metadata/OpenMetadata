@@ -64,14 +64,21 @@ const ProfilePicture = ({
     <div
       className={classNames('profile-image', type)}
       style={{ height: `${width}px`, width: `${width}px` }}>
-      <img alt="user" referrerPolicy="no-referrer" src={profilePic} />
+      <img
+        alt="user"
+        data-testid="profile-image"
+        referrerPolicy="no-referrer"
+        src={profilePic}
+      />
     </div>
   ) : isPicLoading ? (
     <div
       className="tw-inline-block tw-relative"
       style={{ height: `${width}px`, width: `${width}px` }}>
       {getAvatarByName()}
-      <div className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded">
+      <div
+        className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
+        data-testid="loader-cntnr">
         <Loader
           className="tw-absolute tw-inset-0"
           size="small"
