@@ -145,7 +145,7 @@ const CronEditor = (props) => {
 
   const option = periodOptions.find((o) => o.value === selectedPeriod);
 
-  const startText = 'Repeat every';
+  const startText = 'Scheduled to run every';
   const cronPeriodString = `${startText} ${selectedPeriod}`;
 
   const changeValue = (state) => {
