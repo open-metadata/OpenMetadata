@@ -110,12 +110,7 @@ FILE_SINK_CONFIG = """
 """
 
 
-MOCK_GET_TABLE_NAMES = [
-    "zsession_log1",
-    "zsession_log2",
-    "session_log1",
-    "catalog_table",
-]
+MOCK_GET_TABLE_NAMES = ["zsession_log1", "zsession_log2", "session_log1"]
 GET_TABLE_DESCRIPTIONS = {"text": "Test Description"}
 
 MOCK_GET_SCHEMA_NAMES = ["dbo"]
@@ -163,6 +158,7 @@ MOCK_GET_VIEW_NAMES = [
     "catalog_test_view",
     "test_view2",
     "test_view1",
+    "catalog_table",
 ]
 
 MOCK_GET_VIEW_DEFINITION_VIEW = """
