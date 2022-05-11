@@ -42,7 +42,7 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.sql_source import SQLSource
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -69,6 +69,11 @@ class SnowflakeSource(SQLSource):
             results = self.connection.execute(query)
             for res in results:
                 row = list(res)
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern, database_name=row[1]
+                ):
+                    self.status.filter(row[1], "Database pattern not allowed")
+                    continue
                 use_db_query = f"USE DATABASE {row[1]}"
                 self.connection.execute(use_db_query)
                 logger.info(f"Ingesting from database: {row[1]}")
