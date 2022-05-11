@@ -65,6 +65,10 @@ jobs:
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}
+          CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.CYPRESS_SNOWFLAKE_PASSWORD }}
+          CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.CYPRESS_SNOWFLAKE_ACCOUNT }}
+          CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.CYPRESS_SNOWFLAKE_DATABASE }}
+          CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.CYPRESS_SNOWFLAKE_WAREHOUSE }}
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
