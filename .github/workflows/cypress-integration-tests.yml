@@ -19,7 +19,6 @@ on:
     branches: [main]
   pull_request_target:
     types: [opened, synchronize, reopened]
-    branches: [main]
 
 concurrency:
   group: cypress-integration-tests-${{ github.head_ref || github.run_id }}
