@@ -33,7 +33,8 @@
         "SQLite",
         "DeltaLake",
         "Salesforce",
-        "SampleData"
+        "SampleData",
+        "PinotDB"
       ],
       "javaEnums": [
         {
@@ -110,6 +111,9 @@
         },
         {
           "name": "SampleData"
+        },
+        {
+          "name": "PinotDB"
         }
       ]
     },
@@ -193,6 +197,9 @@
             },
             {
               "$ref": "./connections/database/sampleDataConnection.json"
+            },
+            {
+              "$ref": "./connections/database/pinotDBConnection.json"
             }
           ]
         }
