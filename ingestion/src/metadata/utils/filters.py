@@ -59,7 +59,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
             [
                 matched
                 for regex in filter_pattern.includes
-                if (matched := re.match(regex, name))
+                if (matched := re.match(regex, name, re.IGNORECASE))
             ]
         )
 
@@ -69,7 +69,7 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
             [
                 matched
                 for regex in filter_pattern.excludes
-                if (matched := re.match(regex, name))
+                if (matched := re.match(regex, name, re.IGNORECASE))
             ]
         )
 
