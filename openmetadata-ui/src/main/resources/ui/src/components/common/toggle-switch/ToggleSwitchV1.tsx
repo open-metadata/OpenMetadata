@@ -17,13 +17,20 @@ import React from 'react';
 interface ToggleSwitchV1Props {
   checked: boolean;
   handleCheck: () => void;
+  testId?: string;
 }
 
-const ToggleSwitchV1 = ({ checked, handleCheck }: ToggleSwitchV1Props) => {
+const ToggleSwitchV1 = ({
+  checked,
+  handleCheck,
+  testId,
+}: ToggleSwitchV1Props) => {
+  const id = testId ? `toggle-button-${testId}` : 'toggle-button';
+
   return (
     <div
       className={classNames('toggle-switch', checked ? 'open' : null)}
-      data-testid="toggle-button"
+      data-testid={id}
       onClick={handleCheck}>
       <div className="switch" />
     </div>

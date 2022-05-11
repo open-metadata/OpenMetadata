@@ -81,6 +81,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={includeView}
                 handleCheck={handleIncludeView}
+                testId="include-views"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -94,6 +95,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={enableDataProfiler}
                 handleCheck={handleEnableDataProfiler}
+                testId="data-profiler"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -108,6 +110,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={ingestSampleData}
                 handleCheck={handleIngestSampleData}
+                testId="ingest-sample-data"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -121,6 +124,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={enableDebugLog}
                 handleCheck={handleEnableDebugLog}
+                testId="enable-debug-log"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
@@ -137,6 +141,7 @@ const ConfigureIngestion = ({
                       handleMarkDeletedTables();
                     }
                   }}
+                  testId="mark-deleted"
                 />
               </div>
               <p className="tw-text-grey-muted tw-mt-3">
