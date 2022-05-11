@@ -226,7 +226,7 @@ const CronEditor = (props) => {
   };
 
   const getTextComp = (str) => {
-    return <div className="tw-font-semibold tw-text-success">{str}</div>;
+    return <div>{str}</div>;
   };
 
   const findHourOption = (hour) => {
@@ -503,7 +503,7 @@ const CronEditor = (props) => {
   return (
     <div className={`${className} cron-row`}>
       <div className="">
-        <div className="tw-grid tw-grid-cols-2 tw-gap-x-4">
+        <div className="tw-grid tw-grid-cols-2 tw-gap-4">
           <div className="tw-mb-1.5">
             <label htmlFor="ingestionType">Every:</label>
             <select
