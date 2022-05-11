@@ -210,7 +210,7 @@ class SnowflakeSource(SQLSource):
                     table_data = self.fetch_sample_data(schema, table_name)
                     table_entity.sampleData = table_data
                 if self.source_config.enableDataProfiler:
-                    profile = self.run_profiler(table=table_name, schema=schema)
+                    profile = self.run_profiler(table=table_entity, schema=schema)
                     table_entity.tableProfile = [profile] if profile else None
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
