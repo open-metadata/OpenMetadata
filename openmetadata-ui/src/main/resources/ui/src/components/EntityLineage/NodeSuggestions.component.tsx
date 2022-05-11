@@ -114,7 +114,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 }}>
                 <img
                   alt={entity.serviceType}
-                  className="tw-inline tw-h-4 tw-w-4 tw-mr-2"
+                  className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
                 {getSuggestionLabel(

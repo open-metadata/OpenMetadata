@@ -2,16 +2,16 @@ import textwrap
 
 REDSHIFT_SQL_STATEMENT = """
         SELECT DISTINCT ss.userid,
-            ss.query,
-            sui.usename,
+            ss.query query_type,
+            sui.usename user_name,
             ss.tbl,
-            sq.querytxt,
-            sti.database,
-            sti.schema,
+            sq.querytxt query_text,
+            sti.database database_name,
+            sti.schema schema_name,
             sti.table,
-            sq.starttime,
-            sq.endtime,
-            sq.aborted
+            sq.starttime start_time,
+            sq.endtime end_time,
+            sq.aborted aborted
         FROM stl_scan ss
             JOIN svv_table_info sti ON ss.tbl = sti.table_id
             JOIN stl_query sq ON ss.query = sq.query
@@ -303,4 +303,13 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         Where start_time between '{start_time}' and '{end_time}'
         and CAST(type,'Int8') <> 3
         and CAST(type,'Int8') <> 4
+"""
+
+
+FETCH_SNOWFLAKE_ALL_TAGS = (
+    "select * from table(information_schema.TAG_REFERENCES_ALL_COLUMNS('{}', 'table'));"
+)
+
+FETCH_SNOWFLAKE_METADATA = """
+select TABLE_CATALOG,TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables
 """

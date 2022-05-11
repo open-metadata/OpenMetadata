@@ -91,6 +91,7 @@ describe('Test Explore component', () => {
         error=""
         fetchCount={mockFunction}
         fetchData={mockFunction}
+        handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
         searchQuery=""

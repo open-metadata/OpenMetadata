@@ -13,7 +13,7 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Optional
 
 from airflow import DAG
 
@@ -27,10 +27,6 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from airflow_provider_openmetadata.lineage.callback import (
-    failure_callback,
-    success_callback,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -109,19 +105,6 @@ def build_workflow_config_property(
     )
 
 
-def build_default_args() -> Dict[str, Any]:
-    """
-    Build the default_args dict to be passed
-    to the DAG regardless of the airflow_pipeline
-    payload.
-    """
-    return {
-        # Run the lineage backend callbacks to gather the Pipeline info
-        "on_failure_callback": failure_callback,
-        "on_success_callback": success_callback,
-    }
-
-
 def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     Prepare kwargs to send to DAG
@@ -131,7 +114,6 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return {
         "dag_id": ingestion_pipeline.name.__root__,
         "description": ingestion_pipeline.description,
-        "default_args": build_default_args(),
         "start_date": date_to_datetime(ingestion_pipeline.airflowConfig.startDate),
         "end_date": date_to_datetime(ingestion_pipeline.airflowConfig.endDate),
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,

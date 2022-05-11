@@ -80,7 +80,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   };
 
   const OtherDetails: Array<ExtraInfo> = [
-    { key: 'Owner', value: owner },
+    { key: 'Owner', value: owner, avatarWidth: '16' },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -139,12 +139,12 @@ const TableDataCard: FunctionComponent<Props> = ({
         <div className="tw-flex tw-items-center">
           <img
             alt=""
-            className="tw-inline tw-h-5 tw-w-5"
+            className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
             <button
-              className="tw-text-grey-body tw-font-medium"
+              className="tw-text-grey-body tw-font-semibold"
               data-testid="table-link"
               id={`${id}Title`}
               onClick={handleLinkClick}>

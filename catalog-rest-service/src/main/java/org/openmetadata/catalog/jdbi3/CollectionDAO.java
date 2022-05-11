@@ -32,7 +32,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.Bots;
+import org.openmetadata.catalog.entity.Bot;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
@@ -56,7 +56,7 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
+import org.openmetadata.catalog.jdbi3.BotRepository.BotEntityInterface;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
@@ -164,7 +164,7 @@ public interface CollectionDAO {
   GlossaryTermDAO glossaryTermDAO();
 
   @CreateSqlObject
-  BotsDAO botsDAO();
+  BotDAO botDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -860,25 +860,25 @@ public interface CollectionDAO {
     }
   }
 
-  interface BotsDAO extends EntityDAO<Bots> {
+  interface BotDAO extends EntityDAO<Bot> {
     @Override
     default String getTableName() {
-      return "bots_entity";
+      return "bot_entity";
     }
 
     @Override
-    default Class<Bots> getEntityClass() {
-      return Bots.class;
+    default Class<Bot> getEntityClass() {
+      return Bot.class;
     }
 
     @Override
     default String getNameColumn() {
-      return "fullyQualifiedName";
+      return "name";
     }
 
     @Override
-    default EntityReference getEntityReference(Bots entity) {
-      return new BotsEntityInterface(entity).getEntityReference();
+    default EntityReference getEntityReference(Bot entity) {
+      return new BotEntityInterface(entity).getEntityReference();
     }
   }
 

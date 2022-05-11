@@ -123,3 +123,24 @@ export const getUserCounts = () => {
 export const deleteUser = (id: string) => {
   return APIClient.delete(`/users/${id}`);
 };
+
+export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/users/token/${id}`);
+};
+
+export const generateUserToken: Function = (
+  id: string,
+  expiry: string
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.put(`/users/generateToken/${id}`, expiry, configOptions);
+};
+
+export const revokeUserToken: Function = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.put(`/users/revokeToken/${id}`);
+};

@@ -224,12 +224,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.entityListClass = entityListClass;
     this.collectionName = collectionName;
     this.allFields = fields;
-
+    ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
     List<String> allowedFields = Entity.getEntityFields(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
-    ENTITY_RESOURCE_TEST_MAP.put(entityType, this);
   }
 
   @BeforeAll
@@ -340,7 +339,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    String allFields = String.join(",", Entity.getEntityFields(entityClass));
+    String allFields = String.join(",", Entity.getAllowedFields(entityClass));
 
     // GET an entity by ID with all the field names of an entity should be successful
     getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
@@ -1426,6 +1425,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
   }
 
+  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
   protected final T patchEntityAndCheck(
       T updated,
       String originalJson,
@@ -1433,22 +1433,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
-    return patchEntityAndCheck(updated, originalJson, authHeaders, updateType, expectedChange, updated);
-  }
-
-  /** Helper function to generate JSON PATCH, submit PATCH API request and validate response. */
-  protected final T patchEntityAndCheck(
-      T updated,
-      String originalJson,
-      Map<String, String> authHeaders,
-      UpdateType updateType,
-      ChangeDescription expectedChange,
-      T update)
-      throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(entityInterface.getId(), originalJson, update, authHeaders);
+    T returned = patchEntity(entityInterface.getId(), originalJson, updated, authHeaders);
     entityInterface = getEntityInterface(returned);
 
     compareEntities(updated, returned, authHeaders);

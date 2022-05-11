@@ -14,6 +14,7 @@ import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
 import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
+import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.AuthProvider;
 
@@ -27,6 +28,7 @@ public final class OpenMetadataClientSecurityUtil {
   public static final String AUTHORITY = "authority";
   public static final String CLIENT_SECRET = "clientSecret";
   public static final String SECRET_KEY = "secretKey";
+  public static final String JWT_TOKEN = "jwtToken";
 
   private OpenMetadataClientSecurityUtil() {
     /* Utility class with private constructor */
@@ -83,6 +85,11 @@ public final class OpenMetadataClientSecurityUtil {
         checkRequiredField("tokenEndpoint", customOIDCSSOClientConfig.getTokenEndpoint(), authProvider);
         openMetadataServerConnection.setSecurityConfig(customOIDCSSOClientConfig);
         break;
+      case OPENMETADATA:
+        OpenMetadataJWTClientConfig openMetadataJWTClientConfig = authConfig.getOpenMetadataJWTClientConfig();
+        checkAuthConfig(openMetadataJWTClientConfig, authProvider);
+        checkRequiredField(JWT_TOKEN, openMetadataJWTClientConfig.getJwtToken(), authProvider);
+        openMetadataServerConnection.setSecurityConfig(openMetadataJWTClientConfig);
       case NO_AUTH:
         break;
       default:

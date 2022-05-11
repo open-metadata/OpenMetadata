@@ -30,6 +30,10 @@ jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
 
 const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestionName: '',
+  databaseFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   dashboardFilterPattern: {
     includes: [],
     excludes: [],
@@ -63,6 +67,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   ingestSampleData: false,
   markDeletedTables: false,
   showDashboardFilter: false,
+  showDatabaseFilter: false,
   showSchemaFilter: false,
   showTableFilter: false,
   showTopicFilter: false,
@@ -72,16 +77,18 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleIngestionName: jest.fn(),
   handleEnableDataProfiler: jest.fn(),
   handleIngestSampleData: jest.fn(),
+  handleMarkDeletedTables: jest.fn(),
   handleQueryLogDuration: jest.fn(),
   handleResultLimit: jest.fn(),
   handleStageFileLocation: jest.fn(),
-  handleMarkDeletedTables: jest.fn(),
   getIncludeValue: jest.fn(),
   getExcludeValue: jest.fn(),
   handleShowFilter: jest.fn(),
   onCancel: jest.fn(),
   onNext: jest.fn(),
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
+  enableDebugLog: false,
+  handleEnableDebugLog: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {
@@ -109,7 +116,7 @@ describe('Test ConfigureIngestion component', () => {
     expect(configureIngestionContainer).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
-    expect(filterPatternComponents.length).toBe(2);
-    expect(toggleSwitchs.length).toBe(4);
+    expect(filterPatternComponents.length).toBe(3);
+    expect(toggleSwitchs.length).toBe(5);
   });
 });

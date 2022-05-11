@@ -17,14 +17,13 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -56,6 +55,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -184,7 +184,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             self.source_config.enableDataProfiler = False
 
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.debug(f"Error running ingestion profiler {repr(exc)}")
 
         return None
@@ -262,8 +262,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         self.status.scanned(fqn)
 
     def next_record(self) -> Iterable[Entity]:
-        inspectors = self.get_databases()
-        for inspector in inspectors:
+        for inspector in self.get_databases():
             schema_names = inspector.get_schema_names()
             for schema in schema_names:
                 # clear any previous source database state
@@ -289,7 +288,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
 
     def fetch_tables(
         self, inspector: Inspector, schema: str
-    ) -> Iterable[OMetaDatabaseAndTable]:
+    ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
         """
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
@@ -346,20 +345,20 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(err)
 
-                # check if we have any model to associate with
-                table_entity.dataModel = self._get_data_model(schema, table_name)
                 database = self._get_database(self.service_connection.database)
+                # check if we have any model to associate with
+                table_entity.dataModel = self._get_data_model(
+                    database.name.__root__, schema, table_name
+                )
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
                     database_schema=self._get_schema(schema, database),
                 )
-
                 self.register_record(table_schema_and_db)
-
                 yield table_schema_and_db
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
@@ -425,7 +424,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 except Exception as err:
                     logger.error(err)
 
-                # table.dataModel = self._get_data_model(schema, view_name)
                 database = self._get_database(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table,
@@ -487,6 +485,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
+                    database = mnode["database"]
                     schema = mnode["schema"]
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
@@ -498,10 +497,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = f"{schema}.{model_name}".lower()
+                    model_fqdn = get_fqdn(
+                        DataModel, database, schema, model_name
+                    ).lower()
                     self.data_models[model_fqdn] = model
                 except Exception as err:
-                    logger.debug(traceback.print_exc())
+                    logger.debug(traceback.format_exc())
                     logger.error(err)
 
     def _parse_data_model_upstream(self, mnode):
@@ -523,8 +524,8 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     continue
         return upstream_nodes
 
-    def _get_data_model(self, schema, table_name):
-        table_fqn = f"{schema}{FQDN_SEPARATOR}{table_name}".lower()
+    def _get_data_model(self, database, schema, table_name):
+        table_fqn = get_fqdn(DataModel, database, schema, table_name).lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
@@ -599,6 +600,9 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         elif column["name"] in unique_columns:
             constraint = Constraint.UNIQUE
         return constraint
+
+    def fetch_tags(self, schema: str, table_name: str, column_name: str = ""):
+        return []
 
     def _get_columns(
         self, schema: str, table: str, inspector: Inspector
@@ -716,6 +720,23 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                             children=children if children else None,
                             arrayDataType=arr_data_type,
                         )
+                        tag_category_list = self.fetch_tags(
+                            schema=schema, table_name=table, column_name=column["name"]
+                        )
+                        om_column.tags = []
+                        for tags in tag_category_list:
+                            om_column.tags.append(
+                                TagLabel(
+                                    tagFQN=get_fqdn(
+                                        Tag,
+                                        tags.category_name.name.__root__,
+                                        tags.category_details.name.__root__,
+                                    ),
+                                    labelType="Automated",
+                                    state="Suggested",
+                                    source="Tag",
+                                )
+                            )
                     else:
                         parsed_string["dataLength"] = self._check_col_length(
                             parsed_string["dataType"], column["type"]
@@ -771,12 +792,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                                     )
                                 ]
                         except Exception as err:
-                            logger.debug(traceback.print_exc())
+                            logger.debug(traceback.format_exc())
                             logger.error(err)
 
                         om_column = col_dict
                 except Exception as err:
-                    logger.debug(traceback.print_exc())
+                    logger.debug(traceback.format_exc())
                     logger.error(f"{err} : {column}")
                     continue
                 table_columns.append(om_column)

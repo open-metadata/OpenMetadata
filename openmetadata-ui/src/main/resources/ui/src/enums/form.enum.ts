@@ -15,3 +15,9 @@ export enum FormSubmitType {
   ADD = 'add',
   EDIT = 'edit',
 }
+
+export enum FormValidationRulesType {
+  email = 'email',
+  url = 'url',
+  number = 'number',
+}

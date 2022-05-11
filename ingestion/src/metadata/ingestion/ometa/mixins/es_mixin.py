@@ -66,5 +66,5 @@ class ESMixin(Generic[T]):
                         )
                     )
         except Exception as err:
-            logger.error(f"Elasticsearch failed for query: {generate_es_string}")
+            logger.warning(f"Elasticsearch failed for query: {generate_es_string}")
         return multiple_entities

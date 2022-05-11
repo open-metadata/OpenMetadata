@@ -56,7 +56,7 @@ const TopicDetailsProps = {
   maximumMessageSize: 0,
   replicationFactor: 0,
   retentionSize: 0,
-  schemaText: '',
+  schemaText: 'schema text',
   schemaType: 'Avro',
   serviceType: '',
   users: [],
@@ -192,9 +192,21 @@ describe('Test TopicDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is config', async () => {
+  it('Check if active tab is sample data', async () => {
     const { container } = render(
       <TopicDetails {...TopicDetailsProps} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const sampleData = await findByTestId(container, 'sample-data');
+
+    expect(sampleData).toBeInTheDocument();
+  });
+
+  it('Check if active tab is config', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
@@ -206,7 +218,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={4} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={5} />,
       {
         wrapper: MemoryRouter,
       }

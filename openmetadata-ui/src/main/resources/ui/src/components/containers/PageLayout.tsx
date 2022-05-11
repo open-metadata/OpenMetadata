@@ -116,7 +116,11 @@ const PageLayout: FC<PageLayoutProp> = ({
   const get2ColRTLLayout = () => {
     return (
       <>
-        {header && <div className="tw-px-6">{header}</div>}
+        {header && (
+          <div className="page-layout-container tw-gap-x-3 tw-px-6 centered-layout tw-max-w-full-hd tw-pt-4">
+            {header}
+          </div>
+        )}
         <div
           className={classNames(
             'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',

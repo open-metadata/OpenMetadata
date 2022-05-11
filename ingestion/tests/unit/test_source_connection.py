@@ -24,6 +24,10 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
+    PinotDBScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
     TrinoScheme,
@@ -87,6 +91,67 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url(trino_conn_obj)
 
+    def test_trino_conn_arguments(self):
+        # connection arguments without connectionArguments and without proxies
+        expected_args = {}
+        trino_conn_obj = TrinoConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            catalog="tpcds",
+            database="tiny",
+            connectionArguments=None,
+            scheme=TrinoScheme.trino,
+        )
+        assert expected_args == get_connection_args(trino_conn_obj)
+
+        # connection arguments with connectionArguments and without proxies
+        expected_args = {"user": "user-to-be-impersonated"}
+        trino_conn_obj = TrinoConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            catalog="tpcds",
+            database="tiny",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            scheme=TrinoScheme.trino,
+        )
+        assert expected_args == get_connection_args(trino_conn_obj)
+
+        # connection arguments without connectionArguments and with proxies
+        expected_args = {}
+        trino_conn_obj = TrinoConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            catalog="tpcds",
+            database="tiny",
+            connectionArguments=None,
+            proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
+            scheme=TrinoScheme.trino,
+        )
+        conn_args = get_connection_args(trino_conn_obj)
+        assert "http_session" in conn_args
+        conn_args.pop("http_session")
+        assert expected_args == conn_args
+
+        # connection arguments with connectionArguments and with proxies
+        expected_args = {"user": "user-to-be-impersonated"}
+        trino_conn_obj = TrinoConnection(
+            username="user",
+            password=None,
+            hostPort="localhost:443",
+            catalog="tpcds",
+            database="tiny",
+            connectionArguments={"user": "user-to-be-impersonated"},
+            proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
+            scheme=TrinoScheme.trino,
+        )
+        conn_args = get_connection_args(trino_conn_obj)
+        assert "http_session" in conn_args
+        conn_args.pop("http_session")
+        assert expected_args == conn_args
+
     def test_trino_url_with_params(self):
         expected_url = "trino://username:pass@localhost:443/catalog?param=value"
         trino_conn_obj = TrinoConnection(
@@ -133,3 +198,14 @@ class SouceConnectionTest(TestCase):
             scheme=DruidScheme.druid, hostPort="localhost:8082"
         )
         assert expected_url == get_connection_url(druid_conn_obj)
+
+    def test_pinotdb_url(self):
+        expected_url = (
+            "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
+        )
+        pinot_conn_obj = PinotDBConnection(
+            scheme=PinotDBScheme.pinot,
+            hostPort="localhost:8099",
+            pinotControllerHost="http://localhost:9000/",
+        )
+        assert expected_url == get_connection_url(pinot_conn_obj)

@@ -7,9 +7,7 @@
     "messagingMetadataConfigType": {
       "description": "Messaging Source Config Metadata Pipeline type",
       "type": "string",
-      "enum": [
-        "MessagingMetadata"
-      ],
+      "enum": ["MessagingMetadata"],
       "default": "MessagingMetadata"
     }
   },
@@ -22,6 +20,11 @@
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "generateSampleData": {
+      "description": "Option to turn on/off generating sample data during metadata extraction.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

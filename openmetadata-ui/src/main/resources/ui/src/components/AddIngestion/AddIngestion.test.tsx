@@ -38,7 +38,19 @@ const mockAddIngestionProps: AddIngestionProps = {
 jest.mock('./Steps/ConfigureIngestion', () => {
   return jest
     .fn()
-    .mockImplementation(() => <div>ConfigureIngestion.component</div>);
+    .mockImplementation(({ onNext }) => (
+      <div onClick={onNext}>ConfigureIngestion.component</div>
+    ));
+});
+
+jest.mock('@rjsf/core', () => ({
+  Form: jest.fn().mockImplementation(() => <div>RJSF_Form.component</div>),
+}));
+
+jest.mock('../common/DBTConfigFormBuilder/DBTConfigFormBuilder', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>DBTConfigFormBuilder.component</div>);
 });
 
 describe('Test AddIngestion component', () => {
@@ -56,5 +68,23 @@ describe('Test AddIngestion component', () => {
 
     expect(addIngestionContainer).toBeInTheDocument();
     expect(configureIngestion).toBeInTheDocument();
+  });
+
+  it('should render DBT Config step for database services', async () => {
+    const { container } = render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        pipelineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+      />
+    );
+
+    const dbtConfigFormBuilder = await findByText(
+      container,
+      'DBTConfigFormBuilder.component'
+    );
+
+    expect(dbtConfigFormBuilder).toBeInTheDocument();
   });
 });

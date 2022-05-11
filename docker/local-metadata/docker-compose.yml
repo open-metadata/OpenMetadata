@@ -10,6 +10,10 @@
 #  limitations under the License.
 
 version: "3.9"
+volumes:
+  ingestion-volume-dag-airflow:
+  ingestion-volume-dags:
+  ingestion-volume-tmp:
 services:
   mysql:
     build:
@@ -61,6 +65,7 @@ services:
       AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-no-auth}
+      CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEY:-[https://www.googleapis.com/oauth2/v3/certs]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
       AUTHENTICATION_CLIENT_ID: ${AUTHENTICATION_CLIENT_ID:-""}
@@ -113,6 +118,8 @@ services:
     build:
       context: ../../.
       dockerfile: ingestion/Dockerfile
+      args:
+        INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
     depends_on:
       - mysql
@@ -129,7 +136,9 @@ services:
       - "localhost:172.16.239.13"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-
+      - ingestion-volume-dag-airflow:/airflow/dag_generated_configs
+      - ingestion-volume-dags:/airflow/dags
+      - ingestion-volume-tmp:/tmp
 networks:
   local_app_net:
     name: ometa_network

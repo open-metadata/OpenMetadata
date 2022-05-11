@@ -13,6 +13,7 @@ Query parser implementation
 """
 
 import datetime
+import traceback
 from typing import Optional
 
 from sql_metadata import Parser
@@ -91,7 +92,9 @@ class QueryParserProcessor(Processor):
             )
         # pylint: disable=broad-except
         except Exception as err:
-            logger.debug(record.sql)
+            if hasattr(record, "sql"):
+                logger.debug(record.sql)
+            logger.debug(traceback.format_exc())
             logger.error(err)
             query_parser_data = None
 

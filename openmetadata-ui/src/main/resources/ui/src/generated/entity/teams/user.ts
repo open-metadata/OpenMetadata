@@ -18,6 +18,7 @@
  * data assets. A user can also follow zero or more data assets.
  */
 export interface User {
+  authenticationMechanism?: AuthenticationMechanism;
   /**
    * Change that lead to this version of the entity.
    */
@@ -50,6 +51,11 @@ export interface User {
    * Unique identifier that identifies a user entity instance.
    */
   id: string;
+  /**
+   * Roles that a user is inheriting either as part of system default role or through
+   * membership in teams that have set team default roles.
+   */
+  inheritedRoles?: EntityReference[];
   /**
    * When true indicates user is an administrator for the system with superuser privileges.
    */
@@ -96,6 +102,65 @@ export interface User {
    * Metadata version of the entity.
    */
   version?: number;
+}
+
+/**
+ * User/Bot Authentication Mechanism.
+ */
+export interface AuthenticationMechanism {
+  authType?: AuthType;
+  config?: AuthMechanism;
+}
+
+export enum AuthType {
+  Jwt = 'JWT',
+  Sso = 'SSO',
+}
+
+/**
+ * User/Bot SSOAuthN.
+ *
+ * User/Bot JWTAuthMechanism.
+ */
+export interface AuthMechanism {
+  /**
+   * Type of database service such as Amundsen, Atlas...
+   */
+  ssoServiceType?: SsoServiceType;
+  /**
+   * JWT Auth Token.
+   */
+  JWTToken?: string;
+  /**
+   * JWT Auth Token expiration time.
+   */
+  JWTTokenExpiresAt?: number;
+  /**
+   * JWT Auth Token expiration in days
+   */
+  JWTTokenExpiry?: JWTTokenExpiry;
+}
+
+/**
+ * JWT Auth Token expiration in days
+ */
+export enum JWTTokenExpiry {
+  The30 = '30',
+  The60 = '60',
+  The7 = '7',
+  The90 = '90',
+  Unlimited = 'Unlimited',
+}
+
+/**
+ * Type of database service such as Amundsen, Atlas...
+ */
+export enum SsoServiceType {
+  Auth0 = 'Auth0',
+  Azure = 'Azure',
+  CustomOIDC = 'CustomOIDC',
+  Google = 'Google',
+  Okta = 'Okta',
 }
 
 /**

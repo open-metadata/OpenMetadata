@@ -13,10 +13,15 @@
 
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router';
 import ExplorePage from './ExplorePage.component';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
+  useHistory: jest.fn(),
+  useLocation: jest
+    .fn()
+    .mockImplementation(() => ({ search: '', pathname: '/explore' })),
 }));
 
 jest.mock('../../components/Explore/Explore.component', () => {
@@ -29,7 +34,7 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
 
 describe('Test Explore page', () => {
   it('Page Should render', async () => {
-    const { container } = render(<ExplorePage />);
+    const { container } = render(<ExplorePage />, { wrapper: MemoryRouter });
 
     const explorePage = await findByText(container, /Explore Component/i);
 

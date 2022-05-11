@@ -95,7 +95,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_data")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -122,7 +122,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_kafka")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -149,7 +149,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_superset")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -176,7 +176,7 @@ class Explore {
     List<Integer> count = new ArrayList<>();
     for (WebElement sName : explorePage.serviceName()) {
       Names.add(sName.getText());
-      if (Names.contains("sample_airflow")) {
+      if (Names.contains("Tier1")) {
         break;
       }
     }
@@ -190,7 +190,7 @@ class Explore {
 
   @Test
   @Order(6)
-  void checkBasics() throws Exception {
+  void checkBasics() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     try {
@@ -280,7 +280,7 @@ class Explore {
 
   @Test
   @Order(10)
-  void checkRandomDashboardCount() throws InterruptedException {
+  void checkRandomDashboardCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.dashboard());
@@ -301,7 +301,7 @@ class Explore {
 
   @Test
   @Order(11)
-  void checkRandomPipelineCount() throws InterruptedException {
+  void checkRandomPipelineCount() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, explorePage.pipeline());
@@ -322,7 +322,7 @@ class Explore {
 
   @Test
   @Order(12)
-  void checkSearchBarInvalidValue() throws InterruptedException {
+  void checkSearchBarInvalidValue() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     String searchCriteria = "asasds";
     Events.click(webDriver, myDataPage.closeWhatsNew());

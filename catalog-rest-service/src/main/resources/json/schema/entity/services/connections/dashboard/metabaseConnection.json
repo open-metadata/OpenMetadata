@@ -22,18 +22,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Metabase. This user should have privileges to read all the metadata in Metabase.",
+      "description": "Username to connect to Metabase. This user should have privileges to read all the metadata in Metabase.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Metabase.",
+      "description": "Password to connect to Metabase.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and Port of Metabase instance.",
+      "description": "Host and Port of the Metabase instance.",
       "type": "string",
       "format": "uri"
     },

@@ -13,7 +13,6 @@ import logging
 import os
 import pathlib
 import sys
-import traceback
 from typing import List, Optional, Tuple
 
 import click
@@ -22,13 +21,11 @@ from pydantic import ValidationError
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import run_backup
 from metadata.cli.docker import run_docker
+from metadata.cli.ingest import run_ingest
 from metadata.config.common import load_config_file
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.logger import cli_logger, ingestion_logger, set_loggers_level
+from metadata.utils.logger import cli_logger, set_loggers_level
 
 logger = cli_logger()
 
@@ -72,23 +69,7 @@ def ingest(config: str) -> None:
     Main command for ingesting metadata into Metadata.
     Logging is controlled via the JSON config
     """
-    config_file = pathlib.Path(config)
-    workflow_config = OpenMetadataWorkflowConfig.parse_obj(
-        load_config_file(config_file)
-    )
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
-
-    try:
-        logger.debug(f"Using config: {workflow_config}")
-        workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
-        logger.debug(traceback.print_exc())
-        sys.exit(1)
-    workflow.execute()
-    workflow.stop()
-    ret = workflow.print_status()
-    sys.exit(ret)
+    run_ingest(config_path=config)
 
 
 @metadata.command()
@@ -195,7 +176,7 @@ def report(config: str) -> None:
 )
 @click.option("--reset-db", help="Reset OpenMetadata Data", is_flag=True)
 @click.option(
-    "--skip-sample-data", help="Skip the ingestion of sample metadata", is_flag=True
+    "--ingest-sample-data", help="Enable the sample metadata ingestion", is_flag=True
 )
 def docker(
     start,
@@ -206,7 +187,7 @@ def docker(
     file_path,
     env_file_path,
     reset_db,
-    skip_sample_data,
+    ingest_sample_data,
 ) -> None:
     """
     Checks Docker Memory Allocation
@@ -222,7 +203,7 @@ def docker(
         file_path,
         env_file_path,
         reset_db,
-        skip_sample_data,
+        ingest_sample_data,
     )
 
 

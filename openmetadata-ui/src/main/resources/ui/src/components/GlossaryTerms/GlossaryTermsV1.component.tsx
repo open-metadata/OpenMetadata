@@ -385,15 +385,10 @@ const GlossaryTermsV1 = ({
   };
 
   const getTabPaneButton = () => {
-    switch (activeTab) {
-      case 1: {
-        return relatedTerms.length ? AddRelatedTermButton() : undefined;
-      }
-      case 3: {
-        return glossaryTerm.reviewers?.length ? AddReviewerButton() : undefined;
-      }
-      default:
-        return;
+    if (activeTab === 1) {
+      return relatedTerms.length ? AddRelatedTermButton() : undefined;
+    } else {
+      return;
     }
   };
 

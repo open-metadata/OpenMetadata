@@ -12,14 +12,7 @@
  */
 
 import classNames from 'classnames';
-import {
-  camelCase,
-  isEmpty,
-  isNil,
-  isString,
-  isUndefined,
-  startCase,
-} from 'lodash';
+import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
 import Avatar from '../components/common/avatar/Avatar';
@@ -389,7 +382,11 @@ export const getInfoElements = (data: ExtraInfo) => {
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
               <div className="tw-inline-block tw-mr-2">
-                <Avatar name={displayVal} textClass="tw-text-xs" width="20" />
+                <Avatar
+                  name={displayVal}
+                  textClass="tw-text-xs"
+                  width={data.avatarWidth || '20'}
+                />
               </div>
             ) : (
               <></>
@@ -478,14 +475,20 @@ export const getInfoElements = (data: ExtraInfo) => {
   );
 };
 
+export const ENTITY_LINK_SEPARATOR = '::';
+
 export const getEntityFeedLink: Function = (
   type: string,
   fqn: string,
   field?: string
 ): string | undefined => {
   if (isUndefined(type) || isUndefined(fqn)) return undefined;
+  // url decode the fqn
+  fqn = decodeURIComponent(fqn);
 
-  return `<#E/${type}/${fqn}${field ? `/${field}` : ''}>`;
+  return `<#E${ENTITY_LINK_SEPARATOR}${type}${ENTITY_LINK_SEPARATOR}${fqn}${
+    field ? `${ENTITY_LINK_SEPARATOR}${field}` : ''
+  }>`;
 };
 
 export const isSupportedTest = (dataType: string) => {
@@ -540,5 +543,5 @@ export const isColumnTestSupported = (dataType: string) => {
 };
 
 export const getTitleCase = (text?: string) => {
-  return text ? startCase(camelCase(text)) : '';
+  return text ? startCase(text) : '';
 };

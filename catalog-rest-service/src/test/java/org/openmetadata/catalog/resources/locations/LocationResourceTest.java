@@ -63,6 +63,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateLocation()
         .withName(name)
+        .withPath(name)
         .withService(getContainer())
         .withDescription(description)
         .withOwner(owner);
@@ -81,7 +82,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
         createRequest.getDescription(),
         TestUtils.getPrincipal(authHeaders),
         createRequest.getOwner());
-
+    assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
     EntityReference expectedService = createRequest.getService();
     if (expectedService != null) {
@@ -172,7 +173,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     // Create location for each service and test APIs
     for (EntityReference service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
-
       // List locations by filtering on service name and ensure right locations are returned
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("service", service.getName());

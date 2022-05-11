@@ -15,7 +15,7 @@ test the REST APIs using some ongoing changes on OpenMetadata as well.
 Install following packages in your scheduler and webserver python env.
 
 ```
-pip install openmetadata-airflow-apis
+pip install openmetadata-airflow-managed-apis       
 ```
 
 ## Configuration

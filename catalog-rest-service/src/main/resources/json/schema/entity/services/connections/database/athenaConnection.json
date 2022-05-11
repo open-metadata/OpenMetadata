@@ -38,7 +38,7 @@
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Athena",
+      "description": "Host and port of the Athena service.",
       "type": "string"
     },
     "database": {

@@ -16,8 +16,8 @@
  * SQLite Database Connection Config
  */
 export interface SqliteConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -29,11 +29,11 @@ export interface SqliteConnection {
    */
   databaseMode?: string;
   /**
-   * Host and port of the data source. Blank for in-memory database.
+   * Host and port of the SQLite service. Blank for in-memory database.
    */
   hostPort?: string;
   /**
-   * password to connect to SQLite. Blank for in-memory database.
+   * Password to connect to SQLite. Blank for in-memory database.
    */
   password?: string;
   /**
@@ -41,12 +41,13 @@ export interface SqliteConnection {
    */
   scheme?: SQLiteScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: SQLiteType;
   /**
-   * username to connect  to the SQLite. Blank for in-memory database.
+   * Username to connect to SQLite. Blank for in-memory database.
    */
   username?: string;
 }

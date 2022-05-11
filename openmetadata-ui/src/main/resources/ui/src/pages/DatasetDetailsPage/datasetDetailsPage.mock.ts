@@ -464,7 +464,7 @@ export const createPostRes = {
   href: 'http://localhost:8585/api/v1/feed/dd5848a6-515b-4c46-8a96-7bae8f50358c',
   threadTs: 1649149216727,
   about:
-    '<#E/table/bigquery_gcp:shopify:dim_address/columns/address_id/description>',
+    '<#E::table::bigquery_gcp:shopify:dim_address::columns::address_id::description>',
   entityId: '0730ac72-1c27-432e-99b4-fb05b8da8632',
   createdBy: 'aaron_johnson0',
   updatedAt: 1649149216727,

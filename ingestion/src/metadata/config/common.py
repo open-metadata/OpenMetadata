@@ -16,7 +16,12 @@ import pathlib
 from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 
+import yaml
 from pydantic import BaseModel
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 FQDN_SEPARATOR: str = "."
 
@@ -45,22 +50,50 @@ class ConfigurationMechanism(ABC):
         pass
 
 
+class YamlConfigurationMechanism(ConfigurationMechanism):
+    """load configuration from yaml files"""
+
+    def load_config(self, config_fp: IO) -> dict:
+        try:
+            config = yaml.safe_load(config_fp)
+            return config
+        except yaml.error.YAMLError:
+            msg = "YAML Configuration file is not a valid YAML"
+            logger.error(msg)
+            raise ConfigurationError(msg)
+
+
+class JsonConfigurationMechanism(ConfigurationMechanism):
+    """load configuration from json files"""
+
+    def load_config(self, config_fp: IO) -> dict:
+        try:
+            config = json.load(config_fp)
+            return config
+        except json.decoder.JSONDecodeError:
+            msg = "JSON Configuration file is not a valid JSON"
+            logger.error(msg)
+            raise ConfigurationError(msg)
+
+
 def load_config_file(config_file: pathlib.Path) -> dict:
     if not config_file.is_file():
         raise ConfigurationError(f"Cannot open config file {config_file}")
 
-    if config_file.suffix not in [".json"]:
+    config_mech: ConfigurationMechanism
+    if config_file.suffix in [".yaml", ".yml"]:
+        config_mech = YamlConfigurationMechanism()
+    elif config_file.suffix == ".json":
+        config_mech = JsonConfigurationMechanism()
+    else:
         raise ConfigurationError(
-            "Only json are supported. Cannot process file type {}".format(
+            "Only .json and .yml are supported. Cannot process file type {}".format(
                 config_file.suffix
             )
         )
-
     with config_file.open() as raw_config_file:
         raw_config = raw_config_file.read()
-
     expanded_config_file = os.path.expandvars(raw_config)
     config_fp = io.StringIO(expanded_config_file)
-    config = json.load(config_fp)
-
+    config = config_mech.load_config(config_fp)
     return config

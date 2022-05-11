@@ -119,6 +119,7 @@ class DatabaseServicePageTest {
     Thread.sleep(waitTime);
     Events.click(webDriver, common.addIngestion());
     Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, common.headerSettings());
     Events.click(webDriver, common.headerSettingsMenu("Services"));
@@ -147,7 +148,8 @@ class DatabaseServicePageTest {
   @Order(4)
   void checkIngestionTab() throws InterruptedException {
     openDatabaseServicePage();
-    Events.click(webDriver, databaseServicePage.serviceName(serviceName));
+    Events.click(webDriver, databaseServicePage.serviceName("sample_data"));
+    Events.waitForElementToDisplay(webDriver, databaseServicePage.databaseTable(), 10, 2);
     Events.click(webDriver, common.ingestion());
     try {
       Events.click(webDriver, databaseServicePage.runIngestion()); // run ingestion
@@ -156,6 +158,7 @@ class DatabaseServicePageTest {
     }
     Events.click(webDriver, databaseServicePage.editIngestion()); // edit ingestion
     Events.click(webDriver, common.nextButton());
+    Events.click(webDriver, common.saveServiceButton());
     Events.click(webDriver, common.deployButton());
     Events.click(webDriver, databaseServicePage.viewService());
     Events.click(webDriver, databaseServicePage.deleteIngestion()); // delete ingestion

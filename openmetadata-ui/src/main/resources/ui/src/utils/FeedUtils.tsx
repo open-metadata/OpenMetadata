@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
   EntityFieldThreadCount,
@@ -19,6 +21,7 @@ import {
   EntityThreadField,
   Post,
 } from 'Models';
+import React from 'react';
 import TurndownService from 'turndown';
 import { deletePostById, getFeedById } from '../axiosAPIs/feedsAPI';
 import {
@@ -37,6 +40,7 @@ import {
   mentionRegEx,
 } from '../constants/feed.constants';
 import { getEntityPlaceHolder } from './CommonUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -114,7 +118,10 @@ export const getEntityFieldThreadCounts = (
   return entityFieldThreads;
 };
 
-export const getThreadField = (value: string, separator = '/') => {
+export const getThreadField = (
+  value: string,
+  separator = ENTITY_LINK_SEPARATOR
+) => {
   return value.split(separator).slice(-2);
 };
 
@@ -251,12 +258,12 @@ export const getBackendFormat = (message: string) => {
   mentionList.forEach((m, i) => {
     const updatedDetails = mentionDetails[i].slice(-2);
     const entityType = urlEntries.find((e) => e[1] === updatedDetails[0])?.[0];
-    const entityLink = `<#E/${entityType}/${updatedDetails[1]}|${m}>`;
+    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${updatedDetails[1]}|${m}>`;
     updatedMessage = updatedMessage.replaceAll(m, entityLink);
   });
   hashtagList.forEach((h, i) => {
     const updatedDetails = hashtagDetails[i].slice(-2);
-    const entityLink = `<#E/${updatedDetails[0]}/${updatedDetails[1]}|${h}>`;
+    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${updatedDetails[0]}${ENTITY_LINK_SEPARATOR}${updatedDetails[1]}|${h}>`;
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
@@ -307,4 +314,33 @@ export const getUpdatedThread = (id: string) => {
         reject(error);
       });
   });
+};
+
+/**
+ * if entity field is columns::name::description
+ * return columns > name > description
+ */
+export const getEntityFieldDisplay = (entityField: string) => {
+  if (entityField && entityField.length) {
+    const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
+    const separator = (
+      <span className="tw-px-1">
+        <FontAwesomeIcon
+          className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
+          icon={faAngleRight}
+        />
+      </span>
+    );
+
+    return entityFields.map((field, i) => {
+      return (
+        <span className="tw-font-bold" key={`field-${i}`}>
+          {field}
+          {i < entityFields.length - 1 ? separator : null}
+        </span>
+      );
+    });
+  }
+
+  return null;
 };

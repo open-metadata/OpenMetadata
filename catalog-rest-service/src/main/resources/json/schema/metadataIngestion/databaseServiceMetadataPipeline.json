@@ -10,6 +10,24 @@
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
     },
+    "dbtBucketDetails": {
+      "title": "DBT Bucket Details",
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string"
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "dbtLocalConfig": {
       "title": "DBT Local Config Source",
       "description": "DBT Catalog and Manifest file path config.",
@@ -51,6 +69,10 @@
         "dbtSecurityConfig": {
           "title": "DBT S3 Security Config",
           "$ref": "../security/credentials/awsCredentials.json"
+        },
+        "dbtPrefixConfig": {
+          "title": "DBT Prefix Config",
+          "$ref": "#/definitions/dbtBucketDetails"
         }
       }
     },
@@ -61,6 +83,10 @@
         "dbtSecurityConfig": {
           "title": "DBT GCS Security Config",
           "$ref": "../security/credentials/gcsCredentials.json"
+        },
+        "dbtPrefixConfig": {
+          "title": "DBT Prefix Config",
+          "$ref": "#/definitions/dbtBucketDetails"
         }
       }
     }
@@ -107,6 +133,10 @@
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "dbtConfigSource": {

@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -75,6 +75,7 @@ import {
   getCurrentPipelineTab,
   pipelineDetailsTabs,
 } from '../../utils/PipelineDetailsUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -277,6 +278,10 @@ const PipelineDetailsPage = () => {
           setDeleted(deleted);
           setSlashedPipelineName([
             {
+              name: startCase(ServiceCategory.PIPELINE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.PIPELINE_SERVICES),
+            },
+            {
               name: service.name,
               url: service.name
                 ? getServiceDetailsPath(
@@ -441,6 +446,7 @@ const PipelineDetailsPage = () => {
     saveUpdatedPipelineData(updatedPipeline)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setPipelineDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTags(getTagsWithoutTier(res.data.tags));

@@ -89,6 +89,10 @@ export interface Topic {
    */
   retentionTime?: number;
   /**
+   * Sample data for a topic.
+   */
+  sampleData?: TopicSampleData;
+  /**
    * Schema used for message serialization. Optional as some topics may not have associated
    * schemas.
    */
@@ -225,6 +229,18 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
+}
+
+/**
+ * Sample data for a topic.
+ *
+ * This schema defines the type to capture sample data for a topic.
+ */
+export interface TopicSampleData {
+  /**
+   * List of local sample messages for a topic.
+   */
+  messages?: string[];
 }
 
 /**

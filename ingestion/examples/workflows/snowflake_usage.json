@@ -5,7 +5,6 @@
     "serviceConnection": {
       "config": {
         "type": "Snowflake",
-        "hostPort": "account.region.service.snowflakecomputing.com",
         "username": "username",
         "password": "strong_password",
         "database": "SNOWFLAKE_SAMPLE_DATA",

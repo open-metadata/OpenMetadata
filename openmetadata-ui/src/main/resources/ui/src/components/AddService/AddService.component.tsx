@@ -34,6 +34,7 @@ import {
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
@@ -46,9 +47,17 @@ const AddService = ({
   onAddServiceSave,
   newServiceData,
   onAddIngestionSave,
+  ingestionProgress,
+  isIngestionCreated,
+  isIngestionDeployed,
+  ingestionAction,
+  showDeployButton,
+  onIngestionDeploy,
+  slashedBreadcrumb,
+  addIngestion,
+  handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const [addIngestion, setAddIngestion] = useState(false);
   const [showErrorMessage, setShowErrorMessage] = useState({
     serviceType: false,
     name: false,
@@ -102,10 +111,6 @@ const AddService = ({
     } else {
       setShowErrorMessage({ ...showErrorMessage, name: true });
     }
-  };
-
-  const handleAddIngestion = (value: boolean) => {
-    setAddIngestion(value);
   };
 
   const handleConfigUpdate = (
@@ -214,6 +219,7 @@ const AddService = ({
                   : {}) as DataService
               }
               serviceCategory={serviceCategory}
+              serviceType={selectServiceType}
               status={saveServiceState}
               onCancel={handleConnectionDetailsBackClick}
               onSave={(e) => {
@@ -228,11 +234,16 @@ const AddService = ({
               handleViewServiceClick={handleViewServiceClick}
               name={serviceName}
               showIngestionButton={isIngestionSupported(serviceCategory)}
+              state={FormSubmitType.ADD}
             />
           )}
         </div>
       </div>
     );
+  };
+
+  const isDeployed = () => {
+    return activeIngestionStep >= 3 && !showDeployButton;
   };
 
   const fetchRightPanel = () => {
@@ -243,13 +254,15 @@ const AddService = ({
       addIngestion,
       `${serviceName}_${PipelineType.Metadata}`,
       serviceName,
-      PipelineType.Metadata
+      PipelineType.Metadata,
+      isDeployed()
     );
   };
 
   return (
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
@@ -259,12 +272,18 @@ const AddService = ({
             handleCancelClick={() => handleAddIngestion(false)}
             handleViewServiceClick={handleViewServiceClick}
             heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
             pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
             serviceData={newServiceData as DataObj}
             setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showDeployButton}
             status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
+            onIngestionDeploy={onIngestionDeploy}
           />
         ) : (
           addNewService()

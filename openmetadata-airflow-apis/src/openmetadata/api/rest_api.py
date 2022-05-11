@@ -118,6 +118,8 @@ class REST_API(AppBuilderBaseView):
 
         # Deciding which function to use based off the API object that was requested.
         # Some functions are custom and need to be manually routed to.
+        if api == "rest_status":
+            return self.rest_status()
         if api == "deploy_dag":
             return self.deploy_dag()
         if api == "trigger_dag":
@@ -133,12 +135,28 @@ class REST_API(AppBuilderBaseView):
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
         )
 
+    @staticmethod
+    def rest_status() -> Response:
+        """
+        Check that the Airflow REST is reachable
+        and running correctly.
+        """
+        try:
+            url = AIRFLOW_WEBSERVER_BASE_URL + REST_API_ENDPOINT
+            return ApiResponse.success(
+                {"message": f"Airflow REST {REST_API_PLUGIN_VERSION} running at {url}"}
+            )
+        except Exception as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+            )
+
     def deploy_dag(self) -> Response:
-        """Custom Function for the deploy_dag API
+        """
+        Custom Function for the deploy_dag API
         Creates workflow dag based on workflow dag file and refreshes
         the session
-        args:
-            workflow_config: the workflow config that defines the dag
         """
 
         json_request = request.get_json()
@@ -218,6 +236,12 @@ class REST_API(AppBuilderBaseView):
         Check the status of a DAG runs
         """
         dag_id: str = self.get_request_arg(request, "dag_id")
+
+        if not dag_id:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Missing dag_id argument in the request",
+            )
 
         try:
             return status(dag_id)

@@ -1,4 +1,4 @@
-CREATE FUNCTION to_tz_timestamp(text) RETURNS TIMESTAMP WITH TIME ZONE AS
+CREATE OR REPLACE FUNCTION to_tz_timestamp(text) RETURNS TIMESTAMP WITH TIME ZONE AS
 $$
 select to_timestamp($1, '%Y-%m-%dT%T.%fZ')::timestamptz;
 $$
@@ -19,9 +19,9 @@ CREATE TABLE IF NOT EXISTS entity_relationship (
     PRIMARY KEY (fromId, toId, relation)
 );
 
-CREATE INDEX entity_relationship_edge_index ON entity_relationship(fromId, toId, relation);
-CREATE INDEX entity_relationship_from_index ON entity_relationship(fromId, relation);
-CREATE INDEX entity_relationship_to_index ON entity_relationship(toId, relation);
+CREATE INDEX IF NOT EXISTS entity_relationship_edge_index ON entity_relationship(fromId, toId, relation);
+CREATE INDEX IF NOT EXISTS entity_relationship_from_index ON entity_relationship(fromId, relation);
+CREATE INDEX IF NOT EXISTS entity_relationship_to_index ON entity_relationship(toId, relation);
 
 --
 -- Table that captures all the relationships between field of an entity to a field of another entity
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS field_relationship (
     PRIMARY KEY (fromFQN, toFQN, relation)
 );
 
-CREATE INDEX field_relationship_from_index ON field_relationship(fromFQN, relation);
-CREATE INDEX field_relationship_to_index ON field_relationship(toFQN, relation);
+CREATE INDEX IF NOT EXISTS field_relationship_from_index ON field_relationship(fromFQN, relation);
+CREATE INDEX IF NOT EXISTS field_relationship_to_index ON field_relationship(toFQN, relation);
 
 --
 -- Used for storing additional metadata for an entity
@@ -392,9 +392,9 @@ CREATE TABLE IF NOT EXISTS change_event (
     json JSONB NOT NULL
 );
 
-CREATE INDEX change_event_event_type_index ON change_event(eventType);
-CREATE INDEX change_event_entity_type_index ON change_event(entityType);
-CREATE INDEX change_event_event_time_index ON change_event(eventTime);
+CREATE INDEX IF NOT EXISTS change_event_event_type_index ON change_event(eventType);
+CREATE INDEX IF NOT EXISTS change_event_entity_type_index ON change_event(entityType);
+CREATE INDEX IF NOT EXISTS change_event_event_time_index ON change_event(eventTime);
 
 CREATE TABLE IF NOT EXISTS webhook_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
