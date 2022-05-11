@@ -154,12 +154,12 @@ class AppState {
     }
 
     const alreadyLoading = !isUndefined(
-      this.userProfilePicsLoading.find((item) => {
+      this.userProfilePicsLoading.find((loadingItem) => {
         // compare id only if present
-        if (item.id && id) {
-          return item.id === id;
+        if (loadingItem.id && id) {
+          return loadingItem.id === id;
         } else {
-          return item.name === username;
+          return loadingItem.name === username;
         }
       })
     );
@@ -180,12 +180,12 @@ class AppState {
       return;
     }
 
-    const filteredList = this.userProfilePicsLoading.filter((item) => {
+    const filteredList = this.userProfilePicsLoading.filter((loadingItem) => {
       // compare id only if present
-      if (item.id && id) {
-        return item.id !== id;
+      if (loadingItem.id && id) {
+        return loadingItem.id !== id;
       } else {
-        return item.name !== username;
+        return loadingItem.name !== username;
       }
     });
 
@@ -242,12 +242,12 @@ class AppState {
   }
 
   isProfilePicLoading(id?: string, username?: string) {
-    const data = this.userProfilePicsLoading.find((item) => {
+    const data = this.userProfilePicsLoading.find((loadingPic) => {
       // compare id only if present
-      if (item.id && id) {
-        return item.id === id;
+      if (loadingPic.id && id) {
+        return loadingPic.id === id;
       } else {
-        return item.name === username;
+        return loadingPic.name === username;
       }
     });
 

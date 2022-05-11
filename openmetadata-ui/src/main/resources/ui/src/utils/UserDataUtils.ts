@@ -138,7 +138,7 @@ export const getUserProfilePic = (userId?: string, username?: string) => {
     if (!AppState.isProfilePicLoading(userId, username)) {
       fetchUserProfilePic(userId, username);
     }
-
-    return;
   }
+
+  return;
 };
