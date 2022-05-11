@@ -156,6 +156,9 @@ class SnowflakeSource(SQLSource):
                         "{} pattern not allowed".format("Schema"),
                     )
                     continue
+                self.connection.execute(
+                    f"USE {self.service_connection.database}.{schema}"
+                )
                 yield from self.fetch_tables(inspector=inspector, schema=schema)
 
     def add_tags_to_table(self, schema: str, table_name: str, table_entity):
@@ -181,7 +184,6 @@ class SnowflakeSource(SQLSource):
         inspector: Inspector,
         schema: str,
     ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
-        self.connection.execute(f"USE {self.service_connection.database}.{schema}")
         entities = inspector.get_table_names(schema)
         for table_name, entity_type, comment in entities:
             try:
