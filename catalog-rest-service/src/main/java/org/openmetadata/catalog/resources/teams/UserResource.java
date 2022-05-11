@@ -446,7 +446,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
-    if (authenticationMechanism.getConfig() != null
+    if (authenticationMechanism != null
+        && authenticationMechanism.getConfig() != null
         && authenticationMechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT) {
       return JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
     }

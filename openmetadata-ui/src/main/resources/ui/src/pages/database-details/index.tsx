@@ -395,7 +395,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const handleUpdateOwner = (owner: Database['owner']) => {
     const updatedData = {
       ...database,
-      owner,
+      owner: { ...database?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
@@ -807,7 +807,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     allowDelete
                     hideTier
                     isRecursiveDelete
-                    currentUser={database?.owner?.id}
+                    currentUser={database?.owner}
                     deletEntityMessage={getDeleteEntityMessage()}
                     entityId={database?.id}
                     entityName={database?.name}

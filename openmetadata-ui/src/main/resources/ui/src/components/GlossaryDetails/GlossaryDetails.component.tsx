@@ -393,7 +393,7 @@ const GlossaryDetails = ({
                   hideTier
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
-                  currentUser={glossary?.owner?.id}
+                  currentUser={glossary?.owner}
                   entityId={glossary.id}
                   entityName={glossary?.name}
                   entityType={EntityType.GLOSSARY}
