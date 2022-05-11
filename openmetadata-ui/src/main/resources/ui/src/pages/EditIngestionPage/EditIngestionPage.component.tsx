@@ -185,9 +185,7 @@ const EditIngestionPage = () => {
       return updateIngestionPipeline(updateData as CreateIngestionPipeline)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            if (!ingestionData.deployed) {
-              onIngestionDeploy();
-            }
+            onIngestionDeploy();
             resolve();
           } else {
             throw jsonData['api-error-messages']['update-ingestion-error'];
@@ -215,7 +213,7 @@ const EditIngestionPage = () => {
         ? activeIngestionStep >= 3
         : activeIngestionStep >= 2;
 
-    return ingestion && !showIngestionButton && !ingestionData.deployed;
+    return ingestion && !showIngestionButton;
   };
 
   useEffect(() => {

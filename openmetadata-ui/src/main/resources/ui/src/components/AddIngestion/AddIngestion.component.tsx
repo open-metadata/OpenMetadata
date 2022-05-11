@@ -474,9 +474,7 @@ const AddIngestion = ({
 
       if (onUpdateIngestion) {
         setSaveState('waiting');
-        if (!data.deployed) {
-          setShowDeployModal(true);
-        }
+        setShowDeployModal(true);
         onUpdateIngestion(updatedData, data, data.id as string, data.name)
           .then(() => {
             setSaveState('success');
@@ -510,9 +508,7 @@ const AddIngestion = ({
   };
 
   const getSuccessMessage = () => {
-    const updateMessage = data?.deployed
-      ? `has been updated successfully`
-      : showDeployButton
+    const updateMessage = showDeployButton
       ? 'has been updated, but failed to deploy'
       : 'has been updated and deployed successfully';
     const createMessage = showDeployButton
