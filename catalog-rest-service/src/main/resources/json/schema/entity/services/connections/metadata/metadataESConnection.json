@@ -54,6 +54,31 @@
       "type": "boolean",
       "default": "true"
     },
+    "includePolicy": {
+      "description": "Include Tags for Policy",
+      "type": "boolean",
+      "default": true
+    },
+    "includeMessagingServices": {
+      "description": "Include Messaging Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDatabaseServices": {
+      "description": "Include Database Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePipelineServices": {
+      "description": "Include Pipeline Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeTags": {
+      "description": "Include Tags for Indexing",
+      "type": "boolean",
+      "default": true
+    },
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",
       "type": "integer",

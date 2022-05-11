@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import {
   EntityFieldThreadCount,
   EntityTags,
@@ -76,7 +76,6 @@ import {
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -324,10 +323,6 @@ const DashboardDetailsPage = () => {
           setServiceType(serviceType);
           setDeleted(deleted);
           setSlashedDashboardName([
-            {
-              name: startCase(ServiceCategory.DASHBOARD_SERVICES),
-              url: getServicesWithTabPath(ServiceCategory.DASHBOARD_SERVICES),
-            },
             {
               name: service.name,
               url: service.name
