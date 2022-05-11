@@ -84,7 +84,7 @@ const testServiceCreationAndIngestion = (
 
   // wait for ingestion to run
   cy.clock();
-  cy.wait(20000);
+  cy.wait(30000);
 
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
@@ -100,19 +100,25 @@ const testServiceCreationAndIngestion = (
     cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
   };
 
-  testIngestionsTab();
-  // the latest run should be success
-  cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-    if ($ingestionStatus.text() === 'Running') {
-      // retry after waiting for 30 seconds
-      cy.wait(30000);
-      cy.reload();
-      testIngestionsTab();
-      cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
-    } else {
-      cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
-    }
-  });
+  const retryTimes = 10;
+  let retryCount = 0;
+  const checkSuccessState = () => {
+    testIngestionsTab();
+    retryCount++;
+    // the latest run should be success
+    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
+      if ($ingestionStatus.text() === 'Running' && retryCount <= retryTimes) {
+        // retry after waiting for 30 seconds
+        cy.wait(30000);
+        cy.reload();
+        checkSuccessState();
+      } else {
+        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
+      }
+    });
+  };
+
+  checkSuccessState();
 };
 
 describe('login with SSO', () => {
