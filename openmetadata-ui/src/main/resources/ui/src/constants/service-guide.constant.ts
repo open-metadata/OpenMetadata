@@ -32,7 +32,7 @@ const schedulingIngestionGuide = {
   step: 3,
   title: 'Schedule for Ingestion',
   description:
-    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
+    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.',
 };
 
 export const addMetadataIngestionGuide = [

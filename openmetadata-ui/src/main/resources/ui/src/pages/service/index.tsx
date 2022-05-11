@@ -22,9 +22,9 @@ import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
   deleteIngestionPipelineById,
+  deployIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-  updateIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
@@ -52,7 +52,6 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -293,33 +292,9 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const deployIngestion = (data: IngestionPipeline) => {
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      name,
-      owner,
-      pipelineType,
-      service,
-      source,
-    } = data;
-    const updateData = {
-      airflowConfig: {
-        ...airflowConfig,
-        forceDeploy: true,
-      },
-      description,
-      displayName,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig: source.sourceConfig,
-    };
-
+  const deployIngestion = (id: string) => {
     return new Promise<void>((resolve, reject) => {
-      return updateIngestionPipeline(updateData as CreateIngestionPipeline)
+      return deployIngestionPipelineById(id)
         .then((res: AxiosResponse) => {
           if (res.data) {
             resolve();
@@ -1016,7 +991,7 @@ const ServicePage: FunctionComponent = () => {
                       allowDelete
                       hideTier
                       isRecursiveDelete
-                      currentUser={serviceDetails?.owner?.id}
+                      currentUser={serviceDetails?.owner}
                       deletEntityMessage={getDeleteEntityMessage()}
                       entityId={serviceDetails?.id}
                       entityName={serviceDetails?.name}

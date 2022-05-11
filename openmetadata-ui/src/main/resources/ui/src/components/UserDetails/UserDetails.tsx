@@ -18,6 +18,7 @@ import { getUserPath } from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
@@ -66,6 +67,35 @@ const UserDetails = ({
     setDeletingUser(undefined);
   };
 
+  const getTeamsText = (teams: EntityReference[]) => {
+    return teams.length > 1 ? (
+      <span>
+        {getEntityName(teams[0])}, &{' '}
+        <PopOver
+          html={
+            <span>
+              {teams.map((t, i) => {
+                return i >= 1 ? (
+                  <span className="tw-block tw-text-left" key={i}>
+                    {getEntityName(t)}
+                  </span>
+                ) : null;
+              })}
+            </span>
+          }
+          position="bottom"
+          theme="light"
+          trigger="mouseenter">
+          <span className="tw-underline tw-cursor-pointer">
+            {teams.length - 1} more
+          </span>
+        </PopOver>
+      </span>
+    ) : (
+      `${getEntityName(teams[0])}`
+    );
+  };
+
   const getUserCards = () => {
     return isUsersLoading ? (
       <Loader />
@@ -84,10 +114,8 @@ const UserDetails = ({
                 isActiveUser: !user.deleted,
                 profilePhoto: user.profile?.images?.image || '',
                 teamCount:
-                  user.teams && user.teams?.length
-                    ? user.teams
-                        ?.map((team) => team.displayName ?? team.name)
-                        ?.join(', ')
+                  user.teams && user.teams.length
+                    ? getTeamsText(user.teams)
                     : 'No teams',
               };
 

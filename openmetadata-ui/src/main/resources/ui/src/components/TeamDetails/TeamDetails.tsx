@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined, orderBy } from 'lodash';
-import { ExtraInfo, TableDetail } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -32,6 +32,7 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
@@ -240,11 +241,11 @@ const TeamDetails = ({
     }
   };
 
-  const handleManageSave = (owner: TableDetail['owner']) => {
+  const handleManageSave = (owner?: EntityReference) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        owner: owner,
+        owner: !isUndefined(owner) ? owner : currentTeam.owner,
       };
 
       return updateTeamHandler(updatedData);
@@ -630,7 +631,7 @@ const TeamDetails = ({
                     hideTier
                     afterDeleteAction={afterDeleteAction}
                     allowTeamOwner={false}
-                    currentUser={currentTeam.owner?.id}
+                    currentUser={currentTeam.owner}
                     entityId={currentTeam.id}
                     entityName={currentTeam.displayName || currentTeam.name}
                     entityType="team"

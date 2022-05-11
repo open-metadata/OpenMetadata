@@ -70,10 +70,26 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
+  const getDebugLogToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>Enable Debug Log</label>
+          <ToggleSwitchV1
+            checked={enableDebugLog}
+            handleCheck={handleEnableDebugLog}
+            testId="enable-debug-log"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
   const getDatabaseFieldToggles = () => {
     return (
       <>
-        {getSeparator('')}
         <div>
           <Field>
             <div className="tw-flex tw-gap-1">
@@ -81,6 +97,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={includeView}
                 handleCheck={handleIncludeView}
+                testId="include-views"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -94,6 +111,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={enableDataProfiler}
                 handleCheck={handleEnableDataProfiler}
+                testId="data-profiler"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -108,6 +126,7 @@ const ConfigureIngestion = ({
               <ToggleSwitchV1
                 checked={ingestSampleData}
                 handleCheck={handleIngestSampleData}
+                testId="ingest-sample-data"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
@@ -115,17 +134,7 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Enable Debug Log</label>
-              <ToggleSwitchV1
-                checked={enableDebugLog}
-                handleCheck={handleEnableDebugLog}
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
-            {getSeparator('')}
-          </Field>
+          {getDebugLogToggle()}
           {!isNil(markDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
@@ -137,6 +146,7 @@ const ConfigureIngestion = ({
                       handleMarkDeletedTables();
                     }
                   }}
+                  testId="mark-deleted"
                 />
               </div>
               <p className="tw-text-grey-muted tw-mt-3">
@@ -190,6 +200,7 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.TABLE}
             />
+            {getSeparator('')}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
@@ -219,23 +230,29 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
+            {getSeparator('')}
+            {getDebugLogToggle()}
           </Fragment>
         );
 
       case ServiceCategory.MESSAGING_SERVICES:
         return (
-          <FilterPattern
-            checked={showTopicFilter}
-            excludePattern={topicFilterPattern.excludes ?? []}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleChecked={(value) =>
-              handleShowFilter(value, FilterPatternEnum.TOPIC)
-            }
-            includePattern={topicFilterPattern.includes ?? []}
-            showSeparator={false}
-            type={FilterPatternEnum.TOPIC}
-          />
+          <Fragment>
+            <FilterPattern
+              checked={showTopicFilter}
+              excludePattern={topicFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.TOPIC)
+              }
+              includePattern={topicFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.TOPIC}
+            />
+            {getSeparator('')}
+            {getDebugLogToggle()}
+          </Fragment>
         );
       default:
         return <></>;
@@ -332,6 +349,7 @@ const ConfigureIngestion = ({
           />
           {getSeparator('')}
         </Field>
+        {getDebugLogToggle()}
       </>
     );
   };
@@ -361,6 +379,7 @@ const ConfigureIngestion = ({
         </div>
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
+        {getDebugLogToggle()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">

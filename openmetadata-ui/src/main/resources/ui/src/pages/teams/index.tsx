@@ -872,7 +872,7 @@ const TeamsPage = () => {
                           <ManageTabComponent
                             hideTier
                             allowTeamOwner={false}
-                            currentUser={currentTeam?.owner?.id}
+                            currentUser={currentTeam?.owner}
                             hasEditAccess={isOwner()}
                             isJoinable={currentTeam?.isJoinable}
                             onSave={handleUpdateTeam}

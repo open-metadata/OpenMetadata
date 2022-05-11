@@ -145,7 +145,7 @@ const CronEditor = (props) => {
 
   const option = periodOptions.find((o) => o.value === selectedPeriod);
 
-  const startText = 'Repeat every';
+  const startText = 'Scheduled to run every';
   const cronPeriodString = `${startText} ${selectedPeriod}`;
 
   const changeValue = (state) => {
@@ -226,7 +226,7 @@ const CronEditor = (props) => {
   };
 
   const getTextComp = (str) => {
-    return <div className="cron-string">{str}</div>;
+    return <div>{str}</div>;
   };
 
   const findHourOption = (hour) => {
@@ -246,7 +246,7 @@ const CronEditor = (props) => {
 
     return (
       <select
-        className="tw-form-inputs tw-py-1 tw-ml-2 tw-px-1"
+        className="tw-form-inputs tw-py-1 tw-px-1"
         disabled={disabled}
         value={selectedOption.hour}
         onChange={(e) => {
@@ -316,24 +316,19 @@ const CronEditor = (props) => {
 
     return (
       state.selectedPeriod === 'hour' && (
-        <cron-hour-component>
-          <div className="cron-field-row">
-            <span className="m-l-xs">Day : </span>
-            <div className="cron-badge-option-container week-opt-container">
-              {getBadgeOptions(dayOptions, -1, 1, null)}
-            </div>
-          </div>
-          <div className="tw-flex tw-justify-center tw-items-center">
-            <label className="tw-mr-2 tw-flex-none tw-mt-1">Minute :</label>
+        <>
+          <div className="tw-mb-1.5">
+            <label>Minute :</label>
             {getMinuteSelect(selectedHourOption, (e) =>
               onHourOptionSelect(e, 'min')
             )}
           </div>
-
-          {getTextComp(
-            `${cronPeriodString} ${selectedHourOption.min} minute past the hour`
-          )}
-        </cron-hour-component>
+          <div className="tw-col-span-2">
+            {getTextComp(
+              `${cronPeriodString} ${selectedHourOption.min} minute past the hour`
+            )}
+          </div>
+        </>
       )
     );
   };
@@ -346,15 +341,9 @@ const CronEditor = (props) => {
 
     return (
       state.selectedPeriod === 'day' && (
-        <cron-day-component>
-          <div className="cron-field-row">
-            <span className="m-l-xs">Day : </span>
-            <div className="cron-badge-option-container week-opt-container">
-              {getBadgeOptions(dayOptions, -1, 1, null)}
-            </div>
-          </div>
-          <div className="tw-flex">
-            <label className="tw-mt-1">Time :</label>
+        <>
+          <div className="tw-mb-1.5">
+            <label>Time :</label>
             <div className="tw-flex">
               {getHourSelect(selectedDayOption, (e) =>
                 onDayOptionSelect(e, 'hour')
@@ -365,8 +354,10 @@ const CronEditor = (props) => {
               )}
             </div>
           </div>
-          {getTextComp(`${cronPeriodString} at ${hourLabel}:${minuteLabel}`)}
-        </cron-day-component>
+          <div className="tw-col-span-2">
+            {getTextComp(`${cronPeriodString} at ${hourLabel}:${minuteLabel}`)}
+          </div>
+        </>
       )
     );
   };
@@ -383,17 +374,9 @@ const CronEditor = (props) => {
 
     return (
       state.selectedPeriod === 'week' && (
-        <cron-week-component>
-          <div className="cron-field-row">
-            <span className="m-l-xs">Day : </span>
-            <div className="cron-badge-option-container week-opt-container">
-              {getBadgeOptions(dayOptions, selectedWeekOption.dow, 1, (e) =>
-                onWeekOptionSelect(e, 'dow')
-              )}
-            </div>
-          </div>
-          <div className="tw-flex">
-            <label className="tw-mt-1">Time :</label>
+        <>
+          <div className="tw-mb-1.5">
+            <label>Time :</label>
             <div className="tw-flex">
               {getHourSelect(selectedWeekOption, (e) =>
                 onWeekOptionSelect(e, 'hour')
@@ -404,11 +387,20 @@ const CronEditor = (props) => {
               )}
             </div>
           </div>
-
-          {getTextComp(
-            `${cronPeriodString} on ${dayLabel} at ${hourLabel}:${minuteLabel}`
-          )}
-        </cron-week-component>
+          <div className="tw-pt-2">
+            <span>Day : </span>
+            <div className="cron-badge-option-container week-opt-container">
+              {getBadgeOptions(dayOptions, selectedWeekOption.dow, 1, (e) =>
+                onWeekOptionSelect(e, 'dow')
+              )}
+            </div>
+          </div>
+          <div className="tw-col-span-2">
+            {getTextComp(
+              `${cronPeriodString} on ${dayLabel} at ${hourLabel}:${minuteLabel}`
+            )}
+          </div>
+        </>
       )
     );
   };
@@ -511,13 +503,11 @@ const CronEditor = (props) => {
   return (
     <div className={`${className} cron-row`}>
       <div className="">
-        <div className="">
-          <div className="tw-flex tw-mb-1.5">
-            <label className="tw-mb-0 tw-self-center" htmlFor="ingestionType">
-              Every:
-            </label>
+        <div className="tw-grid tw-grid-cols-2 tw-gap-4">
+          <div className="tw-mb-1.5">
+            <label htmlFor="ingestionType">Every:</label>
             <select
-              className="tw-ml-2 tw-form-inputs tw-py-1"
+              className="tw-form-inputs tw-px-3 tw-py-1"
               disabled={disabled}
               id="ingestionType"
               name="ingestionType"

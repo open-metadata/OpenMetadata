@@ -135,9 +135,13 @@ export const getUserToken: Function = (id: string): Promise<AxiosResponse> => {
 
 export const generateUserToken: Function = (
   id: string,
-  data: Record<string, string>
+  expiry: string
 ): Promise<AxiosResponse> => {
-  return APIClient.put(`/users/generateToken/${id}`, data);
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.put(`/users/generateToken/${id}`, expiry, configOptions);
 };
 
 export const revokeUserToken: Function = (

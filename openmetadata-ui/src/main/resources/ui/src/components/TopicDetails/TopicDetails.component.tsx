@@ -389,99 +389,100 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-
-          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-            {activeTab === 1 && (
-              <>
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      description={description}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={topicFQN}
-                      entityName={entityName}
-                      entityType={EntityType.TOPIC}
-                      hasEditAccess={hasEditAccess()}
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
-                  </div>
-                </div>
-                {schemaText ? (
-                  <Fragment>
-                    {getInfoBadge([{ key: 'Schema', value: schemaType }])}
-                    <div
-                      className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
-                      data-testid="schema">
-                      <SchemaEditor value={schemaText} />
+          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
+              {activeTab === 1 && (
+                <>
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full tw--ml-5">
+                      <Description
+                        description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          'description',
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={topicFQN}
+                        entityName={entityName}
+                        entityType={EntityType.TOPIC}
+                        hasEditAccess={hasEditAccess()}
+                        isEdit={isEdit}
+                        isReadOnly={deleted}
+                        owner={owner}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
                     </div>
-                  </Fragment>
-                ) : (
-                  <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                    No schema data available
                   </div>
-                )}
-              </>
-            )}
-            {activeTab === 2 && (
+                  {schemaText ? (
+                    <Fragment>
+                      {getInfoBadge([{ key: 'Schema', value: schemaType }])}
+                      <div
+                        className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4"
+                        data-testid="schema">
+                        <SchemaEditor value={schemaText} />
+                      </div>
+                    </Fragment>
+                  ) : (
+                    <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                      No schema data available
+                    </div>
+                  )}
+                </>
+              )}
+              {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4 "
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    className=""
+                    deletePostHandler={deletePostHandler}
+                    entityName={entityName}
+                    feedList={entityThread}
+                    postFeedHandler={postFeedHandler}
+                  />
+                  <div />
+                </div>
+              )}
+              {activeTab === 3 && (
+                <div data-testid="sample-data">
+                  <SampleDataTopic
+                    isLoading={isSampleDataLoading}
+                    sampleData={sampleData}
+                  />
+                </div>
+              )}
+              {activeTab === 4 && (
+                <div data-testid="config">
+                  <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                </div>
+              )}
+              {activeTab === 5 && !deleted && (
+                <div>
+                  <ManageTabComponent
+                    allowDelete
+                    currentTier={tier?.tagFQN}
+                    currentUser={owner}
+                    entityId={topicDetails.id}
+                    entityName={topicDetails.name}
+                    entityType={EntityType.TOPIC}
+                    hasEditAccess={hasEditAccess()}
+                    manageSectionType={EntityType.TOPIC}
+                    onSave={onSettingsUpdate}
+                  />
+                </div>
+              )}
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4 "
-                id="activityfeed">
-                <div />
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  className=""
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  postFeedHandler={postFeedHandler}
-                />
-                <div />
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
               </div>
-            )}
-            {activeTab === 3 && (
-              <div data-testid="sample-data">
-                <SampleDataTopic
-                  isLoading={isSampleDataLoading}
-                  sampleData={sampleData}
-                />
-              </div>
-            )}
-            {activeTab === 4 && (
-              <div data-testid="config">
-                <SchemaEditor value={JSON.stringify(getConfigObject())} />
-              </div>
-            )}
-            {activeTab === 5 && !deleted && (
-              <div>
-                <ManageTabComponent
-                  allowDelete
-                  currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
-                  entityId={topicDetails.id}
-                  entityName={topicDetails.name}
-                  entityType={EntityType.TOPIC}
-                  hasEditAccess={hasEditAccess()}
-                  manageSectionType={EntityType.TOPIC}
-                  onSave={onSettingsUpdate}
-                />
-              </div>
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
             </div>
           </div>
           {threadLink ? (
