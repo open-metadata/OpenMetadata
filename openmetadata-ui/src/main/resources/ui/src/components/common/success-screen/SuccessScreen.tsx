@@ -46,7 +46,7 @@ const SuccessScreen = ({
           alt="success"
           className="tw-w-10 tw-h-10"
           data-testid="success-icon"
-          icon={Icons.CIRCLE_CHECKBOX}
+          icon={Icons.SUCCESS_BADGE}
         />
       </div>
       <p className="tw-mb-7" data-testid="success-line">
