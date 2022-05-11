@@ -176,7 +176,7 @@ MOCK_GET_VIEW_DEFINITION_TABLE = """
     """
 
 MOCK_GET_VIEW_DEFINITION_JOIN_QUERY = """
-    create view into catalog_table as SELECT
+    create view catalog_table as SELECT *
 FROM zsession_log1 
 INNER JOIN zsession_log2
 ON zsession_log1.user_id = zsession_log2.user_id; dbo.zsession_log2
