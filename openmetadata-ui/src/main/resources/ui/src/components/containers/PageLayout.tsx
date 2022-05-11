@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, { FC, ReactNode } from 'react';
+import React, { FC, Fragment, ReactNode } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
 
 interface PageLayoutProp {
@@ -32,13 +32,39 @@ const PageLayout: FC<PageLayoutProp> = ({
   layout = PageLayoutType['3Col'],
   classes = '',
 }: PageLayoutProp) => {
+  const getLeftPanel = () => {
+    return (
+      leftPanel && (
+        <div>
+          <div className="tw-pr-4 tw-py-1" id="left-panel">
+            {leftPanel}
+          </div>
+          <div />
+        </div>
+      )
+    );
+  };
+
+  const getRightPanel = () => {
+    return (
+      rightPanel && (
+        <div>
+          <div className="tw-px-2 tw-py-1" id="right-panel">
+            {rightPanel}
+          </div>
+          <div />
+        </div>
+      )
+    );
+  };
+
   const get3ColLayout = () => {
     return (
-      <>
+      <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
         <div
           className={classNames(
-            'page-layout-container l3-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+            'page-layout-container l3-col tw-gap-x-3 tw-px-6 centered-layout',
             classes,
             {
               'page-layout-container-left-center-right':
@@ -54,14 +80,10 @@ const PageLayout: FC<PageLayoutProp> = ({
               'page-layout-container-center': !leftPanel && !rightPanel,
             }
           )}>
-          {leftPanel && (
-            <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
-              {leftPanel}
-            </div>
-          )}
+          {getLeftPanel()}
           <div
             className={classNames(
-              'tw-overflow-y-auto tw-py-1',
+              'tw-py-1',
               {
                 'tw-pl-2': leftPanel,
               },
@@ -72,50 +94,40 @@ const PageLayout: FC<PageLayoutProp> = ({
             id="center">
             {children}
           </div>
-          {rightPanel && (
-            <div
-              className="tw-overflow-y-auto tw-px-2 tw-py-1"
-              id="right-panel">
-              {rightPanel}
-            </div>
-          )}
+          {getRightPanel()}
         </div>
-      </>
+      </Fragment>
     );
   };
 
   const get2ColLTRLayout = () => {
     return (
-      <>
+      <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
         <div
           className={classNames(
-            'page-layout-container l2-ltr-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+            'page-layout-container l2-ltr-col tw-gap-x-3 tw-px-6 centered-layout',
             classes,
             leftPanel
               ? 'page-layout-container-left-center'
               : 'page-layout-container-center'
           )}>
-          {leftPanel && (
-            <div className="tw-overflow-y-auto tw-pr-4 tw-py-1" id="left-panel">
-              {leftPanel}
-            </div>
-          )}
+          {getLeftPanel()}
           <div
-            className={classNames('tw-overflow-y-auto tw-py-1', {
+            className={classNames('tw-py-1', {
               'tw-pl-8': leftPanel,
             })}
             id="center">
             {children}
           </div>
         </div>
-      </>
+      </Fragment>
     );
   };
 
   const get2ColRTLLayout = () => {
     return (
-      <>
+      <Fragment>
         {header && (
           <div className="page-layout-container tw-gap-x-3 tw-px-6 centered-layout tw-max-w-full-hd tw-pt-4">
             {header}
@@ -123,28 +135,22 @@ const PageLayout: FC<PageLayoutProp> = ({
         )}
         <div
           className={classNames(
-            'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 tw-overflow-y-auto centered-layout',
+            'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 centered-layout',
             classes,
             rightPanel
               ? 'page-layout-container-center-right'
               : 'page-layout-container-center'
           )}>
           <div
-            className={classNames('tw-overflow-y-auto tw-py-1', {
+            className={classNames('tw-py-1', {
               'tw-pr-10': rightPanel,
             })}
             id="center">
             {children}
           </div>
-          {rightPanel && (
-            <div
-              className="tw-overflow-y-auto tw-px-2 tw-py-1"
-              id="right-panel">
-              {rightPanel}
-            </div>
-          )}
+          {getRightPanel()}
         </div>
-      </>
+      </Fragment>
     );
   };
 

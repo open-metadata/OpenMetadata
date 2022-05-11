@@ -24,6 +24,10 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
+    PinotDBScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
     TrinoScheme,
@@ -194,3 +198,14 @@ class SouceConnectionTest(TestCase):
             scheme=DruidScheme.druid, hostPort="localhost:8082"
         )
         assert expected_url == get_connection_url(druid_conn_obj)
+
+    def test_pinotdb_url(self):
+        expected_url = (
+            "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
+        )
+        pinot_conn_obj = PinotDBConnection(
+            scheme=PinotDBScheme.pinot,
+            hostPort="localhost:8099",
+            pinotControllerHost="http://localhost:9000/",
+        )
+        assert expected_url == get_connection_url(pinot_conn_obj)
