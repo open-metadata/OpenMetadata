@@ -222,7 +222,10 @@ class GlueSource(Source[Entity]):
                     tableType=table_type,
                 )
 
-                if self.config.sourceConfig.config.generateSampleData:
+                if (
+                    self.config.sourceConfig.config.generateSampleData
+                    or self.config.sourceConfig.config.enableDataProfiler
+                ):
                     logger.warning(
                         "Glue source does not provide querying capabilities. Please ingest sample data with Athena."
                     )
