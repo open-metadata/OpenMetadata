@@ -157,7 +157,6 @@
 * [Deploy on Docker](docs/deploy/deploy-on-docker/README.md)
   * [Using Python CLI](deploy/deploy-on-docker/using-python-cli.md)
 * [Deploy on Kubernetes](deploy/deploy-on-kubernetes/README.md)
-  * [Deploy OpenMetadata on Kubernetes](deploy/deploy-on-kubernetes/run-in-kubernetes.md)
   * [Values.yaml](deploy/deploy-on-kubernetes/values.yaml.md)
 * [Secure OpenMetadata](docs/deploy/secure-openmetadata/README.md)
   * [Google SSO](docs/deploy/secure-openmetadata/google-sso/README.md)

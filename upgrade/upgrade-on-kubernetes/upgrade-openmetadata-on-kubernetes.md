@@ -6,17 +6,17 @@ description: >-
 
 # Upgrade OpenMetadata on Kubernetes
 
-> {% hint style="danger" %}
+>
+
 > **The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
 >
-> **0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**&#x20;
+> **0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**
 >
 > Please reach out to us at [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
-> {% endhint %}
 
 ## Requirements
 
-This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run OpenMetadata](../../deploy/deploy-on-kubernetes/run-in-kubernetes.md) guide.
+This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run OpenMetadata](broken-reference) guide.
 
 ## Procedure
 
@@ -94,7 +94,7 @@ open-metadata/openmetadata-dependencies	0.0.1        	0.5.0      	Helm Dependenc
 
 ### Upgrade OpenMetadata Dependencies
 
-We upgrade OpenMetadata Dependencies with the  below command
+We upgrade OpenMetadata Dependencies with the below command
 
 ```
 helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
