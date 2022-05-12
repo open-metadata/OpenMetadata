@@ -15,13 +15,13 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 | [Airflow](docs/integrations/airflow/)                           | [IBM Db2](docs/integrations/connectors/ibm-db2.md) | [Oracle](docs/integrations/connectors/mysql-2/)                    | [Salesforce](docs/integrations/connectors/salesforce.md) |
 | Amundsen                                                        | [Kafka](docs/integrations/connectors/kafka.md)     | [Postgres](<docs/integrations/connectors/snowflake/README (1).md>) | [SingleStore](docs/integrations/connectors/singlestore/) |
 | Apache Atlas                                                    | LDAP                                               | Power BI                                                           | [Snowflake](docs/integrations/connectors/snowflake/)     |
-| Apache Druid                                                    | [Looker](docs/integrations/connectors/looker.md)   | Prefect                                                            | [Snowflake Usage](broken-reference)                      |
-| [Athena](docs/integrations/connectors/athena/)                  | [MariaDB](docs/integrations/connectors/mariadb.md) | [Presto](docs/integrations/connectors/presto.md)                   | [Superset](docs/integrations/connectors/superset.md)     |
+| Apache Druid                                                    | [Looker](docs/integrations/connectors/looker.md)   | Prefect                                                            | [Snowflake Usage](broken-reference/)                     |
+| [Athena](docs/integrations/connectors/athena/)                  | [MariaDB](docs/integrations/connectors/mariadb.md) | [Presto](docs/integrations/connectors/presto.md)                   | [Superset](broken-reference)                             |
 | [Azure SQL](docs/integrations/connectors/azure-sql.md)          | [Metabase](docs/integrations/connectors/mysql/)    | [Redash](docs/integrations/connectors/redash.md)                   | [Tableau](docs/integrations/connectors/tableau.md)       |
 | [BigQuery](docs/integrations/connectors/bigquery/)              | [MLflow](docs/integrations/connectors/mlflow/)     | [Redshift](docs/integrations/connectors/redshift/)                 | [Trino](docs/integrations/connectors/trino/)             |
 | [BigQuery Usage](docs/integrations/connectors/bigquery/)        | [MSSQL](docs/integrations/connectors/mssql/)       | [Redshift Usage](docs/integrations/connectors/redshift/)           | [Vertica](docs/integrations/connectors/vertica.md)       |
-| [ClickHouse](broken-reference)                                  | [MSSQL Usage](docs/integrations/connectors/mssql/) |                                                                    |                                                          |
-| [ClickHouse Usage](broken-reference)                            | [MySQL](docs/integrations/connectors/mysql-1/)     |                                                                    |                                                          |
+| [ClickHouse](broken-reference/)                                 | [MSSQL Usage](docs/integrations/connectors/mssql/) |                                                                    |                                                          |
+| [ClickHouse Usage](broken-reference/)                           | [MySQL](docs/integrations/connectors/mysql-1/)     |                                                                    |                                                          |
 | [Databricks](docs/integrations/connectors/databricks.md)        |                                                    |                                                                    |                                                          |
 | [DBT](data-lineage/dbt-integration/)                            |                                                    |                                                                    |                                                          |
 | [Delta Lake](docs/integrations/connectors/delta-lake.md)        |                                                    |                                                                    |                                                          |
@@ -40,7 +40,7 @@ The key components of OpenMetadata include the following:
 * **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
 * **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. See the [Schema Concepts](docs/openmetadata-apis/schemas/overview.md) section to learn more about metadata schemas.
 
-![](<.gitbook/assets/openmetadata-overview (1).png>)
+![](<.gitbook/assets/openmetadata-overview (1) (1).png>)
 
 ## License
 

@@ -9,8 +9,8 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Azure SQL](azure-sql.md)
 * [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery/)
-* [ClickHouse](broken-reference)
-* [ClickHouse Usage](broken-reference)
+* [ClickHouse](broken-reference/)
+* [ClickHouse Usage](broken-reference/)
 * [Databricks](databricks.md)
 * [Delta Lake](delta-lake.md)
 * [DynamoDB](dynamodb.md)
@@ -40,7 +40,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Metabase](mysql/)
 * Power BI
 * [Redash](redash.md)
-* [Superset](superset.md)
+* [Superset](broken-reference)
 * [Tableau](tableau.md)
 
 #### Messaging Services
