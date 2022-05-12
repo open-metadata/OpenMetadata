@@ -278,11 +278,8 @@ def _(connection: HiveConnection):
                 url += f"{connection.username}"
                 if not connection.password:
                     connection.password = SecretStr("")
-                url += (
-                    f":{quote_plus(connection.password.get_secret_value())}"
-                    if connection
-                    else ""
-                )
+                url += f":{quote_plus(connection.password.get_secret_value())}"
+
                 url += "@"
 
     url += connection.hostPort
@@ -300,8 +297,7 @@ def _(connection: HiveConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-    if connection.authOptions:
-        return f"{url};{connection.authOptions}"
+
     return url
 
 

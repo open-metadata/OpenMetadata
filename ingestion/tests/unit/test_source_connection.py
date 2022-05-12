@@ -97,20 +97,48 @@ class SouceConnectionTest(TestCase):
 
     def test_hive_url(self):
         expected_result = "hive://localhost:10000/default"
-        databricks_conn_obj = HiveConnection(
+        hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive, hostPort="localhost:10000", database="default"
         )
-        assert expected_result == get_connection_url(databricks_conn_obj)
+        assert expected_result == get_connection_url(hive_conn_obj)
 
-    def test_hive_url_auth(self):
-        expected_result = "hive://localhost:10000/default;auth=CUSTOM"
-        databricks_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive,
+    def test_hive_url_custom_auth(self):
+        expected_result = "hive://username:password@localhost:10000/default"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            password="password",
             hostPort="localhost:10000",
             database="default",
-            authOptions="auth=CUSTOM",
+            connectionArguments={"auth": "CUSTOM"},
         )
-        assert expected_result == get_connection_url(databricks_conn_obj)
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_with_kerberos_auth(self):
+        expected_result = "hive://localhost:10000/default"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            hostPort="localhost:10000",
+            database="default",
+            connectionArguments={
+                "auth": "KERBEROS",
+                "kerberos_service_name": "hive",
+            },
+        )
+
+        assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_hive_url_with_ldap_auth(self):
+        expected_result = "hive://username:password@localhost:10000/default"
+        hive_conn_obj = HiveConnection(
+            scheme=HiveScheme.hive.value,
+            username="username",
+            password="password",
+            hostPort="localhost:10000",
+            database="default",
+            connectionArguments={"auth": "LDAP"},
+        )
+        assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_trino_url_without_params(self):
         expected_url = "trino://username:pass@localhost:443/catalog"
