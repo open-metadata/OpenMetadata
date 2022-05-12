@@ -18,7 +18,7 @@ Please ensure your host system meets the requirements listed below. Then continu
 
 <summary>OSX and Linux</summary>
 
-**Python (version 3.8.0 or greater)**
+#### Python (version 3.8.0 or greater)
 
 To check what version of Python you have, please use the following command.
 
@@ -26,7 +26,7 @@ To check what version of Python you have, please use the following command.
 python3 --version
 ```
 
-**Docker (version 20.10.0 or greater)**
+#### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
 
@@ -42,7 +42,7 @@ Note: You must **allocate at least 6GB of memory to Docker** in order to run Ope
 
 Preferences -> Resources -> Advanced
 
-**Install Docker Compose Version 2.0.0 on Linux**
+#### Install Docker Compose Version 2.0.0 on Linux
 
 Follow the [instructions here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
 
@@ -69,7 +69,7 @@ docker compose version
 Docker Compose version v2.2.3
 ```
 
-**`compose` command for Docker (version v2.1.1 or greater)**
+#### `compose` command for Docker (version v2.1.1 or greater)
 
 The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.
 
@@ -97,13 +97,13 @@ Note: In previous releases of Docker compose functions were delivered with the `
 
 <summary>Windows</summary>
 
-**WSL2, Ubuntu 20.04, and Docker for Windows**
+#### WSL2, Ubuntu 20.04, and Docker for Windows
 
 1. Install [WSL2](https://ubuntu.com/wsl)
 2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 3. Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
 
-**In the Ubuntu terminal**
+#### In the Ubuntu terminal
 
 ```
 cd ~
@@ -249,7 +249,7 @@ Username: `admin`
 
 Password: `admin`
 
-![Login to Airflow](<../../.gitbook/assets/image (5) (1).png>)
+![Login to Airflow](<../../.gitbook/assets/image (5).png>)
 
 ### 10. Begin using OpenMetadata
 

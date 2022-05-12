@@ -54,7 +54,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Redshift services that you might be ingesting metadata from.
 
-![](<../../../../.gitbook/assets/create-service (2).jpg>)
+![](../../../../.gitbook/assets/create-service.jpg)
 
 ### 5. Configure the Service Connection
 

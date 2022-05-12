@@ -6,13 +6,10 @@ description: >-
 
 # Glue Catalog
 
-Configure and schedule Glue **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Glue **metadata** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
-* [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
@@ -162,15 +159,11 @@ Explicitly include views by adding the following key-value pair in the `source.c
 
 **Enable data profiler (toggle)**
 
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
-
-Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
+Glue does not provide querying capabilities, so the data profiler is not supported.
 
 **Ingest sample data (toggle)**
 
-Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
+Glue does not provide querying capabilities, so sample data is not supported.
 
 </details>
 
@@ -235,22 +228,6 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 ![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
-
-## Data Profiler and Quality Tests
-
-You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
-
-{% content-ref url="../../../data-quality/profiler-workflow.md" %}
-[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
-{% endcontent-ref %}
-
-## DBT Integration
-
-You can learn more about how to ingest DBT models' definitions and their lineage below:
-
-{% content-ref url="../../../../data-lineage/dbt-integration/" %}
-[dbt-integration](../../../../data-lineage/dbt-integration/)
-{% endcontent-ref %}
 
 ## Run using Airflow SDK
 
