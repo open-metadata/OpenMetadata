@@ -109,8 +109,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
             .withReplicationFactor(1)
-            .withRetentionTime(1)
-            .withRetentionSize(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
             .withSchemaText("abc")
             .withSchemaType(SchemaType.Avro)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
@@ -123,8 +123,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMaximumMessageSize(2)
         .withPartitions(2)
         .withReplicationFactor(2)
-        .withRetentionTime(2)
-        .withRetentionSize(2)
+        .withRetentionTime(2.0)
+        .withRetentionSize(2.0)
         .withSchemaText("bcd")
         .withSchemaType(SchemaType.JSON)
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
@@ -162,8 +162,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
             .withReplicationFactor(1)
-            .withRetentionTime(1)
-            .withRetentionSize(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
             .withSchemaText("abc")
             .withSchemaType(SchemaType.Avro)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
@@ -178,8 +178,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMaximumMessageSize(2)
         .withPartitions(2)
         .withReplicationFactor(2)
-        .withRetentionTime(2)
-        .withRetentionSize(2)
+        .withRetentionTime(2.0)
+        .withRetentionSize(2.0)
         .withSchemaText("bcd")
         .withSchemaType(SchemaType.JSON)
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
