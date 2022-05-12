@@ -10,8 +10,8 @@ Follow the sections in this guide to set up Azure Single Sign On (SSO).
 [create-service-application.md](create-service-application.md)
 {% endcontent-ref %}
 
-{% content-ref url="configure-openmetadata/" %}
-[configure-openmetadata](configure-openmetadata/)
+{% content-ref url="../okta-sso/configure-openmetadata/" %}
+[configure-openmetadata](../okta-sso/configure-openmetadata/)
 {% endcontent-ref %}
 
 {% content-ref url="configure-ingestion.md" %}

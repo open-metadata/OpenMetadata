@@ -1,8 +1,8 @@
----
-description: Deploy OpenMetadata server and dependencies using Docker
----
-
 # Deploy on Docker
+
+{% content-ref url="../../../deploy/deploy-on-docker/using-python-cli.md" %}
+[using-python-cli.md](../../../deploy/deploy-on-docker/using-python-cli.md)
+{% endcontent-ref %}
 
 {% hint style="info" %}
 These instructions have been tested on MacOS, Windows 10, and Ubuntu 20.04.
@@ -11,8 +11,6 @@ These instructions have been tested on MacOS, Windows 10, and Ubuntu 20.04.
 ## Requirements (OSX and Linux)
 
 Please ensure that your host system meets the requirements listed below. Then continue to the procedure for installing OpenMetadata.
-
-
 
 ### Docker (version 20.10.0 or greater)
 
@@ -31,8 +29,6 @@ Note: You must **allocate at least 6 GB of memory to Docker** in order to run Op
 
 Preferences -> Resources -> Advanced
 {% endhint %}
-
-
 
 ### Install Docker Compose Version 2.0.0 on Linux
 
@@ -63,7 +59,7 @@ Docker Compose version v2.2.3
 
 ### `compose` Command for Docker (version v2.1.1 or greater)
 
-The Docker `compose` the package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI).&#x20;
+The Docker `compose` the package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI).
 
 **MacOS X**: Docker on MacOS X ships with compose already available in the Docker CLI.
 
@@ -115,10 +111,10 @@ docker compose up -d
 ```
 
 {% hint style="info" %}
-For a secure OpenMetadata instance, follow the [Enable Security](enable-security.md) guide
+For a secure OpenMetadata instance, follow the [Enable Security](../../../deploy/local-deployment/enable-security.md) guide
 {% endhint %}
 
-### 2.  Verify all containers are up and running&#x20;
+### 2. Verify all containers are up and running
 
 ```
 docker ps 
@@ -132,7 +128,6 @@ CONTAINER ID   IMAGE                                                  COMMAND   
 6f7992e02314   local-metadata_ingestion                               "./ingestion_depende…"   About an hour ago   Up About an hour             0.0.0.0:8080->8080/tcp                                 openmetadata_ingestion
 ca8e590de33f   local-metadata_mysql                                   "/entrypoint.sh mysq…"   About an hour ago   Up About an hour (healthy)   0.0.0.0:3306->3306/tcp, 33060-33061/tcp                openmetadata_mysql
 1f037580731e   docker.elastic.co/elasticsearch/elasticsearch:7.10.2   "/tini -- /usr/local…"   About an hour ago   Up About an hour             0.0.0.0:9200->9200/tcp, 0.0.0.0:9300->9300/tcp         openmetadata_elasticsearch
-
 ```
 
 ### 3. Begin using OpenMetadata
@@ -194,6 +189,10 @@ You don't have docker-compose installed, please install it and re-run the comman
 
 If you come across the above error when attempting to install OpenMetadata, this can be due to an older version of docker-compose that you have, or because docker compose is not installed properly. Please check the [Requirements](./#requirements) section above and confirm that you have the supported versions installed.
 
-{% content-ref url="binding-named-volumes.md" %}
-[binding-named-volumes.md](binding-named-volumes.md)
+{% content-ref url="../../../deploy/local-deployment/binding-named-volumes.md" %}
+[binding-named-volumes.md](../../../deploy/local-deployment/binding-named-volumes.md)
+{% endcontent-ref %}
+
+{% content-ref url="../secure-openmetadata/" %}
+[secure-openmetadata](../secure-openmetadata/)
 {% endcontent-ref %}

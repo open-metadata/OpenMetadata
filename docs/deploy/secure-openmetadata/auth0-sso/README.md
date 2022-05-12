@@ -10,8 +10,8 @@ Follow the sections in this guide to set up Auth0 SSO.
 [create-service-account.md](create-service-account.md)
 {% endcontent-ref %}
 
-{% content-ref url="configure-openmetadata/" %}
-[configure-openmetadata](configure-openmetadata/)
+{% content-ref url="../google-sso-1/configure-openmetadata/" %}
+[configure-openmetadata](../google-sso-1/configure-openmetadata/)
 {% endcontent-ref %}
 
 {% content-ref url="configure-ingestion.md" %}

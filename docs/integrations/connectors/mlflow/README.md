@@ -18,7 +18,7 @@ Please ensure that your host system meets the requirements listed below.
 
 ### **OpenMetadata (version 0.9.0 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
 
 ### **Python (version 3.8.0 or later)**
 
@@ -185,7 +185,7 @@ If you already have a production Airflow instance on which you would like to sch
 
 To view the metadata ingested from MLflow, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MLflow service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
 
-![](../../../.gitbook/assets/explore.png)
+![](<../../../../.gitbook/assets/next\_steps (1).png>)
 
 ## **5. Troubleshooting**
 
@@ -215,6 +215,6 @@ Max retries exceeded with url: /api/v1/services/databaseServices/name/mlflow
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/) to deploy OpenMetadata.
+To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) to deploy OpenMetadata.
 
 Then re-run the metadata ingestion workflow in [Run MLflow Connector](./#4.-run-mlflow-connector).

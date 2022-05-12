@@ -6,19 +6,17 @@ description: >-
 
 # Upgrade OpenMetadata on Bare Metal
 
-
-
 {% hint style="danger" %}
 **The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
 
-**0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**&#x20;
+**0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**
 
 Please reach out to us at [https://slack.open-metadata.org](https://slack.open-metadata.org) , we can schedule a zoom session to help you upgrade your production instance.
 {% endhint %}
 
 ## Requirements
 
-This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run in Production](../../deploy/deploy-on-bare-metal/run-in-production.md) guide.
+This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run in Production](../../deploy/deploy-on-bare-metal.md) guide.
 
 ## Procedure
 
@@ -70,7 +68,7 @@ The `bootstrap/bootstrap_storage.sh` script enables you to perform a number of o
 
 Do not use your existing database. Please create a new database to use with 0.10.0
 
-Since the OpenMetadata **0.10** is a **backward incompatible release**, run the command  `drop-create-all` to:
+Since the OpenMetadata **0.10** is a **backward incompatible release**, run the command `drop-create-all` to:
 
 * Drop and recreate all the databases in the table
 * Drop and create all the indexes in Elasticsearch
@@ -146,6 +144,3 @@ pip3 install --upgrade 'openmetadata-ingestion[<connectorname>]'
 {% hint style="info" %}
 Note: Please see the installation instructions for the connectors you are using in order to ensure you are using the right Python virtual environment and following other norms for installing and upgrading connectors.
 {% endhint %}
-
-
-

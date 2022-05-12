@@ -28,7 +28,7 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -38,21 +38,21 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion C
 
 The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (27).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
 Select `MSSQL` as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (68).png>)
+![](<../../../../.gitbook/assets/image (132).png>)
 
 ### 4. Name and Describe your Service
 
@@ -62,19 +62,19 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MSSQL services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (52).png>)
+![](<../../../../.gitbook/assets/image (124).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/image (55) (1).png>)
+![](<../../../../.gitbook/assets/image (131).png>)
 
 <details>
 
 <summary>Connection Options</summary>
 
-#### Connection Scheme
+**Connection Scheme**
 
 The _Connection Scheme_ can be configured using any one of the following three options.
 
@@ -84,31 +84,31 @@ The _Connection Scheme_ can be configured using any one of the following three o
 
 `'mssql+pymssql'`
 
-#### Username
+**Username**
 
 Enter the username of your MSSQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
-#### Password
+**Password**
 
 Enter the password for your MSSQL user in the _Password_ field.
 
-#### Host and Port
+**Host and Port**
 
 Enter the fully qualified hostname and port number for your MSSQL deployment in the _Host and Port_ field.
 
-#### uriString (in case of pyodbc)
+**uriString (in case of pyodbc)**
 
 If the connection scheme is '`mssql+pyodbc`', then you need to add a `uriString`
 
-#### Database (optional)
+**Database (optional)**
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-#### Connection Options (Optional)
+**Connection Options (Optional)**
 
 Enter the details for any additional connection options that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
-#### Connection Arguments (Optional)
+**Connection Arguments (Optional)**
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
@@ -122,35 +122,35 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../.gitbook/assets/image (54).png>)
+![](<../../../../.gitbook/assets/image (125).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (3).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116).png>)
 
 <details>
 
 <summary>Metadata Ingestion Options</summary>
 
-#### Include (Table Filter Pattern)
+**Include (Table Filter Pattern)**
 
 Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-#### Exclude (Table Filter Pattern)
+**Exclude (Table Filter Pattern)**
 
 Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### Include (Schema Filter Pattern)
+**Include (Schema Filter Pattern)**
 
 Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
 Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### Exclude (Schema Filter Pattern)
+**Exclude (Schema Filter Pattern)**
 
 Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
@@ -174,7 +174,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
-![](<../../../.gitbook/assets/image (14) (1).png>)
+![](<../../../../.gitbook/assets/image (55).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -184,7 +184,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -228,7 +228,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (18).png>)
+![](<../../../../.gitbook/assets/image (67).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -236,7 +236,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

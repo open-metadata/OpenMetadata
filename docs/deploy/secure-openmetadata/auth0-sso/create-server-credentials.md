@@ -14,13 +14,13 @@
 
 * Once done, you will land on the dashboard page.
 
-![](<../../../.gitbook/assets/image (23).png>)
+![](<../../../../.gitbook/assets/image (58) (1).png>)
 
 ## Step 2: Create a New Application
 
 * Once you are on the Dashboard page, click on `Applications > Applications` available on the left-hand side panel.
 
-![](<../../../.gitbook/assets/image (80).png>)
+![](<../../../../.gitbook/assets/image (78).png>)
 
 * Click on `Create Applicaiton`.
 

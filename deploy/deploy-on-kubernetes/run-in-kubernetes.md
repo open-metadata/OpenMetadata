@@ -17,7 +17,7 @@ description: This guide will help you run OpenMetadata using Helm Charts
 * [Helm](https://helm.sh) to deploy resources based on Helm charts from the OpenMetadata repository
 
 {% hint style="info" %}
-Note, OpenMetadata only supports Helm 3
+Note: OpenMetadata only supports Helm 3
 {% endhint %}
 
 {% hint style="success" %}
@@ -100,7 +100,6 @@ To expose the OpenMetadata UI on a local Kubernetes instance, run this command.
 
 ```
 kubectl port-forward <openmetadata-front end pod name> 8585:8585
-
 ```
 {% endhint %}
 
@@ -109,6 +108,12 @@ kubectl port-forward <openmetadata-front end pod name> 8585:8585
 1. Visit the [Features](../../docs/overview/features.md) overview page and explore the OpenMetadata UI.
 2. Visit the [Connectors](../../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
 3. Visit the [API](../../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+
+## Next Steps
+
+* Visit the [Features](../../docs/overview/features.md) overview page and explore the OpenMetadata UI.
+* Visit the [Connectors](../../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+* Visit the [API](../../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ## Troubleshooting
 

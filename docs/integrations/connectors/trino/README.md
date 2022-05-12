@@ -27,7 +27,7 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -37,21 +37,21 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion C
 
 The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (27).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
 Select Trino as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (20) (1) (1).png>)
+![Select your Service type](<../../../../.gitbook/assets/image (90).png>)
 
 ### 4. Name and Describe your Service
 
@@ -61,55 +61,55 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Trino services that you might be ingesting metadata from.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (13) (2).png>)
+![Provide a Name and description for your Service](<../../../../.gitbook/assets/image (53).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14) (2).png>)
+![Configure the Service connection](<../../../../.gitbook/assets/image (56).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1) (1).png>)
+![Test Connection and save the Service](<../../../../.gitbook/assets/image (92).png>)
 
 <details>
 
 <summary>Connection Options</summary>
 
-#### Host and Port
+**Host and Port**
 
 Host and Port of the data source.
 
-#### Username
+**Username**
 
 Username to connect to Trino. This user should have privileges to read all the metadata in Trino.
 
-#### Password (Optional)
+**Password (Optional)**
 
 Password to connect to Trino.
 
-#### Catalog (Optional)
+**Catalog (Optional)**
 
 A Trino [catalog](https://trino.io/docs/current/overview/concepts.html#catalog) contains schemas and references a data source via a connector.
 
-#### Database (Optional)
+**Database (Optional)**
 
 Database of the data source. This is an optional parameter if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases in the selected catalog.
 
-#### Proxies (Optional)
+**Proxies (Optional)**
 
 Proxies for the connection to Trino data source added as Key-Value pairs.
 
-#### URL Params (Optional)
+**URL Params (Optional)**
 
 URL parameters for connection to the Trino data source added as Key-Value pairs.
 
-#### Connection Options (Optional)
+**Connection Options (Optional)**
 
 Enter the details for any additional connection options that can be sent to the source system during the connection. These details must be added as Key-Value pairs.
 
-#### Connection Arguments (Optional)
+**Connection Arguments (Optional)**
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to the source system during the connection. These details must be added as Key-Value pairs.
 
@@ -129,29 +129,29 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (3).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116).png>)
 
 <details>
 
 <summary>Metadata Ingestion Options</summary>
 
-#### Include (Table Filter Pattern)
+**Include (Table Filter Pattern)**
 
 Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-#### Exclude (Table Filter Pattern)
+**Exclude (Table Filter Pattern)**
 
 Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### Include (Schema Filter Pattern)
+**Include (Schema Filter Pattern)**
 
 Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
 Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### Exclude (Schema Filter Pattern)
+**Exclude (Schema Filter Pattern)**
 
 Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
@@ -183,7 +183,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -225,7 +225,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -233,7 +233,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

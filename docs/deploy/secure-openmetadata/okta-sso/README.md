@@ -6,8 +6,8 @@ Follow the sections in this guide to set up Okta SSO.
 [create-server-credentials.md](create-server-credentials.md)
 {% endcontent-ref %}
 
-{% content-ref url="configure-openmetadata/" %}
-[configure-openmetadata](configure-openmetadata/)
+{% content-ref url="../azure-sso/configure-openmetadata/" %}
+[configure-openmetadata](../azure-sso/configure-openmetadata/)
 {% endcontent-ref %}
 
 {% content-ref url="create-service-application.md" %}

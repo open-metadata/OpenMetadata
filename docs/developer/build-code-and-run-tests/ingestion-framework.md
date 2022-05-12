@@ -8,7 +8,7 @@ description: Configure Python and test the Ingestion Framework
 
 The Ingestion Framework is a Python module that wraps the OpenMetadata API and builds workflows and utilities on top of it. Therefore, you need to make sure that you have the complete OpenMetadata stack running: MySQL + ElasticSearch + OpenMetadata Server.
 
-To do so, you can either build and run the [OpenMetadata Server](openmetadata-server.md) locally as well, or use the `metadata` CLI to spin up the [Docker containers](../../overview/run-openmetadata/).
+To do so, you can either build and run the [OpenMetadata Server](openmetadata-server.md) locally as well, or use the `metadata` CLI to spin up the [Docker containers](../../../overview/run-openmetadata.md).
 
 ## Python Setup
 

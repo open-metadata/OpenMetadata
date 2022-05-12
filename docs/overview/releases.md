@@ -2,7 +2,7 @@
 
 OpenMetadata community is on a monthly release cadence. At every 4-5 weeks we will be releasing a new version. To see whats coming in next releases, please check our [Roadmap section](roadmap.md).
 
-## Latest Release - 0.9.0 - March 10th , 2022
+## Latest Release - 0.9.0 - March 10th, 2022
 
 {% embed url="https://github.com/open-metadata/OpenMetadata/releases/tag/0.9.0-release" %}
 

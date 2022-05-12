@@ -20,7 +20,7 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata/).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -30,21 +30,21 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion C
 
 The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (27).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
 Select Redshift as the service type and click _Next_.
 
-![](../../../.gitbook/assets/redshift-create-service.jpg)
+![](../../../../.gitbook/assets/redshift-create-service.jpg)
 
 ### 4. Name and Describe your Service
 
@@ -54,41 +54,39 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Redshift services that you might be ingesting metadata from.
 
-
-
-![](../../../.gitbook/assets/create-service.jpg)
+![](../../../../.gitbook/assets/create-service.jpg)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Redshift service as desired.
 
-![Configure the Service Connection](../../../.gitbook/assets/redshift-connection.jpg)
+![Configure the Service Connection](../../../../.gitbook/assets/redshift-connection.jpg)
 
 <details>
 
 <summary>Connection Options</summary>
 
-#### Host and Port
+**Host and Port**
 
 This is the Redshift APIs URL.
 
-#### Username&#x20;
+**Username**
 
 Specify the User to connect to Redshift. It should have enough privileges to read all the metadata.
 
-#### Password (Optional)
+**Password (Optional)**
 
-This is the password for connecting to Redshift.&#x20;
+This is the password for connecting to Redshift.
 
-#### Database (Optional)
+**Database (Optional)**
 
 The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 
-#### Connection Options (Optional)
+**Connection Options (Optional)**
 
 Enter the details for any additional connection options that can be sent to Redshift during the connection. These details must be added as Key-Value pairs.
 
-#### Connection Arguments (Optional)
+**Connection Arguments (Optional)**
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Redshift during the connection. These details must be added as Key-Value pairs.
 
@@ -96,7 +94,7 @@ Here is where we can configure the SSL options. The key should be `sslmode` and 
 
 * `verify-ca`: The Redshift connector will verify that the server is trustworthy by checking the certificate chain up to a trusted certificate authority (CA).
 * `verify-full`: The Redshift connector will also verify that the server hostname matches its certificate. The SSL connection will fail if the server certificate cannot be verified. `verify-full` is recommended in most security-sensitive environments.
-* `require`: If a root CA file exists, the behavior of `sslmode=require` will be the same as that of `verify-ca`, meaning the server certificate is validated against the CA. Relying on this behavior is discouraged, and applications that need certificate validation should always use `verify-ca` or `verify-full`.&#x20;
+* `require`: If a root CA file exists, the behavior of `sslmode=require` will be the same as that of `verify-ca`, meaning the server certificate is validated against the CA. Relying on this behavior is discouraged, and applications that need certificate validation should always use `verify-ca` or `verify-full`.
 
 In `verify-full` mode, the cn (Common Name) attribute of the certificate is matched against the hostname. If the cn attribute starts with an asterisk (\*), it will be treated as a wildcard, and will match all characters except a dot (.). This means the certificate will not match subdomains. If the connection is made using an IP address instead of a hostname, the IP address will be matched (without doing any DNS lookups).
 
@@ -106,35 +104,35 @@ You can find more information in the AWS [docs](https://docs.aws.amazon.com/reds
 
 After hitting Save you will see that your Redshift connector has been added successfully, and you can add an ingestion.
 
-![Service has been saved](<../../../.gitbook/assets/image (17) (3) (1).png>)
+![Service has been saved](<../../../../.gitbook/assets/image (82).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (3).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116).png>)
 
 <details>
 
 <summary>Metadata Ingestion Options</summary>
 
-#### Include (Table Filter Pattern)
+**Include (Table Filter Pattern)**
 
 Use table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-#### Exclude (Table Filter Pattern)
+**Exclude (Table Filter Pattern)**
 
 Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### Include (Schema Filter Pattern)
+**Include (Schema Filter Pattern)**
 
 Use schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
 Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### Exclude (Schema Filter Pattern)
+**Exclude (Schema Filter Pattern)**
 
 Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
@@ -166,7 +164,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -208,7 +206,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -216,7 +214,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -256,6 +254,6 @@ You can learn more about how to host and run the different workflows on your own
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="broken-reference/" %}
+[broken-reference](broken-reference/)
 {% endcontent-ref %}

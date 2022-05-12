@@ -19,7 +19,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../overview/run-openmetadata/) to get up and running.
+If you have not already deployed OpenMetadata, please follow the instructions to [Run OpenMetadata](../../../overview/run-openmetadata.md) to get up and running.
 
 ### Python (version 3.8.0 or later)
 
@@ -314,7 +314,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/generate\_sample\_data.png)
+![](../../../.gitbook/assets/sample-data.png)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -338,7 +338,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. The image below provides an example.
 
-![](../../.gitbook/assets/configure\_dbt.png)
+![](../../../.gitbook/assets/dbt.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
@@ -397,7 +397,7 @@ metadata ingest -c ./db2.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from IBM Db2, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Db2 service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../.gitbook/assets/next\_steps (1).png>)
+![](../../../.gitbook/assets/explore.png)
 
 ## Troubleshooting
 
@@ -429,6 +429,6 @@ Max retries exceeded with url: /api/v1/services/databaseServices/name/local_db2
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, please follow the steps in the [Run OpenMetadata](../../overview/run-openmetadata/) guide to deploy OpenMetadata in Docker on your local machine.
+To correct this problem, please follow the steps in the [Run OpenMetadata](../../../overview/run-openmetadata.md) guide to deploy OpenMetadata in Docker on your local machine.
 
 Then re-run the metadata ingestion workflow in [Step 12](ibm-db2.md#run-manually).

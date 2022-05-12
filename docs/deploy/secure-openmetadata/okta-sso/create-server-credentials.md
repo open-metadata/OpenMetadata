@@ -65,7 +65,7 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../.gitbook/assets/image (26) (1).png>)
+![](<../../../../.gitbook/assets/image (29) (1).png>)
 
 * Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
@@ -114,7 +114,7 @@ This will generate the Issuer URL.
 * You can also go to **Application -> Application** as in step 2.
 * You should be able to see your application in the list.
 
-![](<../../../.gitbook/assets/image (59) (1).png>)
+![](<../../../.gitbook/assets/image (59) (1) (1).png>)
 
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
@@ -129,4 +129,3 @@ This will generate the Issuer URL.
 * The **Audience** is the same as the Client ID.
 
 ![](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
-
