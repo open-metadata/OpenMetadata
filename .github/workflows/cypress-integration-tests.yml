@@ -27,6 +27,9 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job: [ 0, 1, 2, 3 ]
     environment: cypress
     steps:
       - name: Checkout
@@ -62,6 +65,15 @@ jobs:
           CYPRESS_SNOWFLAKE_ACCOUNT: ${{ secrets.CYPRESS_SNOWFLAKE_ACCOUNT }}
           CYPRESS_SNOWFLAKE_DATABASE: ${{ secrets.CYPRESS_SNOWFLAKE_DATABASE }}
           CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.CYPRESS_SNOWFLAKE_WAREHOUSE }}
+          CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.CYPRESS_BQ_PRIVATE_KEY }}
+          CYPRESS_BQ_PROJECT_ID: ${{ secrets.CYPRESS_BQ_PROJECT_ID }}
+          CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.CYPRESS_BQ_PRIVATE_KEY_ID }}
+          CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.CYPRESS_BQ_CLIENT_EMAIL }}
+          CYPRESS_BQ_CLIENT_ID: ${{ secrets.CYPRESS_BQ_CLIENT_ID }}
+          CYPRESS_REDSHIFT_HOST: ${{ secrets.CYPRESS_REDSHIFT_HOST }}
+          CYPRESS_REDSHIFT_USERNAME: ${{ secrets.CYPRESS_REDSHIFT_USERNAME }}
+          CYPRESS_REDSHIFT_PASSWORD: ${{ secrets.CYPRESS_REDSHIFT_PASSWORD }}
+          CYPRESS_REDSHIFT_DATABASE: ${{ secrets.CYPRESS_REDSHIFT_DATABASE }}
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
