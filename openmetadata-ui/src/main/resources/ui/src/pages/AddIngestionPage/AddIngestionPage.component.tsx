@@ -17,6 +17,7 @@ import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
 } from '../../axiosAPIs/ingestionPipelineAPI';
@@ -69,6 +70,7 @@ const AddIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
@@ -166,6 +168,33 @@ const AddIngestionPage = () => {
     });
   };
 
+  const onAirflowStatusCheck = (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
+  };
+
+  const fetchAirflowStatusCheck = () => {
+    return new Promise<void>((resolve) => {
+      onAirflowStatusCheck()
+        .then(() => {
+          setIsAirflowRunning(true);
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
@@ -232,6 +261,7 @@ const AddIngestionPage = () => {
               heading={`Add ${capitalize(ingestionType)} Ingestion`}
               ingestionAction={ingestionAction}
               ingestionProgress={ingestionProgress}
+              isAirflowSetup={isAirflowRunning}
               isIngestionCreated={isIngestionCreated}
               isIngestionDeployed={isIngestionDeployed}
               pipelineType={ingestionType as PipelineType}
@@ -241,6 +271,7 @@ const AddIngestionPage = () => {
               showDeployButton={showIngestionButton}
               status={FormSubmitType.ADD}
               onAddIngestionSave={onAddIngestionSave}
+              onAirflowStatusCheck={onAirflowStatusCheck}
               onIngestionDeploy={onIngestionDeploy}
             />
           </div>
@@ -250,7 +281,9 @@ const AddIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchServiceDetails();
+    fetchAirflowStatusCheck().finally(() => {
+      fetchServiceDetails();
+    });
   }, [serviceCategory, serviceFQN]);
 
   return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;

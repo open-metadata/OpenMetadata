@@ -20,6 +20,7 @@ describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
     const { container } = render(
       <SuccessScreen
+        isAirflowSetup
         showIngestionButton
         handleViewServiceClick={jest.fn()}
         name="NewService"
