@@ -126,17 +126,15 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
 };
 
 export const getUserProfilePic = (userId?: string, username?: string) => {
-  if (!userId && !username) {
-    return;
-  }
+  if (userId || username) {
+    const profile = AppState.getUserProfilePic(userId, username);
 
-  const profile = AppState.getUserProfilePic(userId, username);
-
-  if (!isUndefined(profile)) {
-    return profile;
-  } else {
-    if (!AppState.isProfilePicLoading(userId, username)) {
-      fetchUserProfilePic(userId, username);
+    if (!isUndefined(profile)) {
+      return profile;
+    } else {
+      if (!AppState.isProfilePicLoading(userId, username)) {
+        fetchUserProfilePic(userId, username);
+      }
     }
   }
 
