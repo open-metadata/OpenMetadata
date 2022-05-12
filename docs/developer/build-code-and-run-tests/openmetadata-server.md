@@ -79,27 +79,27 @@ Add a new Run/Debug configuration like the below screenshot.
 
 Right-click on catalog-rest-service
 
-![](../../../.gitbook/assets/image-1-.png)
+![](<../../../.gitbook/assets/image-1- (1).png>)
 
 Click on "Open Module Settings"
 
-![](../../../.gitbook/assets/image-2-.png)
+![](<../../../.gitbook/assets/image-2- (1).png>)
 
 Go to "Dependencies"
 
-![](../../../.gitbook/assets/image-3-.png)
+![](<../../../.gitbook/assets/image-3- (1).png>)
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-![](../../../.gitbook/assets/image-4-.png)
+![](<../../../.gitbook/assets/image-4- (1).png>)
 
 Click on Library
 
-![](../../../.gitbook/assets/image-5-.png)
+![](<../../../.gitbook/assets/image-5- (1).png>)
 
 In that list look for "jersey-client:2.25.1"
 
-![](../../../.gitbook/assets/image-6-.png)
+![](<../../../.gitbook/assets/image-6- (1).png>)
 
 Select it and click "OK". Now run/debug the application.
 

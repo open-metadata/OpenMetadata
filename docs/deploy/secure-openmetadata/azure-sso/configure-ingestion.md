@@ -34,7 +34,7 @@ All Connectors have the **workflowConfig** section. Pass the JSON file generated
 * **clientID:** The Application (Client) ID is displayed in the Overview section of the registered application.
 * **authority:** When passing the details for authority, the `Tenant ID` is added to the URL as shown below. https://login.microsoftonline.com/TenantID
 
-![](<../../../../.gitbook/assets/image (71).png>)
+![](<../../../../.gitbook/assets/image (71) (2).png>)
 
 * **clientSecret:** The clientSecret can be accessed from the Certificates & secret section of the application.
 
