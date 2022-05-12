@@ -619,7 +619,7 @@ class OpenMetadata(
         Run version api call. Return `true` if response is not None
         """
         raw_version = self.client.get("/version")["version"]
-        return not raw_version
+        return raw_version is not None
 
     def close(self):
         """
