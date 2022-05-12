@@ -280,6 +280,7 @@
     * [Prerequisites](docs/developer/build-code-and-run-tests/prerequisites.md)
     * [OpenMetadata Server](docs/developer/build-code-and-run-tests/openmetadata-server.md)
     * [Ingestion Framework](docs/developer/build-code-and-run-tests/ingestion-framework.md)
+    * [Generate Typescript Types From JSON Schema](developer/build-code-and-run-tests/generate-typescript-types-from-json-schema.md)
     * [OpenMetadata UI](docs/developer/build-code-and-run-tests/ui.md)
     * [Backend](docs/developer/build-code-and-run-tests/backend.md)
   * [UX Style Guide](docs/developer/ux-style-guide.md)
