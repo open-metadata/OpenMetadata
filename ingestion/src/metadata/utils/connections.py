@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
     ConnectionOptions,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
@@ -119,10 +120,10 @@ def get_connection(
 
 @get_connection.register
 def _(connection: DatabricksConnection, verbose: bool = False):
-    args = connection.connectionArguments
-    if not args:
-        connection.connectionArguments = dict()
-        connection.connectionArguments["http_path"] = connection.httpPath
+    if connection.httpPath:
+        if not connection.connectionArguments:
+            connection.connectionArguments = ConnectionArguments()
+        connection.connectionArguments.http_path = connection.httpPath
     return create_generic_connection(connection, verbose)
 
 
