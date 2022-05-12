@@ -104,7 +104,7 @@ class TrinoSource(SQLSource):
                 schema_fqdn = get_fqdn(
                     DatabaseSchema,
                     self.config.serviceName,
-                    self.service_connection.database,
+                    self.trino_connection.catalog,
                     schema,
                 )
                 yield from self.delete_tables(schema_fqdn)
