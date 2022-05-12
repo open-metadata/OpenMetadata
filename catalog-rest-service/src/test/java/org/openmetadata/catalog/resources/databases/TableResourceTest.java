@@ -66,6 +66,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -706,7 +707,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String t3c2 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "c2");
     String t3c3 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "\"c.3\"");
 
-    List<ColumnJoin> reportedJoins =
+    List<ColumnJoin> reportedColumnJoins =
         Arrays.asList(
             // table1.c1 is joined with table2.c1, and table3.c1 with join count 10
             new ColumnJoin()
@@ -730,14 +731,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30),
                         new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30))));
 
+    List<JoinedWith> reportedDirectTableJoins =
+        List.of(
+            new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName()).withJoinCount(10),
+            new JoinedWith().withFullyQualifiedName(table3.getFullyQualifiedName()).withJoinCount(20));
+
     for (int i = 1; i <= 30; i++) {
       // Report joins starting from today back to 30 days. After every report, check the cumulative
       // join count
       TableJoins table1Joins =
-          new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-(i - 1))).withColumnJoins(reportedJoins);
+          new TableJoins()
+              .withDayCount(1)
+              .withStartDate(RestUtil.today(-(i - 1)))
+              .withColumnJoins(reportedColumnJoins)
+              .withDirectTableJoins(reportedDirectTableJoins);
       Table putResponse = putJoins(table1.getId(), table1Joins, ADMIN_AUTH_HEADERS);
 
-      List<ColumnJoin> expectedJoins1 =
+      List<ColumnJoin> expectedColumnJoins1 =
           Arrays.asList(
               // table1.c1 is joined with table2.c1, and table3.c1 with join count 10
               new ColumnJoin()
@@ -761,16 +771,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                           new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30 * i),
                           new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30 * i))));
 
+      List<JoinedWith> expectedDirectTableJoins1 =
+          List.of(
+              new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName()).withJoinCount(10 * i),
+              new JoinedWith().withFullyQualifiedName(table3.getFullyQualifiedName()).withJoinCount(20 * i));
+
       // Ensure PUT response returns the joins information
-      assertColumnJoins(expectedJoins1, putResponse.getJoins());
+      TableJoins actualJoins1 = putResponse.getJoins();
+      assertColumnJoins(expectedColumnJoins1, actualJoins1);
+      assertDirectTableJoins(expectedDirectTableJoins1, actualJoins1);
 
       // getTable and ensure the following column joins are correct
       table1 = getEntity(table1.getId(), "joins", ADMIN_AUTH_HEADERS);
-      assertColumnJoins(expectedJoins1, table1.getJoins());
+      assertColumnJoins(expectedColumnJoins1, table1.getJoins());
 
       // getTable and ensure the following column joins are correct
       table2 = getEntity(table2.getId(), "joins", ADMIN_AUTH_HEADERS);
-      List<ColumnJoin> expectedJoins2 =
+      List<ColumnJoin> expectedColumnJoins2 =
           Arrays.asList(
               // table2.c1 is joined with table1.c1 with join count 10
               new ColumnJoin()
@@ -784,11 +801,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               new ColumnJoin()
                   .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      assertColumnJoins(expectedJoins2, table2.getJoins());
+
+      List<JoinedWith> expectedDirectTableJoins2 =
+          List.of(new JoinedWith().withFullyQualifiedName(table1.getFullyQualifiedName()).withJoinCount(10 * i));
+
+      TableJoins actualJoins2 = table2.getJoins();
+      assertColumnJoins(expectedColumnJoins2, actualJoins2);
+      assertDirectTableJoins(expectedDirectTableJoins2, actualJoins2);
 
       // getTable and ensure the following column joins
       table3 = getEntity(table3.getId(), "joins", ADMIN_AUTH_HEADERS);
-      List<ColumnJoin> expectedJoins3 =
+      List<ColumnJoin> expectedColumnJoins3 =
           Arrays.asList(
               // table3.c1 is joined with table1.c1 with join count 10
               new ColumnJoin()
@@ -802,10 +825,20 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               new ColumnJoin()
                   .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      assertColumnJoins(expectedJoins3, table3.getJoins());
+
+      List<JoinedWith> expectedDirectTableJoins3 =
+          List.of(new JoinedWith().withFullyQualifiedName(table1.getFullyQualifiedName()).withJoinCount(20 * i));
+      TableJoins actualJoins3 = table3.getJoins();
+      assertColumnJoins(expectedColumnJoins3, actualJoins3);
+      assertDirectTableJoins(expectedDirectTableJoins3, actualJoins3);
 
       // Report again for the previous day and make sure aggregate counts are correct
-      table1Joins = new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-1)).withColumnJoins(reportedJoins);
+      table1Joins =
+          new TableJoins()
+              .withDayCount(1)
+              .withStartDate(RestUtil.today(-1))
+              .withColumnJoins(reportedColumnJoins)
+              .withDirectTableJoins(reportedDirectTableJoins);
       putJoins(table1.getId(), table1Joins, ADMIN_AUTH_HEADERS);
       table1 = getEntity(table1.getId(), "joins", ADMIN_AUTH_HEADERS);
     }
@@ -863,6 +896,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getColumnJoins()
         .forEach(c -> c.getJoinedWith().sort(Comparator.comparing(JoinedWith::getFullyQualifiedName)));
     assertEquals(expected, actual.getColumnJoins());
+  }
+
+  public void assertDirectTableJoins(List<JoinedWith> expected, TableJoins actual) {
+    // Table reports last 30 days of aggregated join count
+    assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
+    assertEquals(30, actual.getDayCount());
+
+    // Sort the columnJoins and the joinedWith to account for different ordering
+    assertEquals(
+        expected.stream().sorted(Comparator.comparing(JoinedWith::getFullyQualifiedName)).collect(Collectors.toList()),
+        actual.getDirectTableJoins().stream()
+            .sorted(Comparator.comparing(JoinedWith::getFullyQualifiedName))
+            .collect(Collectors.toList()));
   }
 
   @Test

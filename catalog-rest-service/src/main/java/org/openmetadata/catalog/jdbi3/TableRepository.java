@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
@@ -21,30 +23,35 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
+import static org.openmetadata.catalog.util.LambdaExceptionUtil.ignoringComparator;
+import static org.openmetadata.catalog.util.LambdaExceptionUtil.rethrowFunction;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Streams;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
@@ -81,10 +88,14 @@ import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
+
   // Table fields that can be patched in a PATCH request
   static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition";
   // Table fields that can be updated in a PUT request
   static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,profileSample";
+
+  public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
+  public static final String FIELD_RELATION_TABLE_TYPE = "table";
 
   public TableRepository(CollectionDAO dao) {
     super(
@@ -158,11 +169,20 @@ public class TableRepository extends EntityRepository<Table> {
       validateColumnFQNs(join.getJoinedWith());
     }
 
+    // Validate direct table joins
+    for (JoinedWith join : joins.getDirectTableJoins()) {
+      validateTableFQN(join.getFullyQualifiedName());
+    }
+
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
       String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), join.getColumnName());
-      addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
+      addJoinedWith(joins.getStartDate(), columnFQN, FIELD_RELATION_COLUMN_TYPE, join.getJoinedWith());
     }
+
+    addJoinedWith(
+        joins.getStartDate(), table.getFullyQualifiedName(), FIELD_RELATION_TABLE_TYPE, joins.getDirectTableJoins());
+
     return table.withJoins(getJoins(table));
   }
 
@@ -646,6 +666,14 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
+  private void validateTableFQN(String fqn) {
+    try {
+      dao.existsByName(fqn);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException("Invalid talbe name " + fqn, e);
+    }
+  }
+
   // Validate if a given column exists in the table
   private void validateColumn(Table table, String columnName) {
     boolean validColumn = table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
@@ -679,143 +707,171 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList) throws IOException {
+  /**
+   * Updates join data in the database for an entity and a relation type. Currently, used pairs of ({@code entityFQN},
+   * {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()}, "table") and ({@link
+   * Column#getFullyQualifiedName()}, "table.columns.column").
+   *
+   * <p>If for an field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
+   * combining the existing list of {@link DailyCount} with join data from {@code joinedWithList}, there are multiple
+   * {@link DailyCount} with the {@link DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of
+   * {@link JoinedWith#getJoinCount()} will override the current value.
+   */
+  private void addJoinedWith(String date, String entityFQN, String entityRelationType, List<JoinedWith> joinedWithList)
+      throws IOException {
+    // Use the column that comes alphabetically first as the from field and the other as to field.
+    // This helps us keep the bidirectional relationship to a single row instead one row for
+    // capturing relationship in each direction.
+    //
+    // One row like this     - fromColumn <--- joinedWith --> toColumn
+    // Instead of additional - toColumn <--- joinedWith --> fromColumn
     for (JoinedWith joinedWith : joinedWithList) {
-      // Use the column that comes alphabetically first as the from field and the other as to field.
-      // This helps us keep the bidirectional relationship to a single row instead one row for
-      // capturing relationship in each direction.
-      //
-      // One row like this     - fromColumn <--- joinedWith --> toColumn
-      // Instead of additional - toColumn <--- joinedWith --> fromColumn
-      String fromColumnFQN;
-      String toColumnFQN;
-      if (columnFQN.compareTo(joinedWith.getFullyQualifiedName()) < 0) {
-        fromColumnFQN = columnFQN;
-        toColumnFQN = joinedWith.getFullyQualifiedName();
+      String fromEntityFQN;
+      String toEntityFQN;
+      if (entityFQN.compareTo(joinedWith.getFullyQualifiedName()) < 0) {
+        fromEntityFQN = entityFQN;
+        toEntityFQN = joinedWith.getFullyQualifiedName();
       } else {
-        fromColumnFQN = joinedWith.getFullyQualifiedName();
-        toColumnFQN = columnFQN;
+        fromEntityFQN = joinedWith.getFullyQualifiedName();
+        toEntityFQN = entityFQN;
       }
-      String json =
-          daoCollection
-              .fieldRelationshipDAO()
-              .find(
-                  fromColumnFQN,
-                  toColumnFQN,
-                  "table.columns.column",
-                  "table.columns.column",
-                  Relationship.JOINED_WITH.ordinal());
 
-      DailyCount dailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
-      List<DailyCount> dailyCountList;
-      if (json == null) { // Create first entry
-        dailyCountList = Collections.singletonList(dailyCount);
-      } else { // Update the existing entry
-        dailyCountList = JsonUtils.readObjects(json, DailyCount.class);
-        boolean foundDate = false;
-        for (DailyCount d :
-            dailyCountList) { // If the date already exists, update the count. Otherwise, add a new entry
-          if (d.getDate().equals(dailyCount.getDate())) {
-            // Entry for date already exists. Update the count
-            d.setCount(dailyCount.getCount());
-            foundDate = true;
-            break;
-          }
-        }
-        if (!foundDate) {
-          dailyCountList.add(dailyCount);
-        }
+      List<DailyCount> currentDailyCounts =
+          Optional.ofNullable(
+                  daoCollection
+                      .fieldRelationshipDAO()
+                      .find(
+                          fromEntityFQN,
+                          toEntityFQN,
+                          entityRelationType,
+                          entityRelationType,
+                          Relationship.JOINED_WITH.ordinal()))
+              .map(rethrowFunction(j -> JsonUtils.readObjects(j, DailyCount.class)))
+              .orElse(List.of());
 
-        // Sort the dailyCount list by date
-        dailyCountList.sort(
-            (d1, d2) -> {
-              try {
-                return RestUtil.compareDates(d1.getDate(), d2.getDate());
-              } catch (ParseException ignored) {
-                // This should never happen
-              }
-              return 0;
-            });
+      DailyCount receivedDailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
 
-        ListIterator<DailyCount> iterator = dailyCountList.listIterator();
-        while (iterator.hasNext()) {
-          String reportedOnDate = iterator.next().getDate();
-          if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, reportedOnDate, 0, 30)) {
-            iterator.remove();
-            LOG.info(
-                "Removed join entry for column {} with column {} on older date {}",
-                columnFQN,
-                joinedWith.getFullyQualifiedName(),
-                reportedOnDate);
-          }
-        }
-      }
-      json = JsonUtils.pojoToJson(dailyCountList);
+      List<DailyCount> newDailyCounts = aggregateAndFilterDailyCounts(currentDailyCounts, receivedDailyCount);
 
       daoCollection
           .fieldRelationshipDAO()
           .upsert(
-              fromColumnFQN,
-              toColumnFQN,
-              "table.columns.column",
-              "table.columns.column",
+              fromEntityFQN,
+              toEntityFQN,
+              entityRelationType,
+              entityRelationType,
               Relationship.JOINED_WITH.ordinal(),
               "dailyCount",
-              json);
+              JsonUtils.pojoToJson(newDailyCounts));
     }
   }
 
+  /**
+   * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
+   * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
+   * Ensures the following properties: all elements in the list have unique dates, all dates are not older than 30 days
+   * from today, the list is ordered by date.
+   */
+  private List<DailyCount> aggregateAndFilterDailyCounts(
+      List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
+    var joinCountByDay =
+        Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
+
+    return joinCountByDay.entrySet().stream()
+        .map(
+            e -> {
+              if (e.getKey().equals(newDailyCount.getDate())) return newDailyCount;
+              else
+                return new DailyCount()
+                    .withDate(e.getKey())
+                    .withCount(
+                        e.getValue().stream()
+                            .findFirst()
+                            .orElseThrow(
+                                () -> new IllegalStateException("Collector.groupingBy created an empty grouping"))
+                            .getCount());
+            })
+        .filter(inLast30Days())
+        .sorted(ignoringComparator((dc1, dc2) -> RestUtil.compareDates(dc1.getDate(), dc2.getDate())))
+        .collect(Collectors.toList());
+  }
+
   private TableJoins getJoins(Table table) throws IOException {
-    String today = RestUtil.DATE_FORMAT.format(new Date()); // today
+    String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
-    TableJoins tableJoins =
-        new TableJoins().withStartDate(todayMinus30Days).withDayCount(30).withColumnJoins(Collections.emptyList());
+    return new TableJoins()
+        .withStartDate(todayMinus30Days)
+        .withDayCount(30)
+        .withColumnJoins(getColumnJoins(table))
+        .withDirectTableJoins(getDirectTableJoins(table));
+  }
 
-    List<List<String>> list =
-        daoCollection
-            .fieldRelationshipDAO()
-            .listToByPrefix(
+  private List<JoinedWith> getDirectTableJoins(Table table) throws IOException {
+    // Pair<toTableFQN, List<DailyCount>>
+    List<Pair<String, List<DailyCount>>> entityRelations =
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectional(
                 table.getFullyQualifiedName(),
-                "table.columns.column",
-                "table.columns.column",
-                Relationship.JOINED_WITH.ordinal());
-    list.addAll(
-        daoCollection
-            .fieldRelationshipDAO()
-            .listFromByPrefix(
+                FIELD_RELATION_TABLE_TYPE,
+                FIELD_RELATION_TABLE_TYPE,
+                Relationship.JOINED_WITH.ordinal())
+            .stream()
+            .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .collect(toUnmodifiableList());
+
+    return entityRelations.stream()
+        .map(
+            er ->
+                new JoinedWith()
+                    .withFullyQualifiedName(er.getLeft())
+                    .withJoinCount(er.getRight().stream().filter(inLast30Days()).mapToInt(DailyCount::getCount).sum()))
+        .collect(Collectors.toList());
+  }
+
+  private List<ColumnJoin> getColumnJoins(Table table) throws IOException {
+    // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
+    List<Triple<String, String, List<DailyCount>>> entityRelations =
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectionalByPrefix(
                 table.getFullyQualifiedName(),
-                "table.columns.column",
-                "table.columns.column",
-                Relationship.JOINED_WITH.ordinal()));
+                FIELD_RELATION_COLUMN_TYPE,
+                FIELD_RELATION_COLUMN_TYPE,
+                Relationship.JOINED_WITH.ordinal())
+            .stream()
+            .map(
+                rethrowFunction(
+                    er ->
+                        Triple.of(
+                            FullyQualifiedName.getColumnName(er.getLeft()),
+                            er.getMiddle(),
+                            JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .collect(toUnmodifiableList());
 
-    if (list.isEmpty()) { // No join information found. Return empty list
-      return tableJoins;
-    }
+    return entityRelations.stream()
+        .collect(groupingBy(Triple::getLeft))
+        .entrySet()
+        .stream()
+        .map(
+            e ->
+                new ColumnJoin()
+                    .withColumnName(e.getKey())
+                    .withJoinedWith(
+                        e.getValue().stream()
+                            .map(
+                                er ->
+                                    new JoinedWith()
+                                        .withFullyQualifiedName(er.getMiddle())
+                                        .withJoinCount(
+                                            er.getRight().stream()
+                                                .filter(inLast30Days())
+                                                .mapToInt(DailyCount::getCount)
+                                                .sum()))
+                            .collect(toUnmodifiableList())))
+        .collect(toUnmodifiableList());
+  }
 
-    // Map of <ColumnName> to List of <Fully Qualified Column names> it is joined with
-    Map<String, List<JoinedWith>> map = new HashMap<>();
-
-    // list [ [fromFQN, toFQN, json], ...] contains innerList [fromFQN, toFQN, json]
-    for (List<String> innerList : list) {
-      String columnName = FullyQualifiedName.getColumnName(innerList.get(0));
-      List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
-
-      // Parse JSON to get daily counts and aggregate it
-      List<DailyCount> dailyCountList = JsonUtils.readObjects(innerList.get(2), DailyCount.class);
-      int aggregatedCount = 0;
-      for (DailyCount d : dailyCountList) {
-        if (CommonUtil.dateInRange(RestUtil.DATE_FORMAT, d.getDate(), 0, 30)) {
-          aggregatedCount += d.getCount();
-        }
-      }
-      columnJoinList.add(new JoinedWith().withFullyQualifiedName(innerList.get(1)).withJoinCount(aggregatedCount));
-    }
-
-    List<ColumnJoin> columnJoins = new ArrayList<>();
-    for (Entry<String, List<JoinedWith>> entry : map.entrySet()) {
-      columnJoins.add(new ColumnJoin().withColumnName(entry.getKey()).withJoinedWith(entry.getValue()));
-    }
-    return tableJoins.withColumnJoins(columnJoins);
+  private Predicate<DailyCount> inLast30Days() {
+    return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
   private TableData getSampleData(Table table) throws IOException {

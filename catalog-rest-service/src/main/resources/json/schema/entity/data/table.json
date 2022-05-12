@@ -243,6 +243,19 @@
       "required": ["name", "dataType"],
       "additionalProperties": false
     },
+    "joinedWith": {
+      "description": "Fully qualified names of the columns that this column is joined with.",
+      "type": "object",
+      "properties": {
+        "fullyQualifiedName": {
+          "$ref": "#/definitions/fullyQualifiedColumnName"
+        },
+        "joinCount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
     "columnJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnJoin",
@@ -255,16 +268,7 @@
           "description": "Fully qualified names of the columns that this column is joined with.",
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "fullyQualifiedName": {
-                "$ref": "#/definitions/fullyQualifiedColumnName"
-              },
-              "joinCount": {
-                "type": "integer"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },
@@ -273,7 +277,7 @@
     "tableJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableJoins",
-      "description": "This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.",
+      "description": "This schema defines the type to capture information about how this table is joined with other tables and columns.",
       "properties": {
         "startDate": {
           "description": "Date can be only from today going back to last 29 days.",
@@ -287,6 +291,13 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnJoins"
+          }
+        },
+        "directTableJoins": {
+          "description": "Joins with other tables that are not on a specific column (e.g: UNION join)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },
