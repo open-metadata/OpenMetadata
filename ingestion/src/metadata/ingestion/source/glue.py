@@ -36,7 +36,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
@@ -105,22 +105,40 @@ class GlueSource(Source[Entity]):
     def ingest_catalog(self) -> Iterable[Entity]:
         """
         Ingest db and table data
+
+        Catalog ID -> Database
+        Glue db -> Schema
         """
         paginator = self.glue.get_paginator("get_databases")
         paginator_response = paginator.paginate()
 
         for page in paginator_response:
-            for db in page["DatabaseList"]:
+            for schema in page["DatabaseList"]:
+
+                if filter_by_database(
+                    database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
+                    database_name=schema["CatalogId"],
+                ):
+                    self.status.filter(
+                        schema["CatalogId"], "Database (Catalog ID) pattern not allowed"
+                    )
+                    continue
+
                 if filter_by_schema(
                     schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_name=db["Name"],
+                    schema_name=schema["Name"],
                 ):
-                    self.status.filter(db["Name"], "Schema pattern not allowed")
+                    self.status.filter(schema["Name"], "Schema pattern not allowed")
                     continue
 
                 yield from self.ingest_tables(
-                    catalog_id=db["CatalogId"], database_name=db["Name"]
+                    catalog_id=schema["CatalogId"], schema_name=schema["Name"]
                 )
+
+                if self.config.sourceConfig.config.markDeletedTables:
+                    logger.warning(
+                        "Glue source does not currently support marking tables as deleted."
+                    )
 
     def get_columns(self, column_data):
         for column in column_data["Columns"]:
@@ -138,14 +156,14 @@ class GlueSource(Source[Entity]):
             yield Column(**parsed_string)
 
     def ingest_tables(
-        self, catalog_id: str, database_name: str
+        self, catalog_id: str, schema_name: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         try:
 
             all_tables: List[dict] = []
 
             paginator = self.glue.get_paginator("get_tables")
-            paginator_response = paginator.paginate(DatabaseName=database_name)
+            paginator_response = paginator.paginate(DatabaseName=schema_name)
 
             for page in paginator_response:
                 all_tables += page["TableList"]
@@ -203,6 +221,12 @@ class GlueSource(Source[Entity]):
                     columns=table_columns,
                     tableType=table_type,
                 )
+
+                if self.config.sourceConfig.config.generateSampleData:
+                    logger.warning(
+                        "Glue source does not provide querying capabilities. Please ingest sample data with Athena."
+                    )
+
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database_entity,
