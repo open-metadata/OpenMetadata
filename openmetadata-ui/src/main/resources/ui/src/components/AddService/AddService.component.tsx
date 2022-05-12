@@ -274,7 +274,9 @@ const AddService = ({
       `${serviceName}_${PipelineType.Metadata}`,
       serviceName,
       PipelineType.Metadata,
-      isDeployed()
+      isDeployed(),
+      false,
+      isAirflowRunning
     );
   };
 

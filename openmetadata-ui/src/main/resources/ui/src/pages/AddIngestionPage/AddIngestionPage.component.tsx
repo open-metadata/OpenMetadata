@@ -251,7 +251,9 @@ const AddIngestionPage = () => {
             `${serviceData?.name || ''}_${ingestionType}`,
             '',
             ingestionType as PipelineType,
-            isDeployed()
+            isDeployed(),
+            false,
+            isAirflowRunning
           )}>
           <div className="tw-form-container">
             <AddIngestion

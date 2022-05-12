@@ -285,7 +285,8 @@ const EditIngestionPage = () => {
             '',
             ingestionType as PipelineType,
             isDeployed(),
-            true
+            true,
+            isAirflowRunning
           )}>
           <div className="tw-form-container">
             <AddIngestion

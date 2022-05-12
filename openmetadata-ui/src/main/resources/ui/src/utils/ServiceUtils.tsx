@@ -28,6 +28,7 @@ import {
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
   addServiceGuide,
+  addServiceGuideWOAirflow,
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
@@ -510,7 +511,8 @@ export const getServiceIngestionStepGuide = (
   serviceName: string,
   ingestionType: IngestionPipelineType,
   showDeployTitle: boolean,
-  isUpdated = false
+  isUpdated: boolean,
+  isAirflowSetup = true
 ) => {
   let guide;
   if (isIngestion) {
@@ -533,7 +535,10 @@ export const getServiceIngestionStepGuide = (
       }
     }
   } else {
-    guide = addServiceGuide.find((item) => item.step === step);
+    guide =
+      !isAirflowSetup && step === 4
+        ? addServiceGuideWOAirflow
+        : addServiceGuide.find((item) => item.step === step);
   }
 
   const getTitle = (title: string) => {

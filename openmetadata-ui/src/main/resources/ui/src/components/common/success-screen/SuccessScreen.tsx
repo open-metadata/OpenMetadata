@@ -17,7 +17,9 @@ import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { AIRFLOW_DOCS } from '../../../constants/constants';
 import { FormSubmitType } from '../../../enums/form.enum';
+import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -59,6 +61,9 @@ const SuccessScreen = ({
           setIsAirflowRunning(true);
         })
         .catch(() => {
+          showErrorToast(
+            jsonData['api-error-messages']['check-status-airflow']
+          );
           setAirflowCheckState('initial');
         });
     }
@@ -70,7 +75,7 @@ const SuccessScreen = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Checking Airflow status</span>
+            <span className="tw-ml-2">Checking Airflow status...</span>
           </div>
         );
       case 'success':
@@ -81,13 +86,13 @@ const SuccessScreen = ({
               className="tw-w-5"
               icon={Icons.SUCCESS_BADGE}
             />
-            <span className="tw-ml-2">Airflow is connected successfully</span>
+            <span className="tw-ml-2">Airflow is connected successfully.</span>
           </div>
         );
 
       case 'initial':
       default:
-        return 'If Airflow has been setup, recheck the status';
+        return 'If Airflow has been setup, please recheck the status.';
     }
   };
 
@@ -107,7 +112,7 @@ const SuccessScreen = ({
         {isUndefined(successMessage) ? (
           <span>
             <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-            <span>has been created successfully</span>
+            <span>has been created successfully.</span>
           </span>
         ) : (
           successMessage
@@ -116,19 +121,25 @@ const SuccessScreen = ({
 
       {!isAirflowSetup && (
         <>
-          <p className="tw-mt-2">
+          <p className="tw-mt-2" data-testid="airflow-status-msg">
             To set up metadata extraction, you first need to configure and
             connect to Airflow.
           </p>
           <p className="tw-mt-2">
             For more details visit our{' '}
-            <a href={AIRFLOW_DOCS} rel="noopener noreferrer" target="_blank">
+            <a
+              data-testid="airflow-doc-link"
+              href={AIRFLOW_DOCS}
+              rel="noopener noreferrer"
+              target="_blank">
               documentation
             </a>
             .
           </p>
           {!isUndefined(onCheckAirflowStatus) && (
-            <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-7 tw-w-10/12">
+            <div
+              className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-7 tw-w-10/12"
+              data-testid="airflow-status-check">
               <div className="tw-self-center tw-mr-3">
                 {getAirflowStatusMessage()}
               </div>

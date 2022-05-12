@@ -12,33 +12,25 @@
  */
 
 import { uniqueId } from 'lodash';
-import { observer } from 'mobx-react';
 import React from 'react';
 
 const stepsData = [
   {
     step: 1,
-    title: 'Custom Airflow Installation',
-    description:
-      'How to install OpenMetadata ingestion modules to an existing Airflow host.',
+    title: 'Managed Airflow APIs',
+    description: `OpenMetadata uses Airflow to run Ingestion Connectors. We developed Managed APIs to deploy ingestion connectors. 
+      Please refer to the guide here to use the OpenMetadata Airflow docker container or install the managed APIs in your Airflow installation.`,
     link: 'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation',
   },
   {
     step: 2,
-    title: 'Airflow Lineage',
-    description:
-      'Learn how to capture lineage information directly from Airflow DAGs using the OpenMetadata Lineage Backend.',
-    link: 'https://docs.open-metadata.org/integrations/airflow/airflow-lineage',
-  },
-  {
-    step: 3,
     title: 'Configure Airflow in the OpenMetadata Server',
     description:
       'Learn how to use the workflow deployment from the UI with a simple configuration.',
     link: 'https://docs.open-metadata.org/integrations/airflow/configure-airflow-in-the-openmetadata-server',
   },
   {
-    step: 4,
+    step: 3,
     title: 'For More Details',
     description: 'Please visit our documentation on Airflow setup.',
     link: 'https://docs.open-metadata.org/integrations/airflow',
@@ -48,14 +40,14 @@ const stepsData = [
 const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
-      <div className="tw-mb-5">
+      <div className="tw-mb-5" data-testid="error-steps">
         <div className="tw-mb-3 tw-text-center">
           <p>
-            To set up Ingestion Pipelines, you first need to configure and
-            connect to Airflow
+            To set up ingestion pipelines, you first need to configure and
+            connect to Airflow.
           </p>
         </div>
-        <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
+        <div className="tw-grid tw-grid-cols-3 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
             <div
               className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
@@ -67,9 +59,7 @@ const ErrorPlaceHolderIngestion = () => {
                   </div>
                 </div>
 
-                <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
-                  data-testid="service-name">
+                <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
                   {data.title}
                 </h6>
 
@@ -97,4 +87,4 @@ const ErrorPlaceHolderIngestion = () => {
   );
 };
 
-export default observer(ErrorPlaceHolderIngestion);
+export default ErrorPlaceHolderIngestion;
