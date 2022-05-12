@@ -6,7 +6,7 @@ description: This guide helps you enable security in OpenMetadata with Docker
 
 By default, security is not enabled when bringing up a cluster with the `metadata docker --start` command. To enable authentication and authorization, follow the below-mentioned steps:
 
-1. Create an env file like the following in your machine and update the values as required. Refer to the [Enable Security](https://app.gitbook.com/o/-MehiNqHP1pI0oSe7bvF/s/5bDjQUHl1WvoDgOnN4er/overview/run-openmetadata/enable-security) documentation to set up your preferred authentication provider. The variables `AIRFLOW_AUTH_PROVIDER` and `OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH` are required for UI based metadata ingestion. The path configured in `OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH` must be present in the `local-metadata_ingestion` container with a valid secret.
+1. Create an env file like the following in your machine and update the values as required. Refer to the [Enable Security](https://app.gitbook.com/s/5bDjQUHl1WvoDgOnN4er/overview/run-openmetadata/enable-security) documentation to set up your preferred authentication provider. The variables `AIRFLOW_AUTH_PROVIDER` and `OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH` are required for UI based metadata ingestion. The path configured in `OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH` must be present in the `local-metadata_ingestion` container with a valid secret.
 
 ```
 # ~/env_open_metadata

@@ -6,13 +6,20 @@ description: >-
 
 # Run Glue Connector Using Airflow SDK
 
+Configure and schedule Glue **metadata** and **profiler** workflows using your own Airflow instances.
+
+* [Requirements](glue-metadata-extraction.md#requirements)
+* [Metadata Ingestion](glue-metadata-extraction.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](glue-metadata-extraction.md#data-profiler-and-quality-tests)
+* [DBT Integration](glue-metadata-extraction.md#dbt-integration)
+
 ## Metadata Ingestion
 
 All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Glue.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
-The workflow is modelled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
+The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
 ### 1. Define the JSON Config
 
@@ -32,7 +39,6 @@ This is a sample config for Glue:
             "awsRegion": "us-east-2",
             "endPointURL": "https://glue.us-east-2.amazonaws.com/"
           },
-          "database": "local_glue_db",
           "storageServiceName":"storage_name",
 	  "pipelineServiceName":"local_glue_pipeline"
         }
@@ -56,11 +62,23 @@ This is a sample config for Glue:
   }
 ```
 
+#### Source Configuration - Service Connection
+
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json).
+
+* **awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
+* **awsRegion**: Specify the region in which your Glue catalog is located. This setting is required even if you have configured a local AWS profile.
+* **awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
+* **endPointURL**: Optional parameter.The Glue connector will automatically determine the AWS Glue endpoint URL based on the AWS Region. You may specify a value to override this behavior.
+* **storageServiceName**: **** OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
+* **pipelineServiceName:** OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue. When this metadata has been ingested you will find it in the OpenMetadata UI pipelines view under the name you have specified.
+
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -225,7 +243,7 @@ This is a sample config for the profiler:
 * You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {
@@ -275,7 +293,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
   },
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference/).
 
 #### Workflow Configuration
 
@@ -338,4 +356,3 @@ with DAG(
 ## DBT Integration
 
 You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration.md).
-

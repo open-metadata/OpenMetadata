@@ -19,13 +19,13 @@ Please select the approach you would prefer to use for metadata ingestion from t
 
 {% tabs %}
 {% tab title="Airflow SDK" %}
-### Schedule Ingestion via the Airflow SDK <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
+#### Schedule Ingestion via the Airflow SDK <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
 
-### Requirements
+#### Requirements
 
 Using the OpenMetadata MySQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-#### OpenMetadata (version 0.8.0 or later)
+**OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -34,7 +34,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-#### Python (version 3.8.0 or later)
+**Python (version 3.8.0 or later)**
 
 Please use the following command to check the version of Python you have.
 
@@ -42,7 +42,7 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
-### Procedure
+#### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
@@ -56,7 +56,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 8. Copy your configuration JSON into the ingestion script
 9. Run the script to create your ingestion DAG
 
-#### **1. Prepare a Python virtual environment**
+**1. Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
@@ -98,7 +98,7 @@ pip3 install --upgrade pip setuptools
 
 ***
 
-#### **2. Install the Python module for this connector**
+**2. Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -106,7 +106,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[mlflow]'
 ```
 
-#### **3. Create a configuration file using template JSON**
+**3. Create a configuration file using template JSON**
 
 Create a new file called `mlflow.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
@@ -141,9 +141,9 @@ Note: The `source.config` field in the configuration JSON will include the major
 ```
 {% endcode %}
 
-#### \*\*\*\*
+**\*\*\*\***
 
-#### **4. Configure service settings**
+**4. Configure service settings**
 
 In this step we will configure the MLflow service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MLflow service as desired.
 
@@ -169,7 +169,7 @@ Backend store where the Tracking Server stores experiment and run metadata ([doc
 
 ***
 
-#### **5. Confirm `sink` settings**
+**5. Confirm `sink` settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -180,7 +180,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-#### **6. Confirm `metadata_server` settings**
+**6. Confirm `metadata_server` settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -194,7 +194,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-#### 7. Edit a Python script to define your ingestion DAG
+**7. Edit a Python script to define your ingestion DAG**
 
 Copy and paste the code below into a file called `openmetadata-airflow.py`.
 
@@ -248,7 +248,7 @@ with DAG(
     )
 ```
 
-#### 8. Copy your configuration JSON into the ingestion script
+**8. Copy your configuration JSON into the ingestion script**
 
 In steps 3 - 6 above you created a JSON file with the configuration for your ingestion connector. Copy that JSON into the `openmetadata-airflow.py` file that you created in step 7 as directed by the comment below.
 
@@ -258,7 +258,7 @@ config = """
 """
 ```
 
-#### 9. Run the script to create your ingestion DAG
+**9. Run the script to create your ingestion DAG**
 
 Run the following command to create your ingestion DAG in Airflow.
 
@@ -268,13 +268,13 @@ python openmetadata-airflow.py
 {% endtab %}
 
 {% tab title="One-time Ingestion" %}
-### One-time Ingestion <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
+#### One-time Ingestion <a href="#mysql-connector-airflow-sdk" id="mysql-connector-airflow-sdk"></a>
 
-### Requirements
+#### Requirements
 
 Using the OpenMetadata MySQL connector requires supporting services and software. Please ensure that your host system meets the requirements listed below. Then continue to follow the procedure for installing and configuring this connector.
 
-#### OpenMetadata (version 0.8.0 or later)
+**OpenMetadata (version 0.8.0 or later)**
 
 You must have a running deployment of OpenMetadata to use this guide. OpenMetadata includes the following services:
 
@@ -283,7 +283,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 * MySQL as the backing store for all metadata
 * Airflow for metadata ingestion workflows
 
-#### Python (version 3.8.0 or later)
+**Python (version 3.8.0 or later)**
 
 Please use the following command to check the version of Python you have.
 
@@ -291,7 +291,7 @@ Please use the following command to check the version of Python you have.
 python3 --version
 ```
 
-### Procedure
+#### Procedure
 
 Here’s an overview of the steps in this procedure. Please follow the steps relevant to your use case.
 
@@ -303,7 +303,7 @@ Here’s an overview of the steps in this procedure. Please follow the steps rel
 6. Confirm metadata\_server settings
 7. Run the ingestion workflow
 
-#### **1. Prepare a Python virtual environment**
+**1. Prepare a Python virtual environment**
 
 In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
 
@@ -345,7 +345,7 @@ pip3 install --upgrade pip setuptools
 
 ***
 
-#### **2. Install the Python module for this connector**
+**2. Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -353,7 +353,7 @@ Once the virtual environment is set up and activated as described in Step 1, run
 pip3 install 'openmetadata-ingestion[mlflow]'
 ```
 
-#### **3. Create a configuration file using template JSON**
+**3. Create a configuration file using template JSON**
 
 Create a new file called `mlflow.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
@@ -388,9 +388,9 @@ Note: The `source.config` field in the configuration JSON will include the major
 ```
 {% endcode %}
 
-#### \*\*\*\*
+**\*\*\*\***
 
-#### **4. Configure service settings**
+**4. Configure service settings**
 
 In this step we will configure the MLflow service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MLflow service as desired.
 
@@ -414,9 +414,9 @@ Backend store where the Tracking Server stores experiment and run metadata ([doc
 "registry_uri": "mysql+pymysql://mlflow:password@localhost:3307/experiments"
 ```
 
-#### \*\*\*\*
+**\*\*\*\***
 
-#### **5. Confirm `sink` settings**
+**5. Confirm `sink` settings**
 
 You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -427,7 +427,7 @@ You need not make any changes to the fields defined for `sink` in the template c
 },
 ```
 
-#### **6. Confirm `metadata_server` settings**
+**6. Confirm `metadata_server` settings**
 
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
 
@@ -441,7 +441,7 @@ You need not make any changes to the fields defined for `metadata_server` in the
 }
 ```
 
-#### **7. Run ingestion workflow**
+**7. Run ingestion workflow**
 
 Your `mlflow.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
 
@@ -451,9 +451,9 @@ To run an ingestion workflow, execute the following command from the `openmetada
 metadata ingest -c ./mlflow.json
 ```
 
-### Troubleshooting
+#### Troubleshooting
 
-#### **requests.exceptions.ConnectionError**
+**requests.exceptions.ConnectionError**
 
 If you encounter the following error when attempting to run the ingestion workflow in Step 7, this is probably because there is no OpenMetadata server running at http://localhost:8585.
 
