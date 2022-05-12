@@ -34,5 +34,18 @@ module.exports = (on, config) => {
   config.env.snowflakeDatabase = process.env.CYPRESS_SNOWFLAKE_DATABASE;
   config.env.snowflakeWarehouse = process.env.CYPRESS_SNOWFLAKE_WAREHOUSE;
 
+  // bigquery
+  config.env.bigqueryClientEmail = process.env.CYPRESS_BQ_CLIENT_EMAIL;
+  config.env.bigqueryProjectId = process.env.CYPRESS_BQ_PROJECT_ID;
+  config.env.bigqueryPrivateKeyId = process.env.CYPRESS_BQ_PRIVATE_KEY_ID;
+  config.env.bigqueryPrivateKey = process.env.CYPRESS_BQ_PRIVATE_KEY;
+  config.env.bigqueryClientId = process.env.CYPRESS_BQ_CLIENT_ID;
+
+  // Redshift
+  config.env.redshiftHost = process.env.CYPRESS_REDSHIFT_HOST;
+  config.env.redshiftUsername = process.env.CYPRESS_REDSHIFT_USERNAME;
+  config.env.redshiftPassword = process.env.CYPRESS_REDSHIFT_PASSWORD;
+  config.env.redshiftDatabase = process.env.CYPRESS_REDSHIFT_DATABASE;
+
   return config;
 };

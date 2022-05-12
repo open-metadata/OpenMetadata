@@ -13,7 +13,7 @@
 
 const uuid = () => Cypress._.random(0, 1e6);
 
-const testServiceCreationAndIngestion = (
+export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
   addIngestionInput
@@ -117,7 +117,11 @@ const testServiceCreationAndIngestion = (
     retryCount++;
     // the latest run should be success
     cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-      if ($ingestionStatus.text() === 'Running' && retryCount <= retryTimes) {
+      if (
+        ($ingestionStatus.text() === 'Running' ||
+          $ingestionStatus.text() === 'Queued') &&
+        retryCount <= retryTimes
+      ) {
         // retry after waiting for 30 seconds
         cy.wait(30000);
         cy.reload();
@@ -131,103 +135,33 @@ const testServiceCreationAndIngestion = (
   checkSuccessState();
 };
 
-describe('login with SSO', () => {
-  beforeEach(() => {
-    cy.visit('http://localhost:8585');
+export const goToAddNewServicePage = () => {
+  cy.visit('/');
+  // cy.loginByGoogleApi();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  cy.get('[data-testid="closeWhatsNew"]').click();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  cy.get('[data-testid="tables"]').should('be.visible');
+
+  cy.get('[data-testid="menu-button"]').should('be.visible');
+  cy.get('[data-testid="menu-button"]').first().click();
+  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+
+  // Services page
+  cy.contains('Services').should('be.visible');
+  cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
+    if ($databaseServiceCount.text() === '0') {
+      cy.get('[data-testid="add-service-button"]').should('be.visible').click();
+    } else {
+      cy.get('[data-testid="add-new-service-button"]')
+        .should('be.visible')
+        .click();
+    }
   });
 
-  // Secure Mode
-  // it('displays sign in page', () => {
-  //   cy.get('.tw-signin-button').should('have.length', 1);
-  //   cy.get('.tw-signin-button span').should('have.text', 'Sign in with Google');
-  // });
-
-  describe('test services', () => {
-    beforeEach(() => {
-      cy.visit('http://localhost:8585');
-      // cy.loginByGoogleApi();
-      cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
-      cy.get('[data-testid="closeWhatsNew"]').click();
-      cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
-    });
-
-    it('shows homepage', () => {
-      cy.get('[data-testid="tables"]').should('be.visible');
-    });
-
-    describe('add new service', () => {
-      beforeEach(() => {
-        cy.get('[data-testid="menu-button"]').should('be.visible');
-        cy.get('[data-testid="menu-button"]').first().click();
-        cy.get('[data-testid="menu-item-Services"]')
-          .should('be.visible')
-          .click();
-
-        // Services page
-        cy.contains('Services').should('be.visible');
-        cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
-          if ($databaseServiceCount.text() === '0') {
-            cy.get('[data-testid="add-service-button"]')
-              .should('be.visible')
-              .click();
-          } else {
-            cy.get('[data-testid="add-new-service-button"]')
-              .should('be.visible')
-              .click();
-          }
-        });
-
-        // Add new service page
-        cy.url().should('include', 'databaseServices/add-service');
-        cy.get('[data-testid="header"]').should('be.visible');
-        cy.contains('Add New Service').should('be.visible');
-        cy.get('[data-testid="service-category"]').should('be.visible');
-      });
-
-      it('mysql', () => {
-        const connectionInput = () => {
-          cy.get('#root_username').type('openmetadata_user');
-          cy.get('#root_password').type('openmetadata_password');
-          cy.get('#root_hostPort').type('172.16.239.10:3306');
-          cy.get('#root_database').type('openmetadata_db');
-        };
-
-        const addIngestionInput = () => {
-          cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
-          cy.get('[data-testid="filter-pattern-includes-schema"]')
-            .should('be.visible')
-            .type('openmetadata_db');
-        };
-
-        testServiceCreationAndIngestion(
-          'Mysql',
-          connectionInput,
-          addIngestionInput
-        );
-      });
-
-      it('snowflake', () => {
-        const connectionInput = () => {
-          cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
-          cy.get('#root_password').type(Cypress.env('snowflakePassword'));
-          cy.get('#root_account').type(Cypress.env('snowflakeAccount'));
-          cy.get('#root_database').type(Cypress.env('snowflakeDatabase'));
-          cy.get('#root_warehouse').type(Cypress.env('snowflakeWarehouse'));
-        };
-
-        const addIngestionInput = () => {
-          cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
-          cy.get('[data-testid="filter-pattern-includes-schema"]')
-            .should('be.visible')
-            .type('TESTSCHEMA');
-        };
-
-        testServiceCreationAndIngestion(
-          'Snowflake',
-          connectionInput,
-          addIngestionInput
-        );
-      });
-    });
-  });
-});
+  // Add new service page
+  cy.url().should('include', 'databaseServices/add-service');
+  cy.get('[data-testid="header"]').should('be.visible');
+  cy.contains('Add New Service').should('be.visible');
+  cy.get('[data-testid="service-category"]').should('be.visible');
+};
