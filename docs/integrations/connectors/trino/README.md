@@ -89,7 +89,7 @@ Username to connect to Trino. This user should have privileges to read all the m
 
 Password to connect to Trino.
 
-**Catalog (Optional)**
+**Catalog**
 
 A Trino [catalog](https://trino.io/docs/current/overview/concepts.html#catalog) contains schemas and references a data source via a connector.
 
