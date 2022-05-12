@@ -73,8 +73,8 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const AIRFLOW_DOCS =
-  'https://docs.open-metadata.org/integrations/airflow';
+export const CUSTOM_AIRFLOW_DOCS =
+  'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [

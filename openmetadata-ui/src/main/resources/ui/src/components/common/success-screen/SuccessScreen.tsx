@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useState } from 'react';
-import { AIRFLOW_DOCS } from '../../../constants/constants';
+import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 import { FormSubmitType } from '../../../enums/form.enum';
 import jsonData from '../../../jsons/en';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -129,7 +129,7 @@ const SuccessScreen = ({
             For more details visit our{' '}
             <a
               data-testid="airflow-doc-link"
-              href={AIRFLOW_DOCS}
+              href={CUSTOM_AIRFLOW_DOCS}
               rel="noopener noreferrer"
               target="_blank">
               documentation

@@ -11,77 +11,42 @@
  *  limitations under the License.
  */
 
-import { uniqueId } from 'lodash';
 import React from 'react';
-
-const stepsData = [
-  {
-    step: 1,
-    title: 'Managed Airflow APIs',
-    description: `OpenMetadata uses Airflow to run Ingestion Connectors. We developed Managed APIs to deploy ingestion connectors. 
-      Please refer to the guide here to use the OpenMetadata Airflow docker container or install the managed APIs in your Airflow installation.`,
-    link: 'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation',
-  },
-  {
-    step: 2,
-    title: 'Configure Airflow in the OpenMetadata Server',
-    description:
-      'Learn how to use the workflow deployment from the UI with a simple configuration.',
-    link: 'https://docs.open-metadata.org/integrations/airflow/configure-airflow-in-the-openmetadata-server',
-  },
-  {
-    step: 3,
-    title: 'For More Details',
-    description: 'Please visit our documentation on Airflow setup.',
-    link: 'https://docs.open-metadata.org/integrations/airflow',
-  },
-];
+import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 
 const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
       <div className="tw-mb-5" data-testid="error-steps">
-        <div className="tw-mb-3 tw-text-center">
+        <div className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
+          <div>
+            <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
+              Failed to find OpenMetadata - Managed Airflow APIs
+            </h6>
+
+            <p className="tw-text-grey-body tw-text-sm tw-mb-5">
+              OpenMetadata uses Airflow to run Ingestion Connectors. We
+              developed Managed APIs to deploy ingestion connectors. Please use
+              the OpenMetadata Airflow instance or refer to the guide below to
+              install the managed APIs in your Airflow installation.
+            </p>
+          </div>
+
           <p>
-            To set up ingestion pipelines, you first need to configure and
-            connect to Airflow.
+            <a
+              href={CUSTOM_AIRFLOW_DOCS}
+              rel="noopener noreferrer"
+              target="_blank">
+              Install Airflow Managed APIs &gt;&gt;
+            </a>
           </p>
-        </div>
-        <div className="tw-grid tw-grid-cols-3 tw-gap-4 tw-mt-5">
-          {stepsData.map((data) => (
-            <div
-              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
-              <div>
-                <div className="tw-flex tw-mb-2">
-                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
-                    {data.step}
-                  </div>
-                </div>
-
-                <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
-                  {data.title}
-                </h6>
-
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
-                </p>
-              </div>
-
-              <p>
-                <a href={data.link} rel="noopener noreferrer" target="_blank">
-                  Click here &gt;&gt;
-                </a>
-              </p>
-            </div>
-          ))}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="tw-mt-10 tw-text-base tw-font-medium">
+    <div className="tw-mt-5 tw-text-base tw-font-medium">
       {airflowSetupGuide()}
     </div>
   );
