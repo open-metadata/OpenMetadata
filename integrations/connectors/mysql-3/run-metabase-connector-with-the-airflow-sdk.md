@@ -4,7 +4,7 @@ description: Use your own Airflow instance to schedule and run the Superset Conn
 
 # Run Superset Connector with the Airflow SDK
 
-Configure and schedule Metabase **metadata** workflows using your own Airflow instances.
+Configure and schedule Superset **metadata** workflows using your own Airflow instances.
 
 * [Requirements](run-metabase-connector-with-the-airflow-sdk.md#requirements)
 * [Metadata Ingestion](run-metabase-connector-with-the-airflow-sdk.md#metadata-ingestion)
@@ -15,7 +15,7 @@ Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up 
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json) you can find the structure to create a connection to Metabase.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json) you can find the structure to create a connection to Superset.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -23,26 +23,26 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the JSON Config
 
-This is a sample config for Metabase:
+This is a sample config for Superset:
 
 ```json
 {
   "source": {
-    "type": "metabase",
-    "serviceName": "<service name>",
+    "type": "superset",
+    "serviceName": "local_superset",
     "serviceConnection": {
       "config": {
-        "type": "Metabase",
-        "username": "<username>",
-        "password": "<password>",
-        "hostPort": "<hostPort>",
-        "dbServiceName": "<dbServiceName>"
+        "hostPort": "http://localhost:8080",
+        "username": "admin",
+        "password": "admin",
+        "dbServiceName": "local_mysql",
+        "type": "Superset"
       }
     },
     "sourceConfig": {
       "config": {
-        "dashboardFilterPattern": "<dashboard name regex list>",
-        "chartFilterPattern": "<chart name regex list>"
+        "chartFilterPattern": {},
+        "dashboardFilterPattern": {}
       }
     }
   },
@@ -52,8 +52,8 @@ This is a sample config for Metabase:
   },
   "workflowConfig": {
     "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
@@ -63,9 +63,9 @@ This is a sample config for Metabase:
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json).
 
-* **username**: Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **password**: Enter the password for your Metabase user in the _Password_ field.
-* **hostPort**: Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
+* **username**: Enter the username of your Superset user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password**: Enter the password for your Superset user in the _Password_ field.
+* **hostPort**: Enter the fully qualified hostname and port number for your Superset deployment in the _Host and Port_ field.
 * **dbServiceName**: If you want create Lineage enter the database Service name.
 
 #### Source Configuration - Source Config
