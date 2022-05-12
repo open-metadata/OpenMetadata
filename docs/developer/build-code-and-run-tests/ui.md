@@ -14,7 +14,7 @@ Before proceeding, ensure that you have installed the node and yarn with the ver
 ```
 
 [**Install Node**](https://nodejs.org/en/download/)\
-[**Install Yarn**](https://classic.yarnpkg.com/lang/en/docs/install/)\*\*\*\*
+[**Install Yarn**](https://classic.yarnpkg.com/lang/en/docs/install/)
 
 Using the command below, spin up the server locally from the directory.`openmetadata-dist/target/openmetadata-*-SNAPSHOT`.
 
@@ -25,15 +25,15 @@ Using the command below, spin up the server locally from the directory.`openmeta
 ./bin/openmetadata-server-start.sh conf/openmetadata-security.yaml
 ```
 
-> Since typescript is heavily used in the OpenMetadata project, we generate the typescript types and the interface from JSON schema. We use the `QuickType` tool to generate the typescript types and interface. You can view the complete instructions [here](https://docs.open-metadata.org/open-source-community/developer/generate-typescript-types-from-json-schema)
+> Since typescript is heavily used in the OpenMetadata project, we generate the typescript types and the interface from JSON schema. We use the `QuickType` tool to generate the typescript types and interfaces. You can view the complete instructions [here](https://docs.open-metadata.org/developer/build-code-and-run-tests/generate-typescript-types-from-json-schema)
 
 ### **Steps to Run OpenMetadata UI**
 
-Once the node and yarn is installed in the system, you can go ahead and perform the following steps to run OpenMetadata UI.
+Once the node and yarn are installed in the system, you can perform the following steps to run OpenMetadata UI.
 
 **Step 1**: Run the given command to install the required dependencies.
 
-**Note:** It’s a one-time task to install dependencies. If there are any changes in the `package.json` file, then again the following steps will have to be performed.
+**Note:** It’s a one-time task to install dependencies. If there are any changes in the `package.json` file, the following steps will have to be performed again.
 
 ```shell
 # installing dependencies
