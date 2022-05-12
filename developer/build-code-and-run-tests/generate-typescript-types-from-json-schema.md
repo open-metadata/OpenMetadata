@@ -11,13 +11,13 @@ We are using [quicktype](https://quicktype.io) to generate types from JSON Schem
 Make sure you have `quicktype` installed if not then install it using command given below from `openmetadata` root folder.
 
 ```
-npm install
+yarn install
 ```
 
 Now go to the UI folder `openmetadata-ui/src/main/resources/ui` and from there run the command given below.
 
 ```
-npm run json2ts
+yarn run json2ts
 ```
 
 The above command will take some time to execute and generate types.
