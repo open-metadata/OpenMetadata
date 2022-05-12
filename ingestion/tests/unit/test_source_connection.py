@@ -32,10 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
-    PinotDBConnection,
-    PinotDBScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
     MariaDBScheme,
@@ -43,6 +39,10 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
     MySQLScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
+    PinotDBScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
@@ -241,7 +241,7 @@ class SouceConnectionTest(TestCase):
             pinotControllerHost="http://localhost:9000/",
         )
         assert expected_url == get_connection_url(pinot_conn_obj)
-        
+
     def test_mysql_url(self):
         # connection arguments without db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
