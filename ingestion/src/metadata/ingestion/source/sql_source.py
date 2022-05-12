@@ -374,10 +374,6 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         for view_name in inspector.get_view_names(schema):
             try:
-                if self.service_connection.scheme.value == "bigquery":
-                    schema, view_name = self.standardize_schema_table_names(
-                        schema, view_name
-                    )
 
                 if filter_by_table(
                     self.source_config.tableFilterPattern, table_name=view_name
@@ -388,14 +384,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                     )
                     continue
                 try:
-                    if self.service_connection.scheme.value == "bigquery":
-                        view_definition = inspector.get_view_definition(
-                            f"{self.service_connection.projectId}.{schema}.{view_name}"
-                        )
-                    else:
-                        view_definition = inspector.get_view_definition(
-                            view_name, schema
-                        )
+                    view_definition = inspector.get_view_definition(view_name, schema)
                     view_definition = (
                         "" if view_definition is None else str(view_definition)
                     )
