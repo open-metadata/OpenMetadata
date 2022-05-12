@@ -64,7 +64,7 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Click on Permissions.
 * Click on **Grant Admin Consent for Default Directory**.
 
-![](<../../../../.gitbook/assets/image (102) (2).png>)
+![](<../../../../.gitbook/assets/image (102).png>)
 
 ## Step 7: Set the App ID URI
 

@@ -20,7 +20,7 @@
 
 * Once you are on the Dashboard page, click on `Applications > Applications` available on the left-hand side panel.
 
-![](<../../../../.gitbook/assets/image (78) (2).png>)
+![](<../../../../.gitbook/assets/image (78).png>)
 
 * Click on `Create Applicaiton`.
 
@@ -29,7 +29,7 @@
 * Enter the Application name
 * Choose an application type and click on `Create`.
 
-![](<../../../.gitbook/assets/image (11) (2) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (11) (2) (1) (1).png>)
 
 ## Step 3: Where to Find the Credentials
 

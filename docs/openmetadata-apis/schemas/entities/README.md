@@ -2,7 +2,7 @@
 
 OpenMetadata has the following high-level core entities and relationships:
 
-![](<../../../.gitbook/assets/openmetadata-entities-relationship (1).png>)
+![](../../../.gitbook/assets/openmetadata-entities-relationship.png)
 
 1. **Data Assets** - These entities represent data, such as databases, tables, and topics, and assets created using data, such as Dashboards, Reports, Metrics, and ML Features. It also includes entities such as Pipelines that are used for creating data assets.
 2. **Services** - Services represent platforms and services used for storing and processing data. It includes Online Data Stores, Data Warehouses, ETL tools, Dashboard services, etc.

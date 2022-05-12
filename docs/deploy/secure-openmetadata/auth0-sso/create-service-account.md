@@ -8,7 +8,7 @@ description: This is a guide to create ingestion bot service account.
 
 * Go to your project dashboard.
 
-![](<../../../../.gitbook/assets/image (23) (1) (2).png>)
+![](<../../../../.gitbook/assets/image (23) (1).png>)
 
 * Navigate to `Applications > Applications`
 
