@@ -39,6 +39,7 @@ export const testServiceCreationAndIngestion = (
 
   connectionInput();
 
+  // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
 
