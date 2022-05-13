@@ -136,11 +136,23 @@ def get_table_comment(self, connection, table_name, schema=None, **kw):
     return {"text": None}
 
 
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    try:
+        query = f"select create_table_query from system.tables where engine = 'View' and name='{view_name}' and database='{schema}'"
+        result = connection.execute(query)
+        view_definition = result.fetchone()
+        return view_definition[0] if view_definition else None
+    except Exception:
+        return ""
+
+
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
 ClickHouseDialect.get_pk_constraint = get_pk_constraint
 ClickHouseDialect._get_column_type = _get_column_type
 ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
+ClickHouseDialect.get_view_definition = get_view_definition
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
