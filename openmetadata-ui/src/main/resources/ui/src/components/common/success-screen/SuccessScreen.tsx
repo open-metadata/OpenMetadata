@@ -25,6 +25,7 @@ import Loader from '../../Loader/Loader';
 
 type SuccessScreenProps = {
   name: string;
+  suffix?: string;
   successMessage?: JSX.Element;
   showIngestionButton: boolean;
   showDeployButton?: boolean;
@@ -38,6 +39,7 @@ type SuccessScreenProps = {
 
 const SuccessScreen = ({
   name,
+  suffix,
   showIngestionButton,
   showDeployButton = false,
   isAirflowSetup,
@@ -57,8 +59,8 @@ const SuccessScreen = ({
       setAirflowCheckState('waiting');
       onCheckAirflowStatus()
         .then(() => {
-          setAirflowCheckState('success');
           setIsAirflowRunning(true);
+          setAirflowCheckState('success');
         })
         .catch(() => {
           showErrorToast(
@@ -69,98 +71,111 @@ const SuccessScreen = ({
     }
   };
 
-  const getAirflowStatusMessage = () => {
-    switch (airflowCheckState) {
-      case 'waiting':
-        return (
-          <div className="tw-flex">
-            <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Checking Airflow status...</span>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="tw-flex">
-            <SVGIcons
-              alt="success-badge"
-              className="tw-w-5"
-              icon={Icons.SUCCESS_BADGE}
-            />
-            <span className="tw-ml-2">Airflow is connected successfully.</span>
-          </div>
-        );
-
-      case 'initial':
-      default:
-        return 'If Airflow has been setup, please recheck the status.';
+  const getAirflowStatusIcon = () => {
+    let icon;
+    if (airflowCheckState === 'waiting') {
+      icon = <Loader size="small" type="default" />;
+    } else if (isAirflowRunning) {
+      icon = (
+        <SVGIcons
+          alt="success"
+          className="tw-w-5"
+          data-testid="success-icon"
+          icon={Icons.SUCCESS_BADGE}
+        />
+      );
+    } else {
+      icon = (
+        <SVGIcons
+          alt="fail"
+          className="tw-w-5"
+          data-testid="fail-icon"
+          icon={Icons.FAIL_BADGE}
+        />
+      );
     }
+
+    return icon;
   };
 
   return (
     <div
-      className="tw-flex tw-flex-col tw-items-center tw-mt-14 tw-mb-24"
+      className="tw-flex tw-flex-col tw-mt-14 tw-mb-24 tw-mx-8 tw-px-1"
       data-testid="success-screen-container">
-      <div>
-        <SVGIcons
-          alt="success"
-          className="tw-w-10 tw-h-10"
-          data-testid="success-icon"
-          icon={Icons.SUCCESS_BADGE}
-        />
+      <div className="tw-flex tw-border tw-border-main tw-rounded tw-shadow tw-p-3">
+        <div className="tw-mr-2">
+          <SVGIcons
+            alt="success"
+            className="tw-w-5"
+            data-testid="success-icon"
+            icon={Icons.SUCCESS_BADGE}
+          />
+        </div>
+        <p data-testid="success-line">
+          {isUndefined(successMessage) ? (
+            <span>
+              <span className="tw-mr-1 tw-font-semibold">
+                &quot;{name || 'demo_mysql'}&quot;
+              </span>
+              {suffix && <span className="tw-mr-1">{suffix}</span>}
+              <span>has been created successfully.</span>
+            </span>
+          ) : (
+            successMessage
+          )}
+        </p>
       </div>
-      <p className="tw-mt-7" data-testid="success-line">
-        {isUndefined(successMessage) ? (
-          <span>
-            <span className="tw-mr-1 tw-font-semibold">&quot;{name}&quot;</span>
-            <span>has been created successfully.</span>
-          </span>
-        ) : (
-          successMessage
-        )}
-      </p>
 
       {!isAirflowSetup && (
-        <>
-          <p className="tw-mt-2" data-testid="airflow-status-msg">
-            To set up metadata extraction, you first need to configure and
-            connect to Airflow.
-          </p>
-          <p className="tw-mt-2">
-            For more details visit our{' '}
-            <a
-              data-testid="airflow-doc-link"
-              href={CUSTOM_AIRFLOW_DOCS}
-              rel="noopener noreferrer"
-              target="_blank">
-              documentation
-            </a>
-            .
-          </p>
-          {!isUndefined(onCheckAirflowStatus) && (
-            <div
-              className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-7 tw-w-10/12"
-              data-testid="airflow-status-check">
-              <div className="tw-self-center tw-mr-3">
-                {getAirflowStatusMessage()}
+        <div
+          className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
+          data-testid="airflow-status-msg">
+          <div className="tw-flex tw-justify-between tw-item-center">
+            <div className="tw-flex tw-mt-0.5">
+              <div className="tw-flex-none tw-mr-2">
+                {getAirflowStatusIcon()}
               </div>
-              <Button
-                className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-                  'tw-opacity-40': airflowCheckState === 'waiting',
-                })}
-                data-testid="test-connection-btn"
-                disabled={airflowCheckState === 'waiting'}
-                size="small"
-                theme="primary"
-                variant="outlined"
-                onClick={handleAirflowStatusCheck}>
-                Check Status
-              </Button>
+              <h6 className="tw-text-base tw-font-medium">
+                {isAirflowRunning
+                  ? 'OpenMetadata - Managed Airflow APIs'
+                  : 'Failed to find OpenMetadata - Managed Airflow APIs'}
+              </h6>
             </div>
+            {!isUndefined(onCheckAirflowStatus) && (
+              <div className="tw-flex-none">
+                <Button
+                  className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
+                    'tw-opacity-40': airflowCheckState === 'waiting',
+                  })}
+                  data-testid="airflow-status-check"
+                  disabled={airflowCheckState === 'waiting'}
+                  size="small"
+                  theme="primary"
+                  variant="outlined"
+                  onClick={handleAirflowStatusCheck}>
+                  Check Status
+                </Button>
+              </div>
+            )}
+          </div>
+          {!isAirflowRunning && (
+            <p className="tw-mt-3">
+              To set up metadata extraction through UI, you first need to
+              configure and connect to Airflow. For more details visit our{' '}
+              <a
+                data-testid="airflow-doc-link"
+                href={CUSTOM_AIRFLOW_DOCS}
+                rel="noopener noreferrer"
+                target="_blank">
+                documentation
+              </a>
+              .
+            </p>
           )}
-        </>
+        </div>
       )}
 
-      <div className="tw-mt-7">
+      <div className="tw-mt-7 tw-text-center">
         <Button
           data-testid="view-service-button"
           size="regular"

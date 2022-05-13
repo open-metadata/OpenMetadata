@@ -29,6 +29,7 @@ import {
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
+  getServiceCreatedLabel,
   getServiceIngestionStepGuide,
   isIngestionSupported,
 } from '../../utils/ServiceUtils';
@@ -253,6 +254,7 @@ const AddService = ({
               name={serviceName}
               showIngestionButton={isIngestionSupported(serviceCategory)}
               state={FormSubmitType.ADD}
+              suffix={getServiceCreatedLabel(serviceCategory)}
               onCheckAirflowStatus={onAirflowStatusCheck}
             />
           )}
