@@ -18,6 +18,7 @@ export const PRIMERY_COLOR = '#7147E8';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 
 export const FOLLOWERS_VIEW_CAP = 20;
+export const INITIAL_PAGIN_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_MEDIUM = 16;
