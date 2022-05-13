@@ -40,19 +40,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
 Select Clickhouse as the service type and click _Next_.\\
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.30.38 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.30.38 PM.png>)
 
 Provide a name and description for your service as illustrated below.
 
@@ -60,13 +60,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Clickhouse services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.32.32 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.32.32 PM.png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Clickhouse service as desired.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.33.07 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.33.07 PM.png>)
 
 <details>
 
@@ -126,13 +126,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.34.19 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.34.19 PM.png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.35.34 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.35.34 PM.png>)
 
 <details>
 
@@ -186,7 +186,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -228,7 +228,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
+![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
 
 ### 9. Workflow Deployment Error
 
@@ -236,7 +236,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

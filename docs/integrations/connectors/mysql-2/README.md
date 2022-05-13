@@ -43,25 +43,25 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (4) (1).png>)
+![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (13).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (15).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (57).png>)
 
 ### 3. Select the Service Type
 
 Select Oracle as the service type and click _Next_.
 
-![Add New Service Page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
+![Add New Service Page](<../../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![Service Name and Description page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (2).png>)
+![Service Name and Description page](<../../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (2).png>)
 
 #### Service Name
 
@@ -71,7 +71,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Oracle service as desired.
 
-![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
+![Connection Details page](<../../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
 
 <details>
 
@@ -107,13 +107,13 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![Add Ingestion Page](<../../../.gitbook/assets/image (22).png>)
+![Add Ingestion Page](<../../../../.gitbook/assets/image (88).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (140).png>)
 
 <details>
 
@@ -167,7 +167,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (20) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (84).png>)
 
 <details>
 
@@ -209,7 +209,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9).png>)
+![Ingestion Pipeline Page](<../../../../.gitbook/assets/image (32).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (75).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

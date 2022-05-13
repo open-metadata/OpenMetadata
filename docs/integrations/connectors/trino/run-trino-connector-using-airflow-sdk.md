@@ -74,7 +74,7 @@ This is a sample config for Trino:
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 
-* **hostPort**: **** Host and port of the data source..
+* **hostPort**: Host and port of the data source.
 * **username** (Optional): Specify the User to connect to Trino. It should have enough privileges to read all the metadata.
 * **password** (Optional): Connection password.
 * **catalog**: A Trino [catalog](https://trino.io/docs/current/overview/concepts.html#catalog) contains schemas and references a data source via a connector.
@@ -96,7 +96,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -260,7 +260,7 @@ This is a sample config for a Trino profiler:
 * You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/trinoConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {

@@ -25,7 +25,7 @@ description: >-
 
 * Click on the **Create App Integration** button.
 
-![](<../../../.gitbook/assets/image (42) (1) (1).png>)
+![](<../../../.gitbook/assets/image (42) (1) (1) (2).png>)
 
 ## Step 3: Configuring the App
 
@@ -79,7 +79,7 @@ This will generate the Issuer URL.
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
-![](<../../../.gitbook/assets/image (71).png>)
+![](<../../../.gitbook/assets/image (71) (1).png>)
 
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**
@@ -114,18 +114,18 @@ This will generate the Issuer URL.
 * You can also go to **Application -> Application** as in step 2.
 * You should be able to see your application in the list.
 
-![](<../../../.gitbook/assets/image (59) (1) (1).png>)
+![](<../../../.gitbook/assets/image (59) (1) (1) (1).png>)
 
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
 * The **Client authentication** is enabled by default.
 * By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
-![](<../../../.gitbook/assets/image (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (1) (1) (1) (1) (1).png>)
 
 * Click on the **Sign On** tab from the top navigation bar.
 * Click on Edit for **OpenID Connect ID Token**.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1) (1) (2).png>)
