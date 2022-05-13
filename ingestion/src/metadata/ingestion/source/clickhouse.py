@@ -19,6 +19,9 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -153,10 +156,6 @@ ClickHouseDialect._get_column_type = _get_column_type
 ClickHouseDialect.get_table_comment = get_table_comment
 RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
-
-from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
-    ClickhouseConnection,
-)
 
 
 class ClickhouseSource(SQLSource):
