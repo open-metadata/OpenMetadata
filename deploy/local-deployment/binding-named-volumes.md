@@ -4,15 +4,15 @@ description: This guide will help to mount Named Docker Volumes
 
 # Binding Named Volumes
 
-Named volumes can persist data after we restart or remove a container. Also, it’s accessible by other containers.&#x20;
+Named volumes can persist data after we restart or remove a container. Also, it’s accessible by other containers.
 
 For example:
 
-![](../../.gitbook/assets/example.png)
+![](../../docs/.gitbook/assets/example.png)
 
 Here, the first field is a unique name of the volume on a host machine. The second field is the path in the container.
 
-Following are the  changes we have to do while mounting the volume for ingestion in OpenMetadata
+Following are the changes we have to do while mounting the volume for ingestion in OpenMetadata
 
 1. Update or add the volume in the docker-compose.yml file:
 
@@ -88,7 +88,7 @@ Attaching to openmetadata_elasticsearch, openmetadata_ingestion, openmetadata_my
 
 Once the containers up and running, it will launch Airflow tasks to ingest sample metadata and usage data to experiment with. This might take several minutes, depending on your system.
 
-### Verify all containers are up and running&#x20;
+### Verify all containers are up and running
 
 ```
 docker ps 
