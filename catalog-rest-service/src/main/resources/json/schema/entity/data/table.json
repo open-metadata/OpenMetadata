@@ -254,6 +254,7 @@
           "type": "integer"
         }
       },
+      "required": ["fullyQualifiedName", "joinCount"],
       "additionalProperties": false
     },
     "columnJoins": {
