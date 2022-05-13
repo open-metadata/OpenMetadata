@@ -86,6 +86,7 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
@@ -141,7 +142,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete = true;
+  protected boolean supportsSoftDelete;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
@@ -229,6 +230,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
+    this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
   }
 
   @BeforeAll
@@ -571,9 +573,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       addFollower(entityInterface.getId(), user1.getId(), CREATED, TEST_AUTH_HEADERS);
     }
     entityInterface = validateGetWithDifferentFields(entity, false);
+    entity = entityInterface.getEntity();
     validateGetCommonFields(entityInterface);
 
-    entityInterface = validateGetWithDifferentFields(entityInterface.getEntity(), true);
+    entityInterface = validateGetWithDifferentFields(entity, true);
     validateGetCommonFields(entityInterface);
   }
 
@@ -718,7 +721,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     assertFalse(entityInterface.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
-    name = String.format("%s_foo.bar", entityType);
+    name = format("%s_foo.bar", entityType);
     request = createRequest(name, "", null, null);
     entity = createEntity(request, ADMIN_AUTH_HEADERS);
     entityInterface = getEntityInterface(entity);
@@ -886,7 +889,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             StorageService.class,
             DashboardService.class,
             MessagingService.class,
-            IngestionPipeline.class);
+            IngestionPipeline.class,
+            Type.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
       assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change
@@ -1124,12 +1128,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsSoftDelete) {
       return;
     }
     // `deleted` attribute can't be set to true in PATCH operation & can only be done using DELETE operation
     T entity = createEntity(createRequest(getEntityName(test), "", "", null), ADMIN_AUTH_HEADERS);
     EntityInterface<T> entityInterface = getEntityInterface(entity);
+
     String json = JsonUtils.pojoToJson(entity);
     entityInterface.setDeleted(true);
     assertResponse(

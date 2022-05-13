@@ -69,7 +69,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     supportsAuthorizedMetadataOperations = false;
     supportsPatch = false;
     supportsFieldsQueryParam = false;
-    supportsSoftDelete = false;
   }
 
   @Test

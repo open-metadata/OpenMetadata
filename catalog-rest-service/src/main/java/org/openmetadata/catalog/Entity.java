@@ -64,7 +64,7 @@ public final class Entity {
   public static final String FIELD_DISPLAY_NAME = "displayName";
 
   //
-  // Services
+  // Service entities
   //
   public static final String DATABASE_SERVICE = "databaseService";
   public static final String MESSAGING_SERVICE = "messagingService";
@@ -73,7 +73,7 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
 
   //
-  // Data assets
+  // Data asset entities
   //
   public static final String TABLE = "table";
   public static final String DATABASE = "database";
@@ -94,21 +94,22 @@ public final class Entity {
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
   public static final String TAG_CATEGORY = "tagCategory";
+  public static final String TYPE = "type";
 
   //
-  // Policies
+  // Policy entity
   //
   public static final String POLICY = "policy";
 
   //
-  // Role, team and user
+  // Role, team and user entities
   //
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
 
   //
-  // Operations
+  // Operation related entities
   //
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
   public static final String WEBHOOK = "webhook";
@@ -145,8 +146,15 @@ public final class Entity {
         entityRepository.getClass().getSimpleName());
   }
 
+  public static void validateEntity(String entityType) {
+    String canonicalEntity = CANONICAL_ENTITY_NAME_MAP.get(entityType.toLowerCase());
+    if (canonicalEntity == null) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidEntity(entityType));
+    }
+  }
+
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {
-    return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId());
+    return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
   }
 
   public static <T> EntityReference getEntityReference(T entity) {
@@ -154,23 +162,14 @@ public final class Entity {
     return getEntityRepository(entityType).getEntityInterface(entity).getEntityReference();
   }
 
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id)
-      throws IOException {
-    return getEntityReferenceById(entityType, id, Include.NON_DELETED);
-  }
-
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
       throws IOException {
-    EntityDAO<?> dao = DAO_MAP.get(entityType);
-    if (dao == null) {
+    EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
+    if (repository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
-    return dao.findEntityReferenceById(id, include);
-  }
-
-  public static EntityReference getEntityReferenceByName(@NonNull String entityType, @NonNull String fqn)
-      throws IOException {
-    return getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+    include = repository.supportsSoftDelete ? Include.ALL : include;
+    return repository.dao.findEntityReferenceById(id, include);
   }
 
   public static EntityReference getEntityReferenceByName(

@@ -184,7 +184,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public Boolean isDeleted() {
-      return entity.getDeleted();
+      return false;
     }
 
     @Override
@@ -256,7 +256,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
+      /* soft-delete not supported */
     }
 
     @Override

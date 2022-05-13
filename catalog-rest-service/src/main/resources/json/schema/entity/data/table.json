@@ -683,7 +683,7 @@
       "default": null
     },
     "profileSample": {
-      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100].",
+      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
       "type": "number",
       "exclusiveMinimum": 0,
       "maximum": 100,
@@ -725,6 +725,16 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "customAttributes" : {
+      "description": "Custom attributes added to the entity",
+      "type" : "array",
+      "items" : {
+        "$ref" : "../type.json"
+      }
+    },
+    "displayConfig" : {
+
     }
   },
   "required": ["id", "name", "columns"],

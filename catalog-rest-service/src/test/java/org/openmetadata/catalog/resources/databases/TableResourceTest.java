@@ -57,7 +57,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -695,7 +694,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_tableJoins_200(TestInfo test) throws IOException, ParseException {
+  void put_tableJoins_200(TestInfo test) throws IOException {
     Table table1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Table table2 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
     Table table3 = createAndCheckEntity(createRequest(test, 3), ADMIN_AUTH_HEADERS);
@@ -817,7 +816,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException, ParseException {
+  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException {
     Table table1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Table table2 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
@@ -855,7 +854,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         "Date range can only include past 30 days starting today");
   }
 
-  public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
+  public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) {
     // Table reports last 30 days of aggregated join count
     assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
     assertEquals(30, actual.getDayCount());
