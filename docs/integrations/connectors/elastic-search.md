@@ -370,13 +370,12 @@ You need not make any changes to the fields defined for `sink` in the template c
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `elasticsearch.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+"workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
-}
+  }
 ```
 
 ### **12. Run ingestion workflow**
