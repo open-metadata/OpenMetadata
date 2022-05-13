@@ -186,7 +186,7 @@ class MetadataUsageBulkSink(BulkSink):
             logger.error("Failed to publish compute.percentile")
 
     def __get_table_joins(self, table_usage):
-        table_joins: TableJoins = TableJoins(columnJoins=[], startDate=table_usage.date)
+        table_joins: TableJoins = TableJoins(columnJoins=[], directTableJoins=[], startDate=table_usage.date)
         column_joins_dict = {}
         for column_join in table_usage.joins:
             joined_with = {}
