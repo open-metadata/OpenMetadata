@@ -96,7 +96,7 @@ class LookerSource(Source[Entity]):
         yield from self._get_looker_dashboards()
 
     def _get_dashboard_elements(self, dashboard_elements):
-        if not filter_by_chart(
+        if filter_by_chart(
             chart_filter_pattern=self.source_config.chartFilterPattern,
             chart_name=dashboard_elements.id,
         ):
@@ -121,7 +121,7 @@ class LookerSource(Source[Entity]):
         all_dashboards = self.client.all_dashboards(fields="id")
         for child_dashboard in all_dashboards:
             try:
-                if not filter_by_dashboard(
+                if filter_by_dashboard(
                     dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
                     dashboard_name=child_dashboard.id,
                 ):
