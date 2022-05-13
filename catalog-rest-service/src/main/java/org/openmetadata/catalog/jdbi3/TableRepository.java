@@ -670,7 +670,7 @@ public class TableRepository extends EntityRepository<Table> {
     try {
       dao.existsByName(fqn);
     } catch (EntityNotFoundException e) {
-      throw new IllegalArgumentException("Invalid talbe name " + fqn, e);
+      throw new IllegalArgumentException("Invalid table name " + fqn, e);
     }
   }
 
