@@ -34,7 +34,6 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
 @compiles(LenFn, Dialects.Hive)
-@compiles(LenFn, Dialects.Postgres)
 @compiles(LenFn, Dialects.Databricks)
 @compiles(LenFn, Dialects.MySQL)
 @compiles(LenFn, Dialects.MariaDB)
@@ -43,3 +42,8 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Presto)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
+
+
+@compiles(LenFn, Dialects.Postgres)
+def _(element, compiler, **kw):
+    return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
