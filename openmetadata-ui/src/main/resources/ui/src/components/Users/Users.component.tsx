@@ -27,10 +27,7 @@ import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import {
-  getExplorePathWithSearch,
-  TERM_ADMIN,
-} from '../../constants/constants';
+import { TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { Ownership } from '../../enums/mydata.enum';
 import { Role } from '../../generated/entity/teams/role';
@@ -41,8 +38,8 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
+  getExploreLinkByFilter,
   getNonDeletedTeams,
-  getOwnerIds,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -610,14 +607,6 @@ const Users = ({
     }
   };
 
-  const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
-      filter,
-      AppState.userDetails,
-      AppState.nonSecureUserDetails
-    ).join()}`;
-  };
-
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
@@ -647,7 +636,11 @@ const Users = ({
                 <Link
                   className="tw-ml-1"
                   data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.OWNER,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
                     View All <span>({userData?.owns?.length})</span>
                   </span>
@@ -668,7 +661,11 @@ const Users = ({
                 <Link
                   className="tw-ml-1"
                   data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.FOLLOWERS,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
                     View All <span>({userData?.follows?.length})</span>
                   </span>

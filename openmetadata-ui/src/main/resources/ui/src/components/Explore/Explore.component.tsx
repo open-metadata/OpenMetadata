@@ -170,7 +170,6 @@ const Explore: React.FC<ExploreProps> = ({
     setIsFilterSet(false);
 
     handleFilterChange({
-      ...filters,
       ...updatedFilter,
       ...(isForceClear ? {} : queryParamFilters),
     });
@@ -483,7 +482,6 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
-    handleFilterChange(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(
       searchQuery
@@ -496,6 +494,7 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentPage(1);
     if (!isMounting.current) {
       fetchCount();
+      handleFilterChange(filterObject);
     }
   }, [tab]);
 
