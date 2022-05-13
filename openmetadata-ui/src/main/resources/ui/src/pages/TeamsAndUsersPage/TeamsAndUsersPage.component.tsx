@@ -87,10 +87,6 @@ const TeamsAndUsersPage = () => {
     setIsDescriptionEditable(value);
   };
 
-  const handleRightPannelLoading = (value: boolean) => {
-    setIsRightPannelLoading(value);
-  };
-
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
   };
@@ -362,28 +358,30 @@ const TeamsAndUsersPage = () => {
    * @param data
    */
   const addUsersToTeam = (data: Array<UserTeams>) => {
-    const updatedTeam = {
-      ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
-    };
-    const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['update-team-error']
-        );
-      })
-      .finally(() => {
-        setIsAddingUsers(false);
-      });
+    if (!isUndefined(currentTeam)) {
+      const updatedTeam = {
+        ...currentTeam,
+        users: [...(currentTeam.users as Array<UserTeams>), ...data],
+      };
+      const jsonPatch = compare(currentTeam, updatedTeam);
+      patchTeamDetail(currentTeam.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-team-error']
+          );
+        })
+        .finally(() => {
+          setIsAddingUsers(false);
+        });
+    }
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
@@ -440,7 +438,7 @@ const TeamsAndUsersPage = () => {
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
     if (name !== teamAndUser) {
-      handleRightPannelLoading(true);
+      setIsRightPannelLoading(true);
       history.push(getTeamAndUserDetailsPath(name));
       if (isUsersCategory) {
         setIsTeamVisible(false);
