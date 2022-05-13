@@ -17,6 +17,6 @@
       }
     }
   },
-  "required": ["missingValue"],
+  "required": ["missingValueMatch"],
   "additionalProperties": false
 }
