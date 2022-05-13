@@ -13,7 +13,7 @@ OpenMetadata depends on following components to build a metadata platform
 * MySQL 8.x to store Metadata
 * ElasticSearch 7.x to index Metadata and power search
 
-![](../../../.gitbook/assets/quickstart-guide.drawio.png)
+![](../../.gitbook/assets/quickstart-guide.drawio.png)
 
 To understand the OpenMetadata Architecture and how everything fits together please go through [Design page](solution-design.md)
 
