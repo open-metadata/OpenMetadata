@@ -70,6 +70,7 @@ describe('Test AddService component', () => {
         ]}
         onAddIngestionSave={jest.fn()}
         onAddServiceSave={jest.fn()}
+        onAirflowStatusCheck={jest.fn()}
       />
     );
 
