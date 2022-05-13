@@ -139,7 +139,7 @@ Create a new file called `dynamodb.json` in the current directory. Note that the
 Copy and paste the configuration template below into the `dynamodb.json` file you created.
 
 {% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
+Note: The `source.serviceConnection.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.serviceConnection.config` field to meet your needs.
 {% endhint %}
 
 ### **5. Configure service settings**
@@ -149,35 +149,50 @@ In this step we will configure the DynamoDB service settings required for this c
 {% code title="dynamodb.json" %}
 ```javascript
 {
-    "source": {
-      "type": "dynamodb",
+  "source": {
+    "type": "dynamodb",
+    "serviceName": "local_dynamodb",
+    "serviceConnection": {
       "config": {
-        "aws_access_key_id": "aws_access_key_id",
-        "aws_secret_access_key": "aws_secret_access_key",
-        "service_name": "DynamoDB",
-        "region_name": "region_for_your_dynamodb",
-        "endpoint_url": "endpoint_url",
-        "db_name":"custom_database_name"
+        "type": "DynamoDB",
+        "awsConfig": {
+          "awsAccessKeyId": "awsAccessKeyId",
+          "awsSecretAccessKey": "awsSecretAccessKey",
+          "awsRegion": "awsRegion",
+          "endPointURL": "https://dynamodb.<region_name>.amazonaws.com",
+          "awsSessionToken": "SessionToken",
+        },
+        "database": "custom_database_name"
       }
     },
-    "sink": {
-      "type": "metadata-rest",
-      "config": {}
-    },
-    "metadata_server": {
-      "type": "metadata-server",
+    "sourceConfig": {
       "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+        "enableDataProfiler": false,
+        "tableFilterPattern": {
+          "includes": [
+            ""
+          ]
+        }
       }
     }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
+    }
   }
+}
 ```
 {% endcode %}
 
 #### aws\_session\_token (optional)
 
-Edit the value for `source.config.aws_session_token` to specify a session token for your DynamoDB client. This setting is optional.
+Edit the value for `source.serviceConnection.config.awsConfig_session_token` to specify a session token for your DynamoDB client. This setting is optional.
 
 See [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id\_credentials\_temp\_use-resources.html) for documentation on using AWS session tokens.
 
@@ -191,10 +206,10 @@ Note: While you cannot configure a session token using the `aws configure` comma
 
 #### aws\_access\_key\_id (optional)
 
-Edit the value for `source.config.aws_access_key_id` to specify the key id for your AWS user. This setting is optional.
+Edit the value for `source.serviceConnection.config.awsConfigAccessKeyId` to specify the key id for your AWS user. This setting is optional.
 
 ```json
-"aws_access_key_id": "AKIAIOSFODNN7EXAMPLE"
+"awsAccessKeyId": "AKIAIOSFODNN7EXAMPLE"
 ```
 
 {% hint style="info" %}
@@ -203,10 +218,10 @@ Note: We recommend that you use a local AWS profile containing your access key i
 
 #### aws\_secret\_access\_key (optional)
 
-Edit the value for `source.config.aws_secret_access_key` to specify the secret for your AWS user. This setting is optional.
+Edit the value for `source.serviceConnection.config.awsConfigSecretAccessKey` to specify the secret for your AWS user. This setting is optional.
 
 ```json
-"aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+"awsSecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 ```
 
 {% hint style="info" %}
@@ -217,42 +232,42 @@ Note: We recommend that you use a local AWS profile containing your access key i
 
 OpenMetadata associates each database and table entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata ingested from database services you are using through DynamoDB.
 
-Edit the value for `source.config.service_name` with a name that uniquely identifies this database and table metadata.
+Edit the value for `source.service_name` with a name that uniquely identifies this database and table metadata.
 
 ```json
-"service_name": "unique_name_to_identify_database_and_table_metadata"
+"serviceName": "unique_name_to_identify_database_and_table_metadata"
 ```
 
 When the metadata has been ingested you will find it in the OpenMetadata UI databases view under the name you have specified.
 
 #### region\_name
 
-Specify the region in which your DynamoDB is located using `source.config.region_name`.
+Specify the region in which your DynamoDB is located using `source.serviceConnection.config.awsConfigRegion`.
 
 ```javascript
-"region_name": "region_for_your_dynamodb"
+"awsRegion": "region_for_your_dynamodb"
 ```
 
 {% hint style="info" %}
-Note: This setting is required even if you have configured a local AWS profile and included a value for `region_name`.
+Note: This setting is required even if you have configured a local AWS profile and included a value for `awsRegion`.
 {% endhint %}
 
 #### db\_name
 
-Specify the database name for DynamoDB using `source.config.db_name`
+Specify the database name for DynamoDB using `source.serviceConnection.config.database`
 
 ```javascript
-"db_name":"custom_database_name"
+"database":"custom_database_name"
 ```
 
 #### endpoint\_url (optional)
 
 The DynamoDB connector will automatically determine the DynamoDB endpoint url based on the `region_name`.
 
-You may specify a value for `source.config.endpoint_url` to override this behavior. The value you specify should be a complete url, including the protocol (i.e. “http" or "https”).
+You may specify a value for `source.serviceConnection.config.endPointURL` to override this behavior. The value you specify should be a complete url, including the protocol (i.e. “http" or "https”).
 
 ```json
-"endpoint_url": "endpoint_url"
+"endPointURL": "endPointURL"
 ```
 
 ### **6. Confirm sink settings**
@@ -271,13 +286,12 @@ You need not make any changes to the fields defined for `sink` in the template c
 You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `dynamodb.json` in Step 4. This part of your configuration file should be as follows.
 
 ```javascript
-"metadata_server": {
-    "type": "metadata-server",
-    "config": {
-        "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+"workflowConfig": {
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
-}
+  }
 ```
 
 ### **8. Run ingestion workflow**
