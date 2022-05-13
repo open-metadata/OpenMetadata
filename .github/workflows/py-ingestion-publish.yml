@@ -41,6 +41,7 @@ jobs:
             twine check dist/*; \
             twine upload -r testpypi dist/*
   publish:
+    needs: [publish-test]
     runs-on: ubuntu-latest
     environment: release
     steps:
