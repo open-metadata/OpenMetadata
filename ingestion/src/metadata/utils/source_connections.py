@@ -297,7 +297,8 @@ def _(connection: HiveConnection):
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
-
+    if connection.authOptions:
+        return f"{url};{connection.authOptions}"
     return url
 
 
