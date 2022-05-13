@@ -851,60 +851,83 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Invalid database name
     String invalidColumnFQN1 = "columnDB";
-    TableJoins tableJoins1 = new TableJoins()
-        .withStartDate(RestUtil.today(0))
-        .withDayCount(1)
-            .withColumnJoins(List.of(
-                new ColumnJoin().withColumnName("c1").withJoinedWith(List.of(
-                    new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN1)))));
+    TableJoins tableJoins1 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN1)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins1, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(invalidColumnFQN1));
+        () -> putJoins(table1.getId(), tableJoins1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN1));
 
     // Invalid table name
     String invalidColumnFQN2 = table2.getDatabase().getName() + ".invalidTable" + ".c1";
-    TableJoins tableJoins2 = new TableJoins()
-        .withStartDate(RestUtil.today(0))
-        .withDayCount(1)
-        .withColumnJoins(List.of(
-            new ColumnJoin().withColumnName("c1").withJoinedWith(List.of(
-                new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN2)))));
+    TableJoins tableJoins2 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN2)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins2, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(invalidColumnFQN2));
+        () -> putJoins(table1.getId(), tableJoins2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN2));
 
     // Invalid column name
     String invalidColumnFQN3 = table2.getFullyQualifiedName() + ".invalidColumn";
-    TableJoins tableJoins3 = new TableJoins()
-        .withStartDate(RestUtil.today(0))
-        .withDayCount(1)
-        .withColumnJoins(List.of(
-            new ColumnJoin().withColumnName("c1").withJoinedWith(List.of(
-                new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN3)))));
+    TableJoins tableJoins3 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN3)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins3, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(invalidColumnFQN3));
+        () -> putJoins(table1.getId(), tableJoins3, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN3));
 
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
-    TableJoins tableJoins4 = new TableJoins()
-        .withStartDate(RestUtil.today(-30))
-        .withDayCount(1)
-        .withColumnJoins(List.of(
-            new ColumnJoin().withColumnName("c1").withJoinedWith(List.of(
-                new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN4)))));
+    TableJoins tableJoins4 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(-30))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN4)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Date range can only include past 30 days starting today");
+        () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Date range can only include past 30 days starting today");
 
     // Invalid direct table name
     String invalidTableFQN = table2.getDatabase().getName() + ".invalidTable";
-    TableJoins tableJoins5 = new TableJoins()
-        .withStartDate(RestUtil.today(0))
-        .withDayCount(1)
-        .withDirectTableJoins(List.of(
-            new JoinedWith()
-                .withFullyQualifiedName(invalidTableFQN)
-                .withJoinCount(1)));
+    TableJoins tableJoins5 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withDirectTableJoins(List.of(new JoinedWith().withFullyQualifiedName(invalidTableFQN).withJoinCount(1)));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins5, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid table name " + invalidTableFQN);
-
+        () -> putJoins(table1.getId(), tableJoins5, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid table name " + invalidTableFQN);
   }
 
   public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) {
