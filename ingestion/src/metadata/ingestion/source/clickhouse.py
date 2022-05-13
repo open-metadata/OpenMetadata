@@ -142,7 +142,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
         query = f"select create_table_query from system.tables where engine = 'View' and name='{view_name}' and database='{schema}'"
         result = connection.execute(query)
         view_definition = result.fetchone()
-        return view_definition[0] if view_definition else None
+        return view_definition[0] if view_definition else ""
     except Exception:
         return ""
 
