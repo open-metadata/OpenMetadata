@@ -166,3 +166,22 @@ export const goToAddNewServicePage = () => {
   cy.contains('Add New Service').should('be.visible');
   cy.get('[data-testid="service-category"]').should('be.visible');
 };
+
+export const testServiceSampleData = (database, schema, table) => {
+  cy.get('[data-testid="Databases"]').click();
+  cy.get('[data-testid="column"] > :nth-child(1)')
+    .should('be.visible')
+    .contains(database);
+
+  cy.get('[data-testid="column"] > :nth-child(1) > a').click();
+  cy.get('[data-testid="table-column"] > :nth-child(1)')
+    .should('be.visible')
+    .contains(schema);
+
+  cy.get('[data-testid="table-column"] > :nth-child(1) > a').click();
+  cy.get('.odd-row > :nth-child(1) > a').should('be.visible').contains(table);
+
+  cy.get('.odd-row > :nth-child(1) > a').click();
+  cy.get('[data-testid="inactive-link"]').should('be.visible').contains(table);
+  cy.get('[data-testid="Schema"]').should('be.visible');
+};
