@@ -21,7 +21,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MariaDB](mariadb.md)
 * [MSSQL](mssql/)
 * [MSSQL Usage](mssql/)
-* [MySQL](mysql-1/)
+* [MySQL](../../../integrations/connectors/mysql-1-1/)
 * [Oracle](mysql-2/)
 * [Postgres](<snowflake/README (1).md>)
 * [Presto](../../../integrations/connectors/presto/)
@@ -36,8 +36,8 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Dashboard Services
 
-* [Looker](looker.md)
-* [Metabase](mysql/)
+* [Looker](broken-reference)
+* [Metabase](../../../integrations/connectors/mysql-1/)
 * Power BI
 * [Redash](redash.md)
 * [Superset](superset.md)
