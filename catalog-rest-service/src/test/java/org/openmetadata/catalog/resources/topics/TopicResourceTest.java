@@ -109,8 +109,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
             .withReplicationFactor(1)
-            .withRetentionTime(1)
-            .withRetentionSize(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
             .withSchemaText("abc")
             .withSchemaType(SchemaType.Avro)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
@@ -123,8 +123,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMaximumMessageSize(2)
         .withPartitions(2)
         .withReplicationFactor(2)
-        .withRetentionTime(2)
-        .withRetentionSize(2)
+        .withRetentionTime(2.0)
+        .withRetentionSize(2.0)
         .withSchemaText("bcd")
         .withSchemaType(SchemaType.JSON)
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
@@ -137,8 +137,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1.0).withNewValue(2.0));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1.0).withNewValue(2.0));
     change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
     change
         .getFieldsUpdated()
@@ -162,8 +162,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             .withMinimumInSyncReplicas(1)
             .withPartitions(1)
             .withReplicationFactor(1)
-            .withRetentionTime(1)
-            .withRetentionSize(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0)
             .withSchemaText("abc")
             .withSchemaType(SchemaType.Avro)
             .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
@@ -178,8 +178,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMaximumMessageSize(2)
         .withPartitions(2)
         .withReplicationFactor(2)
-        .withRetentionTime(2)
-        .withRetentionSize(2)
+        .withRetentionTime(2.0)
+        .withRetentionSize(2.0)
         .withSchemaText("bcd")
         .withSchemaType(SchemaType.JSON)
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
@@ -192,8 +192,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     change.getFieldsUpdated().add(new FieldChange().withName("minimumInSyncReplicas").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("partitions").withOldValue(1).withNewValue(2));
     change.getFieldsUpdated().add(new FieldChange().withName("replicationFactor").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1).withNewValue(2));
-    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1).withNewValue(2));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionTime").withOldValue(1.0).withNewValue(2.0));
+    change.getFieldsUpdated().add(new FieldChange().withName("retentionSize").withOldValue(1.0).withNewValue(2.0));
     change.getFieldsUpdated().add(new FieldChange().withName("schemaText").withOldValue("abc").withNewValue("bcd"));
     change
         .getFieldsUpdated()
