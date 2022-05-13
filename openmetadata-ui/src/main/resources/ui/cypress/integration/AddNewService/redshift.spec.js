@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import {
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+} from '../../common/common';
 
 describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {

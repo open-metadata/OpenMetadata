@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
+import {
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  testServiceSampleData,
+} from '../../common/common';
 
 describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
@@ -36,5 +40,7 @@ describe('Snowflake Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
+
+    testServiceSampleData('TESTDB', 'TESTSCHEMA', 'PERSONS');
   });
 });

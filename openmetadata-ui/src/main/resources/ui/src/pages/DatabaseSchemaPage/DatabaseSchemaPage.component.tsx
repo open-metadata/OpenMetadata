@@ -537,7 +537,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     'tableBody-row',
                     !isEven(index + 1) ? 'odd-row' : null
                   )}
-                  data-testid="tabale-column"
+                  data-testid="table-column"
                   key={index}>
                   <td className="tableBody-cell">
                     <Link
