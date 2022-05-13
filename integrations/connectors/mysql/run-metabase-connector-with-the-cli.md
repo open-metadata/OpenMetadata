@@ -2,28 +2,28 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Metabase Connector with the CLI
+# Run Looker Connector with the CLI
 
-Configure and schedule Metabase **metadata** workflows using CLI.
+Configure and schedule Looker **metadata** workflows using CLI.
 
 * [Requirements](run-metabase-connector-with-the-cli.md#requirements)
 * [Metadata Ingestion](run-metabase-connector-with-the-cli.md#metadata-ingestion)
 
 ## Requirements
 
-Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ### Python requirements
 
-To run the Metabase ingestion, you will need to install:
+To run the Looker ingestion, you will need to install:
 
 ```
-pip3 install 'openmetadata-ingestion[metabase]'
+pip3 install 'openmetadata-ingestion[looker]'
 ```
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json) you can find the structure to create a connection to Metabase.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json) you can find the structure to create a connection to Looker.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -31,26 +31,27 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the JSON Config
 
-This is a sample config for Metabase:
+This is a sample config for Looker:
 
 ```json
 {
   "source": {
-    "type": "metabase",
-    "serviceName": "<service name>",
+    "type": "looker",
+    "serviceName": "local_looker",
     "serviceConnection": {
       "config": {
-        "type": "Metabase",
-        "username": "<username>",
-        "password": "<password>",
-        "hostPort": "<hostPort>",
-        "dbServiceName": "<dbServiceName>"
+        "type": "Looker",
+        "username": "username",
+        "password": "**********",
+        "hostPort": "http://hostPort",
+        "env": "env"
       }
     },
     "sourceConfig": {
       "config": {
-        "dashboardFilterPattern": "<dashboard name regex list>",
-        "chartFilterPattern": "<chart name regex list>"
+        "type": "DashboardMetadata",
+        "dashboardFilterPattern": {},
+        "chartFilterPattern": {}
       }
     }
   },
@@ -59,23 +60,24 @@ This is a sample config for Metabase:
     "config": {}
   },
   "workflowConfig": {
+    "loggerLevel": "INFO",
     "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
+      "type": "OpenMetadata",
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
     }
   }
 }
-
 ```
 
 #### Source Configuration - Service Connection
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json).
 
-* **username**: Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **password**: Enter the password for your Metabase user in the _Password_ field.
-* **hostPort**: Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
-* **dbServiceName**: If you want create Lineage enter the database Service name.
+* **username**: Enter the username of your Looker user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password**: Enter the password for your Looker user in the _Password_ field.
+* **hostPort**: Enter the fully qualified hostname and port number for your Looker deployment in the _Host and Port_ field.
+* **env:** Looker environment variable
 
 #### Source Configuration - Source Config
 

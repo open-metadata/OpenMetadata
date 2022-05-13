@@ -274,4 +274,4 @@ You can learn more about how to host and run the different workflows on your own
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../mysql-1/run-mysql-connector-using-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../../../../integrations/connectors/mysql-1-1/run-mysql-connector-using-cli.md).
