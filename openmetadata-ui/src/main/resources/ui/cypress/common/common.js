@@ -13,10 +13,13 @@
 
 const uuid = () => Cypress._.random(0, 1e6);
 
+const isDatabaseService = (type) => type === 'database';
+
 export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
-  addIngestionInput
+  addIngestionInput,
+  type = 'database'
 ) => {
   const serviceName = `${serviceType}-ci-test-${uuid()}`;
 
@@ -55,30 +58,40 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="add-ingestion-button"]').click();
 
   // Add ingestion page
-  cy.get('[data-testid="schema-filter-pattern-checkbox"]').should('be.visible');
   cy.get('[data-testid="add-ingestion-container"]').should('be.visible');
 
-  // Set all the sliders to off to disable sample data, data profiler etc.
-  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-    .should('exist')
-    .click();
-  cy.get('[data-testid="toggle-button-data-profiler"]').should('exist').click();
-  cy.get('[data-testid="toggle-button-mark-deleted"]').should('exist').click();
+  if (isDatabaseService(type)) {
+    cy.get('[data-testid="schema-filter-pattern-checkbox"]').should(
+      'be.visible'
+    );
+
+    // Set all the sliders to off to disable sample data, data profiler etc.
+    cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+      .should('exist')
+      .click();
+    cy.get('[data-testid="toggle-button-data-profiler"]')
+      .should('exist')
+      .click();
+    cy.get('[data-testid="toggle-button-mark-deleted"]')
+      .should('exist')
+      .click();
+  }
 
   addIngestionInput();
 
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   // Configure DBT Model
-  cy.contains('Configure DBT Model').should('be.visible');
-  cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
+  if (isDatabaseService(type)) {
+    cy.contains('Configure DBT Model').should('be.visible');
+    cy.get('[data-testid="dbt-source"]').should('be.visible').select('');
 
-  cy.get('[data-testid="submit-btn"]').should('be.visible').click();
+    cy.get('[data-testid="submit-btn"]').should('be.visible').click();
+  }
 
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="deploy-button"]').should('be.visible');
-  cy.get('[data-testid="deploy-button"]').click();
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
   cy.get('[data-testid="success-line"]').should('be.visible');
@@ -99,7 +112,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').click();
 
   // ingestions page
-  const retryTimes = 15;
+  const retryTimes = 25;
   let retryCount = 0;
   const testIngestionsTab = () => {
     cy.get('[data-testid="Ingestions"]').should('be.visible');
@@ -111,7 +124,9 @@ export const testServiceCreationAndIngestion = (
     if (retryCount === 0) {
       cy.get('[data-testid="Ingestions"]').click();
     }
-    cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
+    if (isDatabaseService(type)) {
+      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
+    }
   };
   const checkSuccessState = () => {
     testIngestionsTab();
@@ -123,8 +138,8 @@ export const testServiceCreationAndIngestion = (
           $ingestionStatus.text() === 'Queued') &&
         retryCount <= retryTimes
       ) {
-        // retry after waiting for 30 seconds
-        cy.wait(30000);
+        // retry after waiting for 20 seconds
+        cy.wait(20000);
         cy.reload();
         checkSuccessState();
       } else {
