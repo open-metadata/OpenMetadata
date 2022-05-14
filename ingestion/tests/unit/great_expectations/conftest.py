@@ -15,6 +15,8 @@ Fixtures for test suite
 from unittest import mock
 
 from pytest import fixture
+from metadata.great_expectations.column_test_builders import BaseColumnTestBuilder
+from metadata.great_expectations.table_test_builders import BaseTableTestBuilder
 
 from ingestion.src.metadata.great_expectations.action import (
     OpenMetadataValidationAction,
@@ -46,7 +48,7 @@ def mocked_ometa_object():
     return OmetaMock()
 
 
-@fixture
+@fixture(scope="module")
 def mocked_ometa():
     """Mocks OMeta obkect"""
     with mock.patch.object(
@@ -57,7 +59,45 @@ def mocked_ometa():
         yield mocked_obj
 
 
-@fixture
+@fixture(scope="module")
 def mocked_ge_data_context():
     with mock.patch("great_expectations.DataContext") as mocked_data_context:
         yield mocked_data_context
+
+
+@fixture(scope="module")
+def mocked_base_column_builder():
+    class MockedBaseColumnBuilder(BaseColumnTestBuilder):
+        def _build_test(self):
+            ...
+
+    instance = MockedBaseColumnBuilder()
+    return instance
+
+
+@fixture(scope="module")
+def mocked_ge_column_result():
+    return {
+        "success": True,
+        "expectation_config": {"kwargs": {"column": "my_column"}},
+        "result": {"unexpected_percent": 0.0},
+    }
+
+
+@fixture(scope="module")
+def mocked_base_table_builder():
+    class MockedBaseTableBuilder(BaseTableTestBuilder):
+        def _build_test(self):
+            ...
+
+    instance = MockedBaseTableBuilder()
+    return instance
+
+
+@fixture(scope="module")
+def mocked_ge_table_result():
+    return {
+        "success": True,
+        "expectation_config": {"kwargs": {"column": "my_column"}},
+        "result": {"observed_value": 10},
+    }
