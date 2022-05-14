@@ -18,6 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
@@ -61,7 +62,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
     }
   };
 
-  return (
+  return ReactDOM.createPortal(
     <dialog className="tw-modal" data-testid="markdown-editor">
       <div className="tw-modal-backdrop" />
       <div className={getContainerClasses()}>
@@ -119,6 +120,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
           </Button>
         </div>
       </div>
-    </dialog>
+    </dialog>,
+    document.body
   );
 };

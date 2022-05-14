@@ -58,8 +58,6 @@ class DagDeployer:
         self, dag_config_file_path: Path
     ) -> Dict[str, str]:
         """
-        Validate if we need to force deploy the DAG.
-
         Store the airflow pipeline config in a JSON file and
         return the path for the Jinja rendering.
         """
@@ -150,16 +148,6 @@ class DagDeployer:
             / f"{self.ingestion_pipeline.name.__root__}.json"
         )
         logging.info(f"Config file under {dag_config_file_path}")
-
-        # Check if the file already exists.
-        if (
-            dag_config_file_path.is_file()
-            and not self.ingestion_pipeline.airflowConfig.forceDeploy
-        ):
-            logging.warning("File to upload already exists and forceDeploy is false")
-            return ApiResponse.bad_request(
-                f"The file {dag_config_file_path} already exists on host {HOSTNAME}."
-            )
 
         dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)
         dag_py_file = self.store_and_validate_dag_file(dag_runner_config)

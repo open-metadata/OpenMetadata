@@ -113,7 +113,7 @@
     },
     "retentionTime": {
       "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
-      "type": "integer"
+      "type": "number"
     },
     "replicationFactor": {
       "description": "Replication Factor in integer (more than 1).",
@@ -129,7 +129,7 @@
     },
     "retentionSize": {
       "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
-      "type": "integer",
+      "type": "number",
       "default": "-1"
     },
     "topicConfig": {

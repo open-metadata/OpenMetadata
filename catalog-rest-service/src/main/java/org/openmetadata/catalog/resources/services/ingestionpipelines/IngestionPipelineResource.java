@@ -380,7 +380,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             description = "The ingestion",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline deployIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
@@ -403,7 +403,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             description = "The ingestion",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
-        @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public IngestionPipeline triggerIngestion(
       @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)

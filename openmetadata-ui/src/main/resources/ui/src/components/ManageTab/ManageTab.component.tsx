@@ -13,15 +13,15 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { TableDetail } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
@@ -36,7 +36,7 @@ import { ManageProps, Status } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
-  currentUser = '',
+  currentUser,
   hideTier = false,
   hideOwner = false,
   onSave,
@@ -67,10 +67,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
-  const getOwnerById = (): string => {
-    return listOwners.find((item) => item.value === owner)?.name || '';
-  };
-
   const setInitialOwnerLoadingState = () => {
     setStatusOwner('initial');
   };
@@ -79,24 +75,20 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setStatusTier('initial');
   };
 
-  const prepareOwner = (updatedOwner: string) => {
-    return updatedOwner !== currentUser
-      ? {
-          id: updatedOwner,
-          type: listOwners.find((item) => item.value === updatedOwner)?.type as
-            | 'user'
-            | 'team',
-        }
-      : undefined;
+  const prepareOwner = (updatedOwner?: EntityReference) => {
+    return !isEqual(updatedOwner, currentUser) ? updatedOwner : undefined;
   };
 
   const prepareTier = (updatedTier: string) => {
     return updatedTier !== currentTier ? updatedTier : undefined;
   };
 
-  const handleOwnerSave = (updatedOwner: string, updatedTier: string) => {
+  const handleOwnerSave = (
+    updatedOwner: EntityReference,
+    updatedTier: string
+  ) => {
     setStatusOwner('waiting');
-    const newOwner: TableDetail['owner'] = prepareOwner(updatedOwner);
+    const newOwner = prepareOwner(updatedOwner);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
         onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
@@ -115,7 +107,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleTierSave = (updatedTier: string) => {
     setStatusTier('waiting');
-    const newOwner: TableDetail['owner'] = prepareOwner(currentUser);
+    const newOwner = prepareOwner(currentUser);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
         onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
@@ -139,8 +131,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (value) {
       const newOwner = listOwners.find((item) => item.value === value);
       if (newOwner) {
-        setOwner(newOwner.value);
-        handleOwnerSave(newOwner.value, activeTier);
+        const { value: id, type } = newOwner;
+        setOwner({ id, type });
+        handleOwnerSave({ id, type }, activeTier);
       }
     }
     setListVisible(false);
@@ -223,7 +216,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     );
   };
 
-  const ownerName = getOwnerById();
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
@@ -322,8 +314,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             isJoinableActionAllowed={isJoinableActionAllowed()}
             listOwners={listOwners}
             listVisible={listVisible}
-            owner={owner}
-            ownerName={ownerName}
+            owner={owner || ({} as EntityReference)}
+            ownerName={currentUser?.displayName || currentUser?.name || ''}
             statusOwner={statusOwner}
             teamJoinable={teamJoinable}
           />

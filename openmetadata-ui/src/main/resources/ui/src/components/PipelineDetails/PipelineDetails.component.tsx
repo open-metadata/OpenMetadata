@@ -270,7 +270,9 @@ const PipelineDetails = ({
         : pipelineDetails.tags;
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? newOwner : pipelineDetails.owner,
+        owner: newOwner
+          ? { ...pipelineDetails.owner, ...newOwner }
+          : pipelineDetails.owner,
         tags: tierTag,
       };
 
@@ -391,226 +393,230 @@ const PipelineDetails = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-            {activeTab === 1 && (
-              <>
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      description={description}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={pipelineFQN}
-                      entityName={entityName}
-                      entityType={EntityType.PIPELINE}
-                      hasEditAccess={hasEditAccess()}
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
+          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
+              {activeTab === 1 && (
+                <>
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full tw--ml-5">
+                      <Description
+                        description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          'description',
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={pipelineFQN}
+                        entityName={entityName}
+                        entityType={EntityType.PIPELINE}
+                        hasEditAccess={hasEditAccess()}
+                        isEdit={isEdit}
+                        isReadOnly={deleted}
+                        owner={owner}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="tw-table-responsive tw-my-6">
-                  {tasks ? (
-                    <table className="tw-w-full" data-testid="tasks-table">
-                      <thead>
-                        <tr className="tableHead-row">
-                          <th className="tableHead-cell">Task Name</th>
-                          <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell">Task Type</th>
-                        </tr>
-                      </thead>
-                      <tbody className="tableBody">
-                        {tasks?.map((task, index) => (
-                          <tr
-                            className={classNames(
-                              'tableBody-row',
-                              !isEven(index + 1) ? 'odd-row' : null
-                            )}
-                            key={index}>
-                            <td className="tableBody-cell">
-                              <Link
-                                target="_blank"
-                                to={{ pathname: task.taskUrl }}>
-                                <span className="tw-flex">
-                                  <span className="tw-mr-1">
-                                    {task.displayName}
-                                  </span>
-                                  <SVGIcons
-                                    alt="external-link"
-                                    className="tw-align-middle"
-                                    icon="external-link"
-                                    width="12px"
-                                  />
-                                </span>
-                              </Link>
-                            </td>
-                            <td className="tw-group tableBody-cell tw-relative">
-                              <div
-                                className="tw-cursor-pointer tw-flex"
-                                data-testid="description">
-                                <div>
-                                  {task.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={task.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description{' '}
+                  <div className="tw-table-responsive tw-my-6">
+                    {tasks ? (
+                      <table className="tw-w-full" data-testid="tasks-table">
+                        <thead>
+                          <tr className="tableHead-row">
+                            <th className="tableHead-cell">Task Name</th>
+                            <th className="tableHead-cell">Description</th>
+                            <th className="tableHead-cell">Task Type</th>
+                          </tr>
+                        </thead>
+                        <tbody className="tableBody">
+                          {tasks?.map((task, index) => (
+                            <tr
+                              className={classNames(
+                                'tableBody-row',
+                                !isEven(index + 1) ? 'odd-row' : null
+                              )}
+                              key={index}>
+                              <td className="tableBody-cell">
+                                <Link
+                                  target="_blank"
+                                  to={{ pathname: task.taskUrl }}>
+                                  <span className="tw-flex">
+                                    <span className="tw-mr-1">
+                                      {task.displayName}
                                     </span>
-                                  )}
-                                </div>
-                                {!deleted && (
-                                  <Fragment>
-                                    <NonAdminAction
-                                      html={getHtmlForNonAdminAction(
-                                        Boolean(owner)
-                                      )}
-                                      isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
-                                      position="top">
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() =>
-                                          handleUpdateTask(task, index)
-                                        }>
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="12px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
-                                    {!isNil(
-                                      getFieldThreadElement(
+                                    <SVGIcons
+                                      alt="external-link"
+                                      className="tw-align-middle"
+                                      icon="external-link"
+                                      width="12px"
+                                    />
+                                  </span>
+                                </Link>
+                              </td>
+                              <td className="tw-group tableBody-cell tw-relative">
+                                <div
+                                  className="tw-cursor-pointer tw-flex"
+                                  data-testid="description">
+                                  <div>
+                                    {task.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={task.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description{' '}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!deleted && (
+                                    <Fragment>
+                                      <NonAdminAction
+                                        html={getHtmlForNonAdminAction(
+                                          Boolean(owner)
+                                        )}
+                                        isOwner={hasEditAccess()}
+                                        permission={Operation.UpdateDescription}
+                                        position="top">
+                                        <button
+                                          className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                          onClick={() =>
+                                            handleUpdateTask(task, index)
+                                          }>
+                                          <SVGIcons
+                                            alt="edit"
+                                            icon="icon-edit"
+                                            title="Edit"
+                                            width="12px"
+                                          />
+                                        </button>
+                                      </NonAdminAction>
+                                      {!isNil(
+                                        getFieldThreadElement(
+                                          task.name,
+                                          'description',
+                                          getEntityFieldThreadCounts(
+                                            'tasks',
+                                            entityFieldThreadCount
+                                          ) as EntityFieldThreads[],
+                                          onThreadLinkSelect
+                                        )
+                                      ) &&
+                                      onEntityFieldSelect &&
+                                      !task.description ? (
+                                        <button
+                                          className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
+                                          data-testid="request-description"
+                                          onClick={() =>
+                                            onEntityFieldSelect?.(
+                                              `tasks/${task.name}/description`
+                                            )
+                                          }>
+                                          <PopOver
+                                            position="top"
+                                            title="Request description"
+                                            trigger="mouseenter">
+                                            <SVGIcons
+                                              alt="request-description"
+                                              className="tw-mt-2.5"
+                                              icon={Icons.REQUEST}
+                                            />
+                                          </PopOver>
+                                        </button>
+                                      ) : null}
+                                      {getFieldThreadElement(
                                         task.name,
                                         'description',
                                         getEntityFieldThreadCounts(
                                           'tasks',
                                           entityFieldThreadCount
                                         ) as EntityFieldThreads[],
-                                        onThreadLinkSelect
-                                      )
-                                    ) &&
-                                    onEntityFieldSelect &&
-                                    !task.description ? (
-                                      <button
-                                        className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
-                                        data-testid="request-description"
-                                        onClick={() =>
-                                          onEntityFieldSelect?.(
-                                            `tasks/${task.name}/description`
-                                          )
-                                        }>
-                                        <PopOver
-                                          position="top"
-                                          title="Request description"
-                                          trigger="mouseenter">
-                                          <SVGIcons
-                                            alt="request-description"
-                                            className="tw-mt-2.5"
-                                            icon={Icons.REQUEST}
-                                          />
-                                        </PopOver>
-                                      </button>
-                                    ) : null}
-                                    {getFieldThreadElement(
-                                      task.name,
-                                      'description',
-                                      getEntityFieldThreadCounts(
-                                        'tasks',
-                                        entityFieldThreadCount
-                                      ) as EntityFieldThreads[],
-                                      onThreadLinkSelect,
-                                      EntityType.PIPELINE,
-                                      pipelineFQN,
-                                      `tasks/${task.name}/description`,
-                                      Boolean(task.description)
-                                    )}
-                                  </Fragment>
-                                )}
-                              </div>
-                            </td>
-                            <td className="tableBody-cell">{task.taskType}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                      <span>No task data is available</span>
-                    </div>
-                  )}
+                                        onThreadLinkSelect,
+                                        EntityType.PIPELINE,
+                                        pipelineFQN,
+                                        `tasks/${task.name}/description`,
+                                        Boolean(task.description)
+                                      )}
+                                    </Fragment>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="tableBody-cell">
+                                {task.taskType}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+                        <span>No task data is available</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    className=""
+                    deletePostHandler={deletePostHandler}
+                    entityName={entityName}
+                    feedList={entityThread}
+                    postFeedHandler={postFeedHandler}
+                  />
+                  <div />
                 </div>
-              </>
-            )}
-            {activeTab === 2 && (
+              )}
+              {activeTab === 3 && (
+                <PipelineStatusList
+                  isLoading={isPipelineStatusLoading}
+                  pipelineStatus={pipelineStatus}
+                />
+              )}
+              {activeTab === 4 && (
+                <div className="tw-h-full tw-px-3">
+                  <Entitylineage
+                    addLineageHandler={addLineageHandler}
+                    deleted={deleted}
+                    entityLineage={entityLineage}
+                    entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
+                    isNodeLoading={isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageLeafNodes}
+                    loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 5 && !deleted && (
+                <div>
+                  <ManageTabComponent
+                    allowDelete
+                    currentTier={tier?.tagFQN}
+                    currentUser={owner}
+                    entityId={pipelineDetails.id}
+                    entityName={pipelineDetails.name}
+                    entityType={EntityType.PIPELINE}
+                    hasEditAccess={hasEditAccess()}
+                    manageSectionType={EntityType.PIPELINE}
+                    onSave={onSettingsUpdate}
+                  />
+                </div>
+              )}
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                id="activityfeed">
-                <div />
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  className=""
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  postFeedHandler={postFeedHandler}
-                />
-                <div />
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
               </div>
-            )}
-            {activeTab === 3 && (
-              <PipelineStatusList
-                isLoading={isPipelineStatusLoading}
-                pipelineStatus={pipelineStatus}
-              />
-            )}
-            {activeTab === 4 && (
-              <div className="tw-h-full">
-                <Entitylineage
-                  addLineageHandler={addLineageHandler}
-                  deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  isOwner={hasEditAccess()}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                />
-              </div>
-            )}
-            {activeTab === 5 && !deleted && (
-              <div>
-                <ManageTabComponent
-                  allowDelete
-                  currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
-                  entityId={pipelineDetails.id}
-                  entityName={pipelineDetails.name}
-                  entityType={EntityType.PIPELINE}
-                  hasEditAccess={hasEditAccess()}
-                  manageSectionType={EntityType.PIPELINE}
-                  onSave={onSettingsUpdate}
-                />
-              </div>
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
             </div>
           </div>
         </div>

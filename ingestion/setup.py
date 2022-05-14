@@ -135,6 +135,7 @@ plugins: Dict[str, Set[str]] = {
     "azure-sso": {"msal~=1.17.0"},
     "deltalake": {"delta-spark~=1.1.0"},
     "great-expectations": {"great-expectations~=0.15.0"},
+    "pinotdb": {"pinotdb~=0.3.11"},
 }
 dev = {
     "boto3==1.20.14",

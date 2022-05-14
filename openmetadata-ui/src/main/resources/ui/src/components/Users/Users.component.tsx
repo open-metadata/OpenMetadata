@@ -527,7 +527,7 @@ const Users = ({
             <div className="tw-h-28 tw-w-28">
               <img
                 alt="profile"
-                className="tw-rounded-full tw-w-full"
+                className="tw-w-full"
                 src={userData.profile?.images?.image}
               />
             </div>

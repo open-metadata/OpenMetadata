@@ -46,6 +46,7 @@ export type DropDownListProp = {
   disabledItems?: Array<string>;
   hiddenItems?: Array<string>;
   showSearchBar?: boolean;
+  showEmptyList?: boolean;
   value?: string;
   onSelect?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,

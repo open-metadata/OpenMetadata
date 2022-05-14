@@ -53,6 +53,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
@@ -268,7 +271,32 @@ def _(connection: SnowflakeConnection):
 
 @get_connection_url.register
 def _(connection: HiveConnection):
-    url = get_connection_url_common(connection)
+    url = f"{connection.scheme.value}://"
+    if connection.connectionArguments:
+        if connection.connectionArguments.auth in ("LDAP", "CUSTOM"):
+            if connection.username:
+                url += f"{connection.username}"
+                if not connection.password:
+                    connection.password = SecretStr("")
+                url += f":{quote_plus(connection.password.get_secret_value())}"
+
+                url += "@"
+
+    url += connection.hostPort
+    url += f"/{connection.database}" if connection.database else ""
+
+    options = (
+        connection.connectionOptions.dict()
+        if connection.connectionOptions
+        else connection.connectionOptions
+    )
+    if options:
+        if not connection.database:
+            url += "/"
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
+        url = f"{url}?{params}"
     if connection.authOptions:
         return f"{url};{connection.authOptions}"
     return url
@@ -334,3 +362,10 @@ def _(connection: AthenaConnection):
 def _(connection: DruidConnection):
     url = get_connection_url_common(connection)
     return f"{url}/druid/v2/sql"
+
+
+@get_connection_url.register
+def _(connection: PinotDBConnection):
+    url = get_connection_url_common(connection)
+    url += f"/query/sql?controller={connection.pinotControllerHost}"
+    return url
