@@ -367,7 +367,7 @@ class OpenMetadataValidationAction(ValidationAction):
         )
 
     def _handle_test_case(self, result: Dict, table_entity: Table):
-        """Handle adding test to table entoty based on the test case.
+        """Handle adding test to table entity based on the test case.
         Test is added using a generic test case builder that accepts
         a specific test builder. Test builder is retrieved from
         `SupportedGETests` based on the `expectation_type` fetch from GE result.
