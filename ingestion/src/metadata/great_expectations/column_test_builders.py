@@ -143,15 +143,13 @@ class ColumnValuesToBeNotInSetBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return (
-            self.build_test_request(
-                config=columnValuesToBeNotInSet.ColumnValuesToBeNotInSet(
-                    forbiddenValues=self.result["expectation_config"]["kwargs"][
-                        "value_set"
-                    ],
-                ),
-                test_type=ColumnTestType.columnValuesToBeNotInSet,
+        return self.build_test_request(
+            config=columnValuesToBeNotInSet.ColumnValuesToBeNotInSet(
+                forbiddenValues=self.result["expectation_config"]["kwargs"][
+                    "value_set"
+                ],
             ),
+            test_type=ColumnTestType.columnValuesToBeNotInSet,
         )
 
 
@@ -160,11 +158,9 @@ class ColumnValuesToBeNotNullBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return (
-            self.build_test_request(
-                config=columnValuesToBeNotNull.ColumnValuesToBeNotNull(),
-                test_type=ColumnTestType.columnValuesToBeNotNull,
-            ),
+        return self.build_test_request(
+            config=columnValuesToBeNotNull.ColumnValuesToBeNotNull(),
+            test_type=ColumnTestType.columnValuesToBeNotNull,
         )
 
 
@@ -173,11 +169,9 @@ class ColumnValuesToBeUniqueBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return (
-            self.build_test_request(
-                config=columnValuesToBeUnique.ColumnValuesToBeUnique(),
-                test_type=ColumnTestType.columnValuesToBeUnique,
-            ),
+        return self.build_test_request(
+            config=columnValuesToBeUnique.ColumnValuesToBeUnique(),
+            test_type=ColumnTestType.columnValuesToBeUnique,
         )
 
 
@@ -186,11 +180,9 @@ class ColumnValuesToMatchRegexBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return (
-            self.build_test_request(
-                config=columnValuesToMatchRegex.ColumnValuesToMatchRegex(
-                    regex=self.result["expectation_config"]["kwargs"]["regex"],
-                ),
-                test_type=ColumnTestType.columnValuesToMatchRegex,
+        return self.build_test_request(
+            config=columnValuesToMatchRegex.ColumnValuesToMatchRegex(
+                regex=self.result["expectation_config"]["kwargs"]["regex"],
             ),
+            test_type=ColumnTestType.columnValuesToMatchRegex,
         )

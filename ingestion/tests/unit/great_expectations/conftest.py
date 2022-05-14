@@ -15,12 +15,12 @@ Fixtures for test suite
 from unittest import mock
 
 from pytest import fixture
-from metadata.great_expectations.column_test_builders import BaseColumnTestBuilder
-from metadata.great_expectations.table_test_builders import BaseTableTestBuilder
 
 from ingestion.src.metadata.great_expectations.action import (
     OpenMetadataValidationAction,
 )
+from metadata.great_expectations.column_test_builders import BaseColumnTestBuilder
+from metadata.great_expectations.table_test_builders import BaseTableTestBuilder
 
 
 def mocked_ometa_object():
@@ -79,7 +79,15 @@ def mocked_base_column_builder():
 def mocked_ge_column_result():
     return {
         "success": True,
-        "expectation_config": {"kwargs": {"column": "my_column"}},
+        "expectation_config": {
+            "kwargs": {
+                "column": "my_column",
+                "regex": "abc.*",
+                "value_set": [1, 2],
+                "min_value": 10,
+                "max_value": 20,
+            }
+        },
         "result": {"unexpected_percent": 0.0},
     }
 
@@ -98,6 +106,12 @@ def mocked_base_table_builder():
 def mocked_ge_table_result():
     return {
         "success": True,
-        "expectation_config": {"kwargs": {"column": "my_column"}},
+        "expectation_config": {
+            "kwargs": {
+                "min_value": 10,
+                "max_value": 10,
+                "value": 10,
+            }
+        },
         "result": {"observed_value": 10},
     }

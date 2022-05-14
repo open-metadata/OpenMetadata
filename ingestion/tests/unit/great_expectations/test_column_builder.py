@@ -12,13 +12,20 @@
 Test suite for column builder
 """
 
-from unittest import result
 from pytest import mark
 
-from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
-from metadata.generated.schema.tests.column import columnValuesToBeNotNull
-from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
+from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
+from metadata.generated.schema.tests.column import columnValuesToBeNotNull
+from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
+from metadata.great_expectations.column_test_builders import (
+    ColumnValuesLengthsToBeBetweenBuilder,
+    ColumnValuesToBeBetweenBuilder,
+    ColumnValuesToBeNotInSetBuilder,
+    ColumnValuesToBeNotNullBuilder,
+    ColumnValuesToBeUniqueBuilder,
+    ColumnValuesToMatchRegexBuilder,
+)
 
 
 def test_base_column_builder_attributes_none(mocked_base_column_builder):
@@ -109,3 +116,27 @@ def test_base_column_builder_build_test_request(
     column_test_request.testCase
     column_test_request.result
     column_test_request.updatedAt
+
+
+@mark.parametrize(
+    "builder",
+    [
+        ColumnValuesToBeUniqueBuilder(),
+        ColumnValuesToBeBetweenBuilder(),
+        ColumnValuesToBeNotNullBuilder(),
+        ColumnValuesToBeNotInSetBuilder(),
+        ColumnValuesToMatchRegexBuilder(),
+        ColumnValuesLengthsToBeBetweenBuilder(),
+    ],
+)
+def test_column_custom_builders(mocked_ge_column_result, builder):
+    """Test custom builders"""
+    builder(
+        result=mocked_ge_column_result,
+        ometa_conn="OMetaConnection",
+        table_entity="TableEntity",
+    )
+
+    builder_test_request = builder._build_test()
+
+    assert isinstance(builder_test_request, CreateColumnTestRequest)

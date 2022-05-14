@@ -12,13 +12,17 @@
 Test suite for table builders
 """
 
-from unittest import result
 from pytest import mark
 
-from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
-from metadata.generated.schema.tests.table import tableColumnCountToEqual
-from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
+from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
+from metadata.generated.schema.tests.table import tableColumnCountToEqual
+from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
+from metadata.great_expectations.table_test_builders import (
+    TableColumCountToEqualBuilder,
+    TableRowCountToBeBetweenBuilder,
+    TableRowCountToEqualBuilder,
+)
 
 
 def test_base_table_builder_attributes_none(mocked_base_table_builder):
@@ -108,3 +112,24 @@ def test_base_table_builder_build_test_request(
     table_test_request.testCase
     table_test_request.result
     table_test_request.updatedAt
+
+
+@mark.parametrize(
+    "builder",
+    [
+        TableRowCountToEqualBuilder(),
+        TableColumCountToEqualBuilder(),
+        TableRowCountToBeBetweenBuilder(),
+    ],
+)
+def test_table_custom_builders(mocked_ge_table_result, builder):
+    """Test custom builders"""
+    builder(
+        result=mocked_ge_table_result,
+        ometa_conn="OMetaConnection",
+        table_entity="TableEntity",
+    )
+
+    builder_test_request = builder._build_test()
+
+    assert isinstance(builder_test_request, CreateTableTestRequest)

@@ -112,7 +112,7 @@ class TableColumCountToEqualBuilder(BaseTableTestBuilder):
 
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
+        return self.build_test_request(
             config=tableColumnCountToEqual.TableColumnCountToEqual(
                 columnCount=self.result["expectation_config"]["kwargs"]["value"]
             ),
@@ -125,7 +125,7 @@ class TableRowCountToBeBetweenBuilder(BaseTableTestBuilder):
 
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
+        return self.build_test_request(
             config=tableRowCountToBeBetween.TableRowCountToBeBetween(
                 minValue=self.result["expectation_config"]["kwargs"]["min_value"],
                 maxValue=self.result["expectation_config"]["kwargs"]["max_value"],
@@ -139,7 +139,7 @@ class TableRowCountToEqualBuilder(BaseTableTestBuilder):
 
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
+        return self.build_test_request(
             config=tableRowCountToEqual.TableRowCountToEqual(
                 value=self.result["expectation_config"]["kwargs"]["value"],
             ),
