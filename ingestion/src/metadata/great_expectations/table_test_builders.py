@@ -40,7 +40,9 @@ class BaseTableTestBuilder(ABC):
         self.table_entity = None
         self.timestamp = None
 
-    def __call__(self, result: Dict, ometa_conn: OpenMetadata, table_entity: Table):
+    def __call__(
+        self, result: Dict, ometa_conn: OpenMetadata, table_entity: Table
+    ) -> None:
         """Used to update instance attribute value as instance builders
         are only defined once in the Enum class
 
@@ -59,7 +61,7 @@ class BaseTableTestBuilder(ABC):
         self.ometa_conn.add_table_test(self.table_entity, self._build_test())
 
     @staticmethod
-    def build_test_case(config, test_type):
+    def build_test_case(config, test_type) -> TableTestCase:
         """Build test case based on the test type
 
         Args:
@@ -73,7 +75,7 @@ class BaseTableTestBuilder(ABC):
             tableTestType=test_type,
         )
 
-    def build_test_case_results(self):
+    def build_test_case_results(self) -> TestCaseResult:
         """Build test case result base on GE test result"""
         return TestCaseResult(
             executionTime=self.timestamp,
@@ -83,7 +85,7 @@ class BaseTableTestBuilder(ABC):
             result=self.result["result"]["observed_value"],
         )
 
-    def built_test_request(self, *, test_case, test_case_result):
+    def build_test_request(self, *, config, test_type) -> CreateTableTestRequest:
         """Build a test case request to add the test to the tabe
 
         Args:
@@ -93,8 +95,8 @@ class BaseTableTestBuilder(ABC):
             CreateColumnTestRequest
         """
         return CreateTableTestRequest(
-            testCase=test_case,
-            result=test_case_result,
+            testCase=self.build_test_case(config=config, test_type=test_type),
+            result=self.build_test_case_results(),
             updatedAt=self.timestamp,
         )
 
@@ -111,13 +113,10 @@ class TableColumCountToEqualBuilder(BaseTableTestBuilder):
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
         return self.built_test_request(
-            test_case=self.build_test_case(
-                config=tableColumnCountToEqual.TableColumnCountToEqual(
-                    columnCount=self.result["expectation_config"]["kwargs"]["value"]
-                ),
-                test_type=TableTestType.tableColumnCountToEqual,
+            config=tableColumnCountToEqual.TableColumnCountToEqual(
+                columnCount=self.result["expectation_config"]["kwargs"]["value"]
             ),
-            test_case_result=self.build_test_case_results(),
+            test_type=TableTestType.tableColumnCountToEqual,
         )
 
 
@@ -127,14 +126,11 @@ class TableRowCountToBeBetweenBuilder(BaseTableTestBuilder):
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
         return self.built_test_request(
-            test_case=self.build_test_case(
-                config=tableRowCountToBeBetween.TableRowCountToBeBetween(
-                    minValue=self.result["expectation_config"]["kwargs"]["min_value"],
-                    maxValue=self.result["expectation_config"]["kwargs"]["max_value"],
-                ),
-                test_type=TableTestType.tableRowCountToBeBetween,
+            config=tableRowCountToBeBetween.TableRowCountToBeBetween(
+                minValue=self.result["expectation_config"]["kwargs"]["min_value"],
+                maxValue=self.result["expectation_config"]["kwargs"]["max_value"],
             ),
-            test_case_result=self.build_test_case_results(),
+            test_type=TableTestType.tableRowCountToBeBetween,
         )
 
 
@@ -144,11 +140,8 @@ class TableRowCountToEqualBuilder(BaseTableTestBuilder):
     def _build_test(self) -> CreateTableTestRequest:
         """Specific test builder for the test"""
         return self.built_test_request(
-            test_case=self.build_test_case(
-                config=tableRowCountToEqual.TableRowCountToEqual(
-                    value=self.result["expectation_config"]["kwargs"]["value"],
-                ),
-                test_type=TableTestType.tableRowCountToEqual,
+            config=tableRowCountToEqual.TableRowCountToEqual(
+                value=self.result["expectation_config"]["kwargs"]["value"],
             ),
-            test_case_result=self.build_test_case_results(),
+            test_type=TableTestType.tableRowCountToEqual,
         )

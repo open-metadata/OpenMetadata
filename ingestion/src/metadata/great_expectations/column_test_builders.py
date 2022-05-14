@@ -87,12 +87,7 @@ class BaseColumnTestBuilder(ABC):
             f"{self.result['result']['unexpected_percent']}",
         )
 
-    def built_test_request(
-        self,
-        *,
-        test_case: ColumnTestCase,
-        test_case_result: TestCaseResult,
-    ) -> CreateColumnTestRequest:
+    def build_test_request(self, *, config, test_type) -> CreateColumnTestRequest:
         """Build a test case request to add the test to the tabe
 
         Args:
@@ -103,8 +98,8 @@ class BaseColumnTestBuilder(ABC):
         """
         return CreateColumnTestRequest(
             columnName=self.result["expectation_config"]["kwargs"]["column"],
-            testCase=test_case,
-            result=test_case_result,
+            testCase=self.build_test_case(config=config, test_type=test_type),
+            result=self.build_test_case_results(),
             updatedAt=self.timestamp,
         )
 
@@ -120,19 +115,12 @@ class ColumnValuesLengthsToBeBetweenBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
-                config=columnValuesLengthsToBeBetween.ColumnValueLengthsToBeBetween(
-                    minLength=self.result["expectation_config"]["kwargs"].get(
-                        "min_value"
-                    ),
-                    maxLength=self.result["expectation_config"]["kwargs"].get(
-                        "max_value"
-                    ),
-                ),
-                test_type=ColumnTestType.columnValueLengthsToBeBetween,
+        return self.build_test_request(
+            config=columnValuesLengthsToBeBetween.ColumnValueLengthsToBeBetween(
+                minLength=self.result["expectation_config"]["kwargs"].get("min_value"),
+                maxLength=self.result["expectation_config"]["kwargs"].get("max_value"),
             ),
-            test_case_result=self.build_test_case_results(),
+            test_type=ColumnTestType.columnValueLengthsToBeBetween,
         )
 
 
@@ -141,19 +129,12 @@ class ColumnValuesToBeBetweenBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
-                config=columnValuesToBeBetween.ColumnValuesToBeBetween(
-                    minValue=self.result["expectation_config"]["kwargs"].get(
-                        "max_value"
-                    ),
-                    maxValue=self.result["expectation_config"]["kwargs"].get(
-                        "min_value"
-                    ),
-                ),
-                test_type=ColumnTestType.columnValuesToBeBetween,
+        return self.build_test_request(
+            config=columnValuesToBeBetween.ColumnValuesToBeBetween(
+                minValue=self.result["expectation_config"]["kwargs"].get("max_value"),
+                maxValue=self.result["expectation_config"]["kwargs"].get("min_value"),
             ),
-            test_case_result=self.build_test_case_results(),
+            test_type=ColumnTestType.columnValuesToBeBetween,
         )
 
 
@@ -162,8 +143,8 @@ class ColumnValuesToBeNotInSetBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
+        return (
+            self.build_test_request(
                 config=columnValuesToBeNotInSet.ColumnValuesToBeNotInSet(
                     forbiddenValues=self.result["expectation_config"]["kwargs"][
                         "value_set"
@@ -171,7 +152,6 @@ class ColumnValuesToBeNotInSetBuilder(BaseColumnTestBuilder):
                 ),
                 test_type=ColumnTestType.columnValuesToBeNotInSet,
             ),
-            test_case_result=self.build_test_case_results(),
         )
 
 
@@ -180,12 +160,11 @@ class ColumnValuesToBeNotNullBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
+        return (
+            self.build_test_request(
                 config=columnValuesToBeNotNull.ColumnValuesToBeNotNull(),
                 test_type=ColumnTestType.columnValuesToBeNotNull,
             ),
-            test_case_result=self.build_test_case_results(),
         )
 
 
@@ -194,12 +173,11 @@ class ColumnValuesToBeUniqueBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
+        return (
+            self.build_test_request(
                 config=columnValuesToBeUnique.ColumnValuesToBeUnique(),
                 test_type=ColumnTestType.columnValuesToBeUnique,
             ),
-            test_case_result=self.build_test_case_results(),
         )
 
 
@@ -208,12 +186,11 @@ class ColumnValuesToMatchRegexBuilder(BaseColumnTestBuilder):
 
     def _build_test(self) -> CreateColumnTestRequest:
         """Specific test builder for the test"""
-        return self.built_test_request(
-            test_case=self.build_test_case(
+        return (
+            self.build_test_request(
                 config=columnValuesToMatchRegex.ColumnValuesToMatchRegex(
                     regex=self.result["expectation_config"]["kwargs"]["regex"],
                 ),
                 test_type=ColumnTestType.columnValuesToMatchRegex,
             ),
-            test_case_result=self.build_test_case_results(),
         )
