@@ -1,6 +1,11 @@
 ## openmetadata-ingestion[great-epxectations]
 ### How to use this module in Great Expectations
-In your `checkpoints` add the following to your checkpoint file
+1. install open-metadata great expectations subpackage
+```
+pip install openmetadata-ingestion[great-expectations]
+```
+
+2. In your `checkpoints` add the following to your checkpoint file
 
 ```yml
     action:
