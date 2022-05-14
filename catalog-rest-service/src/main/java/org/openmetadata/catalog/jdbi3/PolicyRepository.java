@@ -30,16 +30,14 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
@@ -59,10 +57,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         POLICY_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Policy policy) {
-    return FullyQualifiedName.build(policy.getName());
-  }
-
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
@@ -80,11 +74,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return policy;
   }
 
-  @Override
-  public EntityInterface<Policy> getEntityInterface(Policy entity) {
-    return new PolicyEntityInterface(entity);
-  }
-
   /** Generate EntityReference for a given Policy's Location. * */
   @Transaction
   private EntityReference getLocationReference(Policy policy) throws IOException {
@@ -96,13 +85,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (location == null) {
       return null;
     }
-    return new LocationRepository.LocationEntityInterface(location).getEntityReference();
+    return location.getEntityReference();
   }
 
   @Override
   public void prepare(Policy policy) throws IOException {
+    setFullyQualifiedName(policy);
     isValid(policy);
-    policy.setFullyQualifiedName(getFQN(policy));
     policy.setLocation(getLocationReference(policy));
     // Check if owner is valid and set the relationship
     populateOwner(policy.getOwner());
@@ -114,10 +103,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     EntityReference owner = policy.getOwner();
     EntityReference location = policy.getLocation();
     URI href = policy.getHref();
-
-    if (policy.getFullyQualifiedName() == null) {
-      policy.setFullyQualifiedName(getFQN(policy));
-    }
 
     // Don't store owner, location and href as JSON. Build it on the fly based on relationships
     policy.withOwner(null).withLocation(null).withHref(null);
@@ -137,7 +122,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Policy original, Policy updated, Operation operation) {
+  public PolicyUpdater getUpdater(Policy original, Policy updated, Operation operation) {
     return new PolicyUpdater(original, updated, operation);
   }
 
@@ -199,132 +184,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
         policy.getId(), policy.getLocation().getId(), Entity.POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
   }
 
-  public static class PolicyEntityInterface extends EntityInterface<Policy> {
-    public PolicyEntityInterface(Policy entity) {
-      super(Entity.POLICY, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : PolicyRepository.getFQN(entity);
-    }
-
-    public List<Object> getRules() {
-      return entity.getRules();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public Policy getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    public void setRules(List<Object> rules) {
-      entity.setRules(rules);
-    }
-
-    @Override
-    public Policy withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class PolicyUpdater extends EntityUpdater {
     public PolicyUpdater(Policy original, Policy updated, Operation operation) {
@@ -334,13 +193,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       // Disallow changing policyType.
-      if (original.getEntity().getPolicyType() != updated.getEntity().getPolicyType()) {
+      if (original.getPolicyType() != updated.getPolicyType()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.POLICY, "policyType"));
       }
-      recordChange("policyUrl", original.getEntity().getPolicyUrl(), updated.getEntity().getPolicyUrl());
-      recordChange(ENABLED, original.getEntity().getEnabled(), updated.getEntity().getEnabled());
-      recordChange("rules", original.getEntity().getRules(), updated.getEntity().getRules());
-      updateLocation(original.getEntity(), updated.getEntity());
+      recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
+      recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
+      recordChange("rules", original.getRules(), updated.getRules());
+      updateLocation(original, updated);
     }
 
     private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {

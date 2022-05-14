@@ -5,6 +5,7 @@
   "description": "This schema defines a type entity used for extending an entity with custom attributes.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.Type",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier of the type instance.",
@@ -14,14 +15,14 @@
       "description": "Unique name that identifies the type.",
       "$ref": "../type/basic.json#/definitions/entityName"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "nameSpace": {
       "description": "Namespace or group to which this type belongs to.",
       "type": "string",
       "default" : "custom"
-    },
-    "fullyQualifiedName": {
-      "description": "Unique name that identifies a type in the form of `type` + `.` + `name of the type`.",
-      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this type.",

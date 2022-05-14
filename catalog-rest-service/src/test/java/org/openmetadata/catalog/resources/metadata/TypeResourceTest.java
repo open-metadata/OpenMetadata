@@ -28,12 +28,10 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
-import org.openmetadata.catalog.jdbi3.TypeRepository.TypeEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -54,13 +52,13 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Override
-  public EntityInterface<Type> validateGetWithDifferentFields(Type type, boolean byName) throws HttpResponseException {
+  public Type validateGetWithDifferentFields(Type type, boolean byName) throws HttpResponseException {
     type =
         byName
             ? getEntityByName(type.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(type.getId(), null, ADMIN_AUTH_HEADERS);
 
-    return getEntityInterface(type);
+    return type;
   }
 
   @Override
@@ -76,7 +74,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   public void validateCreatedEntity(Type createdEntity, CreateType createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(createdEntity), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     // Entity specific validation
     assertEquals(createRequest.getSchema(), createdEntity.getSchema());
@@ -86,17 +84,11 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Override
   public void compareEntities(Type expected, Type patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(patched), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     // Entity specific validation
     assertEquals(expected.getSchema(), patched.getSchema());
     // TODO more checks
-  }
-
-  @Override
-  public EntityInterface<Type> getEntityInterface(Type entity) {
-    return new TypeEntityInterface(entity);
   }
 
   @Override

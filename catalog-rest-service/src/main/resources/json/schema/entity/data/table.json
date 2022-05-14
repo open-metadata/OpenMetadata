@@ -5,6 +5,7 @@
   "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Table",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "tableType": {
       "javaType": "org.openmetadata.catalog.type.TableType",

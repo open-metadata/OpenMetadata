@@ -4,6 +4,8 @@
   "title": "Chart",
   "description": "This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Chart",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "chartType": {
       "javaType": "org.openmetadata.catalog.type.ChartType",

@@ -46,7 +46,6 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
@@ -87,7 +86,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     // User with Data Steward role. Data Steward role has a default policy to allow update for lineage.
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     User userWithDataStewardRole =
         userResourceTest.createEntity(
             userResourceTest
@@ -242,9 +241,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   private void addEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
     EntitiesEdge edge =
-        new EntitiesEdge()
-            .withFromEntity(new TableEntityInterface(from).getEntityReference())
-            .withToEntity(new TableEntityInterface(to).getEntityReference());
+        new EntitiesEdge().withFromEntity(from.getEntityReference()).withToEntity(to.getEntityReference());
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, authHeaders);
   }
@@ -255,9 +252,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   private void deleteEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
     EntitiesEdge edge =
-        new EntitiesEdge()
-            .withFromEntity(new TableEntityInterface(from).getEntityReference())
-            .withToEntity(new TableEntityInterface(to).getEntityReference());
+        new EntitiesEdge().withFromEntity(from.getEntityReference()).withToEntity(to.getEntityReference());
     deleteLineageAndCheck(edge, authHeaders);
   }
 
@@ -359,7 +354,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     EntityLineage lineageByName = getLineageByName(entityType, fqn, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
     assertEdges(lineageByName, expectedUpstreamEdges, expectedDownstreamEdges);
 
-    // Finally ensure lineage by Id matches lineage by name
+    // Finally, ensure lineage by Id matches lineage by name
     assertEquals(lineageById, lineageByName);
   }
 

@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
@@ -85,7 +86,7 @@ public final class EntityUtil {
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
+  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =

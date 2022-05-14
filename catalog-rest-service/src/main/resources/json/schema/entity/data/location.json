@@ -5,6 +5,7 @@
   "description": "This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Location",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "locationType": {
       "javaType": "org.openmetadata.catalog.type.LocationType",
