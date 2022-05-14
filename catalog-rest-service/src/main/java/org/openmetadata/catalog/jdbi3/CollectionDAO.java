@@ -33,6 +33,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bot;
+import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
@@ -81,6 +82,7 @@ import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEnt
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
+import org.openmetadata.catalog.jdbi3.TypeRepository.TypeEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -198,6 +200,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WebhookDAO webhookDAO();
+
+  @CreateSqlObject
+  GenericEntityDAO genericEntityDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1248,6 +1253,11 @@ public interface CollectionDAO {
     default EntityReference getEntityReference(Webhook entity) {
       return new WebhookEntityInterface(entity).getEntityReference();
     }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
   }
 
   interface TagCategoryDAO extends EntityDAO<TagCategory> {
@@ -1709,5 +1719,32 @@ public interface CollectionDAO {
             + "eventType = :eventType AND eventTime >= :timestamp "
             + "ORDER BY eventTime ASC")
     List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
+  }
+
+  interface GenericEntityDAO extends EntityDAO<Type> {
+    @Override
+    default String getTableName() {
+      return "generic_entity";
+    }
+
+    @Override
+    default Class<Type> getEntityClass() {
+      return Type.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
+    default EntityReference getEntityReference(Type entity) {
+      return new TypeEntityInterface(entity).getEntityReference();
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
   }
 }

@@ -115,10 +115,10 @@ public abstract class EntityRepository<T> {
   private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityType;
-  protected final EntityDAO<T> dao;
+  public final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
-  protected boolean supportsSoftDelete = true;
+  public final boolean supportsSoftDelete;
   protected final boolean supportsTags;
   protected final boolean supportsOwner;
   protected final boolean supportsFollower;
@@ -149,6 +149,7 @@ public abstract class EntityRepository<T> {
 
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
+    this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
     Entity.registerEntity(entityClass, entityType, dao, this);
   }

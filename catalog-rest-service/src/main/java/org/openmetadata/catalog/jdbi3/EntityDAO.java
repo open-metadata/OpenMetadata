@@ -45,6 +45,10 @@ public interface EntityDAO<T> {
 
   EntityReference getEntityReference(T entity);
 
+  default boolean supportsSoftDelete() {
+    return true;
+  }
+
   /** Common queries for all entities implemented here. Do not override. */
   @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json)", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (json) VALUES (:json :: jsonb)", connectionType = POSTGRES)
@@ -113,6 +117,10 @@ public interface EntityDAO<T> {
   }
 
   default String getCondition(Include include) {
+    if (!supportsSoftDelete()) {
+      return "";
+    }
+
     if (include == null || include == Include.NON_DELETED) {
       return "AND deleted = FALSE";
     }

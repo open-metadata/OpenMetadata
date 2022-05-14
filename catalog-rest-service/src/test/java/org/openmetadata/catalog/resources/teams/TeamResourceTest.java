@@ -226,7 +226,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         change);
   }
 
-  private User createTeamManager(TestInfo testInfo) throws HttpResponseException, JsonProcessingException {
+  private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
         new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.UpdateTeam);

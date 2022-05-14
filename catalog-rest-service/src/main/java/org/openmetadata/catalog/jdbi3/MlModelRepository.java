@@ -35,6 +35,7 @@ import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
@@ -125,7 +126,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) throws IOException {
     if (source.getDataSource() != null) {
-      Entity.getEntityReferenceById(source.getDataSource().getType(), source.getDataSource().getId());
+      Entity.getEntityReferenceById(
+          source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
     }
   }
 
