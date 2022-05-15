@@ -19,17 +19,14 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.resources.teams.TeamResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -71,13 +68,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public EntityInterface<Team> getEntityInterface(Team entity) {
-    return new TeamEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(Team team) throws IOException {
-    // Check if owner is valid and set the relationship
+    setFullyQualifiedName(team);
     populateOwner(team.getOwner()); // Validate owner
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
@@ -112,7 +104,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Team original, Team updated, Operation operation) {
+  public TeamUpdater getUpdater(Team original, Team updated, Operation operation) {
     return new TeamUpdater(original, updated, operation);
   }
 
@@ -132,124 +124,6 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 
-  public static class TeamEntityInterface extends EntityInterface<Team> {
-    public TeamEntityInterface(Team entity) {
-      super(Entity.TEAM, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public Team getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Team withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
     public TeamUpdater(Team original, Team updated, Operation operation) {
@@ -258,10 +132,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
-      recordChange("isJoinable", original.getEntity().getIsJoinable(), updated.getEntity().getIsJoinable());
-      updateUsers(original.getEntity(), updated.getEntity());
-      updateDefaultRoles(original.getEntity(), updated.getEntity());
+      recordChange("profile", original.getProfile(), updated.getProfile());
+      recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
+      updateUsers(original, updated);
+      updateDefaultRoles(original, updated);
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {

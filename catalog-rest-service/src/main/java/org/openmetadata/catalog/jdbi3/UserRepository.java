@@ -16,7 +16,6 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,14 +29,11 @@ import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -59,20 +55,15 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityInterface<User> getEntityInterface(User entity) {
-    return new UserEntityInterface(entity);
-  }
-
-  @Override
   public EntityReference getOriginalOwner(User entity) throws IOException {
     // For User entity, the entity and the owner are the same
-    return getEntityInterface(entity).getEntityReference();
+    return entity.getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user) throws IOException {
-    // Role and teams are already validated
+    setFullyQualifiedName(user);
   }
 
   @Override
@@ -121,7 +112,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityUpdater getUpdater(User original, User updated, Operation operation) {
+  public UserUpdater getUpdater(User original, User updated, Operation operation) {
     return new UserUpdater(original, updated, operation);
   }
 
@@ -241,119 +232,6 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  public static class UserEntityInterface extends EntityInterface<User> {
-    public UserEntityInterface(User entity) {
-      super(Entity.USER, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public User getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return Entity.getEntityReference(entity);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public User withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
@@ -362,28 +240,25 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      User origUser = original.getEntity();
-      User updatedUser = updated.getEntity();
-
-      updateRoles(origUser, updatedUser);
-      updateTeams(origUser, updatedUser);
-      recordChange("profile", origUser.getProfile(), updatedUser.getProfile(), true);
-      recordChange("timezone", origUser.getTimezone(), updatedUser.getTimezone());
-      recordChange("isBot", origUser.getIsBot(), updatedUser.getIsBot());
-      recordChange("isAdmin", origUser.getIsAdmin(), updatedUser.getIsAdmin());
-      recordChange("email", origUser.getEmail(), updatedUser.getEmail());
+      updateRoles(original, updated);
+      updateTeams(original, updated);
+      recordChange("profile", original.getProfile(), updated.getProfile(), true);
+      recordChange("timezone", original.getTimezone(), updated.getTimezone());
+      recordChange("isBot", original.getIsBot(), updated.getIsBot());
+      recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
+      recordChange("email", original.getEmail(), updated.getEmail());
       // Add inherited roles to the entity after update
-      updatedUser.setInheritedRoles(getInheritedRoles(updatedUser));
-      updateAuthenticationMechanism(origUser, updatedUser);
+      updated.setInheritedRoles(getInheritedRoles(updated));
+      updateAuthenticationMechanism(original, updated);
     }
 
-    private void updateRoles(User origUser, User updatedUser) throws IOException {
+    private void updateRoles(User original, User updated) throws IOException {
       // Remove roles from original and add roles from updated
-      deleteFrom(origUser.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
-      assignRoles(updatedUser, updatedUser.getRoles());
+      deleteFrom(original.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+      assignRoles(updated, updated.getRoles());
 
-      List<EntityReference> origRoles = listOrEmpty(origUser.getRoles());
-      List<EntityReference> updatedRoles = listOrEmpty(updatedUser.getRoles());
+      List<EntityReference> origRoles = listOrEmpty(original.getRoles());
+      List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
 
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);
@@ -393,13 +268,13 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange("roles", origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
-    private void updateTeams(User origUser, User updatedUser) throws IOException {
+    private void updateTeams(User original, User updated) throws IOException {
       // Remove teams from original and add teams from updated
-      deleteTo(origUser.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
-      assignTeams(updatedUser, updatedUser.getTeams());
+      deleteTo(original.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+      assignTeams(updated, updated.getTeams());
 
-      List<EntityReference> origTeams = listOrEmpty(origUser.getTeams());
-      List<EntityReference> updatedTeams = listOrEmpty(updatedUser.getTeams());
+      List<EntityReference> origTeams = listOrEmpty(original.getTeams());
+      List<EntityReference> updatedTeams = listOrEmpty(updated.getTeams());
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);
@@ -409,12 +284,12 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
-    private void updateAuthenticationMechanism(User origUser, User updatedUser) throws IOException {
-      AuthenticationMechanism origAuthMechanism = origUser.getAuthenticationMechanism();
-      AuthenticationMechanism updatedAuthMechanism = updatedUser.getAuthenticationMechanism();
+    private void updateAuthenticationMechanism(User original, User updated) throws IOException {
+      AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
+      AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange(
-            "authenticationMechanism", origUser.getAuthenticationMechanism(), updatedUser.getAuthenticationMechanism());
+            "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
           && origAuthMechanism.getConfig() != null
@@ -425,9 +300,7 @@ public class UserRepository extends EntityRepository<User> {
             JsonUtils.convertValue(updatedAuthMechanism.getConfig(), JWTAuthMechanism.class);
         if (!origJwtAuthMechanism.getJWTToken().equals(updatedJwtAuthMechanism.getJWTToken())) {
           recordChange(
-              "authenticationMechanism",
-              origUser.getAuthenticationMechanism(),
-              updatedUser.getAuthenticationMechanism());
+              "authenticationMechanism", original.getAuthenticationMechanism(), updated.getAuthenticationMechanism());
         }
       }
     }

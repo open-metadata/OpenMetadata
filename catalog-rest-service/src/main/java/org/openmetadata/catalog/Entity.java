@@ -35,7 +35,6 @@ import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 
 @Slf4j
@@ -133,7 +132,7 @@ public final class Entity {
 
   private Entity() {}
 
-  public static <T> void registerEntity(
+  public static <T extends EntityInterface> void registerEntity(
       Class<T> clazz, String entity, EntityDAO<T> dao, EntityRepository<T> entityRepository) {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
@@ -157,9 +156,9 @@ public final class Entity {
     return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
   }
 
-  public static <T> EntityReference getEntityReference(T entity) {
-    String entityType = getEntityTypeFromObject(entity);
-    return getEntityRepository(entityType).getEntityInterface(entity).getEntityReference();
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id)
+      throws IOException {
+    return getEntityReferenceById(entityType, id, Include.NON_DELETED);
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
@@ -210,15 +209,6 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static <T> EntityInterface<T> getEntityInterface(T entity) {
-    if (entity == null) {
-      return null;
-    }
-    String entityType = getEntityTypeFromObject(entity);
-    EntityRepository<T> entityRepository = getEntityRepository(entityType);
-    return entityRepository.getEntityInterface(entity);
-  }
-
   public static <T> T getEntity(EntityReference ref, EntityUtil.Fields fields, Include include) throws IOException {
     return getEntity(ref.getType(), ref.getId(), fields, include);
   }
@@ -236,7 +226,7 @@ public final class Entity {
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static <T> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
+  public static <T extends EntityInterface> EntityRepository<T> getEntityRepository(@NonNull String entityType) {
     @SuppressWarnings("unchecked")
     EntityRepository<T> entityRepository = (EntityRepository<T>) ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {

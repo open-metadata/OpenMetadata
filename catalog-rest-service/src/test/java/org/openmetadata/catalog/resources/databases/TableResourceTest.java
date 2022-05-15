@@ -89,9 +89,6 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
@@ -136,7 +133,6 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -161,12 +157,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+    DATABASE_REFERENCE = DATABASE.getEntityReference();
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
     DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
+    DATABASE_SCHEMA_REFERENCE = DATABASE_SCHEMA.getEntityReference();
 
     COLUMNS =
         Arrays.asList(
@@ -1692,8 +1688,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public EntityInterface<Table> validateGetWithDifferentFields(Table table, boolean byName)
-      throws HttpResponseException {
+  public Table validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -1730,7 +1725,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .getTableProfile(),  table.getLocation(), table.getTableQueries(), table.getDataModel()*/);
     assertListNotEmpty(table.getTableConstraints());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(table);
+    return table;
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -1779,7 +1774,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         databaseResourceTest.createAndCheckEntity(
             databaseResourceTest.createRequest(test).withService(serviceRef), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
-    return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(Entity.getEntityReference(database));
+    return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
 
   public static Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
@@ -1862,12 +1857,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private static int getGlossaryUsageCount(String name, Map<String, String> authHeaders) throws HttpResponseException {
-    return new GlossaryResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+    return new GlossaryResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
   }
 
   private static int getGlossaryTermUsageCount(String name, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return new GlossaryTermResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+    return new GlossaryTermResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
   }
 
   private void verifyTableProfileData(List<TableProfile> actualProfiles, List<TableProfile> expectedProfiles) {
@@ -2047,13 +2042,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
+  public EntityReference getContainer(Table entity) {
+    return entity.getDatabaseSchema();
+  }
+
+  @Override
   public void validateCreatedEntity(Table createdEntity, CreateTable createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(createdEntity),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
@@ -2091,10 +2088,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
 
     // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
@@ -2125,11 +2119,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     for (int i = 0; i < expectedPartition.getColumns().size(); i++) {
       assertEquals(expectedPartition.getColumns().get(i), actualPartition.getColumns().get(i));
     }
-  }
-
-  @Override
-  public EntityInterface<Table> getEntityInterface(Table entity) {
-    return new TableEntityInterface(entity);
   }
 
   @Override
