@@ -115,7 +115,7 @@ import org.openmetadata.catalog.util.ResultList;
 public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
-  private final String entityType;
+  protected final String entityType;
   public final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
@@ -129,7 +129,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
-  private final Fields putFields;
+  protected final Fields putFields;
 
   EntityRepository(
       String collectionPath,
@@ -738,7 +738,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public int addRelationship(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, String json) {
+    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, json, false);
+  }
+
+  public int addRelationship(
       UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
+    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
+  }
+
+  public int addRelationship(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      Relationship relationship,
+      String json,
+      boolean bidirectional) {
     UUID from = fromId;
     UUID to = toId;
     if (bidirectional && fromId.compareTo(toId) > 0) {
@@ -747,7 +763,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       from = toId;
       to = fromId;
     }
-    return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal());
+    return daoCollection.relationshipDAO().insert(fromId, toId, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
   public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {

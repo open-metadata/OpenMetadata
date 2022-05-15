@@ -339,16 +339,23 @@ public interface CollectionDAO {
 
   interface EntityRelationshipDAO {
     default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation);
+      return insert(fromId, toId, fromEntity, toEntity, relation, null);
+    }
+
+    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT (fromId, toId, relation) DO NOTHING",
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
         connectionType = POSTGRES)
     int insert(
         @Bind("fromId") String fromId,
@@ -356,6 +363,25 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
+        connectionType = POSTGRES)
+    int insert(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("json") String json);
 
     //
     // Find to operations
@@ -367,17 +393,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT toId, toEntity FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
-            + "ORDER BY toId")
-    @RegisterRowMapper(ToEntityReferenceMapper.class)
-    List<EntityReference> findToReference(
-        @Bind("fromId") String fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
@@ -420,17 +435,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
-            + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFromEntity(
-        @Bind("toId") String toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
 
     //
     // Delete Operations
@@ -709,18 +713,22 @@ public interface CollectionDAO {
   interface FieldRelationshipDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation)",
+            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation) ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, (:json :: jsonb)) "
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
         connectionType = POSTGRES)
-    void insert(
+    int insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -793,6 +801,16 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE from field_relationship <cond>")
     void deleteAllByPrefixInternal(@Define("cond") String cond);
+
+    @SqlUpdate(
+        "DELETE from field_relationship WHERE fromFQN = :fromFQN AND toFQN = :toFQN AND fromType = :fromType "
+            + "AND toType = :toType AND relation = :relation")
+    void delete(
+        @Bind("fromFQN") String fromFQN,
+        @Bind("toFQN") String toFQN,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation);
 
     class ToFieldMapper implements RowMapper<List<String>> {
       @Override
