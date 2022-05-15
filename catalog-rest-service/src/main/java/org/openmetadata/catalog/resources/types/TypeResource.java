@@ -54,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TypeRepository;
@@ -141,6 +142,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public ResultList<Type> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Filter types by metadata type category.",
+              schema = @Schema(type = "string", example = "Field, Entity"))
+          @QueryParam("category")
+          Category category,
       @Parameter(description = "Limit the number types returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -353,7 +359,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return new Type()
         .withId(UUID.randomUUID())
         .withName(create.getName())
+        .withFullyQualifiedName(create.getName())
         .withDisplayName(create.getDisplayName())
+        .withCategory(create.getCategory())
         .withSchema(create.getSchema())
         .withDescription(create.getDescription())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())

@@ -10,6 +10,7 @@
     "category" : {
       "description" : "Metadata category to which a type belongs to.",
       "type": "string",
+      "javaType": "org.openmetadata.catalog.entity.type.Category",
       "enum": [
         "field",
         "entity"
@@ -34,7 +35,7 @@
       "$ref": "../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName formed using `namespace` + . + `name`",
+      "description": "FullyQualifiedName same as `name`.",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {

@@ -176,7 +176,7 @@ public interface CollectionDAO {
   WebhookDAO webhookDAO();
 
   @CreateSqlObject
-  GenericEntityDAO genericEntityDAO();
+  TypeEntityDAO typeEntityDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1560,10 +1560,10 @@ public interface CollectionDAO {
     List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
   }
 
-  interface GenericEntityDAO extends EntityDAO<Type> {
+  interface TypeEntityDAO extends EntityDAO<Type> {
     @Override
     default String getTableName() {
-      return "generic_entity";
+      return "type_entity";
     }
 
     @Override
@@ -1573,7 +1573,7 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() {
-      return "fullyQualifiedName";
+      return "name";
     }
 
     @Override

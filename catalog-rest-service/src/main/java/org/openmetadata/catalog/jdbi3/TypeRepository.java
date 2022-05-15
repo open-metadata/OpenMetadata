@@ -30,14 +30,7 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String PATCH_FIELDS = "";
 
   public TypeRepository(CollectionDAO dao) {
-    super(
-        TypeResource.COLLECTION_PATH,
-        Entity.TYPE,
-        Type.class,
-        dao.genericEntityDAO(),
-        dao,
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    super(TypeResource.COLLECTION_PATH, Entity.TYPE, Type.class, dao.typeEntityDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
     allowEdits = true;
   }
 
@@ -62,11 +55,6 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void storeRelationships(Type type) {
     // Nothing to do
-  }
-
-  @Override
-  public void setFullyQualifiedName(Type entity) {
-    entity.setFullyQualifiedName(FullyQualifiedName.build(Entity.TYPE, entity.getNameSpace(), entity.getName()));
   }
 
   @Override

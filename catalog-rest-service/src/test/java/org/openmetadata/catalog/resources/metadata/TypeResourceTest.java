@@ -28,6 +28,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
@@ -48,7 +49,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-    INT_TYPE = getEntityByName("type.basic.integer", "", ADMIN_AUTH_HEADERS);
+    INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -67,6 +68,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         .withName(name)
         .withDescription(description)
         .withDisplayName(displayName)
+        .withCategory(Category.Field)
         .withSchema(INT_TYPE.getSchema());
   }
 

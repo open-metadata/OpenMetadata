@@ -46,6 +46,7 @@ import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
 
 public final class JsonUtils {
   public static final String TYPE_ANNOTATION = "@om-type";
@@ -236,12 +237,15 @@ public final class JsonUtils {
     Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
     while (definitions != null && definitions.hasNext()) {
       Entry<String, JsonNode> entry = definitions.next();
+      String typeName = entry.getKey();
       JsonNode value = entry.getValue();
       if (JsonUtils.hasAnnotation(value, JsonUtils.TYPE_ANNOTATION)) {
         String description = String.valueOf(value.get("description"));
         Type type =
             new Type()
-                .withName(entry.getKey())
+                .withName(typeName)
+                .withCategory(Category.Field)
+                .withFullyQualifiedName(typeName)
                 .withNameSpace(jsonNamespace)
                 .withDescription(description)
                 .withDisplayName(entry.getKey())
