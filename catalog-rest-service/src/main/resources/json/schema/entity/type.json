@@ -69,7 +69,7 @@
       "$ref": "#/definitions/typeName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName same as `name`.",
+      "description": "FullyQualifiedName formed using `namespace` + . + `name`",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
@@ -79,6 +79,14 @@
     "description": {
       "description": "Optional description of entity.",
       "$ref" : "../type/basic.json#/definitions/markdown"
+    },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to. For example, some of the field types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
+      "type": "string",
+      "default" : "custom"
+    },
+    "category" : {
+      "$ref" : "#/definitions/category"
     },
     "nameSpace": {
       "description": "Namespace or group to which this type belongs to. For example, some of the field types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
