@@ -62,7 +62,7 @@
       "$ref": "#/definitions/typeName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName formed using `namespace` + . + `name`",
+      "description": "FullyQualifiedName same as `name`.",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
