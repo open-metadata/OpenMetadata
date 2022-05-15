@@ -2,10 +2,28 @@
   "$id": "https://open-metadata.org/schema/entity/type.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Type",
-  "description": "This schema defines a type entity used for extending an entity with custom attributes.",
+  "description": "This schema defines a type as an entity. Types includes field types and entity types. Custom types can also be defined by the users to extend the metadata system.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.Type",
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "definitions": {
+    "category" : {
+      "description" : "Metadata category to which a type belongs to.",
+      "type": "string",
+      "enum": [
+        "field",
+        "entity"
+      ],
+      "javaEnums": [
+        {
+          "name": "Field"
+        },
+        {
+          "name": "Entity"
+        }
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of the type instance.",
@@ -16,13 +34,8 @@
       "$ref": "../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName same as `name`.",
+      "description": "FullyQualifiedName formed using `namespace` + . + `name`",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
-    "nameSpace": {
-      "description": "Namespace or group to which this type belongs to.",
-      "type": "string",
-      "default" : "custom"
     },
     "displayName": {
       "description": "Display Name that identifies this type.",
@@ -31,6 +44,14 @@
     "description": {
       "description": "Optional description of entity.",
       "type": "string"
+    },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to. For example, some of the field types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
+      "type": "string",
+      "default" : "custom"
+    },
+    "category" : {
+      "$ref" : "#/definitions/category"
     },
     "schema": {
       "description": "JSON schema encoded as string that defines the type. This will be used to validate the type values.",
@@ -61,7 +82,7 @@
     "name",
     "nameSpace",
     "description",
-    "type"
+    "schema"
   ],
   "additionalProperties": false
 }

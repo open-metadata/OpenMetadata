@@ -22,6 +22,9 @@
       "description": "Optional description of the type.",
       "type": "string"
     },
+    "category" : {
+      "$ref" : "../entity/type.json#/definitions/category"
+    },
     "schema": {
       "description": "JSON schema encoded as string. This will be used to validate the type values.",
       "$ref": "../type/basic.json#/definitions/jsonSchema"
