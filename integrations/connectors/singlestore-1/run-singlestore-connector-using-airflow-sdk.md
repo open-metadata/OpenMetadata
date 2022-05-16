@@ -1,29 +1,19 @@
 ---
-description: Use the 'metadata' CLI to run a one-time ingestion
+description: Use your own Airflow instance to schedule and run the SingleStore Connector.
 ---
 
-# Run SingleStore Connector using CLI
+# Run Salesforce Connector using Airflow SDK
 
-Configure and schedule SingleStore **metadata** and **profiler** workflows using your own Airflow instances.
+Configure and schedule Salesforce **metadata** and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-singlestore-connector-using-cli.md#requirements)
-* [Metadata Ingestion](run-singlestore-connector-using-cli.md#metadata-ingestion)
-* [Data Profiler and Quality Tests](run-singlestore-connector-using-cli.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-singlestore-connector-using-cli.md#dbt-integration)
+* [Requirements](run-singlestore-connector-using-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-singlestore-connector-using-airflow-sdk.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-singlestore-connector-using-airflow-sdk.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-singlestore-connector-using-airflow-sdk.md#dbt-integration)
 
 ## Requirements
 
-Follow this [guide](https://docs.open-metadata.org/overview/run-openmetadata#procedure) to learn how to install the `metadata` CLI.
-
-In order to execute the workflows, you will need a running OpenMetadata server.
-
-### Python requirements
-
-To run the SingleStore ingestion, you will need to install:
-
-```
-pip3 install 'openmetadata-ingestion[singlestore]'
-```
+Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ## Metadata Ingestion
 
@@ -152,15 +142,65 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-### 2. Run with the CLI
+### 2. Prepare the Ingestion DAG
 
-First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
+Create a Python file in your Airflow DAGs directory with the following contents:
 
+```python
+import pathlib
+import json
+from datetime import timedelta
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from metadata.config.common import load_config_file
+from metadata.ingestion.api.workflow import Workflow
+from airflow.utils.dates import days_ago
+
+default_args = {
+    "owner": "user_name",
+    "email": ["username@org.com"],
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "execution_timeout": timedelta(minutes=60)
+}
+
+config = """
+<your JSON configuration>
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+with DAG(
+    "sample_data",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    schedule_interval='*/5 * * * *', 
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="ingest_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
 ```
-metadata ingest -c <path-to-json>
-```
 
+{% hint style="info" %}
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
+{% endhint %}
 
 ## Data Profiler and Quality Tests
 
@@ -267,20 +307,62 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-singlestore-connector-using-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-singlestore-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
 
-### 2. Run with the CLI
+### 2. Prepare the Ingestion DAG
 
-Again, we will start by saving the JSON file.
+Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
 
-Then, we can run the workflow as:
+```python
+import json
+from datetime import timedelta
 
+from airflow import DAG
+
+try:
+    from airflow.operators.python import PythonOperator
+except ModuleNotFoundError:
+    from airflow.operators.python_operator import PythonOperator
+
+from airflow.utils.dates import days_ago
+
+from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+
+
+default_args = {
+    "owner": "user_name",
+    "email_on_failure": False,
+    "retries": 3,
+    "retry_delay": timedelta(seconds=10),
+    "execution_timeout": timedelta(minutes=60),
+}
+
+config = """
+<your JSON configuration>
+"""
+
+def metadata_ingestion_workflow():
+    workflow_config = json.loads(config)
+    workflow = ProfilerWorkflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+with DAG(
+    "profiler_example",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    catchup=False,
+) as dag:
+    ingest_task = PythonOperator(
+        task_id="profile_and_test_using_recipe",
+        python_callable=metadata_ingestion_workflow,
+    )
 ```
-metadata profile -c <path-to-json>
-```
-
-Note how instead of running `ingest`, we are using the `profile` command to select the `Profiler` workflow.
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).

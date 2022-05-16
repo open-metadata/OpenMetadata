@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the SingleStore
+  In this section, we provide the guides and references to use the Salesforce
   connector.
 ---
 
-# SingleStore
+# Salesforce
 
-Configure and schedule SingleStore **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Salesforce **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,19 +15,19 @@ Configure and schedule SingleStore **metadata** and **profiler** workflows from 
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
-{% endcontent-ref %}
-
 {% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
 [run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
+
+{% content-ref url="run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -39,19 +39,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
 
 ### 3. Select the Service Type
 
-Select SingleStore as the service type and click _Next_.
+Select BigQuery as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (11).png>)
+![](<../../../docs/.gitbook/assets/image (11).png>)
 
 ### 4. Name and Describe your Service
 
@@ -61,17 +61,17 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (39) (2).png>)
+![Provide a Name and description for your Service](<../../../docs/.gitbook/assets/image (39) (2).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (6).png>)
+![Configure the Service connection](<../../../docs/.gitbook/assets/image (6).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1) (1) (1).png>)
+![Test Connection and save the Service](<../../../docs/.gitbook/assets/image (20) (1) (1) (1) (1).png>)
 
 <details>
 
@@ -111,13 +111,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![Service has been created](<../../../.gitbook/assets/image (17).png>)
+![Service has been created](<../../../docs/.gitbook/assets/image (17).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (2) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (39) (2) (1).png>)
 
 <details>
 
@@ -171,7 +171,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
 
 <details>
 
@@ -213,7 +213,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../docs/.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -221,7 +221,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -229,16 +229,16 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-{% content-ref url="../../../data-quality/profiler-workflow.md" %}
-[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% content-ref url="../../../docs/data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../docs/data-quality/profiler-workflow.md)
 {% endcontent-ref %}
 
 ## DBT Integration
 
 You can learn more about how to ingest DBT models' definitions and their lineage below:
 
-{% content-ref url="../../../../data-lineage/dbt-integration/" %}
-[dbt-integration](../../../../data-lineage/dbt-integration/)
+{% content-ref url="../../../data-lineage/dbt-integration/" %}
+[dbt-integration](../../../data-lineage/dbt-integration/)
 {% endcontent-ref %}
 
 ## Run using Airflow SDK

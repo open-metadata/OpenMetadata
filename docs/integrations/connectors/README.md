@@ -27,7 +27,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Presto](../../../integrations/connectors/mysql-2-1/)
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/)
-* [Salesforce](salesforce.md)
+* [Salesforce](../../../integrations/connectors/singlestore-1/)
 * [SingleStore](singlestore/)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake/)
