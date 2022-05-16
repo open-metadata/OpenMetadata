@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findByTestId,
+  fireEvent,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserToken } from '../../axiosAPIs/userAPI';
+import { generateUserToken, getUserToken } from '../../axiosAPIs/userAPI';
 import BotsDetail from './BotsDetail.component';
 
 const revokeTokenHandler = jest.fn();
@@ -127,5 +132,63 @@ describe('Test BotsDetail Component', () => {
     const noToken = await findByTestId(container, 'no-token');
 
     expect(noToken).toBeInTheDocument();
+  });
+
+  it('Should render generate token form if generate token button is clicked', async () => {
+    (getUserToken as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: { ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' },
+      })
+    );
+    const { container } = render(<BotsDetail {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const generateToken = await findByTestId(container, 'generate-token');
+
+    expect(generateToken).toHaveTextContent('Generate new token');
+
+    fireEvent.click(generateToken);
+
+    const tokenForm = await findByTestId(container, 'generate-token-form');
+
+    expect(tokenForm).toBeInTheDocument();
+
+    const confirmButton = await findByTestId(tokenForm, 'confirm-button');
+    const discardButton = await findByTestId(tokenForm, 'discard-button');
+
+    expect(confirmButton).toBeInTheDocument();
+    expect(discardButton).toBeInTheDocument();
+  });
+
+  it('Should call generate token API if generate token button is clicked', async () => {
+    (getUserToken as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: { ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' },
+      })
+    );
+    const { container } = render(<BotsDetail {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const generateToken = await findByTestId(container, 'generate-token');
+
+    expect(generateToken).toHaveTextContent('Generate new token');
+
+    fireEvent.click(generateToken);
+
+    const tokenForm = await findByTestId(container, 'generate-token-form');
+
+    expect(tokenForm).toBeInTheDocument();
+
+    const confirmButton = await findByTestId(tokenForm, 'confirm-button');
+    const discardButton = await findByTestId(tokenForm, 'discard-button');
+
+    expect(confirmButton).toBeInTheDocument();
+    expect(discardButton).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+
+    expect(generateUserToken).toBeCalled();
   });
 });

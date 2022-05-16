@@ -293,8 +293,8 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const centerLayout = () => {
     if (generateToken) {
       return (
-        <div className="tw-mt-4">
-          <div data-testid="filter-dropdown">
+        <div className="tw-mt-4" data-testid="generate-token-form">
+          <div data-testid="expiry-dropdown">
             <label htmlFor="expiration">{requiredField('Expiration')}</label>
             <Select
               defaultValue={{ label: '7 days', value: '7' }}
@@ -370,6 +370,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
           {!generateToken ? (
             <div className="tw-flex">
               <Button
+                data-testid="generate-token"
                 size="small"
                 theme="primary"
                 variant="outlined"
@@ -379,7 +380,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               {botsToken ? (
                 <Button
                   className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
-                  data-testid="delete-button"
+                  data-testid="revoke-button"
                   size="custom"
                   variant="outlined"
                   onClick={() => setIsRevokingToken(true)}>
