@@ -61,6 +61,7 @@ cd openmetadata
 python3 -m venv env
 source env/bin/activate  
 make install_dev
+make generate
 make install_test precommit_install
 ```
 
