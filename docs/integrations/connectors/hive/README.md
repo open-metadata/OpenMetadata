@@ -37,13 +37,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
 
 ### 3. Select the Service Type
 
@@ -55,19 +55,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
 
 ### 3. Select the Service Type
 
 Select Snowflake as the service type and click _Next._
 
-![Select your Service type](<../../../../.gitbook/assets/image (6).png>)
+![Select your Service type](<../../../.gitbook/assets/image (3).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
@@ -77,7 +77,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../../.gitbook/assets/image (107).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (34).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
@@ -121,13 +121,13 @@ To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
 
 </details>
 
-![Service has been saved](<../../../../.gitbook/assets/image (20).png>)
+![Service has been saved](<../../../.gitbook/assets/image (4) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (48) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (12) (1) (1).png>)
 
 <details>
 
@@ -181,7 +181,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
 
 <details>
 
@@ -223,7 +223,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1) (1) (1) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1) (1) (1) (1).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
@@ -231,7 +231,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (103).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (32) (2) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

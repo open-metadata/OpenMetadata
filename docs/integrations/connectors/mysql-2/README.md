@@ -39,7 +39,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (4) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -51,7 +51,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select Oracle as the service type and click _Next_.
 
-![Add New Service Page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
+![Add New Service Page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1) (1).png>)
 
 ### 4. Name and Describe your Service
 
@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Oracle service as desired.
 
-![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
+![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3) (1).png>)
 
 <details>
 
@@ -205,7 +205,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9).png>)
+![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9) (3).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -213,7 +213,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
