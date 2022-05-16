@@ -37,13 +37,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
@@ -163,9 +163,9 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](../../../.gitbook/assets/sample-data.png)
+![](<../../../.gitbook/assets/sample-data (1) (1) (1).png>)
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -207,7 +207,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/dbt (1).png>)
+![](<../../../.gitbook/assets/dbt (1) (1).png>)
 
 ![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (8) (1).png>)
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (32) (2) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (103).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -237,7 +237,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
 
-![](<../../../.gitbook/assets/explore (1) (1).png>)
+![](<../../../.gitbook/assets/explore (1) (2).png>)
 
 ## One-time ingestion with the CLI
 

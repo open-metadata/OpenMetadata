@@ -51,13 +51,15 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select Presto as the service type and click _Next_.
 
-![Add New Service Page](<../../../docs/.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (1).png>)
+![](<../../../.gitbook/assets/image (71).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![Service Name and Description page](<../../../docs/.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (2).png>)
+![](<../../../.gitbook/assets/image (5).png>)
+
+
 
 #### Service Name
 
@@ -67,7 +69,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Presto service as desired.
 
-![Connection Details page](<../../../docs/.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
+![](<../../../.gitbook/assets/image (54).png>)
 
 <details>
 
@@ -103,13 +105,13 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![Add Ingestion Page](<../../../docs/.gitbook/assets/image (22).png>)
+![](<../../../.gitbook/assets/image (79).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (68) (1).png>)
+![](<../../../.gitbook/assets/image (80).png>)
 
 <details>
 
@@ -163,8 +165,6 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1).png>)
-
 <details>
 
 <summary><strong>Scheduling Options</strong></summary>
@@ -201,11 +201,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
+![](<../../../.gitbook/assets/image (59).png>)
+
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![Ingestion Pipeline Page](<../../../docs/.gitbook/assets/image (9).png>)
+![](<../../../.gitbook/assets/image (30).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -213,9 +215,9 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (19) (1).png>)
-
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+![](<../../../.gitbook/assets/image (78).png>)
 
 ## Data Profiler and Quality Tests
 
