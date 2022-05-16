@@ -31,14 +31,6 @@ jest.mock('../../../utils/UserDataUtils', () => {
   };
 });
 
-// jest.mock('../../../AppState', () =>
-//   jest.fn().mockReturnValue({
-//     userProfilePics: [],
-//     userProfilePicsLoading: [],
-//     isProfilePicLoading: jest.fn(),
-//   })
-// );
-
 const mockData = {
   id: 'test-1',
   name: 'test-name',
