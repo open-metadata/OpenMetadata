@@ -28,9 +28,6 @@
     "category" : {
       "$ref" : "../entity/type.json#/definitions/category"
     },
-    "category" : {
-      "$ref" : "../entity/type.json#/definitions/category"
-    },
     "schema": {
       "description": "JSON schema encoded as string. This will be used to validate the type values.",
       "$ref": "../type/basic.json#/definitions/jsonSchema"
