@@ -772,7 +772,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   const getEntityDrawer = () => {
-    if (isEmpty(selectedNode)) {
+    if (isEmpty(selectedNode) || isEditMode) {
       return null;
     } else {
       return (
