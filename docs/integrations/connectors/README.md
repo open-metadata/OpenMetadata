@@ -9,8 +9,8 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Azure SQL](azure-sql.md)
 * [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery/)
-* [ClickHouse](broken-reference/)
-* [ClickHouse Usage](broken-reference/)
+* [ClickHouse](snowflake-2/)
+* [ClickHouse Usage](snowflake-2/)
 * [Databricks](../../../integrations/connectors/databricks/)
 * [Delta Lake](delta-lake.md)
 * [DynamoDB](dynamodb.md)
@@ -24,10 +24,10 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MySQL](../../../integrations/connectors/mysql-1-1/)
 * [Oracle](mysql-2/)
 * [Postgres](<snowflake/README (1).md>)
-* [Presto](broken-reference/)
+* [Presto](../../../integrations/connectors/mysql-2-1/)
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/)
-* [Salesforce](salesforce.md)0
+* [Salesforce](salesforce.md)
 * [SingleStore](singlestore/)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake/)
@@ -36,11 +36,11 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Dashboard Services
 
-* [Looker](broken-reference/)
+* [Looker](../../../integrations/connectors/mysql/)
 * [Metabase](../../../integrations/connectors/mysql-1/)
 * Power BI
-* [Redash](broken-reference)
-* [Superset](superset.md)
+* [Redash](../../../integrations/connectors/mysql-1-2/)
+* [Superset](../../../integrations/connectors/mysql-3/)
 * [Tableau](tableau.md)
 
 #### Messaging Services
