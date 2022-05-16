@@ -201,4 +201,33 @@ describe('Test BotsDetail Component', () => {
 
     expect(generateUserToken).toBeCalled();
   });
+
+  it('Test Revoke token flow', async () => {
+    const { container } = render(<BotsDetail {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const revokeButton = await findByTestId(container, 'revoke-button');
+
+    expect(revokeButton).toBeInTheDocument();
+
+    fireEvent.click(revokeButton);
+
+    // should open confirmartion before revoking token
+    const confirmationModal = await findByTestId(
+      container,
+      'confirmation-modal'
+    );
+
+    expect(confirmationModal).toBeInTheDocument();
+
+    const confirmButton = await findByTestId(confirmationModal, 'save-button');
+
+    expect(confirmButton).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+
+    // revoke token handler should get called
+    expect(revokeTokenHandler).toBeCalled();
+  });
 });
