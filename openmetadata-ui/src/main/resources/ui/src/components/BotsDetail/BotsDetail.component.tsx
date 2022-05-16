@@ -279,7 +279,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const getBotsTokenExpiryDate = () => {
     if (botsTokenExpiry) {
       return (
-        <p className="tw-text-grey-muted tw-mt-2 tw-italic">
+        <p
+          className="tw-text-grey-muted tw-mt-2 tw-italic"
+          data-testid="token-expiry">
           Expires on {moment(botsTokenExpiry).format('ddd Do MMMM, YYYY')}
         </p>
       );
@@ -334,6 +336,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               <input
                 disabled
                 className="tw-form-inputs tw-p-1.5"
+                data-testid="token"
                 placeholder="Generate new token..."
                 type="password"
                 value={botsToken}
@@ -345,7 +348,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
         );
       } else {
         return (
-          <div className="tw-no-description tw-text-sm tw-mt-4">
+          <div
+            className="tw-no-description tw-text-sm tw-mt-4"
+            data-testid="no-token">
             No token available
           </div>
         );
