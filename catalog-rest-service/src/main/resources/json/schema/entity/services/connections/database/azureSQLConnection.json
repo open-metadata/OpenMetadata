@@ -57,7 +57,7 @@
       "title": "Driver",
       "description": "SQLAlchemy driver for AzureSQL.",
       "type": "string",
-      "default": "{ODBC Driver 17 for SQL Server}"
+      "default": "ODBC Driver 17 for SQL Server"
     },
     "connectionOptions": {
       "title": "Connection Options",
