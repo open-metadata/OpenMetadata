@@ -13,6 +13,10 @@ Configure and schedule Oracle **metadata**, and **profiler** workflows from the 
 * [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
 * [DBT Integration](./#dbt-integration)
 
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Abigquery
+
+irflow SDK or with the CLI.
+
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
 {% content-ref url="run-oracle-connector-with-the-airflow-sdk.md" %}
