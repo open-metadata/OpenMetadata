@@ -414,7 +414,7 @@ const TeamsAndUsersPage = () => {
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
     setIsRightPannelLoading(true);
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -434,7 +434,6 @@ const TeamsAndUsersPage = () => {
             err,
             jsonData['api-error-messages']['leave-team-error']
           );
-          reject();
         });
     });
   };
@@ -467,8 +466,6 @@ const TeamsAndUsersPage = () => {
             fetchCurrentTeam(res.data.name, true);
             resolve();
           } else {
-            reject();
-
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
@@ -589,10 +586,10 @@ const TeamsAndUsersPage = () => {
    * @param updatedHTML - updated description
    */
   const onDescriptionUpdate = (updatedHTML: string) => {
-    if (currentTeam?.description !== updatedHTML) {
+    if (currentTeam && currentTeam.description !== updatedHTML) {
       const updatedTeam = { ...currentTeam, description: updatedHTML };
       const jsonPatch = compare(currentTeam as Team, updatedTeam);
-      patchTeamDetail(currentTeam?.id, jsonPatch)
+      patchTeamDetail(currentTeam.id, jsonPatch)
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchCurrentTeam(res.data.name, true);
