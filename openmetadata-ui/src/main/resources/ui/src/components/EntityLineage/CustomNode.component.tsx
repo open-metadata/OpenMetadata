@@ -29,6 +29,22 @@ const getHandle = (
   isConnectable: HandleProps['isConnectable'],
   isNewNode = false
 ) => {
+  const getLeftRightHandleStyles = () => {
+    return {
+      opacity: 0,
+      borderRadius: '0px',
+      height: '162%',
+    };
+  };
+
+  const getTopBottomHandleStyles = () => {
+    return {
+      opacity: 0,
+      borderRadius: '0px',
+      width: '110%',
+    };
+  };
+
   if (nodeType === 'output') {
     return (
       <Fragment>
@@ -42,10 +58,26 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Left}
           style={{
-            opacity: 0,
-            borderRadius: '0px',
-            height: '156%',
+            ...getLeftRightHandleStyles(),
             marginLeft: '-10px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
           }}
           type="target"
         />
@@ -64,12 +96,28 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
-            opacity: 0,
-            borderRadius: '0px',
-            height: '156%',
+            ...getLeftRightHandleStyles(),
             marginRight: '-10px',
           }}
           type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
+          }}
+          type="target"
         />
       </Fragment>
     );
@@ -104,9 +152,7 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Left}
           style={{
-            opacity: 0,
-            borderRadius: '0px',
-            height: '156%',
+            ...getLeftRightHandleStyles(),
             marginLeft: '-10px',
           }}
           type="target"
@@ -115,12 +161,28 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
-            opacity: 0,
-            borderRadius: '0px',
-            height: '156%',
+            ...getLeftRightHandleStyles(),
             marginRight: '-10px',
           }}
           type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
+          }}
+          type="target"
         />
       </Fragment>
     );
