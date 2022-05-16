@@ -35,9 +35,9 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion C
 
 The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -71,15 +71,15 @@ In this step, we will configure the connection settings required for this connec
 
 <summary>Connection Arguments</summary>
 
-#### Username
+**Username**
 
 Enter the username of your Hive user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
-#### Password
+**Password**
 
 Enter the password for your Hive user in the _Password_ field.
 
-#### Host and Port
+**Host and Port**
 
 Enter the fully qualified hostname and port number for your Hive deployment in the _Host and Port_ field.
 
@@ -87,15 +87,15 @@ Enter the fully qualified hostname and port number for your Hive deployment in t
 
 Enter the http path of Databricks cluster.
 
-#### Database (optional)
+**Database (optional)**
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-#### Connection Options (Optional)
+**Connection Options (Optional)**
 
 Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
-#### Connection Arguments (Optional)
+**Connection Arguments (Optional)**
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 
@@ -109,31 +109,29 @@ To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-
-
 ![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (7).png>)
 
 <details>
 
 <summary>Metadata Ingestion Options</summary>
 
-#### Include (Table Filter Pattern)
+**Include (Table Filter Pattern)**
 
 Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
 Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-#### Exclude (Table Filter Pattern)
+**Exclude (Table Filter Pattern)**
 
 Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-#### Include (Schema Filter Pattern)
+**Include (Schema Filter Pattern)**
 
 Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
 Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-#### Exclude (Schema Filter Pattern)
+**Exclude (Schema Filter Pattern)**
 
 Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
 
@@ -165,7 +163,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](../../../docs/.gitbook/assets/generate\_sample\_data.png)
+![](<../../../docs/.gitbook/assets/generate\_sample\_data (2).png>)
 
 ![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
 
@@ -239,7 +237,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
 
-![](../../../docs/.gitbook/assets/explore.png)
+![](<../../../docs/.gitbook/assets/explore (2).png>)
 
 ## One-time ingestion with the CLI
 

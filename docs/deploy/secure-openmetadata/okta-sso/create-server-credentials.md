@@ -128,4 +128,4 @@ This will generate the Issuer URL.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1) (1).png>)

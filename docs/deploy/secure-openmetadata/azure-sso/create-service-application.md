@@ -71,7 +71,7 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Navigate to the Azure Active Directory >> App Registrations >> \[OpenMetadata Ingestion Application] >> Expose an API.
 * Click on **Set** in Application ID URI
 
-![](<../../../.gitbook/assets/image (19) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (19) (1) (1) (1) (1) (2).png>)
 
 * Click on Save to set the App ID URI which is required for scopes while connecting from manual ingestion.
 

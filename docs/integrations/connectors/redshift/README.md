@@ -32,7 +32,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -54,7 +54,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Redshift services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/create-service (1).jpg>)
+![](<../../../.gitbook/assets/create-service (1) (1).jpg>)
 
 ### 5. Configure the Service Connection
 

@@ -20,7 +20,7 @@
 
 * Once you are on the Dashboard page, click on `Applications > Applications` available on the left-hand side panel.
 
-![](<../../../.gitbook/assets/image (78).png>)
+![](<../../../.gitbook/assets/image (78) (3).png>)
 
 * Click on `Create Applicaiton`.
 

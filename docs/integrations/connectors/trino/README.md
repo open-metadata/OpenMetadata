@@ -39,7 +39,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
 
 ### 2. Create a New Service
 
@@ -123,7 +123,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
 

@@ -32,7 +32,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1).png>)
+![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1) (1).png>)
 
 <details>
 

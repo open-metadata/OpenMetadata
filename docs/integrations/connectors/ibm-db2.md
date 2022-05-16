@@ -396,7 +396,7 @@ metadata ingest -c ./db2.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from IBM Db2, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Db2 service to filter for the data you've ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](../../.gitbook/assets/explore.png)
+![](<../../.gitbook/assets/explore (2).png>)
 
 ## Troubleshooting
 

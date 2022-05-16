@@ -41,9 +41,9 @@ metadata ingest -c ./pipelines/sample_data.json
 metadata ingest -c ./pipelines/sample_usage.json
 ```
 
-### Index Sample Data into ElasticSearch
+### Index Sample Data into Elasticsearch
 
-Start Elastic Search Docker:
+Start Elasticsearch Docker:
 
 {% hint style="warning" %}
 The below command starts Elasticsearch docker that stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata\_to\_es workflow again to index the data upon starting the container.
@@ -53,7 +53,7 @@ The below command starts Elasticsearch docker that stores the indexed data in me
 docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.10.2
 ```
 
-Index sample data in ElasticSearch:
+Index sample data in Elasticsearch:
 
 ```bash
 #Make sure the OpenMetadata Server is up and running
