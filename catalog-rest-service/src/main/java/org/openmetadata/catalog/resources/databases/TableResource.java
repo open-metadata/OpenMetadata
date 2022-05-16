@@ -114,7 +114,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests,"
+          + "extension";
 
   @GET
   @Operation(
@@ -293,7 +294,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
-    Table table = getTable(securityContext, create);
+    Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table, ADMIN | BOT);
   }
 
@@ -312,7 +313,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
-    Table table = getTable(securityContext, create);
+    Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
   }
 
@@ -629,22 +630,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  private Table getTable(SecurityContext securityContext, CreateTable create) {
+  private Table getTable(CreateTable create, String user) {
     return validateNewTable(
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
+        copy(new Table(), create, user)
             .withColumns(create.getColumns())
-            .withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints())
             .withTablePartition(create.getTablePartition())
             .withTableType(create.getTableType())
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
             .withProfileSample(create.getProfileSample())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(System.currentTimeMillis())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

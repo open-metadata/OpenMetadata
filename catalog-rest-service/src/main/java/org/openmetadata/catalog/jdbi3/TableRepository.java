@@ -117,6 +117,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     getCustomMetrics(fields.contains("customMetrics"), table);
+    table.setExtension(fields.contains("extension") ? getExtension(table) : null);
     return table;
   }
 

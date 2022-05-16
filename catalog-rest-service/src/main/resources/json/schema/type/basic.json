@@ -109,6 +109,9 @@
     "jsonSchema": {
       "description": "JSON schema encoded as string. This will be used to validate the JSON fields using this schema.",
       "type": "string"
+    },
+    "entityExtension" : {
+      "description": "Entity extension data with custom attributes added to the entity."
     }
   }
 }

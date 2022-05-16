@@ -41,13 +41,11 @@ import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
-  public static Type INT_TYPE;
 
   public TypeResourceTest() {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.FIELDS);
@@ -129,17 +127,11 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Override
-  public CreateType createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateType createRequest(String name) {
     if (name != null) {
       name = name.replaceAll("[. _-]", "");
     }
-    System.out.println("XXX Using the name " + name);
-    return new CreateType()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withCategory(Category.Field)
-        .withSchema(INT_TYPE.getSchema());
+    return new CreateType().withName(name).withCategory(Category.Field).withSchema(INT_TYPE.getSchema());
   }
 
   @Override

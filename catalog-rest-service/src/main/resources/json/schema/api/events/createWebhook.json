@@ -4,10 +4,17 @@
   "title": "CreateWebhook",
   "description": "This schema defines webhook for receiving events from OpenMetadata",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.events.CreateWebhook",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
+
   "properties": {
     "name": {
       "description": "Unique name of the application receiving webhook events.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this webhook.",
+      "type": "string"
     },
     "description": {
       "description": "Description of the application",
