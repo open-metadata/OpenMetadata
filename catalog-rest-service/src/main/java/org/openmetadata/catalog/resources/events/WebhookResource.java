@@ -56,8 +56,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/webhook")
@@ -120,16 +118,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    RestUtil.validateCursors(before, after);
-    ListFilter filter = new ListFilter(include);
-    ResultList<Webhook> webhooks;
-    if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
-    } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
-    }
-    webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
-    return webhooks;
+    ListFilter filter = new ListFilter(Include.ALL);
+    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET

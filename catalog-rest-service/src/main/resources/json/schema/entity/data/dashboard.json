@@ -4,7 +4,8 @@
   "title": "Dashboard",
   "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.",
   "type": "object",
-
+  "javaType": "org.openmetadata.catalog.entity.data.Dashboard",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a dashboard instance.",

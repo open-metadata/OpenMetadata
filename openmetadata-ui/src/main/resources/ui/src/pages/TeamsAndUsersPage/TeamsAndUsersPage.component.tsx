@@ -37,6 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
 import {
   getTeamAndUserDetailsPath,
+  INITIAL_PAGIN_VALUE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
@@ -69,7 +70,8 @@ const TeamsAndUsersPage = () => {
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
   const [teamUserPagin, setTeamUserPagin] = useState<Paging>({} as Paging);
-  const [currentTeamUserPage, setCurrentTeamUserPage] = useState(1);
+  const [currentTeamUserPage, setCurrentTeamUserPage] =
+    useState(INITIAL_PAGIN_VALUE);
   const [teamUsersSearchText, setTeamUsersSearchText] = useState('');
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
@@ -311,11 +313,15 @@ const TeamsAndUsersPage = () => {
       .finally(() => setIsTeamMemberLoading(false));
   };
 
-  const teamUserPaginHandler = (cursorValue: string | number) => {
+  const teamUserPaginHandler = (
+    cursorValue: string | number,
+    activePage?: number
+  ) => {
     if (teamUsersSearchText) {
       setCurrentTeamUserPage(cursorValue as number);
       searchUsers(teamUsersSearchText, cursorValue as number);
     } else {
+      setCurrentTeamUserPage(activePage as number);
       getCurrentTeamUsers(currentTeam?.name || '', {
         [cursorValue]: teamUserPagin[cursorValue as keyof Paging] as string,
       });
@@ -324,8 +330,9 @@ const TeamsAndUsersPage = () => {
 
   const handleTeamUsersSearchAction = (text: string) => {
     setTeamUsersSearchText(text);
+    setCurrentTeamUserPage(INITIAL_PAGIN_VALUE);
     if (text) {
-      searchUsers(text, currentTeamUserPage);
+      searchUsers(text, INITIAL_PAGIN_VALUE);
     } else {
       getCurrentTeamUsers(currentTeam?.name as string);
     }
@@ -371,6 +378,7 @@ const TeamsAndUsersPage = () => {
       .then((res: AxiosResponse) => {
         if (res.data) {
           fetchCurrentTeam(res.data.name, true);
+          setTeamUsersSearchText('');
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

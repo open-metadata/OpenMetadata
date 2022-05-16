@@ -185,7 +185,6 @@ class TestWorkflowParse(TestCase):
                             "awsRegion": "aws region",
                             "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                         },
-                        "database": "local_glue_db",
                         "storageServiceName": "storage_name",
                         "pipelineServiceName": "pipeline_name",
                         "random": "extra",

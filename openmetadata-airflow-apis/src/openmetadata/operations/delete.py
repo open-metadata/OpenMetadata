@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 from airflow import settings
-from airflow.models import DagModel
+from airflow.models import DagModel, DagRun
 from flask import Response
 from openmetadata.api.config import AIRFLOW_DAGS_FOLDER, DAG_GENERATED_CONFIGS
 from openmetadata.api.response import ApiResponse
@@ -27,7 +27,7 @@ def delete_dag_id(dag_id: str) -> Response:
     We clean:
     - py file in AIRFLOW_DAGS_FOLDER
     - config file in DAG_GENERATED_CONFIGS
-    - DagModel entries in airflow db (Not the DagRun)
+    - DagModel and DagRun entries in airflow db
     :param dag_id: DAG to delete
     :return: API Response
     """
@@ -50,6 +50,7 @@ def delete_dag_id(dag_id: str) -> Response:
         deleted_dags = (
             session.query(DagModel).filter(DagModel.dag_id == dag_id).delete()
         )
+        session.query(DagRun).filter(DagRun.dag_id == dag_id).delete()
         session.commit()
 
     if deleted_dags > 0 and deleted_file and deleted_config:

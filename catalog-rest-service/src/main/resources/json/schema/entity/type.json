@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/type.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Type",
+  "description": "This schema defines a type entity used for extending an entity with custom attributes.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.Type",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the type instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique name that identifies the type.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to.",
+      "type": "string",
+      "default" : "custom"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this type.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of entity.",
+      "type": "string"
+    },
+    "schema": {
+      "description": "JSON schema encoded as string that defines the type. This will be used to validate the type values.",
+      "$ref": "../type/basic.json#/definitions/jsonSchema"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this table resource.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "name",
+    "nameSpace",
+    "description",
+    "type"
+  ],
+  "additionalProperties": false
+}

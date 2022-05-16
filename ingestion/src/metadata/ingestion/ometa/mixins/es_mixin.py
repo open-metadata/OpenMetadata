@@ -38,7 +38,7 @@ T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 class ESMixin(Generic[T]):
     client: REST
 
-    es_url: str = "/search/query?q=service:{} {}&from={}&size={}&index={}"
+    es_url: str = "/search/query?q=service:{} AND {}&from={}&size={}&index={}"
 
     def search_entities_using_es(
         self, service_name, table_obj, search_index, from_count: int = 0, size: int = 10

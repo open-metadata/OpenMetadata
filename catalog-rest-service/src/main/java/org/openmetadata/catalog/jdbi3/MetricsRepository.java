@@ -17,18 +17,14 @@ import static org.openmetadata.catalog.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -47,10 +43,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
         METRICS_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Metrics metrics) {
-    return (metrics != null && metrics.getService() != null)
-        ? FullyQualifiedName.add(metrics.getService().getFullyQualifiedName(), metrics.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(Metrics metrics) {
+    metrics.setFullyQualifiedName(FullyQualifiedName.add(metrics.getService().getName(), metrics.getName()));
   }
 
   @Override
@@ -63,15 +58,10 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public EntityInterface<Metrics> getEntityInterface(Metrics entity) {
-    return new MetricsEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(Metrics metrics) throws IOException {
-    metrics.setFullyQualifiedName(getFQN(metrics));
     populateOwner(metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
+    setFullyQualifiedName(metrics);
     metrics.setTags(addDerivedTags(metrics.getTags()));
   }
 
@@ -109,138 +99,5 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
-  }
-
-  static class MetricsEntityInterface extends EntityInterface<Metrics> {
-    MetricsEntityInterface(Metrics entity) {
-      super(Entity.METRICS, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public Metrics getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Metrics withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
   }
 }

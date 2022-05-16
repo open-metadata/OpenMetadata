@@ -359,7 +359,11 @@ class SupersetSource(Source[Entity]):
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
             for chart_json in charts["result"]:
-                yield from self._build_chart(chart_json)
+                try:
+                    yield from self._build_chart(chart_json)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
 
     def get_status(self):
         return self.status

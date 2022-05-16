@@ -25,6 +25,7 @@ import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
   activeIngestionStep: number;
+  isAirflowSetup: boolean;
   pipelineType: PipelineType;
   heading: string;
   ingestionAction?: string;
@@ -38,6 +39,7 @@ export interface AddIngestionProps {
   handleCancelClick: () => void;
   onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
   onIngestionDeploy?: () => Promise<void>;
+  onAirflowStatusCheck: () => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,
@@ -100,11 +102,7 @@ export type ScheduleIntervalProps = {
   status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
-  startDate: string;
-  handleStartDateChange: (value: string) => void;
-  endDate: string;
   submitButtonLabel: string;
-  handleEndDateChange: (value: string) => void;
   onBack: () => void;
   onDeploy: () => void;
 };
