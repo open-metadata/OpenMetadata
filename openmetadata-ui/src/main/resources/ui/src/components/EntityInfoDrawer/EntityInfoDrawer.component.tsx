@@ -26,6 +26,7 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { getHeaderLabel } from '../../utils/EntityLineageUtils';
 import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -57,7 +58,7 @@ const EntityInfoDrawer = ({
     switch (selectedNode.type) {
       case EntityType.TABLE: {
         setIsLoading(true);
-        getTableDetailsByFQN(selectedNode.fqn, [
+        getTableDetailsByFQN(getEncodedFqn(selectedNode.fqn), [
           'tags',
           'owner',
           'columns',
@@ -74,13 +75,16 @@ const EntityInfoDrawer = ({
               err,
               `Error while getting ${selectedNode.name} details`
             );
+          })
+          .finally(() => {
+            setIsLoading(false);
           });
 
         break;
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(selectedNode.fqn, ['tags', 'owner'])
+        getPipelineByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('pipelineServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
@@ -100,13 +104,16 @@ const EntityInfoDrawer = ({
               err,
               `Error while getting ${selectedNode.name} details`
             );
+          })
+          .finally(() => {
+            setIsLoading(false);
           });
 
         break;
       }
       case EntityType.DASHBOARD: {
         setIsLoading(true);
-        getDashboardByFqn(selectedNode.fqn, ['tags', 'owner'])
+        getDashboardByFqn(getEncodedFqn(selectedNode.fqn), ['tags', 'owner'])
           .then((res: AxiosResponse) => {
             getServiceById('dashboardServices', res.data.service?.id)
               .then((serviceRes: AxiosResponse) => {
@@ -126,6 +133,9 @@ const EntityInfoDrawer = ({
               err,
               `Error while getting ${selectedNode.name} details`
             );
+          })
+          .finally(() => {
+            setIsLoading(false);
           });
 
         break;

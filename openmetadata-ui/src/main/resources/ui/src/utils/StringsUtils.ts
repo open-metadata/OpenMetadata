@@ -122,3 +122,12 @@ export const getErrorText = (
   // if error text is still empty, return the fallback text
   return errorText || fallbackText;
 };
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - Encoded text string as a valid component of a Uniform Resource Identifier (URI).
+ */
+export const getEncodedFqn = (fqn: string) => {
+  return encodeURIComponent(fqn);
+};
