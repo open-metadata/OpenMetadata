@@ -17,7 +17,7 @@
  */
 export interface SalesforceConnection {
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * Host and port of the Salesforce service.
    */

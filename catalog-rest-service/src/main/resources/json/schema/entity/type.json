@@ -22,7 +22,7 @@
     "nameSpace": {
       "description": "Namespace or group to which this type belongs to.",
       "type": "string",
-      "default" : "custom"
+      "default": "custom"
     },
     "displayName": {
       "description": "Display Name that identifies this type.",
@@ -57,11 +57,6 @@
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": [
-    "name",
-    "nameSpace",
-    "description",
-    "type"
-  ],
+  "required": ["name", "nameSpace", "description"],
   "additionalProperties": false
 }

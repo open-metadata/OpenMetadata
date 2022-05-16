@@ -13,28 +13,24 @@
  */
 
 /**
- * Sample Data Connection Config
+ * This schema defines the test ColumnValuesMissingCount. Test the column values missing
+ * count to be equal to given number.
  */
-export interface SampleDataConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: string };
+export interface ColumnValuesMissingCountToBeEqual {
   /**
-   * Sample Data File Path
+   * No.of missing values to be equal to.
    */
-  sampleDataFolder?: string;
-  supportsMetadataExtraction?: boolean;
-  supportsUsageExtraction?: boolean;
+  missingCountValue: number;
   /**
-   * Service Type
+   * By default match all null and empty values to be missing. This field allows us to
+   * configure additional strings such as N/A, NULL as missing strings as well.
    */
-  type?: SampleDataType;
-}
-
-/**
- * Service Type
- *
- * Service type.
- */
-export enum SampleDataType {
-  SampleData = 'SampleData',
+  missingValueMatch?:
+    | string[]
+    | boolean
+    | number
+    | number
+    | { [key: string]: any }
+    | null
+    | string;
 }

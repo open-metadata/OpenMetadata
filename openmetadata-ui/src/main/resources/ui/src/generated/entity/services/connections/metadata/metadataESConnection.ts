@@ -13,7 +13,7 @@
  */
 
 /**
- * Metadata to ElasticSeach Connection Config
+ * Metadata to ElasticSearch Connection Config
  */
 export interface MetadataESConnection {
   /**
@@ -21,17 +21,37 @@ export interface MetadataESConnection {
    */
   includeDashboards?: boolean;
   /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
    * Include Glossary Terms for Indexing
    */
   includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
   /**
    * Include Pipelines for Indexing
    */
   includePipelines?: boolean;
   /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
    * Include Tables for Indexing
    */
   includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
   /**
    * Include Teams for Indexing
    */
@@ -58,7 +78,7 @@ export interface MetadataESConnection {
 /**
  * Service Type
  *
- * Metadata to Elastic Seach type
+ * Metadata to Elastic Search type
  */
 export enum MetadataESType {
   MetadataES = 'MetadataES',

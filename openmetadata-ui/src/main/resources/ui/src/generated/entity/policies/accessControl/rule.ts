@@ -34,6 +34,10 @@ export interface Rule {
    */
   entityTypeAttr?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Name for this Rule.
    */
   name: string;
