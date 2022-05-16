@@ -500,6 +500,10 @@
             <id>unit-tests</id>
             <configuration>
               <excludes>**/*ResourceTest.java</excludes>
+              <systemPropertyVariables>
+                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                <jdbcContainerImage>mysql:8</jdbcContainerImage>
+              </systemPropertyVariables>
             </configuration>
           </execution>
           <execution>
