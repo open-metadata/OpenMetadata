@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.reports;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -165,7 +166,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
     addToReport(securityContext, report);
-    return createOrUpdate(uriInfo, securityContext, report);
+    return createOrUpdate(uriInfo, securityContext, report, ADMIN | BOT | OWNER);
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {
