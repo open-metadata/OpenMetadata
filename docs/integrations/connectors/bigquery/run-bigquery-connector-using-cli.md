@@ -97,7 +97,6 @@ This is a sample config for BigQuery:
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 
 * **hostPort**: This is the BigQuery APIs URL.
-* **username** (Optional): Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 * **projectId** (Optional): The BigQuery Project ID is required only if the credentials path is being used instead of values.
 * **credentials**: We support two ways of authenticating to BigQuery:
   * Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
@@ -142,7 +141,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -371,7 +370,7 @@ This is a sample config for the profiler:
 * You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {
@@ -421,7 +420,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
   },
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference/).
 
 #### Workflow Configuration
 

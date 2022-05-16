@@ -128,7 +128,7 @@ In this step we will configure the MLflow service settings required for this con
 
 #### **tracking\_uri**
 
-MLflow server containing the tracking information of runs and experiments ([docs](https://mlflow.org/docs/latest/tracking.html#)).
+MLflow server containing the tracking information of runs and experiments ([docs](https://mlflow.org/docs/latest/tracking.html)).
 
 ```json
 "tracking_uri": "http://localhost:5000"
@@ -185,7 +185,7 @@ If you already have a production Airflow instance on which you would like to sch
 
 To view the metadata ingested from MLflow, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MLflow service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
 
-![](<../../../.gitbook/assets/next\_steps (1).png>)
+![](<../../../../.gitbook/assets/explore (1).png>)
 
 ## **5. Troubleshooting**
 

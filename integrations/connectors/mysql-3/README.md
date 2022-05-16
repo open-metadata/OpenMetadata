@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings, you 
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (13).png>)
+![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (76).png>)
+![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (20).png>)
 
 ### 3. Select the Service Type
 
 Select Superset as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (139).png>)
+![](<../../../.gitbook/assets/image (104).png>)
 
 ### 4. Name and Describe your Service
 
@@ -157,7 +157,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (18).png>)
+![](<../../../.gitbook/assets/image (36) (1).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,7 +165,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![](<../../../.gitbook/assets/image (36) (1).png>)
+![](<../../../.gitbook/assets/image (18).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

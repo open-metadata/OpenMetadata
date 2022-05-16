@@ -134,7 +134,7 @@ Edit lineage to provide a richer understanding of the provenance of data. The Op
 
 A DBT model provides transformation logic that creates a table from raw data. While lineage tells us broadly what data a table was generated from. A DBT model provides specifics. OpenMetadata includes an integration for DBT that enables you to see what models are being used to generate tables.
 
-![](../../.gitbook/assets/dbt.gif)
+![](../.gitbook/assets/dbt.gif)
 
 ### Data Reliability
 
