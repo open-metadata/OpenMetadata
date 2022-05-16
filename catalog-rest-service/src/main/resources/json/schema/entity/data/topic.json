@@ -4,6 +4,8 @@
   "title": "Topic",
   "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Topic",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "schemaType": {
       "description": "Schema type used for the message.",

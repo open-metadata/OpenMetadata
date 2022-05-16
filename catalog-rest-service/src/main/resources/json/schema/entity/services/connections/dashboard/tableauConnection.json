@@ -64,6 +64,7 @@
       "default": "tableau_prod"
     },
     "dbServiceName": {
+      "title": "Database Service Name",
       "description": "Database Service Name in order to add data lineage.",
       "type": "string"
     },

@@ -16,13 +16,10 @@ import org.openmetadata.catalog.api.CreateBot;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.Bot;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.BotRepository.BotEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.bots.BotResource.BotList;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
@@ -40,7 +37,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser = userResourceTest.createRequest("botUser", "", "", null);
     botUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
-    botUserRef = new UserEntityInterface(botUser).getEntityReference();
+    botUserRef = botUser.getEntityReference();
   }
 
   @Test
@@ -48,7 +45,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser = userResourceTest.createRequest(test);
     User testUser = new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
-    EntityReference testUserRef = new UserEntityInterface(testUser).getEntityReference();
+    EntityReference testUserRef = testUser.getEntityReference();
 
     CreateBot create = createRequest(test).withBotUser(testUserRef);
     Bot bot = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -72,25 +69,19 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Override
   public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(getEntityInterface(entity), request.getDescription(), getPrincipal(authHeaders), null);
+    validateCommonEntityFields(entity, request.getDescription(), getPrincipal(authHeaders), null);
     assertReference(request.getBotUser(), entity.getBotUser());
   }
 
   @Override
   public void compareEntities(Bot expected, Bot updated, Map<String, String> authHeaders) throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(updated), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertReference(expected.getBotUser(), updated.getBotUser());
   }
 
   @Override
-  public EntityInterface<Bot> getEntityInterface(Bot entity) {
-    return new BotEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<Bot> validateGetWithDifferentFields(Bot entity, boolean byName) throws HttpResponseException {
-    return new BotEntityInterface(entity); // TODO cleanup
+  public Bot validateGetWithDifferentFields(Bot entity, boolean byName) throws HttpResponseException {
+    return entity; // TODO cleanup
   }
 
   @Override
