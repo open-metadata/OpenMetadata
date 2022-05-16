@@ -1,16 +1,15 @@
 ---
-description: Use your own Airflow instance to schedule and run the MSSQL Connector.
+description: Use your own Airflow instance to schedule and run the Presto connector.
 ---
 
-# Run Clickhouse Connector with the Airflow SDK
+# Run Presto Connector with the Airflow SDK
 
-Configure and schedule MSSQL **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
+Configure and schedule Presto **metadata** and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-mssql-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-mssql-connector-with-the-airflow-sdk.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-mssql-connector-with-the-airflow-sdk.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-mssql-connector-with-the-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-mssql-connector-with-the-airflow-sdk.md#dbt-integration)
+* [Requirements](run-oracle-connector-with-the-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-oracle-connector-with-the-airflow-sdk.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-oracle-connector-with-the-airflow-sdk.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-oracle-connector-with-the-airflow-sdk.md#dbt-integration)
 
 ## Requirements
 
@@ -18,7 +17,7 @@ Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up 
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/mssqlConnection.json) you can find the structure to create a connection to MSSQL.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/oracleConnection.json) you can find the structure to create a connection to Presto.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -26,34 +25,39 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the JSON Config
 
-This is a sample config for MSSQL:
+This is a sample config for Presto:
 
 ```json
 {
   "source": {
-    "type": "mssql",
-    "serviceName": "<service name>",
+    "type": "presto",
+    "serviceName": "local_presto",
     "serviceConnection": {
       "config": {
-        "type": "Mssql",
-        "scheme": "mssql+pytds",
-        "username": "<username>",
-        "password": "<password>",
-        "hostPort": "<hostPort>",
-        "database": "<database>"
+        "type": "Presto",
+        "scheme": "presto",
+        "username": "admin",
+        "password": "password",
+        "hostPort": "localhost:8080",
+        "database": "database",
+        "catalog": "tpcds",
+        "connectionOptions": null,
+        "connectionArguments": null
       }
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": true or false,
-        "markDeletedTables": true or false,
-        "includeTables": true or false,
-        "includeViews": true or false,
-        "generateSampleData": true or false,
-        "sampleDataQuery": "<query to fetch table data>",
-        "schemaFilterPattern": "<schema name regex list>",
-        "tableFilterPattern": "<table name regex list>",
-        "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
+        "type": "DatabaseMetadata",
+        "markDeletedTables": true,
+        "includeTables": true,
+        "includeViews": true,
+        "generateSampleData": false,
+        "sampleDataQuery": "select * from {}.{} limit 50",
+        "enableDataProfiler": false,
+        "schemaFilterPattern": null,
+        "tableFilterPattern": null,
+        "databaseFilterPattern": null,
+        "dbtConfigSource": null
       }
     }
   },
@@ -62,37 +66,24 @@ This is a sample config for MSSQL:
     "config": {}
   },
   "workflowConfig": {
+    "loggerLevel": "INFO",
     "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
-    }
+      "type": "OpenMetadata",
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
+    },
   }
 }
 ```
 
-#### Source Configuration - Service Connection
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/oracleConnection.json).
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/mssqlConnection.json).
-
-* **scheme**: This can be configured using any one of the following three options.\
-  `'mssql+pyodbc'`\
-  `'mssql+pytds'`\
-  `'mssql+pymssql'`
-* **username**: Enter the username of your MSSQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **password**: Enter the password for your MSSQL user in the _Password_ field.
-* **hostPort**: Enter the fully qualified hostname and port number for your MSSQL deployment in the _Host and Port_ field.
-* **uriString** (in case of pyodbc): If the connection scheme is '`mssql+pyodbc`', then you need to add a `uriString`
+* **username**: Enter the username of your Presto user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password**: Enter the password for your Presto user in the _Password_ field.
+* **hostPort**: Enter the fully qualified hostname and port number for your Presto deployment in the _Host and Port_ field.
 * **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
-* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
-* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
-
-For the Connection Arguments, In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
-
-`"authenticator" : "sso_login_url"`
-
-In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
-
-`"authenticator" : "externalbrowser"`
+* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Presto during the connection. These details must be added as Key-Value pairs.
+* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Presto during the connection. These details must be added as Key-Value pairs.
 
 #### Source Configuration - Source Config
 
@@ -104,7 +95,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **includeViews**: `true` or `false`, to ingest views definitions.
 * **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
 * **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+* **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
 "tableFilterPattern": {
@@ -207,139 +198,66 @@ with DAG(
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
 
-## Query Usage and Lineage Ingestion
-
-To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same. However, the `sourceConfig` is now modeled after [this](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json) JSON Schema.
-
-### 1. Define the JSON Configuration
-
-This is a sample config for MSSQL Usage:
-
-```json
-{
-  "source": {
-    "type": "mssql-usage",
-    "serviceName": "<service name>",
-    "serviceConnection": {
-      "config": {
-        "type": "Mssql",
-        "scheme": "mssql+pytds",
-        "username": "<username>",
-        "password": "<password>",
-        "hostPort": "<hostPort>",
-        "database": "<database>"
-      }
-    },
-    "sourceConfig": {
-      "config": {
-        "queryLogDuration": "<query log duration integer>",
-        "stageFileLocation": "<path to store the stage file>",
-        "resultLimit": "<query log limit integer>"
-      }
-    }
-  },
-  "processor": {
-        "type": "query-parser",
-        "config": {
-            "filter": ""
-        }
-    },
-    "stage": {
-        "type": "table-usage",
-        "config": {
-            "filename": "/tmp/mssql_usage"
-        }
-    },
-    "bulkSink": {
-        "type": "metadata-usage",
-        "config": {
-            "filename": "/tmp/mssql_usage"
-        }
-    },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
-    }
-  }
-}
-```
-
-#### Source Configuration - Service Connection
-
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/mssqlConnection.json).
-
-They are the same as metadata ingestion.
-
-#### Source Configuration - Source Config
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
-
-* **queryLogDuration**: Configuration to tune how far we want to look back in query logs to process usage data.
-* **resultLimit**: Configuration to set the limit for query logs
-
-#### Processor, Stage, and Bulk Sink
-
-To specify where the staging files will be located.
-
-#### Workflow Configuration
-
-The same as the [metadata](run-mssql-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
-
-### 2. Prepare the Ingestion DAG
-
-For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the JSON configuration will be enough.
-
 ## Data Profiler and Quality Tests
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
 ### 1. Define the JSON configuration
 
-This is a sample config for a MSSQL profiler:
+This is a sample config for Presto profiler:
 
 ```json
 {
   "source": {
-    "type": "mssql",
-    "serviceName": "<service name>",
+    "type": "presto",
+    "serviceName": "local_presto",
     "serviceConnection": {
       "config": {
-        "type": "Mssql",
-        "scheme": "mssql+pytds",
-        "username": "<username>",
-        "password": "<password>",
-        "hostPort": "<hostPort>",
-        "database": "<database>"
+        "type": "Presto",
+        "scheme": "presto",
+        "username": "admin",
+        "password": "password",
+        "hostPort": "localhost:8080",
+        "database": "database",
+        "catalog": "tpcds",
+        "connectionOptions": null,
+        "connectionArguments": null
       }
     },
     "sourceConfig": {
       "config": {
-        "type": "Profiler",
-        "fqnFilterPattern": "<table FQN filtering regex>"
+        "type": "DatabaseMetadata",
+        "markDeletedTables": true,
+        "includeTables": true,
+        "includeViews": true,
+        "generateSampleData": false,
+        "sampleDataQuery": "select * from {}.{} limit 50",
+        "enableDataProfiler": false,
+        "schemaFilterPattern": null,
+        "tableFilterPattern": null,
+        "databaseFilterPattern": null,
+        "dbtConfigSource": null
       }
     }
-  },
-  "processor": {
-    "type": "orm-profiler",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",
     "config": {}
   },
   "workflowConfig": {
+    "loggerLevel": "INFO",
     "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
-    }
+      "type": "OpenMetadata",
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "no-auth"
+    },
   }
 }
 ```
 
 #### Source Configuration
 
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/mssqlConnection.json).
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/oracleConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
 Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
@@ -396,7 +314,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-mssql-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-oracle-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 
