@@ -34,5 +34,43 @@ module.exports = (on, config) => {
   config.env.snowflakeDatabase = process.env.CYPRESS_SNOWFLAKE_DATABASE;
   config.env.snowflakeWarehouse = process.env.CYPRESS_SNOWFLAKE_WAREHOUSE;
 
+  // bigquery
+  config.env.bigqueryClientEmail = process.env.CYPRESS_BQ_CLIENT_EMAIL;
+  config.env.bigqueryProjectId = process.env.CYPRESS_BQ_PROJECT_ID;
+  config.env.bigqueryPrivateKeyId = process.env.CYPRESS_BQ_PRIVATE_KEY_ID;
+  config.env.bigqueryPrivateKey = process.env.CYPRESS_BQ_PRIVATE_KEY;
+  config.env.bigqueryClientId = process.env.CYPRESS_BQ_CLIENT_ID;
+
+  // Redshift
+  config.env.redshiftHost = process.env.CYPRESS_REDSHIFT_HOST;
+  config.env.redshiftUsername = process.env.CYPRESS_REDSHIFT_USERNAME;
+  config.env.redshiftPassword = process.env.CYPRESS_REDSHIFT_PASSWORD;
+  config.env.redshiftDatabase = process.env.CYPRESS_REDSHIFT_DATABASE;
+
+  // Metabase
+  config.env.metabaseUsername = process.env.CYPRESS_METABASE_USERNAME;
+  config.env.metabasePassword = process.env.CYPRESS_METABASE_PASSWORD;
+  config.env.metabaseDbServiceName =
+    process.env.CYPRESS_METABASE_DB_SERVICE_NAME;
+  config.env.metabaseHostPort = process.env.CYPRESS_METABASE_HOST_PORT;
+
+  // Superset
+  config.env.supersetUsername = process.env.CYPRESS_SUPERSET_USERNAME;
+  config.env.supersetPassword = process.env.CYPRESS_SUPERSET_PASSWORD;
+  config.env.supersetHostPort = process.env.CYPRESS_SUPERSET_HOST_PORT;
+
+  // Kafka
+  config.env.kafkaBootstrapServers =
+    process.env.CYPRESS_KAFKA_BOOTSTRAP_SERVERS;
+
+  // Glue
+  config.env.glueAwsAccessKeyId = process.env.CYPRESS_GLUE_ACCESS_KEY;
+  config.env.glueAwsSecretAccessKey = process.env.CYPRESS_GLUE_SECRET_KEY;
+  config.env.glueAwsRegion = process.env.CYPRESS_GLUE_AWS_REGION;
+  config.env.glueEndPointURL = process.env.CYPRESS_GLUE_ENDPOINT;
+  config.env.glueStorageServiceName = process.env.CYPRESS_GLUE_STORAGE_SERVICE;
+  config.env.gluePipelineServiceName =
+    process.env.CYPRESS_GLUE_PIPELINE_SERVICE;
+
   return config;
 };

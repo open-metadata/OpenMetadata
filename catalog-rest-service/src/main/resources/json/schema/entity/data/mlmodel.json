@@ -5,6 +5,7 @@
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.MlModel",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "featureType": {
       "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",

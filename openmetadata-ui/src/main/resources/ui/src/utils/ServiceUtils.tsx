@@ -28,6 +28,7 @@ import {
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
   addServiceGuide,
+  addServiceGuideWOAirflow,
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
@@ -510,7 +511,8 @@ export const getServiceIngestionStepGuide = (
   serviceName: string,
   ingestionType: IngestionPipelineType,
   showDeployTitle: boolean,
-  isUpdated = false
+  isUpdated: boolean,
+  isAirflowSetup = true
 ) => {
   let guide;
   if (isIngestion) {
@@ -533,14 +535,16 @@ export const getServiceIngestionStepGuide = (
       }
     }
   } else {
-    guide = addServiceGuide.find((item) => item.step === step);
+    guide =
+      !isAirflowSetup && step === 4
+        ? addServiceGuideWOAirflow
+        : addServiceGuide.find((item) => item.step === step);
   }
 
   const getTitle = (title: string) => {
-    const update =
-      isUpdated && showDeployTitle
-        ? title.replace('Added', 'Updated & Deployed')
-        : title.replace('Added', 'Updated');
+    const update = showDeployTitle
+      ? title.replace('Added', 'Updated & Deployed')
+      : title.replace('Added', 'Updated');
     const newTitle = showDeployTitle
       ? title.replace('Added', 'Added & Deployed')
       : title;
@@ -606,4 +610,33 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
     default:
       return ConnectionType.Database;
   }
+};
+
+export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
+  let serviceCat;
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      serviceCat = 'database';
+
+      break;
+    case ServiceCategory.MESSAGING_SERVICES:
+      serviceCat = 'messaging';
+
+      break;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      serviceCat = 'dashboard';
+
+      break;
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      serviceCat = 'pipeline';
+
+      break;
+    default:
+      serviceCat = '';
+
+      break;
+  }
+
+  return [serviceCat, 'service'].join(' ');
 };

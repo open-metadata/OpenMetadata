@@ -5,6 +5,7 @@
   "description": "This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagCategory",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "tagName": {
       "description": "Name of the tag.",
@@ -28,7 +29,8 @@
       ]
     },
     "tag": {
-      "javaType": "org.openmetadata.catalog.type.Tag",
+      "javaType": "org.openmetadata.catalog.entity.tags.Tag",
+      "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
       "properties": {
         "id": {
           "description": "Unique identifier of this entity instance.",
@@ -37,6 +39,10 @@
         "name": {
           "description": "Name of the tag.",
           "$ref": "#/definitions/tagName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this tag category.",
+          "type": "string"
         },
         "fullyQualifiedName": {
           "description": "Unique name of the tag of format Category.PrimaryTag.SecondaryTag.",
@@ -76,6 +82,10 @@
           "type": "boolean",
           "default": false
         },
+        "changeDescription": {
+          "description": "Change that lead to this version of the entity.",
+          "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+        },
         "children": {
           "description": "Tags under this tag group or empty for tags at the leaf level.",
           "type": "array",
@@ -95,6 +105,10 @@
     },
     "name": {
       "$ref": "#/definitions/tagName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag category.",

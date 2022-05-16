@@ -28,6 +28,12 @@ export const addServiceGuide = [
   },
 ];
 
+export const addServiceGuideWOAirflow = {
+  title: 'Service Created Successfully',
+  description:
+    'The <Service Name> has been created successfully. Visit the newly created service to take a look at the details. Ensure that you have Airflow set up correctly before heading to ingest metadata.',
+};
+
 const schedulingIngestionGuide = {
   step: 3,
   title: 'Schedule for Ingestion',

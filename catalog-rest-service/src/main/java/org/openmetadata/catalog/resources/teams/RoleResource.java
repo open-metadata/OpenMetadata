@@ -106,7 +106,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {
-              EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName());
+              EntityReference ref =
+                  Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
               policy.setId(ref.getId());
             }
             dao.initSeedData(role);

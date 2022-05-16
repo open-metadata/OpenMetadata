@@ -16,17 +16,26 @@ package org.openmetadata.catalog.util;
 import static org.openmetadata.catalog.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion.VersionFlag;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -36,10 +45,13 @@ import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
+import org.openmetadata.catalog.entity.Type;
 
 public final class JsonUtils {
+  public static final String TYPE_ANNOTATION = "@om-type";
   public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
@@ -190,5 +202,53 @@ public final class JsonUtils {
     try (JsonReader reader = Json.createReader(new StringReader(s))) {
       return reader.readValue();
     }
+  }
+
+  public static String jsonToString(String json) {
+    return String.valueOf(JsonStringEncoder.getInstance().quoteAsString(json));
+  }
+
+  public static JsonSchema getJsonSchema(String schema) {
+    return schemaFactory.getSchema(schema);
+  }
+
+  public static boolean hasAnnotation(JsonNode jsonNode, String annotation) {
+    String comment = String.valueOf(jsonNode.get("$comment"));
+    return comment != null && comment.contains(annotation);
+  }
+
+  /**
+   * Get all the types from the `definitions` section of a JSON schema file that are annotated with "$comment" field set
+   * to "@om-type".
+   */
+  public static List<Type> getTypes(String jsonSchemaFile) throws IOException {
+    JsonNode node =
+        OBJECT_MAPPER.readTree(
+            Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+    if (node.get("definitions") == null) {
+      return Collections.emptyList();
+    }
+
+    String fileName = Paths.get(jsonSchemaFile).getFileName().toString();
+    String jsonNamespace = fileName.replace(" ", "").replace(".json", "");
+
+    List<Type> types = new ArrayList<>();
+    Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
+    while (definitions != null && definitions.hasNext()) {
+      Entry<String, JsonNode> entry = definitions.next();
+      JsonNode value = entry.getValue();
+      if (JsonUtils.hasAnnotation(value, JsonUtils.TYPE_ANNOTATION)) {
+        String description = String.valueOf(value.get("description"));
+        Type type =
+            new Type()
+                .withName(entry.getKey())
+                .withNameSpace(jsonNamespace)
+                .withDescription(description)
+                .withDisplayName(entry.getKey())
+                .withSchema(value.toPrettyString());
+        types.add(type);
+      }
+    }
+    return types;
   }
 }

@@ -19,13 +19,14 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
     ConnectionOptions,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
@@ -64,6 +65,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
@@ -119,10 +121,10 @@ def get_connection(
 
 @get_connection.register
 def _(connection: DatabricksConnection, verbose: bool = False):
-    args = connection.connectionArguments
-    if not args:
-        connection.connectionArguments = dict()
-        connection.connectionArguments["http_path"] = connection.httpPath
+    if connection.httpPath:
+        if not connection.connectionArguments:
+            connection.connectionArguments = ConnectionArguments()
+        connection.connectionArguments.http_path = connection.httpPath
     return create_generic_connection(connection, verbose)
 
 
@@ -286,8 +288,8 @@ def test_connection(connection) -> None:
     :return: None or raise an exception if we cannot connect
     """
     try:
-        with connection.connect() as _:
-            pass
+        with connection.connect() as conn:
+            conn.execute(ConnTestFn())
     except OperationalError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."

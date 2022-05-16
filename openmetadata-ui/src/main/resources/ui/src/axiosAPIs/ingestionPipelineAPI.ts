@@ -72,3 +72,7 @@ export const updateIngestionPipeline = (
 ): Promise<AxiosResponse> => {
   return APIClient.put(`/services/ingestionPipelines`, data);
 };
+
+export const checkAirflowStatus = (): Promise<AxiosResponse> => {
+  return APIClient.get('/services/ingestionPipelines/status');
+};
