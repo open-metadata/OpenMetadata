@@ -188,10 +188,7 @@ class ClickhouseSource(SQLSource):
         else:
             query = "show databases"
             results = self.connection.execute(query)
-            db_list = []
-
-            for res in results:
-                db_list.append(list(res))
+            db_list = [list(res) for res in results]
 
             for row in db_list:
                 try:
