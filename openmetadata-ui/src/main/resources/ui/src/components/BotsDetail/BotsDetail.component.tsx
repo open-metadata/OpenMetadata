@@ -355,7 +355,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getCenterLayout = () => {
     return (
-      <div className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4">
+      <div
+        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4"
+        data-testid="center-panel">
         <div className="tw-flex tw-justify-between tw-items-center">
           <h6 className="tw-mb-2 tw-self-center">
             {generateToken ? 'Generate JWT token' : 'JWT Token'}
