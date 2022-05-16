@@ -94,8 +94,7 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **username**: Enter the username of your Presto user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Presto user in the _Password_ field.
 * **hostPort**: Enter the fully qualified hostname and port number for your Presto deployment in the _Host and Port_ field.
-* **database** (Optional): If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
-* **catalog:** Presto offers a catalog feature where all the databases are stored. Providing the Catalog is mandatory.
+* **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Presto during the connection. These details must be added as Key-Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Presto during the connection. These details must be added as Key-Value pairs
 
