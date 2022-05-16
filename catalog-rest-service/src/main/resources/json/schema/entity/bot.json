@@ -4,6 +4,8 @@
   "title": "Bot",
   "description": "This schema defines a Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It performs this task as a special user in the system.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.Bot",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
 
   "properties": {
     "id": {
@@ -13,6 +15,10 @@
     "name": {
       "description": "Name of the bot.",
       "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",

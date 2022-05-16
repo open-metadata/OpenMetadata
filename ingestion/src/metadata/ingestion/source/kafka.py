@@ -155,9 +155,10 @@ class KafkaSource(Source[CreateTopicRequest]):
                             ).value
 
                         if "cleanup.policy" in config_response:
-                            topic.cleanupPolicies = [
-                                config_response.get("cleanup.policy").value
-                            ]
+                            cleanup_policies = config_response.get(
+                                "cleanup.policy"
+                            ).value
+                            topic.cleanupPolicies = cleanup_policies.split(",")
 
                         topic_config = {}
                         for key, conf_response in config_response.items():

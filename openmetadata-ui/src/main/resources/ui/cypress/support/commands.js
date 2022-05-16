@@ -57,7 +57,7 @@ Cypress.Commands.add('loginByGoogleApi', () => {
 
       window.localStorage.setItem('googleCypress', JSON.stringify(userItem));
       window.localStorage.setItem('oidcIdToken', id_token);
-      cy.visit('http://localhost:8585/');
+      cy.visit('/');
     });
   });
 });

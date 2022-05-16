@@ -30,4 +30,5 @@ export interface AddServiceProps {
   showDeployButton?: boolean;
   slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
   onIngestionDeploy?: () => Promise<void>;
+  onAirflowStatusCheck: () => Promise<void>;
 }

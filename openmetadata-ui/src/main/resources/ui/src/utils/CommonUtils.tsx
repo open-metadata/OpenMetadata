@@ -44,6 +44,7 @@ import {
 } from '../generated/entity/teams/user';
 import { getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
+import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -635,4 +636,16 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
       entity
     )} will permanently remove its metadata from OpenMetadata.`;
   }
+};
+
+export const getExploreLinkByFilter = (
+  filter: Ownership,
+  userDetails: User,
+  nonSecureUserDetails: User
+) => {
+  return getExplorePathWithInitFilters(
+    '',
+    undefined,
+    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
+  );
 };

@@ -76,5 +76,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["hostPort", "username", "catalog"]
 }

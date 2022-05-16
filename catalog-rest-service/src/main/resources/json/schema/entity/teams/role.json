@@ -3,6 +3,8 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Role",
   "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
+  "javaType": "org.openmetadata.catalog.entity.teams.Role",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "type": "object",
   "definitions": {
     "roleName": {
@@ -16,6 +18,10 @@
     },
     "name": {
       "$ref": "#/definitions/roleName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Consumer'.",

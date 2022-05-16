@@ -34,12 +34,9 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -67,19 +64,17 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   }
 
   @Override
-  public EntityInterface<DatabaseSchema> validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
+  public DatabaseSchema validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
       throws HttpResponseException {
     // Add tables to the database schema
     if (schema.getTables() == null) {
-      EntityInterface<DatabaseSchema> entityInterface = getEntityInterface(schema);
-
       TableResourceTest tableResourceTest = new TableResourceTest();
       CreateTable create =
-          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(entityInterface.getEntityReference());
-      Table t1 = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getEntityReference());
+      tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
       create.withName("t2");
-      Table t2 = tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
+      tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
     // Now query request different fields
@@ -101,7 +96,7 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
     assertListNotNull(schema.getTables());
     TestUtils.validateEntityReferences(schema.getTables(), true);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(schema);
+    return schema;
   }
 
   @Override
@@ -120,13 +115,15 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   }
 
   @Override
+  public EntityReference getContainer(DatabaseSchema entity) {
+    return entity.getDatabase();
+  }
+
+  @Override
   public void validateCreatedEntity(
       DatabaseSchema schema, CreateDatabaseSchema createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(schema),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        schema, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Validate service
     assertNotNull(schema.getServiceType());
@@ -139,20 +136,12 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   @Override
   public void compareEntities(DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(
         FullyQualifiedName.add(updated.getDatabase().getFullyQualifiedName(), updated.getName()),
         updated.getFullyQualifiedName());
-  }
-
-  @Override
-  public EntityInterface<DatabaseSchema> getEntityInterface(DatabaseSchema entity) {
-    return new DatabaseSchemaEntityInterface(entity);
   }
 
   @Override

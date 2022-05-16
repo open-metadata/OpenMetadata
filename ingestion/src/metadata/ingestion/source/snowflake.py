@@ -148,18 +148,25 @@ class SnowflakeSource(SQLSource):
     def next_record(self) -> Iterable[Entity]:
         for inspector in self.get_databases():
             for schema in inspector.get_schema_names():
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name=schema
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{self.service_connection.database}.{schema}",
-                        "{} pattern not allowed".format("Schema"),
+                try:
+                    if filter_by_schema(
+                        self.source_config.schemaFilterPattern, schema_name=schema
+                    ):
+                        self.status.filter(
+                            f"{self.config.serviceName}.{self.service_connection.database}.{schema}",
+                            "{} pattern not allowed".format("Schema"),
+                        )
+                        continue
+                    self.connection.execute(
+                        f"USE {self.service_connection.database}.{schema}"
                     )
-                    continue
-                self.connection.execute(
-                    f"USE {self.service_connection.database}.{schema}"
-                )
-                yield from self.fetch_tables(inspector=inspector, schema=schema)
+                    yield from self.fetch_tables(inspector=inspector, schema=schema)
+                    if self.source_config.markDeletedTables:
+                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
+                        yield from self.delete_tables(schema_fqdn)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.info(err)
 
     def add_tags_to_table(self, schema: str, table_name: str, table_entity):
         tag_category_list = self.fetch_tags(schema=schema, table_name=table_name)

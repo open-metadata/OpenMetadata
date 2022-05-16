@@ -4,6 +4,8 @@
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.GlossaryTerm",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "name": {
       "description": "Name that identifies a glossary term.",
