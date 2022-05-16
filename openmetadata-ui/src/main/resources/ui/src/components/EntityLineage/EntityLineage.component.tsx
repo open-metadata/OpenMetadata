@@ -852,7 +852,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               </ReactFlow>
             </ReactFlowProvider>
           </div>
-          {!isEmpty(selectedNode) ? (
+          {!isEmpty(selectedNode) && !isEditMode ? (
             <EntityInfoDrawer
               isMainNode={selectedNode.name === lineageData.entity?.name}
               selectedNode={selectedNode}
