@@ -154,40 +154,50 @@ describe('Test BotsDetail Component', () => {
 
     expect(tokenForm).toBeInTheDocument();
 
-    const confirmButton = await findByTestId(tokenForm, 'confirm-button');
+    const generateButton = await findByTestId(tokenForm, 'generate-button');
     const discardButton = await findByTestId(tokenForm, 'discard-button');
 
-    expect(confirmButton).toBeInTheDocument();
+    expect(generateButton).toBeInTheDocument();
     expect(discardButton).toBeInTheDocument();
   });
 
-  it('Should call generate token API if generate token button is clicked', async () => {
-    (getUserToken as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        data: { ...mockToken, JWTToken: '', JWTTokenExpiresAt: '' },
-      })
-    );
+  it('Test Re-generate token flow', async () => {
     const { container } = render(<BotsDetail {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
     const generateToken = await findByTestId(container, 'generate-token');
 
-    expect(generateToken).toHaveTextContent('Generate new token');
+    expect(generateToken).toHaveTextContent('Re-generate token');
 
     fireEvent.click(generateToken);
 
+    // should open confirmartion before re-generating token
+    const confirmationModal = await findByTestId(
+      container,
+      'confirmation-modal'
+    );
+
+    expect(confirmationModal).toBeInTheDocument();
+
+    const confirmButton = await findByTestId(confirmationModal, 'save-button');
+
+    expect(confirmButton).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+
+    // render token form on confirmaton
     const tokenForm = await findByTestId(container, 'generate-token-form');
 
     expect(tokenForm).toBeInTheDocument();
 
-    const confirmButton = await findByTestId(tokenForm, 'confirm-button');
+    const generateButton = await findByTestId(tokenForm, 'generate-button');
     const discardButton = await findByTestId(tokenForm, 'discard-button');
 
-    expect(confirmButton).toBeInTheDocument();
+    expect(generateButton).toBeInTheDocument();
     expect(discardButton).toBeInTheDocument();
 
-    fireEvent.click(confirmButton);
+    fireEvent.click(generateButton);
 
     expect(generateUserToken).toBeCalled();
   });

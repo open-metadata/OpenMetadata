@@ -317,7 +317,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               Cancel
             </Button>
             <Button
-              data-testid="confirm-button"
+              data-testid="generate-button"
               size="regular"
               theme="primary"
               type="submit"
