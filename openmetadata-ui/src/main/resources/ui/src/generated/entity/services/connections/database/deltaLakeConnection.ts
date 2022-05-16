@@ -17,20 +17,21 @@
  */
 export interface DeltaLakeConnection {
   /**
-   * pySpark App Name
+   * pySpark App Name.
    */
   appName?: string;
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
-   * File path of local Hive Metastore.
+   * File path of the local Hive Metastore.
    */
   metastoreFilePath?: string;
   /**
-   * Host and port of remote Hive Metastore.
+   * Host and port of the remote Hive Metastore.
    */
   metastoreHostPort?: string;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */

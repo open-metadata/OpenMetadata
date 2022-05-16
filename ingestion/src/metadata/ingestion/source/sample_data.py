@@ -12,7 +12,6 @@
 import csv
 import json
 import os
-import random
 import sys
 import traceback
 import uuid
@@ -35,6 +34,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -378,6 +378,7 @@ class SampleDataSource(Source[Entity]):
             location_ev = Location(
                 id=uuid.uuid4(),
                 name=location["name"],
+                path=location["path"],
                 displayName=location["displayName"],
                 description=location["description"],
                 locationType=location["locationType"],
@@ -421,7 +422,8 @@ class SampleDataSource(Source[Entity]):
                 )
             location_metadata = Location(
                 id=uuid.uuid4(),
-                name="s3://glue_bucket/dwh/schema/" + table["name"],
+                name=table["name"],
+                path="s3://glue_bucket/dwh/schema/" + table["name"],
                 description=table["description"],
                 locationType=location_type,
                 service=EntityReference(
@@ -457,24 +459,7 @@ class SampleDataSource(Source[Entity]):
         )
         resp = self.metadata.list_entities(entity=User, limit=5)
         self.user_entity = resp.entities
-        user_entity_len = min(len(self.user_entity), 5)
         for table in self.tables["tables"]:
-            try:
-                for sql_object in table["tableQueries"]:
-                    user_entity = self.user_entity[
-                        random.choice(range(user_entity_len))
-                    ]
-                    user_dict = {
-                        "id": user_entity.id.__root__,
-                        "name": user_entity.name.__root__,
-                        "displayName": user_entity.displayName,
-                        "href": user_entity.href,
-                        "description": user_entity.description,
-                    }
-                    sql_object["user"] = EntityReference(**user_dict, type="user")
-            except Exception as err:
-                logger.debug(traceback.print_exc())
-                logger.debug(err)
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(
                 table=table_metadata, database=db, database_schema=schema
@@ -487,7 +472,7 @@ class SampleDataSource(Source[Entity]):
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopicRequest(**topic)
+            create_topic = Topic(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
@@ -589,7 +574,7 @@ class SampleDataSource(Source[Entity]):
                 )
                 yield model_ev
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:

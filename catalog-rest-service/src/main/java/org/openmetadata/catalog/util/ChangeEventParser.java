@@ -35,6 +35,7 @@ import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -50,7 +51,8 @@ public final class ChangeEventParser {
     DELETE
   }
 
-  public static Map<EntityLink, String> getFormattedMessages(ChangeDescription changeDescription, Object entity) {
+  public static Map<EntityLink, String> getFormattedMessages(
+      ChangeDescription changeDescription, EntityInterface entity) {
     // Store a map of entityLink -> message
     Map<EntityLink, String> messages;
 
@@ -67,7 +69,7 @@ public final class ChangeEventParser {
   }
 
   private static Map<EntityLink, String> getFormattedMessages(
-      Object entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
+      EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
     for (var field : fields) {
@@ -134,7 +136,7 @@ public final class ChangeEventParser {
 
   /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
   private static Map<EntityLink, String> getFormattedMessages(
-      Object entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
+      EntityInterface entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB
     // will be recorded as "Removed column colA" and "Added column colB"
     // This method will try to detect such changes and combine those events into one update.
@@ -175,8 +177,8 @@ public final class ChangeEventParser {
     return messages;
   }
 
-  private static EntityLink getEntityLink(String fieldName, Object entity) {
-    EntityReference entityReference = Entity.getEntityReference(entity);
+  private static EntityLink getEntityLink(String fieldName, EntityInterface entity) {
+    EntityReference entityReference = entity.getEntityReference();
     String entityType = entityReference.getType();
     String entityFQN = entityReference.getFullyQualifiedName();
     String arrayFieldName = null;

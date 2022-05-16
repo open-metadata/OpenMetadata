@@ -22,12 +22,11 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getOwnerIds } from '../../utils/CommonUtils';
+import { getExploreLinkByFilter } from '../../utils/CommonUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
@@ -53,6 +52,8 @@ const MyData: React.FC<MyDataProps> = ({
   followedData,
   feedData,
   feedFilter,
+  ownedDataCount,
+  followedDataCount,
   feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
@@ -100,14 +101,6 @@ const MyData: React.FC<MyDataProps> = ({
     );
   };
 
-  const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
-      filter,
-      AppState.userDetails,
-      AppState.nonSecureUserDetails
-    ).join()}`;
-  };
-
   const getLeftPanel = () => {
     return (
       <div className="tw-mt-12">
@@ -138,9 +131,13 @@ const MyData: React.FC<MyDataProps> = ({
               {ownedData.length ? (
                 <Link
                   data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.OWNER,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({ownedDataCount})</span>
                   </span>
                 </Link>
               ) : null}
@@ -158,9 +155,13 @@ const MyData: React.FC<MyDataProps> = ({
               {followedData.length ? (
                 <Link
                   data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.FOLLOWERS,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All
+                    View All <span>({followedDataCount})</span>
                   </span>
                 </Link>
               ) : null}

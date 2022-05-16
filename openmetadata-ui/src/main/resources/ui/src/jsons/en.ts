@@ -22,6 +22,7 @@ const jsonData = {
     'add-ingestion-error': 'Error while adding ingestion workflow!',
     'add-service-error': 'Error while adding service!',
 
+    'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
@@ -152,6 +153,8 @@ const jsonData = {
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
+    'invalid-url': 'Url is invalid.',
+    'is-required': 'is required',
   },
   label: {
     'delete-entity-text':

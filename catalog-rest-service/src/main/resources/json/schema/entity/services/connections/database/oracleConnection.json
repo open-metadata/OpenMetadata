@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Oracle. This user should have privileges to read all the metadata in Oracle.",
+      "description": "Username to connect to Oracle. This user should have privileges to read all the metadata in Oracle.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Oracle.",
+      "description": "Password to connect to Oracle.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Oracle.",
+      "description": "Host and port of the Oracle service.",
       "type": "string"
     },
     "database": {

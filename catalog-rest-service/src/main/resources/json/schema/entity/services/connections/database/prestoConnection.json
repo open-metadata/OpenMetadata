@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect  to the Postgres. This user should have privileges to read all the metadata in Postgres.",
+      "description": "Username to connect to Presto. This user should have privileges to read all the metadata in Postgres.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect  to the Postgres.",
+      "description": "Password to connect to Presto.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Postgres.",
+      "description": "Host and port of the Presto service.",
       "type": "string"
     },
     "database": {
@@ -76,8 +76,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username", "catalog"]
 }

@@ -4,6 +4,8 @@
   "title": "Topic",
   "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Topic",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "schemaType": {
       "description": "Schema type used for the message.",
@@ -33,6 +35,21 @@
       "javaType": "org.openmetadata.catalog.type.topic.TopicConfig",
       "description": "Contains key/value pair of topic configuration.",
       "type": "object"
+    },
+    "topicSampleData": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.topic.TopicSampleData",
+      "description": "This schema defines the type to capture sample data for a topic.",
+      "properties": {
+        "messages": {
+          "description": "List of local sample messages for a topic.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -98,7 +115,7 @@
     },
     "retentionTime": {
       "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
-      "type": "integer"
+      "type": "number"
     },
     "replicationFactor": {
       "description": "Replication Factor in integer (more than 1).",
@@ -114,12 +131,17 @@
     },
     "retentionSize": {
       "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
-      "type": "integer",
+      "type": "number",
       "default": "-1"
     },
     "topicConfig": {
       "description": "Contains key/value pair of topic configuration.",
       "$ref": "#/definitions/topicConfig"
+    },
+    "sampleData": {
+      "description": "Sample data for a topic.",
+      "$ref": "#/definitions/topicSampleData",
+      "default": null
     },
     "owner": {
       "description": "Owner of this topic.",

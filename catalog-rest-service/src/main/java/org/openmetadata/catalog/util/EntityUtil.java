@@ -29,12 +29,14 @@ import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
@@ -84,7 +86,7 @@ public final class EntityUtil {
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
+  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
@@ -233,7 +235,7 @@ public final class EntityUtil {
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
-    private final List<String> fieldList;
+    @Getter private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
@@ -260,10 +262,6 @@ public final class EntityUtil {
     public boolean contains(String field) {
       return fieldList.contains(field);
     }
-
-    public List<String> getList() {
-      return fieldList;
-    }
   }
 
   public static List<UUID> getIDList(List<EntityReference> refList) {
@@ -281,6 +279,11 @@ public final class EntityUtil {
   /** Entity version extension name prefix formed by `entityType.version`. Example - `table.version` */
   public static String getVersionExtensionPrefix(String entityType) {
     return String.format("%s.%s", entityType, "version");
+  }
+
+  /** Entity attribute extension name formed by `entityType.attributeName`. Example - `table.<customAttributeName>` */
+  public static String getAttributeExtensionPrefix(String entityType, String attributeName) {
+    return String.format("%s.%s", entityType, attributeName);
   }
 
   public static Double getVersion(String extension) {

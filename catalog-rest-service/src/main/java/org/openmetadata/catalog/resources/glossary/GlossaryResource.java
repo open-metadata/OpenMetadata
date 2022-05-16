@@ -341,7 +341,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }

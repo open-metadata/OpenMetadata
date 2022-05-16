@@ -31,7 +31,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
@@ -41,7 +40,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MessagingConnection;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -80,7 +78,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
             .withServiceType(MessagingServiceType.Kafka)
             .withConnection(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
+    KAFKA_REFERENCE = messagingService.getEntityReference();
 
     // Create Pulsar messaging service
     createMessaging
@@ -89,7 +87,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
+    PULSAR_REFERENCE = messagingService.getEntityReference();
   }
 
   @Test
@@ -205,10 +203,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   public void validateCreatedEntity(
       MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        service, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     MessagingConnection expectedMessagingConnection = createRequest.getConnection();
     MessagingConnection actualMessagingConnection = service.getConnection();
     validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
@@ -220,27 +215,22 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
-    return new MessagingServiceEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<MessagingService> validateGetWithDifferentFields(MessagingService service, boolean byName)
+  public MessagingService validateGetWithDifferentFields(MessagingService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(service);
+    return service;
   }
 
   @Override

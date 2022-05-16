@@ -93,7 +93,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     }
   }
 
-  static final String FIELDS = "owner,followers,tags";
+  static final String FIELDS = "owner,followers,tags,path";
 
   @GET
   @Operation(
@@ -448,6 +448,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return new Location()
         .withId(UUID.randomUUID())
         .withName(create.getName())
+        .withPath(create.getPath())
         .withDescription(create.getDescription())
         .withService(create.getService())
         .withLocationType(create.getLocationType())

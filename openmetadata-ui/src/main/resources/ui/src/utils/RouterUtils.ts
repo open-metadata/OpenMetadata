@@ -15,10 +15,13 @@ import {
   IN_PAGE_SEARCH_ROUTES,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
+  PLACEHOLDER_ROUTE_SEARCHQUERY,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
+  PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
+import { initialFilterQS } from '../constants/explore.constants';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -76,6 +79,35 @@ export const getEditIngestionPath = (
     .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
+
+  return path;
+};
+
+/**
+ *
+ * @param searchQuery search text
+ * @param tab selected explore result tab
+ * @param filter selected facet filters
+ * @returns
+ */
+export const getExplorePathWithInitFilters = (
+  searchQuery = '',
+  tab = 'tables',
+  filter = ''
+) => {
+  let path = ROUTES.EXPLORE_WITH_SEARCH;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return filter
+    ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
+    : path;
+};
+
+export const getServicesWithTabPath = (serviceCat: string) => {
+  let path = ROUTES.SERVICES_WITH_TAB;
+  path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
 
   return path;
 };

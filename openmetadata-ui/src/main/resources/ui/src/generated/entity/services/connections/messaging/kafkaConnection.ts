@@ -19,7 +19,15 @@ export interface KafkaConnection {
   /**
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
-  bootstrapServers?: string;
+  bootstrapServers: string;
+  /**
+   * Confluent Kafka Consumer Config
+   */
+  consumerConfig?: { [key: string]: any };
+  /**
+   * Confluent Kafka Schema Registry Config.
+   */
+  schemaRegistryConfig?: { [key: string]: any };
   /**
    * Confluent Kafka Schema Registry URL.
    */

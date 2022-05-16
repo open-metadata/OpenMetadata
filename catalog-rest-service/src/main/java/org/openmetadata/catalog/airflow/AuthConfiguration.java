@@ -20,6 +20,7 @@ import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
 import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
+import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
 
 public class AuthConfiguration {
 
@@ -32,4 +33,6 @@ public class AuthConfiguration {
   @Getter @Setter private AzureSSOClientConfig azure;
 
   @Getter @Setter private CustomOIDCSSOClientConfig customOidc;
+
+  @Getter @Setter private OpenMetadataJWTClientConfig openMetadataJWTClientConfig;
 }

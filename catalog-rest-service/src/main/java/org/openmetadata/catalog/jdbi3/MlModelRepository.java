@@ -25,22 +25,21 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
+import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlFeature;
 import org.openmetadata.catalog.type.MlFeatureSource;
 import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -61,10 +60,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MODEL_UPDATE_FIELDS);
   }
 
-  public static String getFQN(MlModel model) {
-    return FullyQualifiedName.build(model.getName());
-  }
-
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
@@ -83,11 +78,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withName(original.getName())
         .withId(original.getId());
-  }
-
-  @Override
-  public EntityInterface<MlModel> getEntityInterface(MlModel entity) {
-    return new MlModelEntityInterface(entity);
   }
 
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
@@ -125,14 +115,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) throws IOException {
     if (source.getDataSource() != null) {
-      Entity.getEntityReferenceById(source.getDataSource().getType(), source.getDataSource().getId());
+      Entity.getEntityReferenceById(
+          source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
     }
   }
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
-    mlModel.setFullyQualifiedName(getFQN(mlModel));
-
+    setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
@@ -207,144 +197,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     deleteTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
   }
 
-  public static class MlModelEntityInterface extends EntityInterface<MlModel> {
-    public MlModelEntityInterface(MlModel entity) {
-      super(MLMODEL, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : MlModelRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public MlModel getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public MlModel withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
     public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
@@ -353,15 +205,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      MlModel origMlModel = original.getEntity();
-      MlModel updatedMlModel = updated.getEntity();
-      updateAlgorithm(origMlModel, updatedMlModel);
-      updateDashboard(origMlModel, updatedMlModel);
-      updateMlFeatures(origMlModel, updatedMlModel);
-      updateMlHyperParameters(origMlModel, updatedMlModel);
-      updateMlStore(origMlModel, updatedMlModel);
-      updateServer(origMlModel, updatedMlModel);
-      updateTarget(origMlModel, updatedMlModel);
+      updateAlgorithm(original, updated);
+      updateDashboard(original, updated);
+      updateMlFeatures(original, updated);
+      updateMlHyperParameters(original, updated);
+      updateMlStore(original, updated);
+      updateServer(original, updated);
+      updateTarget(original, updated);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) throws JsonProcessingException {

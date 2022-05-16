@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
+import { FormSubmitType } from '../../../enums/form.enum';
 import SuccessScreen from './SuccessScreen';
 
 describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
     const { container } = render(
       <SuccessScreen
+        isAirflowSetup
         showIngestionButton
         handleViewServiceClick={jest.fn()}
         name="NewService"
+        state={FormSubmitType.ADD}
+        successMessage={<span>title</span>}
       />
     );
 
@@ -36,11 +40,55 @@ describe('Test SuccessScreen component', () => {
       container,
       'add-ingestion-button'
     );
+    const statusMsg = queryByTestId(container, 'airflow-status-msg');
+    const airflowDoc = queryByTestId(container, 'airflow-doc-link');
+    const statusCheck = queryByTestId(container, 'airflow-status-check');
 
     expect(succsessScreenContainer).toBeInTheDocument();
     expect(successIcon).toBeInTheDocument();
     expect(successLine).toBeInTheDocument();
     expect(viewServiceBtn).toBeInTheDocument();
     expect(addIngestionBtn).toBeInTheDocument();
+    expect(statusMsg).not.toBeInTheDocument();
+    expect(airflowDoc).not.toBeInTheDocument();
+    expect(statusCheck).not.toBeInTheDocument();
+  });
+
+  it('SuccessScreen component should render with airflow helper text', async () => {
+    const { container } = render(
+      <SuccessScreen
+        showIngestionButton
+        handleViewServiceClick={jest.fn()}
+        isAirflowSetup={false}
+        name="NewService"
+        state={FormSubmitType.ADD}
+        successMessage={<span>title</span>}
+        onCheckAirflowStatus={jest.fn()}
+      />
+    );
+
+    const succsessScreenContainer = await findByTestId(
+      container,
+      'success-screen-container'
+    );
+    const successIcon = await findByTestId(container, 'success-icon');
+    const successLine = await findByTestId(container, 'success-line');
+    const viewServiceBtn = await findByTestId(container, 'view-service-button');
+    const addIngestionBtn = await findByTestId(
+      container,
+      'add-ingestion-button'
+    );
+    const statusMsg = await findByTestId(container, 'airflow-status-msg');
+    const airflowDoc = await findByTestId(container, 'airflow-doc-link');
+    const statusCheck = await findByTestId(container, 'airflow-status-check');
+
+    expect(succsessScreenContainer).toBeInTheDocument();
+    expect(successIcon).toBeInTheDocument();
+    expect(successLine).toBeInTheDocument();
+    expect(viewServiceBtn).toBeInTheDocument();
+    expect(addIngestionBtn).toBeInTheDocument();
+    expect(statusMsg).toBeInTheDocument();
+    expect(airflowDoc).toBeInTheDocument();
+    expect(statusCheck).toBeInTheDocument();
   });
 });

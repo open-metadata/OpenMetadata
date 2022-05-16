@@ -107,7 +107,7 @@ class PowerbiSource(Source[Entity]):
         """
         for chart in charts:
             try:
-                if not filter_by_chart(
+                if filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
                     self.status.failure(
@@ -128,9 +128,9 @@ class PowerbiSource(Source[Entity]):
                 self.charts.append(chart["id"])
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(repr(err))
-                self.status.failure(chart["title"], err)
+                self.status.failure(chart["title"], repr(err))
 
     def get_dashboards(self):
         """Get dashboard method"""
@@ -140,7 +140,7 @@ class PowerbiSource(Source[Entity]):
             try:
                 dashboard_details = dashboard_service.get_dashboard(dashboard_id["id"])
                 self.charts = []
-                if not filter_by_dashboard(
+                if filter_by_dashboard(
                     self.source_config.dashboardFilterPattern,
                     dashboard_details["displayName"],
                 ):
@@ -165,9 +165,9 @@ class PowerbiSource(Source[Entity]):
                     ),
                 )
             except Exception as err:
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
-                self.status.failure(dashboard_details["displayName"], err)
+                self.status.failure(dashboard_details["displayName"], repr(err))
 
     def get_status(self) -> SourceStatus:
         return self.status

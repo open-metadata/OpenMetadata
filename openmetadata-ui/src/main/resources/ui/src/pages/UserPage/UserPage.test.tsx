@@ -117,6 +117,24 @@ jest.mock('../../axiosAPIs/userAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
 }));
 
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  getUserByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockUserData })),
+  updateUserDetail: jest.fn(),
+}));
+
+jest.mock('../../axiosAPIs/feedsAPI', () => ({
+  getFeedsWithFilter: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+  postFeedById: jest.fn(),
+}));
+
 describe('Test the User Page', () => {
   it('Should render the user component', async () => {
     const { container } = render(<UserPage />, { wrapper: MemoryRouter });

@@ -137,27 +137,31 @@ export interface Connection {
   /**
    * Looker Environment
    *
-   * Tableau Environment Name
+   * Tableau Environment Name.
    */
   env?: string;
   /**
-   * URL to Looker instance.
+   * URL to the Looker instance.
    *
-   * Host and Port of Metabase instance.
+   * Host and Port of the Metabase instance.
    *
-   * URL for the superset instance
+   * Dashboard URL for PowerBI service.
    *
-   * Tableau Server
+   * URL for the Redash instance
+   *
+   * URL for the superset instance.
+   *
+   * Tableau Server.
    */
   hostPort?: string;
   /**
-   * password to connect  to the Looker.
+   * Password to connect to Looker.
    *
-   * password to connect  to the Metabase.
+   * Password to connect to Metabase.
    *
-   * password for the Superset
+   * Password for Superset.
    *
-   * password for the Tableau
+   * Password for Tableau.
    */
   password?: string;
   supportsMetadataExtraction?: boolean;
@@ -166,41 +170,41 @@ export interface Connection {
    */
   type?: DashboardServiceType;
   /**
-   * username to connect  to the Looker. This user should have privileges to read all the
-   * metadata in Looker.
+   * Username to connect to Looker. This user should have privileges to read all the metadata
+   * in Looker.
    *
-   * username to connect  to the Metabase. This user should have privileges to read all the
+   * Username to connect to Metabase. This user should have privileges to read all the
    * metadata in Metabase.
    *
-   * username for the Redash
+   * Username for Redash
    *
-   * username for the Superset
+   * Username for Superset.
    *
-   * username for the Tableau
+   * Username for Tableau.
    */
   username?: string;
   /**
    * Database Service Name for creation of lineage
+   *
+   * Database Service Name to create lineage
+   *
+   * Database Service Name in order to add data lineage.
    */
   dbServiceName?: string;
   /**
-   * client_id for the PowerBI.
+   * client_id for PowerBI.
    */
   clientId?: string;
   /**
-   * clientSecret for the PowerBI.
+   * clientSecret for PowerBI.
    */
   clientSecret?: string;
   /**
-   * Credentials for the PowerBI.
+   * Credentials for PowerBI.
    */
   credentials?: string;
   /**
-   * Dashboard URL for the power BI.
-   */
-  dashboardURL?: string;
-  /**
-   * Dashboard redirect URI for the PowerBI.
+   * Dashboard redirect URI for the PowerBI service.
    */
   redirectURI?: string;
   /**
@@ -212,35 +216,27 @@ export interface Connection {
    */
   apiKey?: string;
   /**
-   * URL for the redash instance
-   */
-  redashURL?: string;
-  /**
    * Additional connection options that can be sent to service during the connection.
    */
   connectionOptions?: { [key: string]: any };
   /**
-   * Database Service to create lineage
-   */
-  dbServiceConnection?: string;
-  /**
-   * authenticaiton provider for the Superset
+   * Authentication provider for the Superset service.
    */
   provider?: string;
   /**
-   * Tableau API version
+   * Tableau API version.
    */
   apiVersion?: string;
   /**
-   * Personal Access Token Name
+   * Personal Access Token Name.
    */
   personalAccessTokenName?: string;
   /**
-   * Personal Access Token Secret
+   * Personal Access Token Secret.
    */
   personalAccessTokenSecret?: string;
   /**
-   * Tableau Site Name
+   * Tableau Site Name.
    */
   siteName?: string;
 }

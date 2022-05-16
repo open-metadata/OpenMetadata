@@ -28,6 +28,7 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
+  databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
   tableFilterPattern,
@@ -35,11 +36,12 @@ const ConfigureIngestion = ({
   chartFilterPattern,
   fqnFilterPattern,
   includeView,
+  markDeletedTables,
   serviceCategory,
   enableDataProfiler,
   ingestSampleData,
   pipelineType,
-  markDeletedTables,
+  showDatabaseFilter,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
@@ -49,14 +51,16 @@ const ConfigureIngestion = ({
   queryLogDuration,
   stageFileLocation,
   resultLimit,
+  enableDebugLog,
+  handleEnableDebugLog,
   getExcludeValue,
   getIncludeValue,
   handleIngestionName,
-  handleMarkDeletedTables,
   handleDescription,
   handleShowFilter,
   handleEnableDataProfiler,
   handleIncludeView,
+  handleMarkDeletedTables,
   handleIngestSampleData,
   handleQueryLogDuration,
   handleStageFileLocation,
@@ -66,11 +70,113 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
+  const getDebugLogToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>Enable Debug Log</label>
+          <ToggleSwitchV1
+            checked={enableDebugLog}
+            handleCheck={handleEnableDebugLog}
+            testId="enable-debug-log"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getDatabaseFieldToggles = () => {
+    return (
+      <>
+        <div>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Include views</label>
+              <ToggleSwitchV1
+                checked={includeView}
+                handleCheck={handleIncludeView}
+                testId="include-views"
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Enable extracting views from the data source
+            </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Enable Data Profiler</label>
+              <ToggleSwitchV1
+                checked={enableDataProfiler}
+                handleCheck={handleEnableDataProfiler}
+                testId="data-profiler"
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Enable Data Profiler to collect metrics and distribution of data
+              in the table. This will however slowdown the metadata extraction.
+            </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Ingest Sample Data</label>
+              <ToggleSwitchV1
+                checked={ingestSampleData}
+                handleCheck={handleIngestSampleData}
+                testId="ingest-sample-data"
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Extract sample data from each table
+            </p>
+            {getSeparator('')}
+          </Field>
+          {getDebugLogToggle()}
+          {!isNil(markDeletedTables) && (
+            <Field>
+              <div className="tw-flex tw-gap-1">
+                <label>Mark Deleted Tables</label>
+                <ToggleSwitchV1
+                  checked={markDeletedTables}
+                  handleCheck={() => {
+                    if (handleMarkDeletedTables) {
+                      handleMarkDeletedTables();
+                    }
+                  }}
+                  testId="mark-deleted"
+                />
+              </div>
+              <p className="tw-text-grey-muted tw-mt-3">
+                Any deleted tables in the data source will be soft deleted in
+                OpenMetadata
+              </p>
+              {getSeparator('')}
+            </Field>
+          )}
+        </div>
+      </>
+    );
+  };
+
   const getMetadataFilterPatternField = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
         return (
           <Fragment>
+            <FilterPattern
+              checked={showDatabaseFilter}
+              excludePattern={databaseFilterPattern?.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.DATABASE)
+              }
+              includePattern={databaseFilterPattern?.includes ?? []}
+              type={FilterPatternEnum.DATABASE}
+            />
             <FilterPattern
               checked={showSchemaFilter}
               excludePattern={schemaFilterPattern?.excludes ?? []}
@@ -94,6 +200,8 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.TABLE}
             />
+            {getSeparator('')}
+            {getDatabaseFieldToggles()}
           </Fragment>
         );
       case ServiceCategory.DASHBOARD_SERVICES:
@@ -122,23 +230,29 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
+            {getSeparator('')}
+            {getDebugLogToggle()}
           </Fragment>
         );
 
       case ServiceCategory.MESSAGING_SERVICES:
         return (
-          <FilterPattern
-            checked={showTopicFilter}
-            excludePattern={topicFilterPattern.excludes ?? []}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleChecked={(value) =>
-              handleShowFilter(value, FilterPatternEnum.TOPIC)
-            }
-            includePattern={topicFilterPattern.includes ?? []}
-            showSeparator={false}
-            type={FilterPatternEnum.TOPIC}
-          />
+          <Fragment>
+            <FilterPattern
+              checked={showTopicFilter}
+              excludePattern={topicFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.TOPIC)
+              }
+              includePattern={topicFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.TOPIC}
+            />
+            {getSeparator('')}
+            {getDebugLogToggle()}
+          </Fragment>
         );
       default:
         return <></>;
@@ -166,69 +280,6 @@ const ConfigureIngestion = ({
     return (
       <>
         <div>{getMetadataFilterPatternField()}</div>
-        {getSeparator('')}
-        <div>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Include views</label>
-              <ToggleSwitchV1
-                checked={includeView}
-                handleCheck={handleIncludeView}
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Enable extracting views from the data source
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Enable Data Profiler</label>
-              <ToggleSwitchV1
-                checked={enableDataProfiler}
-                handleCheck={handleEnableDataProfiler}
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Enable Data Profiler to collect metrics and distribution of data
-              in the table. This will however slowdown the metadata extraction.
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Ingest Sample Data</label>
-              <ToggleSwitchV1
-                checked={ingestSampleData}
-                handleCheck={handleIngestSampleData}
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Extract sample data from each table
-            </p>
-            {getSeparator('')}
-          </Field>
-          {!isNil(markDeletedTables) && (
-            <Field>
-              <div className="tw-flex tw-gap-1">
-                <label>Mark Deleted Tables</label>
-                <ToggleSwitchV1
-                  checked={markDeletedTables}
-                  handleCheck={() => {
-                    if (handleMarkDeletedTables) {
-                      handleMarkDeletedTables();
-                    }
-                  }}
-                />
-              </div>
-              <p className="tw-text-grey-muted tw-mt-3">
-                Any deleted tables in the data source will be soft deleted in
-                OpenMetadata
-              </p>
-              {getSeparator('')}
-            </Field>
-          )}
-        </div>
       </>
     );
   };
@@ -298,6 +349,7 @@ const ConfigureIngestion = ({
           />
           {getSeparator('')}
         </Field>
+        {getDebugLogToggle()}
       </>
     );
   };
@@ -327,6 +379,7 @@ const ConfigureIngestion = ({
         </div>
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
+        {getDebugLogToggle()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">

@@ -39,11 +39,9 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Location;
-import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResource.LocationList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -63,6 +61,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
     return new CreateLocation()
         .withName(name)
+        .withPath(name)
         .withService(getContainer())
         .withDescription(description)
         .withOwner(owner);
@@ -74,14 +73,16 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
+  public EntityReference getContainer(Location entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Location location, CreateLocation createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(location),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
+        location, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
     EntityReference expectedService = createRequest.getService();
     if (expectedService != null) {
@@ -96,10 +97,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Entity specific validation
     assertEquals(expected.getDisplayName(), patched.getDisplayName());
     assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
@@ -108,11 +106,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     assertEquals(expected.getServiceType(), patched.getServiceType());
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(patched.getFollowers());
-  }
-
-  @Override
-  public EntityInterface<Location> getEntityInterface(Location entity) {
-    return new LocationEntityInterface(entity);
   }
 
   @Override
@@ -172,7 +165,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
     // Create location for each service and test APIs
     for (EntityReference service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
-
       // List locations by filtering on service name and ensure right locations are returned
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("service", service.getName());
@@ -201,8 +193,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
-  public EntityInterface<Location> validateGetWithDifferentFields(Location location, boolean byName)
-      throws HttpResponseException {
+  public Location validateGetWithDifferentFields(Location location, boolean byName) throws HttpResponseException {
     String fields = "";
     location =
         byName
@@ -218,7 +209,7 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
             : getEntity(location.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(location.getService(), location.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(location);
+    return location;
   }
 
   public static LocationList listPrefixes(

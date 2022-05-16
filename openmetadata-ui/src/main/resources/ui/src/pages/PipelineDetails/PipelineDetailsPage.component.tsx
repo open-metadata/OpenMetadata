@@ -441,6 +441,7 @@ const PipelineDetailsPage = () => {
     saveUpdatedPipelineData(updatedPipeline)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setPipelineDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTags(getTagsWithoutTier(res.data.tags));

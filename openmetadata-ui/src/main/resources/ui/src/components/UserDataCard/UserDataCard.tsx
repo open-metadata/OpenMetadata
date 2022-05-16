@@ -25,7 +25,7 @@ type Item = {
   email: string;
   isActiveUser?: boolean;
   profilePhoto?: string;
-  teamCount?: string;
+  teamCount?: string | JSX.Element;
 };
 
 type Props = {
@@ -43,11 +43,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
       <div className="tw-flex tw-gap-1">
         {item.profilePhoto ? (
           <div className="tw-h-9 tw-w-9">
-            <img
-              alt="profile"
-              className="tw-rounded-full tw-w-full"
-              src={item.profilePhoto}
-            />
+            <img alt="profile" className="tw-w-full" src={item.profilePhoto} />
           </div>
         ) : (
           <Avatar name={item.description} />
@@ -73,7 +69,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
             )}
           </div>
           <p className="tw-truncate">{item.email}</p>
-          {showTeams && <p>Teams: {item.teamCount}</p>}
+          {showTeams && <div>Teams: {item.teamCount}</div>}
         </div>
       </div>
       {!isNil(onDelete) && (

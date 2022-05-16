@@ -11,7 +11,6 @@
 
 import json
 import ssl
-import traceback
 from datetime import datetime
 from typing import List, Optional
 
@@ -266,7 +265,7 @@ class ElasticsearchSink(Sink[Entity]):
             self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
 
     def _create_table_es_doc(self, table: Table):
         fqdn = table.fullyQualifiedName.__root__
@@ -523,7 +522,7 @@ class ElasticsearchSink(Sink[Entity]):
         owns = []
         if team.users:
             for user in team.users.__root__:
-                users.append(user)
+                users.append(user.name)
 
         if team.owns:
             for own in team.owns.__root__:

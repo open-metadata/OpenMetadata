@@ -7,9 +7,7 @@
     "databaseUsageConfigType": {
       "description": "Database Source Config Usage Pipeline type",
       "type": "string",
-      "enum": [
-        "DatabaseUsage"
-      ],
+      "enum": ["DatabaseUsage"],
       "default": "DatabaseUsage"
     }
   },
@@ -33,6 +31,10 @@
       "description": "Configuration to set the limit for query logs",
       "type": "integer",
       "default": "100"
+    },
+    "queryLogFilePath": {
+      "description": "Configuration to set the file path for query logs",
+      "type": "string"
     }
   },
   "additionalProperties": false

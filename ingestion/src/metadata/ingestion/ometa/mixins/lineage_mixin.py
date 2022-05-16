@@ -210,7 +210,7 @@ class OMetaLineageMixin(Generic[T]):
                     logger.info(f"Successfully added Lineage {created_lineage}")
 
         except Exception as err:
-            logger.debug(traceback.print_exc())
+            logger.debug(traceback.format_exc())
             logger.error(err)
 
     def ingest_lineage_by_query(
@@ -244,5 +244,5 @@ class OMetaLineageMixin(Generic[T]):
             return True
         except Exception as err:
             logger.debug(str(err))
-            logger.error(f"Ingesting lineage failed")
+            logger.warning(f"Ingesting lineage failed")
         return False

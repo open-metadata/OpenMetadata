@@ -16,20 +16,20 @@
  * Druid Connection Config
  */
 export interface DruidConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Druid.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the Druid
+   * Host and port of the Druid service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect to the Druid.
+   * Password to connect to Druid.
    */
   password?: string;
   /**
@@ -37,13 +37,14 @@ export interface DruidConnection {
    */
   scheme?: DruidScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
    * Service Type
    */
   type?: DruidType;
   /**
-   * username to connect  to the Druid. This user should have privileges to read all the
-   * metadata in Druid.
+   * Username to connect to Druid. This user should have privileges to read all the metadata
+   * in Druid.
    */
   username?: string;
 }

@@ -34,18 +34,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
+      "description": "Username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "password to connect to the Trino.",
+      "description": "Password to connect to Trino.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the data source.",
+      "description": "Host and port of the Trino service.",
       "type": "string"
     },
     "catalog": {
@@ -92,8 +92,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "hostPort",
-    "username"
-  ]
+  "required": ["hostPort", "username", "catalog"]
 }

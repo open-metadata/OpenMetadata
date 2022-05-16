@@ -16,20 +16,20 @@
  * Vertica Connection Config
  */
 export interface VerticaConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-   * attempts to scan all the databases in Vertica.
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
    */
   database?: string;
   /**
-   * Host and port of the data source.
+   * Host and port of the Vertica service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect  to the Vertica.
+   * Password to connect to Vertica.
    */
   password?: string;
   /**
@@ -37,16 +37,17 @@ export interface VerticaConnection {
    */
   scheme?: VerticaScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   supportsUsageExtraction?: boolean;
   /**
    * Service Type
    */
   type?: VerticaType;
   /**
-   * username to connect  to the Vertica. This user should have privileges to read all the
-   * metadata in Vertica.
+   * Username to connect to Vertica. This user should have privileges to read all the metadata
+   * in Vertica.
    */
-  username?: string;
+  username: string;
 }
 
 /**

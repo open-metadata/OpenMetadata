@@ -24,6 +24,7 @@ import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 
 public class LineageRepository {
@@ -35,14 +36,14 @@ public class LineageRepository {
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
-    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id));
+    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
   @Transaction
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
       throws IOException {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -50,11 +51,11 @@ public class LineageRepository {
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = Entity.getEntityReferenceById(from.getType(), from.getId());
+    from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
 
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
-    to = Entity.getEntityReferenceById(to.getType(), to.getId());
+    to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
     // Finally, add lineage relationship
     dao.relationshipDAO()
@@ -64,10 +65,10 @@ public class LineageRepository {
   @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
     // Validate from entity
-    EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId));
+    EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
 
     // Validate to entity
-    EntityReference to = Entity.getEntityReferenceById(toEntity, UUID.fromString(toId));
+    EntityReference to = Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
 
     // Finally, delete lineage relationship
     return dao.relationshipDAO()
@@ -97,7 +98,7 @@ public class LineageRepository {
     // Add entityReference details
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
-      ref = Entity.getEntityReferenceById(ref.getType(), ref.getId());
+      ref = Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
       lineage.getNodes().set(i, ref);
     }
     return lineage;

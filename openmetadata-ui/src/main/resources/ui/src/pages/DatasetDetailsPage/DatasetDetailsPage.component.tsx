@@ -542,6 +542,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     saveUpdatedTableData(updatedTable)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setTableDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTableTags(getTagsWithoutTier(res.data.tags));

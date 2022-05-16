@@ -119,4 +119,8 @@ public final class CatalogExceptionMessage {
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
   }
+
+  public static String invalidEntity(String entity) {
+    return String.format("Invalid entity %s", entity);
+  }
 }

@@ -4,12 +4,28 @@
   "title": "Basic",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
+    "integer" : {
+      "$comment" : "@om-type",
+      "description": "An integer type.",
+      "type" : "integer"
+    },
+    "number" : {
+      "$comment" : "@om-type",
+      "description": "A numeric type that includes integer or floating point numbers.",
+      "type" : "integer"
+    },
+    "string" : {
+      "$comment" : "@om-type",
+      "description": "A String type.",
+      "type" : "string"
+    },
     "uuid": {
       "description": "Unique id used to identify an entity.",
       "type": "string",
       "format": "uuid"
     },
     "email": {
+      "$comment" : "@om-type",
       "description": "Email address of a user or other entities.",
       "type": "string",
       "format": "email",
@@ -18,6 +34,7 @@
       "maxLength": 127
     },
     "timestamp": {
+      "$comment" : "@om-type",
       "description": "Timestamp in Unix epoch time milliseconds.",
       "@comment": "Note that during code generation this is converted into long",
       "type": "integer",
@@ -29,6 +46,7 @@
       "format": "uri"
     },
     "timeInterval": {
+      "$comment" : "@om-type",
       "type": "object",
       "description": "Time interval in unixTimeMillis.",
       "javaType": "org.openmetadata.catalog.type.TimeInterval",
@@ -45,23 +63,26 @@
       "additionalProperties": false
     },
     "duration": {
+      "$comment" : "@om-type",
       "description": "Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.",
       "type": "string"
     },
     "date": {
+      "$comment" : "@om-type",
       "description": "Date in ISO 8601 format in UTC. Example - '2018-11-13'.",
       "type": "string",
       "format": "date"
     },
     "dateTime": {
+      "$comment" : "@om-type",
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
       "format": "date-time"
     },
     "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E/{entities}/{entityType}/{field}/{arrayFieldName}/{arrayFieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E::{entities}::{entityType}::{field}::{arrayFieldName}::{arrayFieldValue}`.",
       "type": "string",
-      "pattern": "^<#E/\\S+/\\S+>$"
+      "pattern": "^<#E::\\S+::\\S+>$"
     },
     "entityName": {
       "description": "Name that identifies this dashboard service.",
@@ -76,7 +97,17 @@
       "maxLength": 256
     },
     "sqlQuery": {
+      "$comment" : "@om-type",
       "description": "SQL query statement. Example - 'select * from orders'.",
+      "type": "string"
+    },
+    "markdown": {
+      "$comment" : "@om-type",
+      "description": "Text in Markdown format",
+      "type": "string"
+    },
+    "jsonSchema": {
+      "description": "JSON schema encoded as string. This will be used to validate the JSON fields using this schema.",
       "type": "string"
     }
   }

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -47,7 +48,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
-  Object TABLE;
+  Table TABLE;
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {

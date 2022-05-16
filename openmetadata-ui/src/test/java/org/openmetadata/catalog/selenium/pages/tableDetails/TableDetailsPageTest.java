@@ -236,7 +236,7 @@ class TableDetailsPageTest {
 
   @Test
   @Order(8)
-  void checkManage() throws InterruptedException {
+  void checkManage() {
     webDriver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
     openExplorePage();
     Events.click(webDriver, common.selectTableLink(1));

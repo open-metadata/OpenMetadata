@@ -242,18 +242,25 @@ class Profiler(Generic[MetricType]):
         the most expensive.
         """
         # Table metrics do not have column informed
-        table_metrics = [
-            metric for metric in self.static_metrics if not metric.is_col_metric()
-        ]
+        try:
+            table_metrics = [
+                metric for metric in self.static_metrics if not metric.is_col_metric()
+            ]
 
-        if not table_metrics:
-            return
+            if not table_metrics:
+                return
 
-        row = self.runner.select_first_from_table(
-            *[metric().fn() for metric in table_metrics]
-        )
-        if row:
-            self._table_results.update(dict(row))
+            row = self.runner.select_first_from_table(
+                *[metric().fn() for metric in table_metrics]
+            )
+            if row:
+                self._table_results.update(dict(row))
+        except (TimeoutError, Exception) as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error while running table metric for: {self.table.__tablename__}"
+            )
+            self.session.rollback()
 
     def run_query_metrics(self, col: Column) -> None:
         """
@@ -288,8 +295,7 @@ class Profiler(Generic[MetricType]):
                     self._column_results[col.name].update(dict(row))
 
             except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
-                print(err)
-                print(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"
                 )

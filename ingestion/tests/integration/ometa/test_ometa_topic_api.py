@@ -57,7 +57,9 @@ class OMetaTopicTest(TestCase):
     service = CreateMessagingServiceRequest(
         name="test-service-topic",
         serviceType=MessagingServiceType.Kafka,
-        connection=MessagingConnection(config=KafkaConnection()),
+        connection=MessagingConnection(
+            config=KafkaConnection(bootstrapServers="localhost:9092")
+        ),
     )
     service_type = "messagingService"
 

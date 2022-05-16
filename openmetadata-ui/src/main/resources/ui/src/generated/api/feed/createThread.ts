@@ -18,12 +18,12 @@
 export interface CreateThread {
   /**
    * Data asset about which this thread is created for with format
-   * <#E/{entities}/{entityType}/{field}/{fieldValue}
+   * <#E::{entities}::{entityType}::{field}::{fieldValue}
    */
   about: string;
   /**
    * User or team this thread is addressed to in format
-   * <#E/{entities}/{entityName}/{field}/{fieldValue}.
+   * <#E::{entities}::{entityName}::{field}::{fieldValue}.
    */
   addressedTo?: string;
   /**

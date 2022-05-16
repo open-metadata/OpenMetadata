@@ -11,6 +11,12 @@
 
 from dataclasses import dataclass
 
+"""
+Creating client for non-sqlalchemy package is neccessary, 
+Importing a Class directly in connection.py will break the ingestion,
+if non-sqlalchemy package is not installed
+"""
+
 
 @dataclass
 class GlueClient:
@@ -38,5 +44,31 @@ class DeltaLakeClient:
 
 @dataclass
 class KafkaClient:
+    def __init__(self, admin_client, schema_registry_client, consumer_client) -> None:
+        self.admin_client = admin_client
+        self.schema_registry_client = schema_registry_client  # Optional
+        self.consumer_client = consumer_client
+
+
+@dataclass
+class MetabaseClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class RedashClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class SupersetClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class TableauClient:
     def __init__(self, client) -> None:
         self.client = client

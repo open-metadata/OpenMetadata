@@ -12,13 +12,13 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
@@ -27,7 +27,7 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
-public abstract class EntityResource<T, K extends EntityRepository<T>> {
+public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
   protected final List<String> allowedFields;
   protected final K dao;
@@ -36,7 +36,7 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
 
   public EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
-    allowedFields = Entity.getEntityFields(entityClass);
+    allowedFields = Entity.getAllowedFields(entityClass);
     supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
     this.authorizer = authorizer;
@@ -93,13 +93,13 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity, int flags) throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, flags);
     entity = addHref(uriInfo, dao.create(uriInfo, entity));
-    EntityInterface<T> entityInterface = dao.getEntityInterface(entity);
-    LOG.info("Created {}:{}", entityInterface.getEntityType(), entityInterface.getId());
-    return Response.created(entityInterface.getHref()).entity(entity).build();
+    LOG.info("Created {}:{}", Entity.getEntityTypeFromObject(entity), entity.getId());
+    return Response.created(entity.getHref()).entity(entity).build();
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity, int checkFlags)
       throws IOException {
+    dao.prepare(entity);
     EntityReference owner = SecurityUtil.checkOwner(checkFlags) ? dao.getOriginalOwner(entity) : null;
     SecurityUtil.authorize(authorizer, securityContext, null, owner, checkFlags);
     PutResponse<T> response = dao.createOrUpdate(uriInfo, entity);
@@ -110,9 +110,8 @@ public abstract class EntityResource<T, K extends EntityRepository<T>> {
   public Response patchInternal(UriInfo uriInfo, SecurityContext securityContext, String id, JsonPatch patch)
       throws IOException {
     T entity = dao.get(uriInfo, id, supportsOwner ? getFields(FIELD_OWNER) : Fields.EMPTY_FIELDS);
-    EntityInterface<T> entityInterface = dao.getEntityInterface(entity);
     SecurityUtil.checkAdminRoleOrPermissions(
-        authorizer, securityContext, entityInterface.getEntityReference(), entityInterface.getOwner(), patch);
+        authorizer, securityContext, entity.getEntityReference(), entity.getOwner(), patch);
     PatchResponse<T> response =
         dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.getEntity());

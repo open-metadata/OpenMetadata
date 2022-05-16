@@ -760,7 +760,7 @@ body .profiler-graph .recharts-active-dot circle {
   align-content: flex-start;
   position: relative;
   height: calc(100% - 70px);
-  overflow-y: hidden;
+  overflow-y: scroll;
 }
 
 .full-height {
@@ -769,13 +769,23 @@ body .profiler-graph .recharts-active-dot circle {
 
 #left-panel {
   grid-area: leftsidebar;
+  position: sticky;
+  position: -webkit-sticky;
+  top: 0;
+  left: 0;
+  overflow-y: scroll;
 }
 #right-panel {
   grid-area: rightsidebar;
+  position: sticky;
+  position: -webkit-sticky;
+  top: 0;
+  left: 0;
+  overflow-y: scroll;
 }
 #center {
   grid-area: centerarea;
-  overflow-y: auto;
+  overflow-y: inherit;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -796,6 +806,7 @@ body .profiler-graph .recharts-active-dot circle {
 .page-layout-container {
   display: grid;
   grid-auto-flow: column;
+  position: relative;
 }
 .page-layout-container.l3-col {
   grid-template-columns: 256px auto 256px;
@@ -930,4 +941,18 @@ code {
 }
 .page-not-found-container::before {
   background-color: #fff;
+}
+
+.topic-sample-data > .CodeMirror {
+  height: auto !important;
+}
+
+.topic-sample-data-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-height: 18px;
+  max-height: 54px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }

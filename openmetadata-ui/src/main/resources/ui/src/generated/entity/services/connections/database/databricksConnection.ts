@@ -16,8 +16,8 @@
  * Databricks Connection Config
  */
 export interface DatabricksConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
@@ -25,11 +25,15 @@ export interface DatabricksConnection {
    */
   database?: string;
   /**
-   * Host and port of the Databricks
+   * Host and port of the Databricks service.
    */
-  hostPort?: string;
+  hostPort: string;
   /**
-   * password to connect to the Databricks.
+   * Databricks compute resources URL.
+   */
+  httpPath?: string;
+  /**
+   * Password to connect to Databricks.
    */
   password?: string;
   /**
@@ -37,16 +41,17 @@ export interface DatabricksConnection {
    */
   scheme?: DatabricksScheme;
   supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
   /**
-   * Generated Token to connect to Databricks
+   * Generated Token to connect to Databricks.
    */
-  token?: string;
+  token: string;
   /**
    * Service Type
    */
   type?: DatabricksType;
   /**
-   * username to connect  to the Databricks. This user should have privileges to read all the
+   * Username to connect to Databricks. This user should have privileges to read all the
    * metadata in Databricks.
    */
   username?: string;

@@ -253,9 +253,7 @@ class OMetaServiceTest(TestCase):
             "type": "kafka",
             "serviceName": "local_kafka",
             "serviceConnection": {
-                "config": {
-                    "type": "Kafka",
-                }
+                "config": {"type": "Kafka", "bootstrapServers": "localhost:9092"}
             },
             "sourceConfig": {"config": {}},
         }

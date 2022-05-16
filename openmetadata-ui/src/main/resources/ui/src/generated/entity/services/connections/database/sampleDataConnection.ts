@@ -16,8 +16,8 @@
  * Sample Data Connection Config
  */
 export interface SampleDataConnection {
-  connectionArguments?: { [key: string]: string };
-  connectionOptions?: { [key: string]: string };
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: any };
   /**
    * Sample Data File Path
    */

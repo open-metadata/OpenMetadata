@@ -120,14 +120,6 @@ export interface FieldChange {
 
 export interface TagClass {
   /**
-   * Fully qualified names of tags associated with this tag. Associated tags captures
-   * relationship of one tag to another automatically. As an example a tag 'User.PhoneNumber'
-   * might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a
-   * column in a table, 'PII.Sensitive' label is also applied automatically due to Associated
-   * tag relationship.
-   */
-  associatedTags?: string[];
-  /**
    * Tags under this tag group or empty for tags at the leaf level.
    */
   children?: Array<

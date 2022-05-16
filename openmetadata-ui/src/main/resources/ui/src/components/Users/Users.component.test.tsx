@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findAllByText,
+  findByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -89,6 +94,19 @@ const mockUserData = {
       href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
     },
   ],
+  inheritedRoles: [
+    {
+      id: '3fa30148-72f6-4205-8cab-56696cc23440',
+      type: 'role',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/3fa30148-72f6-4205-8cab-56696cc23440',
+    },
+  ],
 };
 
 jest.mock('../common/avatar/Avatar', () => {
@@ -107,8 +125,22 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
+jest.mock('../../axiosAPIs/teamsAPI', () => ({
+  getTeams: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
+jest.mock('../EntityList/EntityList', () => {
+  return jest.fn().mockReturnValue(<p>EntityList.component</p>);
 });
 
 const mockObserve = jest.fn();
@@ -153,10 +185,50 @@ describe('Test User Component', () => {
       }
     );
 
+    const leftPanel = await findByTestId(container, 'left-panel');
+    const rightPanel = await findByTestId(container, 'right-pannel');
+    const EntityLists = await findAllByText(container, 'EntityList.component');
+
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(EntityLists.length).toBe(2);
+  });
+
+  it('Only admin can able to see tab for bot page', async () => {
+    const { container } = render(
+      <Users
+        userData={{ ...mockUserData, isBot: true }}
+        {...mockProp}
+        isAdminUser
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
     const tabs = await findByTestId(container, 'tabs');
     const leftPanel = await findByTestId(container, 'left-panel');
+    const rightPanel = await findByTestId(container, 'right-pannel');
+    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(tabs).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
+    expect(EntityLists.length).toBe(2);
+  });
+
+  it('Tab should not visible to normal user', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tabs = queryByTestId(container, 'tabs');
+    const leftPanel = await findByTestId(container, 'left-panel');
+
+    expect(tabs).not.toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
   });
 
@@ -201,5 +273,17 @@ describe('Test User Component', () => {
     expect(obServerElement).toBeInTheDocument();
 
     expect(mockObserve).toHaveBeenCalled();
+  });
+
+  it('Should render inherited roles', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const inheritedRoles = await findByTestId(container, 'inherited-roles');
+
+    expect(inheritedRoles).toBeInTheDocument();
   });
 });

@@ -78,6 +78,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 

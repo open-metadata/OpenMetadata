@@ -28,6 +28,7 @@ import {
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
   addServiceGuide,
+  addServiceGuideWOAirflow,
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
@@ -41,6 +42,7 @@ import {
   DATABASE_DEFAULT,
   DATABRICK,
   DEFAULT_SERVICE,
+  DELTALAKE,
   DRUID,
   DYNAMODB,
   GLUE,
@@ -55,11 +57,13 @@ import {
   ORACLE,
   PIPELINE_DEFAULT,
   POSTGRES,
+  POWERBI,
   PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
   REDSHIFT,
+  SALESFORCE,
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
@@ -71,6 +75,7 @@ import {
   VERTICA,
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
+import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -147,6 +152,12 @@ export const serviceTypeLogo = (type: string) => {
     case DatabaseServiceType.SQLite:
       return SQLITE;
 
+    case DatabaseServiceType.Salesforce:
+      return SALESFORCE;
+
+    case DatabaseServiceType.DeltaLake:
+      return DELTALAKE;
+
     case MessagingServiceType.Kafka:
       return KAFKA;
 
@@ -167,6 +178,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.Metabase:
       return METABASE;
+
+    case DashboardServiceType.PowerBI:
+      return POWERBI;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
@@ -495,7 +509,10 @@ export const getServiceIngestionStepGuide = (
   isIngestion: boolean,
   ingestionName: string,
   serviceName: string,
-  ingestionType: IngestionPipelineType
+  ingestionType: IngestionPipelineType,
+  showDeployTitle: boolean,
+  isUpdated: boolean,
+  isAirflowSetup = true
 ) => {
   let guide;
   if (isIngestion) {
@@ -518,14 +535,28 @@ export const getServiceIngestionStepGuide = (
       }
     }
   } else {
-    guide = addServiceGuide.find((item) => item.step === step);
+    guide =
+      !isAirflowSetup && step === 4
+        ? addServiceGuideWOAirflow
+        : addServiceGuide.find((item) => item.step === step);
   }
+
+  const getTitle = (title: string) => {
+    const update = showDeployTitle
+      ? title.replace('Added', 'Updated & Deployed')
+      : title.replace('Added', 'Updated');
+    const newTitle = showDeployTitle
+      ? title.replace('Added', 'Added & Deployed')
+      : title;
+
+    return isUpdated ? update : newTitle;
+  };
 
   return (
     <>
       {guide && (
         <>
-          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
           <div className="tw-mb-5">
             {isIngestion
               ? getFormattedGuideText(
@@ -557,4 +588,55 @@ export const getIngestionName = (
   } else {
     return `${serviceName}_${type}`;
   }
+};
+
+export const shouldTestConnection = (
+  serviceType: string,
+  serviceCategory: ServiceCategory
+) => {
+  return (
+    serviceType !== DatabaseServiceType.SampleData &&
+    serviceCategory !== ServiceCategory.PIPELINE_SERVICES
+  );
+};
+
+export const getTestConnectionType = (serviceCat: ServiceCategory) => {
+  switch (serviceCat) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return ConnectionType.Messaging;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return ConnectionType.Dashboard;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return ConnectionType.Database;
+  }
+};
+
+export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
+  let serviceCat;
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      serviceCat = 'database';
+
+      break;
+    case ServiceCategory.MESSAGING_SERVICES:
+      serviceCat = 'messaging';
+
+      break;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      serviceCat = 'dashboard';
+
+      break;
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      serviceCat = 'pipeline';
+
+      break;
+    default:
+      serviceCat = '';
+
+      break;
+  }
+
+  return [serviceCat, 'service'].join(' ');
 };

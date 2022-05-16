@@ -19,7 +19,6 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.STORAGE_SERVICE;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,11 +28,9 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.locations.LocationResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -42,9 +39,9 @@ import org.openmetadata.catalog.util.ResultList;
 
 public class LocationRepository extends EntityRepository<Location> {
   // Location fields that can be patched in a PATCH request
-  private static final String LOCATION_PATCH_FIELDS = "owner,tags";
+  private static final String LOCATION_PATCH_FIELDS = "owner,tags,path";
   // Location fields that can be updated in a PUT request
-  private static final String LOCATION_UPDATE_FIELDS = "owner,tags";
+  private static final String LOCATION_UPDATE_FIELDS = "owner,tags,path";
 
   public LocationRepository(CollectionDAO dao) {
     super(
@@ -60,6 +57,7 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public Location setFields(Location location, Fields fields) throws IOException {
     location.setService(getService(location));
+    location.setPath(location.getPath());
     location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
     location.setTags(fields.contains(FIELD_TAGS) ? getTags(location.getFullyQualifiedName()) : null);
@@ -106,9 +104,9 @@ public class LocationRepository extends EntityRepository<Location> {
     String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = getFullyQualifiedName(entities.get(0));
+      beforeCursor = entities.get(0).getFullyQualifiedName();
     }
-    afterCursor = getFullyQualifiedName(entities.get(entities.size() - 1));
+    afterCursor = entities.get(entities.size() - 1).getFullyQualifiedName();
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -140,23 +138,17 @@ public class LocationRepository extends EntityRepository<Location> {
 
     String beforeCursor;
     String afterCursor = null;
-    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+    beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
     if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
       entities.remove(limitParam);
-      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+      afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
     }
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override
-  public EntityInterface<Location> getEntityInterface(Location entity) {
-    return new LocationEntityInterface(entity);
-  }
-
-  public static String getFQN(Location location) {
-    return (location != null && location.getService() != null)
-        ? FullyQualifiedName.add(location.getService().getFullyQualifiedName(), location.getName())
-        : null;
+  public void setFullyQualifiedName(Location location) {
+    location.setFullyQualifiedName(FullyQualifiedName.add(location.getService().getName(), location.getName()));
   }
 
   private StorageService getService(UUID serviceId, String entityType) throws IOException {
@@ -170,10 +162,9 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void prepare(Location location) throws IOException {
     StorageService storageService = getService(location.getService().getId(), location.getService().getType());
-    location.setService(
-        new StorageServiceRepository.StorageServiceEntityInterface(storageService).getEntityReference());
+    location.setService(storageService.getEntityReference());
     location.setServiceType(storageService.getServiceType());
-    location.setFullyQualifiedName(getFQN(location));
+    setFullyQualifiedName(location);
     populateOwner(location.getOwner()); // Validate owner
     location.setTags(addDerivedTags(location.getTags()));
   }
@@ -224,149 +215,9 @@ public class LocationRepository extends EntityRepository<Location> {
 
   public void setService(Location location, EntityReference service) throws IOException {
     if (service != null && location != null) {
-      getService(service); // Populate service details
+      service = getService(service); // Populate service details
       addRelationship(service.getId(), location.getId(), service.getType(), Entity.LOCATION, Relationship.CONTAINS);
       location.setService(service);
-    }
-  }
-
-  public static class LocationEntityInterface extends EntityInterface<Location> {
-    public LocationEntityInterface(Location entity) {
-      super(Entity.LOCATION, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : LocationRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public Location getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Location withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
     }
   }
 
@@ -378,7 +229,8 @@ public class LocationRepository extends EntityRepository<Location> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("locationType", original.getEntity().getLocationType(), updated.getEntity().getLocationType());
+      recordChange("locationType", original.getLocationType(), updated.getLocationType());
+      recordChange("path", original.getPath(), updated.getPath());
     }
   }
 }
