@@ -119,7 +119,7 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode,
+  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -162,7 +162,7 @@ export const getLineageData = (
       type: 'default',
       className: 'leaf-node',
       data: {
-        label: getNodeLable(node),
+        label: getNodeLabel(node),
         entityType: node.type,
       },
       position: {
@@ -329,7 +329,7 @@ export const getLineageData = (
           : 'input',
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
-        label: getNodeLable(mainNode),
+        label: getNodeLabel(mainNode),
       },
       position: { x: x, y: y },
     },

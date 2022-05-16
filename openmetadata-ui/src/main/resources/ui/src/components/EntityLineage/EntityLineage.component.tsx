@@ -178,7 +178,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param node
    * @returns lable for given node
    */
-  const getNodeLable = (node: EntityReference) => {
+  const getNodeLabel = (node: EntityReference) => {
     return (
       <Fragment>
         {node.type === 'table' && !isEditMode ? (
@@ -310,7 +310,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         loadNodeHandler,
         lineageLeafNodes,
         isNodeLoading,
-        getNodeLable,
+        getNodeLabel,
         isEditMode,
         'buttonedge',
         onEdgeClick
@@ -666,7 +666,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 data: {
                   label: (
                     <Fragment>
-                      {getNodeLable(selectedEntity)}
+                      {getNodeLabel(selectedEntity)}
                       <button
                         className="tw-absolute tw--top-5 tw--right-4 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
                         onClick={() => {
