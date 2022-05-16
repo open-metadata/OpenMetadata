@@ -39,5 +39,8 @@ class AzuresqlSource(SQLSource):
             raise InvalidSourceException(
                 f"Expected AzureSQLConnection, but got {connection}"
             )
-
+        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
+            config.sourceConfig.config.sampleDataQuery = (
+                "select top 50 * from [{}].[{}]"
+            )
         return cls(config, metadata_config)
