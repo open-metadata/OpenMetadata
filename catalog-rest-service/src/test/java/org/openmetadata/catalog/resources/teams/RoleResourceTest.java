@@ -46,7 +46,6 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -224,12 +223,8 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  public CreateRole createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateRole()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withPolicies(DATA_CONSUMER_ROLE.getPolicies());
+  public CreateRole createRequest(String name) {
+    return new CreateRole().withName(name).withPolicies(DATA_CONSUMER_ROLE.getPolicies());
   }
 
   @Override

@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -265,7 +264,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
       throws IOException {
-    StorageService service = getService(create, securityContext);
+    StorageService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
@@ -285,7 +284,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
       throws IOException {
-    StorageService service = getService(update, securityContext);
+    StorageService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
@@ -316,14 +315,7 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private StorageService getService(CreateStorageService create, SecurityContext securityContext) {
-    return new StorageService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withServiceType(create.getServiceType())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private StorageService getService(CreateStorageService create, String user) {
+    return copy(new StorageService(), create, user).withServiceType(create.getServiceType());
   }
 }

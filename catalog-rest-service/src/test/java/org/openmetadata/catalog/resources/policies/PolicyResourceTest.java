@@ -72,13 +72,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Override
-  public CreatePolicy createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreatePolicy()
-        .withName(name)
-        .withPolicyType(PolicyType.Lifecycle)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreatePolicy createRequest(String name) {
+    return new CreatePolicy().withName(name).withPolicyType(PolicyType.Lifecycle);
   }
 
   @Override

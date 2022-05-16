@@ -11,6 +11,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -130,5 +131,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response = dao.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  public T copy(T entity, CreateEntity request, String updatedBy) {
+    entity.setId(UUID.randomUUID());
+    entity.setName(request.getName());
+    entity.setDisplayName(request.getDisplayName());
+    entity.setDescription(request.getDescription());
+    entity.setOwner(request.getOwner());
+    entity.setExtension(request.getExtension());
+    entity.setUpdatedBy(updatedBy);
+    entity.setUpdatedAt(System.currentTimeMillis());
+    return entity;
   }
 }

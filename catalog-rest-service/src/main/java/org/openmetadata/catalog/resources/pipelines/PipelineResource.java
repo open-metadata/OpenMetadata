@@ -278,7 +278,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
-    Pipeline pipeline = getPipeline(securityContext, create);
+    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, pipeline, ADMIN | BOT);
   }
 
@@ -323,7 +323,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipeline create)
       throws IOException {
-    Pipeline pipeline = getPipeline(securityContext, create);
+    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
   }
 
@@ -413,21 +413,14 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {
-    return new Pipeline()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private Pipeline getPipeline(CreatePipeline create, String user) {
+    return copy(new Pipeline(), create, user)
         .withService(create.getService())
         .withTasks(create.getTasks())
         .withPipelineUrl(create.getPipelineUrl())
         .withTags(create.getTags())
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
-        .withPipelineLocation(create.getPipelineLocation())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withPipelineLocation(create.getPipelineLocation());
   }
 }

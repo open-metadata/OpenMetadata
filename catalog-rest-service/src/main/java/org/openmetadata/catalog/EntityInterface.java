@@ -59,6 +59,10 @@ public interface EntityInterface {
 
   String getFullyQualifiedName();
 
+  default Object getExtension() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -79,7 +83,7 @@ public interface EntityInterface {
 
   void setUpdatedAt(Long updatedAt);
 
-  <T extends EntityInterface> T withHref(URI href);
+  void setHref(URI href);
 
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
@@ -88,6 +92,38 @@ public interface EntityInterface {
   default void setOwner(EntityReference owner) {
     /* no-op implementation to be overridden */
   }
+
+  default void setExtension(Object extension) {
+    /* no-op implementation to be overridden */
+  }
+
+  //  <T extends EntityInterface> T withId(UUID id);
+  //
+  //  void withDescription(String description);
+  //
+  //  <T extends EntityInterface> T withDisplayName(String displayName);
+  //
+  //  <T extends EntityInterface> T withName(String name);
+  //
+  //  <T extends EntityInterface> T withVersion(Double newVersion);
+  //
+  //  <T extends EntityInterface> T withChangeDescription(ChangeDescription changeDescription);
+  //
+  //  <T extends EntityInterface> T withFullyQualifiedName(String fullyQualifiedName);
+  //
+  //  default <T extends EntityInterface> T withDeleted(Boolean flag) { return (T) this;}
+  //
+  //  <T extends EntityInterface> T withUpdatedBy(String admin);
+  //
+  //  <T extends EntityInterface> T withUpdatedAt(Long updatedAt);
+  //
+  <T extends EntityInterface> T withHref(URI href);
+  //
+  //  default <T extends EntityInterface> T withTags(List<TagLabel> tags) { return (T) this; }
+  //
+  //  default <T extends EntityInterface> T withOwner(EntityReference owner) { return (T) this; }
+  //
+  //  default <T extends EntityInterface> T withExtension(Object extension) { return (T) this; }
 
   @JsonIgnore
   default EntityReference getEntityReference() {
