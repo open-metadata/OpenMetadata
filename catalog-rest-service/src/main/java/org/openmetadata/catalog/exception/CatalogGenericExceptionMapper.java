@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
   @Override
   public Response toResponse(Throwable ex) {
-    ex.printStackTrace();
     LOG.debug(ex.getMessage());
     if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
       final Response response = BadRequestException.of().getResponse();
