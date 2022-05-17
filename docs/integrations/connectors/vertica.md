@@ -384,7 +384,7 @@ metadata ingest -c ./vertica.json
 
 As the ingestion workflow runs, you may observe progress both from the command line and from the OpenMetadata user interface. To view the metadata ingested from Vertica, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the Vertica service to filter for the data you’ve ingested using the workflow you configured and ran following this guide. The image below provides an example.
 
-![](<../../../.gitbook/assets/explore (1) (5).png>)
+![](<../../../.gitbook/assets/explore (1) (4).png>)
 
 ## **Troubleshooting**
 

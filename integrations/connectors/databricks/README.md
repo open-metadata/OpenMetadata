@@ -237,7 +237,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
 
-![](<../../../.gitbook/assets/explore (1) (2).png>)
+![](<../../../.gitbook/assets/explore (1) (1) (1).png>)
 
 ## One-time ingestion with the CLI
 

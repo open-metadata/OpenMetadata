@@ -250,6 +250,7 @@
 * [DBT Integration](data-lineage/dbt-integration/README.md)
   * [Add DBT while ingesting from UI](data-lineage/dbt-integration/add-dbt-while-ingesting-from-ui.md)
   * [Add DBT while ingesting from CLI](data-lineage/dbt-integration/add-dbt-while-ingesting-from-cli.md)
+  * [DBT Python SDK](data-lineage/dbt-integration/dbt-python-sdk.md)
 * [Usage Workflow](docs/data-lineage/usage-workflow.md)
 
 ## 📗 Controlled Vocabulary
