@@ -22,6 +22,7 @@ import {
   getHourOptions,
   getMinuteCron,
   getMinuteOptions,
+  getMinuteSegmentOptions,
   getMonthCron,
   getMonthDaysOptions,
   getMonthOptions,
@@ -34,6 +35,7 @@ import {
 const getCron = (state) => {
   const {
     selectedPeriod,
+    selectedMinOption,
     selectedHourOption,
     selectedDayOption,
     selectedWeekOption,
@@ -43,7 +45,7 @@ const getCron = (state) => {
 
   switch (selectedPeriod) {
     case 'minute':
-      return getMinuteCron({});
+      return getMinuteCron(selectedMinOption);
     case 'hour':
       return getHourCron(selectedHourOption);
     case 'day':
@@ -72,6 +74,9 @@ const CronEditor = (props) => {
   const getStateValue = (valueStr) => {
     let stateVal = {
       selectedPeriod: 'week',
+      selectedMinOption: {
+        min: 5,
+      },
       selectedHourOption: {
         min: 0,
       },
@@ -132,6 +137,9 @@ const CronEditor = (props) => {
   const [value, setCronValue] = useState(props.value || '0 0 * * 0');
   const [state, setState] = useState(getStateValue(value));
   const [periodOptions, setPeriodOptions] = useState(getPeriodOptions());
+  const [minuteSegmentOptions, setMinuteSegmentOptions] = useState(
+    getMinuteSegmentOptions()
+  );
   const [minuteOptions, setMinuteOptions] = useState(getMinuteOptions());
   const [hourOptions, setHourOptions] = useState(getHourOptions());
   const [dayOptions, setDayOptions] = useState(getDayOptions());
@@ -169,6 +177,17 @@ const CronEditor = (props) => {
     const hourOption = Object.assign({}, selectedHourOption, obj);
     changeValue({ ...state, selectedHourOption: hourOption });
     setState((prev) => ({ ...prev, selectedHourOption: hourOption }));
+  };
+
+  const onMinOptionSelect = (event, key) => {
+    const value = event.target.value;
+    const obj = {};
+
+    obj[key] = value;
+    const { selectedMinOption } = state;
+    const minOption = Object.assign({}, selectedMinOption, obj);
+    changeValue({ ...state, selectedMinOption: minOption });
+    setState((prev) => ({ ...prev, selectedMinOption: minOption }));
   };
 
   const onDayOptionSelect = (event, key) => {
@@ -247,6 +266,7 @@ const CronEditor = (props) => {
     return (
       <select
         className="tw-form-inputs tw-py-1 tw-px-1"
+        data-testid="hour-options"
         disabled={disabled}
         value={selectedOption.hour}
         onChange={(e) => {
@@ -263,6 +283,7 @@ const CronEditor = (props) => {
     return (
       <select
         className="tw-form-inputs tw-py-1 tw-px-1"
+        data-testid="minute-options"
         disabled={disabled}
         value={selectedOption.min}
         onChange={(e) => {
@@ -273,6 +294,25 @@ const CronEditor = (props) => {
       </select>
     );
   };
+
+  const getMinuteSegmentSelect = (selectedOption, onChangeCB) => {
+    const { disabled } = props;
+
+    return (
+      <select
+        className="tw-form-inputs tw-py-1 tw-px-1"
+        data-testid="minute-segment-options"
+        disabled={disabled}
+        value={selectedOption.min}
+        onChange={(e) => {
+          e.persist();
+          onChangeCB(e);
+        }}>
+        {minuteSegmentOptions.map(getOptionComponent('minute_option'))}
+      </select>
+    );
+  };
+
   const getBadgeOptions = (options, value, substrVal, onClick) => {
     const { disabled } = props;
     const optionComps = [];
@@ -302,11 +342,20 @@ const CronEditor = (props) => {
   };
 
   const getMinuteComponent = (cronPeriodString) => {
+    const { selectedMinOption } = state;
     return (
       state.selectedPeriod === 'minute' && (
-        <cron-minute-component>
-          {getTextComp(`${cronPeriodString}`)}
-        </cron-minute-component>
+        <>
+          <div className="tw-mb-1.5" data-testid="minute-segment-container">
+            <label>Minute :</label>
+            {getMinuteSegmentSelect(selectedMinOption, (e) =>
+              onMinOptionSelect(e, 'min')
+            )}
+          </div>
+          <div className="tw-col-span-2">
+            {getTextComp(`${cronPeriodString} ${selectedMinOption.min} minute`)}
+          </div>
+        </>
       )
     );
   };
@@ -317,7 +366,7 @@ const CronEditor = (props) => {
     return (
       state.selectedPeriod === 'hour' && (
         <>
-          <div className="tw-mb-1.5">
+          <div className="tw-mb-1.5" data-testid="hour-segment-container">
             <label>Minute :</label>
             {getMinuteSelect(selectedHourOption, (e) =>
               onHourOptionSelect(e, 'min')
@@ -342,9 +391,9 @@ const CronEditor = (props) => {
     return (
       state.selectedPeriod === 'day' && (
         <>
-          <div className="tw-mb-1.5">
+          <div className="tw-mb-1.5" data-testid="day-segment-container">
             <label>Time :</label>
-            <div className="tw-flex">
+            <div className="tw-flex" data-testid="time-option-container">
               {getHourSelect(selectedDayOption, (e) =>
                 onDayOptionSelect(e, 'hour')
               )}
@@ -375,9 +424,11 @@ const CronEditor = (props) => {
     return (
       state.selectedPeriod === 'week' && (
         <>
-          <div className="tw-mb-1.5">
+          <div className="tw-mb-1.5" data-testid="week-segment-time-container">
             <label>Time :</label>
-            <div className="tw-flex">
+            <div
+              className="tw-flex"
+              data-testid="week-segment-time-options-container">
               {getHourSelect(selectedWeekOption, (e) =>
                 onWeekOptionSelect(e, 'hour')
               )}
@@ -387,7 +438,9 @@ const CronEditor = (props) => {
               )}
             </div>
           </div>
-          <div className="tw-pt-2">
+          <div
+            className="tw-pt-2"
+            data-testid="week-segment-day-option-container">
             <span>Day : </span>
             <div className="cron-badge-option-container week-opt-container">
               {getBadgeOptions(dayOptions, selectedWeekOption.dow, 1, (e) =>
@@ -501,16 +554,17 @@ const CronEditor = (props) => {
   };
 
   return (
-    <div className={`${className} cron-row`}>
+    <div className={`${className} cron-row`} data-testid="cron-container">
       <div className="">
         <div className="tw-grid tw-grid-cols-2 tw-gap-4">
-          <div className="tw-mb-1.5">
+          <div className="tw-mb-1.5" data-testid="time-dropdown-container">
             <label htmlFor="ingestionType">Every:</label>
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
               disabled={disabled}
               id="ingestionType"
               name="ingestionType"
+              data-testid="ingestion-type"
               value={selectedPeriod}
               onChange={(e) => {
                 e.persist();
@@ -526,7 +580,7 @@ const CronEditor = (props) => {
             </select>
           </div>
 
-          {getMinuteComponent(cronPeriodString)}
+          {getMinuteComponent(startText)}
           {getHourComponent(cronPeriodString)}
           {getDayComponent(cronPeriodString)}
           {getWeekComponent(cronPeriodString)}

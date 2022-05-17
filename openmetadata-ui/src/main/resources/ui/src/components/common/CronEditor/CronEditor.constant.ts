@@ -14,11 +14,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const getPeriodOptions = () => {
   return [
-    /* {
+    {
       label: 'minute',
       value: 'minute',
-      prep: ''
-    },*/
+      prep: '',
+    },
     {
       label: 'hour',
       value: 'hour',
@@ -57,7 +57,7 @@ export const toDisplay = {
 };
 
 export const combinations = {
-  minute: /^(\*\s){4}\*$/, // "* * * * *"
+  minute: /^(\*\/\d{1,2})\s(\*\s){3}\*$/, // "*/? * * * *"
   hour: /^\d{1,2}\s(\*\s){3}\*$/, // "? * * * *"
   day: /^(\d{1,2}\s){2}(\*\s){2}\*$/, // "? ? * * *"
   week: /^(\d{1,2}\s){2}(\*\s){2}\d{1,2}$/, // "? ? * * ?"
@@ -76,6 +76,10 @@ export const getRangeOptions = (n: number) => {
       value: v,
     };
   });
+};
+
+export const getMinuteSegmentOptions = () => {
+  return getRangeOptions(60).filter((v) => v.value !== 0 && v.value % 5 === 0);
 };
 
 export const getMinuteOptions = () => {
@@ -161,8 +165,8 @@ export const getMonthOptions = () => {
   });
 };
 
-export const getMinuteCron = () => {
-  return '* * * * *';
+export const getMinuteCron = (value: any) => {
+  return `*/${value.min} * * * *`;
 };
 
 export const getHourCron = (value: any) => {
