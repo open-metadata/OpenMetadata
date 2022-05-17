@@ -1,2 +1,0 @@
-# OpenMetadata SDK
-
