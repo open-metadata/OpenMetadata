@@ -447,6 +447,45 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         return addEdge(newEdgeData, els);
       });
 
+      const updatedDownStreamEdges = () => {
+        return !isUndefined(sourceUpStreamNode) ||
+          !isUndefined(targetUpStreamNode) ||
+          targetNode?.id === selectedEntity.id ||
+          nodes?.find((n) => targetNode?.id === n.id)
+          ? [
+              ...(updatedLineageData.downstreamEdges as EntityEdge[]),
+              {
+                fromEntity: sourceNode?.id,
+                toEntity: targetNode?.id,
+              },
+            ]
+          : updatedLineageData.downstreamEdges;
+      };
+
+      const updatedUpStreamEdges = () => {
+        return !isUndefined(sourceDownstreamNode) ||
+          !isUndefined(targetDownStreamNode) ||
+          sourceNode?.id === selectedEntity.id ||
+          nodes?.find((n) => sourceNode?.id === n.id)
+          ? [
+              ...(updatedLineageData.upstreamEdges as EntityEdge[]),
+              {
+                fromEntity: sourceNode?.id,
+                toEntity: targetNode?.id,
+              },
+            ]
+          : updatedLineageData.upstreamEdges;
+      };
+
+      const getUpdatedNodes = () => {
+        return !isEmpty(selectedEntity)
+          ? [
+              ...(updatedLineageData.nodes as Array<EntityReference>),
+              selectedEntity,
+            ]
+          : updatedLineageData.nodes;
+      };
+
       setTimeout(() => {
         addLineageHandler(newEdge)
           .then(() => {
@@ -455,36 +494,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             setTimeout(() => {
               setUpdatedLineageData({
                 ...updatedLineageData,
-                nodes: selectedEntity
-                  ? [
-                      ...(updatedLineageData.nodes as Array<EntityReference>),
-                      selectedEntity,
-                    ]
-                  : updatedLineageData.nodes,
-                downstreamEdges:
-                  !isUndefined(sourceUpStreamNode) ||
-                  !isUndefined(targetUpStreamNode) ||
-                  targetNode?.id === selectedEntity.id
-                    ? [
-                        ...(updatedLineageData.downstreamEdges as EntityEdge[]),
-                        {
-                          fromEntity: sourceNode?.id,
-                          toEntity: targetNode?.id,
-                        },
-                      ]
-                    : updatedLineageData.downstreamEdges,
-                upstreamEdges:
-                  !isUndefined(sourceDownstreamNode) ||
-                  !isUndefined(targetDownStreamNode) ||
-                  sourceNode?.id === selectedEntity.id
-                    ? [
-                        ...(updatedLineageData.upstreamEdges as EntityEdge[]),
-                        {
-                          fromEntity: sourceNode?.id,
-                          toEntity: targetNode?.id,
-                        },
-                      ]
-                    : updatedLineageData.upstreamEdges,
+                nodes: getUpdatedNodes(),
+                downstreamEdges: updatedDownStreamEdges(),
+                upstreamEdges: updatedUpStreamEdges(),
               });
               setStatus('initial');
             }, 100);
