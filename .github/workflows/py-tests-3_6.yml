@@ -23,9 +23,6 @@ on:
       - ingestion/**
       - catalog-rest-service/**
 
-concurrency: 
-  group: py-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
@@ -48,7 +45,8 @@ jobs:
 
     - name: Install Ubuntu dependencies
       run: |
-        sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+        sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        librdkafka-dev unixodbc-dev libevent-dev
 
     - name: Install open-metadata dependencies
       run: |
