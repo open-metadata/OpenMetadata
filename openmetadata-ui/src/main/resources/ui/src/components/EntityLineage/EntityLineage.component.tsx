@@ -427,7 +427,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       };
 
       setElements((els) => {
-        const newEdge = {
+        const newEdgeData = {
           id: `edge-${params.source}`,
           source: `${params.source}`,
           target: `${params.target}`,
@@ -443,7 +443,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           },
         };
 
-        return addEdge(newEdge, els);
+        return addEdge(newEdgeData, els);
       });
 
       setTimeout(() => {
