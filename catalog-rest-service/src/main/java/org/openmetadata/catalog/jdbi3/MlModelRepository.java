@@ -31,7 +31,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
-import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;

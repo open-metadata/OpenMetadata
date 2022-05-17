@@ -38,8 +38,8 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { Button } from '../../buttons/Button/Button';
-import Avatar from '../../common/avatar/Avatar';
 import PopOver from '../../common/popover/PopOver';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import Loader from '../../Loader/Loader';
 import { FeedHeaderProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import './FeedCardHeader.style.css';
@@ -92,7 +92,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
               <div>
                 <div className="tw-flex">
                   <div className="tw-mr-2">
-                    <Avatar name={createdBy} type="square" width="30" />
+                    <ProfilePicture id="" name={createdBy} width="30" />
                   </div>
                   <div className="tw-self-center">
                     <Button
@@ -256,7 +256,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           className="tw-cursor-pointer"
           data-testid="authorAvatar"
           onClick={onClickHandler}>
-          <Avatar name={createdBy} type="square" width="30" />
+          <ProfilePicture id="" name={createdBy} width="30" />
         </span>
       </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">

@@ -37,8 +37,6 @@ interface Props {
   onLogoutSuccess: () => void;
 }
 
-export type Ref = ReactNode | HTMLElement | string;
-
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, setLoadingIndicator } = useAuthContext();
@@ -46,7 +44,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const isMsalAuthenticated = useIsAuthenticated();
     const account = useAccount(accounts[0] || {});
 
-    const handleOnLogoutSucess = () => {
+    const handleOnLogoutSuccess = () => {
       for (const key in localStorage) {
         if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
           localStorage.removeItem(key);
@@ -55,52 +53,27 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       onLogoutSuccess();
     };
 
-    const login = (loginType = 'popup') => {
+    const login = () => {
       setLoadingIndicator(true);
-      if (loginType === 'popup') {
-        instance
-          .loginPopup(msalLoginRequest)
-          .finally(() => setLoadingIndicator(false));
-      } else if (loginType === 'redirect') {
-        instance
-          .loginRedirect(msalLoginRequest)
-          .finally(() => setLoadingIndicator(false));
-      }
+      instance
+        .loginPopup(msalLoginRequest)
+        .finally(() => setLoadingIndicator(false));
     };
     const logout = () => {
-      // TODO: Uncomment if need to logout from browser
-      // if (logoutType === 'popup') {
-      //   instance
-      //     .logoutPopup({
-      //       mainWindowRedirectUri: ROUTES.HOME,
-      //     })
-      //     .then(() => {
-      //       handleOnLogoutSucess();
-      //     });
-      // } else if (logoutType === 'redirect') {
-      //   instance.logoutRedirect().then(() => {
-      //     handleOnLogoutSucess();
-      //   });
-      // }
       setLoadingIndicator(false);
-      handleOnLogoutSucess();
+      handleOnLogoutSuccess();
     };
 
-    useEffect(() => {
-      const oidcUserToken = localStorage.getItem(oidcTokenKey);
-      if (
-        !oidcUserToken &&
-        inProgress === InteractionStatus.None &&
-        (accounts.length > 0 || account?.idTokenClaims)
-      ) {
-        const tokenRequest = {
-          account: account || accounts[0], // This is an example - Select account based on your app's requirements
-          scopes: msalLoginRequest.scopes,
-        };
+    const fetchIdToken = (isRenewal = false): Promise<string> => {
+      const tokenRequest = {
+        account: account || accounts[0], // This is an example - Select account based on your app's requirements
+        scopes: msalLoginRequest.scopes,
+      };
 
-        // Acquire an access token
+      return new Promise<string>((resolve, reject) => {
+        // Acquire access token
         instance
-          .acquireTokenSilent(tokenRequest)
+          .ssoSilent(tokenRequest)
           .then((response) => {
             // Call your API with the access token and return the data you need to save in state
             const { idToken, scopes, account } = response;
@@ -116,16 +89,36 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
             };
             setIsAuthenticated(isMsalAuthenticated);
             localStorage.setItem(oidcTokenKey, idToken);
-            onLoginSuccess(user);
+            if (!isRenewal) {
+              onLoginSuccess(user);
+            }
+
+            resolve('');
           })
           .catch(async (e) => {
             // Catch interaction_required errors and call interactive method to resolve
             if (e instanceof InteractionRequiredAuthError) {
               await instance.acquireTokenRedirect(tokenRequest);
-            }
 
-            throw e;
+              resolve('');
+            } else {
+              // eslint-disable-next-line no-console
+              console.error(e);
+
+              reject(e);
+            }
           });
+      });
+    };
+
+    useEffect(() => {
+      const oidcUserToken = localStorage.getItem(oidcTokenKey);
+      if (
+        !oidcUserToken &&
+        inProgress === InteractionStatus.None &&
+        (accounts.length > 0 || account?.idTokenClaims)
+      ) {
+        fetchIdToken();
       }
     }, [inProgress, accounts, instance, account]);
 
@@ -137,7 +130,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       renewIdToken() {
-        return Promise.resolve('');
+        return fetchIdToken(true);
       },
     }));
 

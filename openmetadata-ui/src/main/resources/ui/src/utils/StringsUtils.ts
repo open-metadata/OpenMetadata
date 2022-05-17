@@ -131,3 +131,12 @@ export const getErrorText = (
 export const getEncodedFqn = (fqn: string) => {
   return encodeURIComponent(fqn);
 };
+
+/**
+ *
+ * @param url - Url to be check
+ * @returns - True if url is external otherwise false
+ */
+export const isExternalUrl = (url = '') => {
+  return /^https?:\/\//.test(url);
+};

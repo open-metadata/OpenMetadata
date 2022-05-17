@@ -79,11 +79,11 @@ class ConfigResourceTest extends CatalogApplicationTest {
     WebTarget target = getConfigResource("jwks");
     JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
     assertNotNull(auth);
-    assertEquals(auth.getJwsKeys().size(), 1);
+    assertEquals(1, auth.getJwsKeys().size());
     JWKSKey jwksKey = auth.getJwsKeys().get(0);
-    assertEquals(jwksKey.getAlg(), "RS256");
-    assertEquals(jwksKey.getUse(), "sig");
-    assertEquals(jwksKey.getKty(), "RSA");
+    assertEquals("RS256", jwksKey.getAlg());
+    assertEquals("sig", jwksKey.getUse());
+    assertEquals("RSA", jwksKey.getKty());
     assertNotNull(jwksKey.getN());
     assertNotNull(jwksKey.getE());
   }
