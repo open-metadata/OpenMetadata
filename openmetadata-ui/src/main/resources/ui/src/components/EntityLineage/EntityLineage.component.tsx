@@ -265,6 +265,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         downstreamEdges: newDownStreamEdges,
         upstreamEdges: newUpStreamEdges,
       });
+      setConfirmDelete(false);
     }
   };
 
