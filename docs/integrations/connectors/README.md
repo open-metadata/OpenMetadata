@@ -12,7 +12,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [ClickHouse](broken-reference/)
 * [ClickHouse Usage](broken-reference/)
 * [Databricks](../../../integrations/connectors/databricks/)
-* [Delta Lake](delta-lake.md)
+* [Delta Lake](../../../integrations/connectors/delta-lake/)
 * [DynamoDB](dynamodb.md)
 * [ElasticSearch](elastic-search.md)
 * [Glue Catalog](glue-catalog/)
@@ -21,7 +21,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MariaDB](broken-reference)
 * [MSSQL](../../../integrations/connectors/mssql-1/)
 * [MSSQL Usage](../../../integrations/connectors/mssql-1/)
-* [MySQL](../../../integrations/connectors/mysql-1-1-1/)
+* [MySQL](../../../integrations/connectors/mysql-1-1/)
 * [Oracle](mysql-2/)
 * [Postgres](<snowflake/README (1).md>)
 * [Presto](presto.md)
@@ -37,7 +37,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 #### Dashboard Services
 
 * [Looker](broken-reference/)
-* [Metabase](../../../integrations/connectors/mysql-1-1/)
+* [Metabase](<../../../integrations/connectors/mysql-1-1/README (1).md>)
 * Power BI
 * [Redash](redash.md)
 * [Superset](superset.md)

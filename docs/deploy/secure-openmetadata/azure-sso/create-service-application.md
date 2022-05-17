@@ -7,18 +7,18 @@
 * Select the checkboxes for **Access Token** and **ID Tokens**.
 * Click Save.
 
-![](<../../../../.gitbook/assets/image (34).png>)
+![](<../../../../.gitbook/assets/image (37).png>)
 
 ## Step 2: Expose an API
 
 * Navigate to the section **Expose an API**
 
-![](<../../../../.gitbook/assets/image (75).png>)
+![](<../../../../.gitbook/assets/image (79).png>)
 
 * Set the **App ID URI.** If it has not been set, the default value is api://\<client\_id>.
 * Click Save.
 
-![](<../../../../.gitbook/assets/image (49).png>)
+![](<../../../../.gitbook/assets/image (51).png>)
 
 ## Step 3: Add a Scope
 
@@ -26,7 +26,7 @@
 * Enter the details with a custom scope name to expose.
 * Once completed, click on Add Scope.
 
-![](<../../../../.gitbook/assets/image (101).png>)
+![](<../../../../.gitbook/assets/image (106).png>)
 
 ## Step 4: Register Another Azure Application
 
@@ -36,7 +36,7 @@ Another Azure Application must be registered for Service ingestion.
 * Create a **public client redirect URI**.
 * Click on Register.
 
-![](<../../../../.gitbook/assets/image (45).png>)
+![](<../../../../.gitbook/assets/image (47).png>)
 
 ## Step 5: **API Permissions**
 
@@ -44,7 +44,7 @@ Another Azure Application must be registered for Service ingestion.
 * Navigate to the section on API Permissions.
 * Click on Add a Permission.
 
-![](<../../../../.gitbook/assets/image (86).png>)
+![](<../../../../.gitbook/assets/image (91).png>)
 
 * Search for the OpenMetadata Application
 
@@ -53,7 +53,7 @@ Another Azure Application must be registered for Service ingestion.
 * Select the custom scope created in Step 3.
 * Click on Add Permissions.
 
-![](<../../../../.gitbook/assets/image (43).png>)
+![](<../../../../.gitbook/assets/image (45).png>)
 
 ## Step 6: Grant Admin Consent for Default Directory
 
@@ -71,21 +71,21 @@ Open Metadata Ingestion authenticates and authorizes workflow connectivity with 
 * Navigate to the Azure Active Directory >> App Registrations >> \[OpenMetadata Ingestion Application] >> Expose an API.
 * Click on **Set** in Application ID URI
 
-![](<../../../../.gitbook/assets/image (98).png>)
+![](<../../../../.gitbook/assets/image (103).png>)
 
 * Click on Save to set the App ID URI which is required for scopes while connecting from manual ingestion.
 
-![](<../../../../.gitbook/assets/image (58).png>)
+![](<../../../../.gitbook/assets/image (61).png>)
 
 ## Step 8: Create a Client Secret
 
 * Navigate to **Certificates & Secrets** to generate the `clientSecret`.
 * Click on New Client Secret.
 
-![](<../../../../.gitbook/assets/image (68).png>)
+![](<../../../../.gitbook/assets/image (71).png>)
 
 * Enter a description and an expiry period.
 
-![](<../../../../.gitbook/assets/image (97).png>)
+![](<../../../../.gitbook/assets/image (102).png>)
 
 * The `secret_key` is required for ingestion.

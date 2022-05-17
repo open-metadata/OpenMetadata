@@ -37,7 +37,7 @@ Entering the credentials directly into the form
 
 Entering the path of file in which the GCS bucket credentials are stored.
 
-![Enter the path of the GCS credentials file](<../../.gitbook/assets/image (5) (1) (1).png>)
+![Enter the path of the GCS credentials file](<../../.gitbook/assets/image (5) (1) (1) (1).png>)
 
 For more information on Google Cloud Storage authentication click [here](https://cloud.google.com/docs/authentication/getting-started#create-service-account-console).
 

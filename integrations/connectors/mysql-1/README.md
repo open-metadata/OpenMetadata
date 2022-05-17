@@ -45,7 +45,7 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.&#x20;
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (56).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (59).png>)
 
 ### 3. Select the Service Type
 
@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MariaDB service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (66).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (69).png>)
 
 <details>
 
@@ -105,7 +105,7 @@ Enter the details for any additional connection arguments such as security or pr
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (134).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (142).png>)
 
 <details>
 
@@ -159,7 +159,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (77).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (81).png>)
 
 <details>
 
@@ -201,7 +201,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (44).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (46).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -209,7 +209,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (71).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (75).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

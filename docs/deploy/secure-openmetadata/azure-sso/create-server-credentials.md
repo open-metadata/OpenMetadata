@@ -13,17 +13,17 @@ Admin permissions are required to register the application on the Azure portal.
 
 * From the Azure Active Directory, navigate to the **App Registrations** section from the left nav bar.
 
-![](<../../../../.gitbook/assets/image (102).png>)
+![](<../../../../.gitbook/assets/image (107).png>)
 
 * Click on **New Registration**. This step is for registering the OpenMetadata UI.
 
-![](<../../../../.gitbook/assets/image (110).png>)
+![](<../../../../.gitbook/assets/image (115).png>)
 
 * Provide an Application Name for registration
 * Provide a redirect URL as a **Single Page Application**.
 * Click on \*\*\*\* Register.
 
-![](<../../../../.gitbook/assets/image (51).png>)
+![](<../../../../.gitbook/assets/image (54).png>)
 
 ## Step 3: Where to Find the Credentials
 

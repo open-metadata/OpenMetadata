@@ -32,13 +32,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (27).png>)
+![Find Services under the Settings Menu](<../../../../.gitbook/assets/image (29).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (123).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (130).png>)
 
 ### 3. Select the Service Type
 
@@ -128,7 +128,7 @@ After hitting Save you will see that your Glue connector has been added successf
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (112).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (117).png>)
 
 <details>
 
@@ -182,7 +182,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (89).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -224,7 +224,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (122).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (129).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -232,7 +232,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (38).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

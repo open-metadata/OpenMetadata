@@ -25,7 +25,7 @@ description: This is a guide to create ingestion bot service app.
   * Algorithm — RSA256
   * Key ID — Enter the Key ID that is fetched from the `issuer_url/v1/keys`. Fetch the `kid` as the key ID
 
-![](<../../../.gitbook/assets/image (12) (1) (1).png>)
+![](<../../../.gitbook/assets/image (12) (1) (1) (1).png>)
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946546-1e86ae45-2774-4217-925e-f423053a7a1d.png)
 
@@ -83,7 +83,7 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 * To add scopes, navigate to your **Okta Dashboard**. Click on **Applications -> Applications** as in step 2.
 * Click on your service app.
 
-![](<../../../.gitbook/assets/image (35) (1) (1) (1) (2).png>)
+![](<../../../.gitbook/assets/image (35) (1) (1) (1).png>)
 
 * Now click on **Okta API Scopes** from the top nav bar.
 * Grant the scopes by clicking on **Grant**. Ensure that the following scopes are granted:

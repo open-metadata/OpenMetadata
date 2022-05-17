@@ -37,13 +37,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (27).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (29).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (123).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (130).png>)
 
 ### 3. Select the Service Type
 
@@ -163,9 +163,9 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](../../../docs/.gitbook/assets/generate\_sample\_data.png)
+![](<../../../docs/.gitbook/assets/generate\_sample\_data (2).png>)
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (89).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -207,7 +207,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../docs/.gitbook/assets/dbt (1).png>)
+![](../../../docs/.gitbook/assets/dbt.png)
 
 ![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (8) (1).png>)
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (99).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (104).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

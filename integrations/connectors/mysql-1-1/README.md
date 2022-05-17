@@ -1,24 +1,26 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the Metabase
+  In this section, we provide the guides and reference to use the MySQL
   connector.
 ---
 
-# Metabase
+# MySQL
 
-Configure and schedule Metabase **metadata** workflows from the OpenMetadata UI.
+Configure and schedule MySQL **metadata**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="../mysql-1-1-1/run-mysql-connector-using-cli.md" %}
+[run-mysql-connector-using-cli.md](../mysql-1-1-1/run-mysql-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -43,13 +45,13 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (72).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (59).png>)
 
 ### 3. Select the Service Type
 
-Select Metabase as the service type and click _Next_.
+Select MySQL as the service type and click _Next_.
 
-![Select your Service type](<../../../.gitbook/assets/image (52).png>)
+![Select your Service type](<../../../.gitbook/assets/image (95).png>)
 
 ### 4. Name and Describe your Service
 
@@ -57,15 +59,15 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Metabase services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MySQL services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (111).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (98).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Metabase service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (39).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (69).png>)
 
 <details>
 
@@ -73,53 +75,79 @@ In this step, we will configure the connection settings required for this connec
 
 **Username**
 
-Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your MySQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Metabase user in the _Password_ field.
+Enter the password for your MySQL user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
 
-**Database Service Name (optional)**
+**Database (optional)**
 
-Enter the Database Service Name for the Lineage creation.
+If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+
+**Connection Options (Optional)**
+
+Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
+
+**Connection Arguments (Optional)**
+
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (9).png>)
+![Service has been saved](<../../../.gitbook/assets/image (49).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (125).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (142).png>)
 
 <details>
 
 <summary>Metadata Ingestion Options</summary>
 
-**Include (Dashboard Filter Pattern)**
+**Include (Table Filter Pattern)**
 
-Use to dashboard filter patterns to control whether or not to include dashboards as part of metadata ingestion.
+Use to table filter patterns to control whether or not to include tables as part of metadata ingestion and data profiling.
 
-Explicitly include dashboards by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
+Explicitly include tables by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all tables with names matching one or more of the supplied regular expressions. All other tables will be excluded. See the figure above for an example.
 
-**Exclude (Dashboard Filter Pattern)**
+**Exclude (Table Filter Pattern)**
 
-Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+Explicitly exclude tables by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all tables with names matching one or more of the supplied regular expressions. All other tables will be included. See the figure above for an example.
 
-**Include (Chart Filter Pattern)**
+**Include (Schema Filter Pattern)**
 
-Use to chart filter patterns to control whether or not to include charts as part of metadata ingestion and data profiling.
+Use to schema filter patterns to control whether or not to include schemas as part of metadata ingestion and data profiling.
 
-Explicitly include charts by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
+Explicitly include schemas by adding a list of comma-separated regular expressions to the _Include_ field. OpenMetadata will include all schemas with names matching one or more of the supplied regular expressions. All other schemas will be excluded.
 
-**Exclude (Chart Filter Pattern)**
+**Exclude (Schema Filter Pattern)**
 
-Explicitly exclude charts by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
+Explicitly exclude schemas by adding a list of comma-separated regular expressions to the _Exclude_ field. OpenMetadata will exclude all schemas with names matching one or more of the supplied regular expressions. All other schemas will be included.
+
+**Include views (toggle)**
+
+Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
+
+Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
+
+**Enable data profiler (toggle)**
+
+The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
+
+When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
+
+Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
+
+**Ingest sample data (toggle)**
+
+Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
 </details>
 
@@ -131,7 +159,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (77).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (81).png>)
 
 <details>
 
@@ -173,7 +201,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (26).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (46).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -181,22 +209,38 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (2) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (75).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+## Data Profiler and Quality Tests
+
+You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
+
+{% content-ref url="../../../docs/data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../docs/data-quality/profiler-workflow.md)
+{% endcontent-ref %}
+
+## DBT Integration
+
+You can learn more about how to ingest DBT models' definitions and their lineage below:
+
+{% content-ref url="../../../data-lineage/dbt-integration/" %}
+[dbt-integration](../../../data-lineage/dbt-integration/)
+{% endcontent-ref %}
 
 ## Run using Airflow SDK
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
+[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="../mysql-1-1-1/run-mysql-connector-using-cli.md" %}
+[run-mysql-connector-using-cli.md](../mysql-1-1-1/run-mysql-connector-using-cli.md)
 {% endcontent-ref %}

@@ -49,7 +49,7 @@ description: >-
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1) (1) (1).png>)
 
 * The app is now configured.
 
@@ -65,7 +65,7 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../.gitbook/assets/image (29) (1) (1).png>)
+![](<../../../.gitbook/assets/image (29) (1).png>)
 
 * Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
@@ -128,4 +128,4 @@ This will generate the Issuer URL.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1) (1).png>)

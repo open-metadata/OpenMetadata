@@ -1,37 +1,35 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the MySQL
+  In this section, we provide the guides and references to use the Delta Lake
   connector.
 ---
 
-# MySQL
+# Delta Lake
 
-Configure and schedule MySQL **metadata**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Delta Lake **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
-* [Metadata Ingestion](./#metadata-ingestion)
+* [Metadata Ingestion](./#6.-configure-the-metadata-ingestion)
 * [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
 * [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
-[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-delta-lake-connector-using-cli.md" %}
+[run-delta-lake-connector-using-cli.md](run-delta-lake-connector-using-cli.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-mysql-connector-using-cli.md" %}
-[run-mysql-connector-using-cli.md](run-mysql-connector-using-cli.md)
+{% content-ref url="run-delta-lake-connector-with-the-airflow-sdk.md" %}
+[run-delta-lake-connector-with-the-airflow-sdk.md](run-delta-lake-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-## **Requirements**
+## Requirements
 
 #### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
-
-## Metadata Ingestion
 
 ### 1. Visit the _Services_ Page
 
@@ -45,67 +43,61 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (56).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (130).png>)
 
 ### 3. Select the Service Type
 
-Select MySQL as the service type and click _Next_.
+Select Delta Lake as the service type and click _Next._
 
-![Select your Service type](<../../../.gitbook/assets/image (90).png>)
+![Select your Service type](<../../../.gitbook/assets/image (1).png>)
 
-### 4. Name and Describe your Service
+### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
 Provide a name and description for your service as illustrated below.
 
-#### Service Name
+#### Service Name <a href="#service-name" id="service-name"></a>
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MySQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (93).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (33).png>)
 
-### 5. Configure the Service Connection
+### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (66).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (73).png>)
 
 <details>
 
-<summary>Connection Options</summary>
+<summary>Connection Arguments</summary>
 
-**Username**
+**Metastore Host & Port (Optional)**
 
-Enter the username of your MySQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the Host & Port of Hive Metastore to establish a sparks session.
 
-**Password**
+**Metastore Local File Path (Optional)**
 
-Enter the password for your MySQL user in the _Password_ field.
+Enter the file path to local Metastore incase sparks cluster is running locally.
 
-**Host and Port**
+**Application Name (Optional)**
 
-Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
-
-**Database (optional)**
-
-If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
-
-**Connection Options (Optional)**
-
-Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
+Enter the app name of spark session.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+
+To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (47).png>)
+![Service has been saved](<../../../.gitbook/assets/image (121).png>)
 
-### 6. Configure the Metadata Ingestion
+### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (134).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (32).png>)
 
 <details>
 
@@ -159,7 +151,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (77).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (52).png>)
 
 <details>
 
@@ -197,19 +189,19 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-### 8. View the Ingestion Pipeline
+### 8. View the Ingestion Pipeline <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (44).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (86).png>)
 
-### 9. Workflow Deployment Error
+### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
 If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (71).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (25).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -223,24 +215,20 @@ You can learn more about how to configure the Data Profiler and about executing 
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage below:
-
-{% content-ref url="../../../data-lineage/dbt-integration/" %}
-[dbt-integration](../../../data-lineage/dbt-integration/)
-{% endcontent-ref %}
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).
 
 ## Run using Airflow SDK
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-mysql-connector-with-the-airflow-sdk.md" %}
-[run-mysql-connector-with-the-airflow-sdk.md](run-mysql-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-delta-lake-connector-with-the-airflow-sdk.md" %}
+[run-delta-lake-connector-with-the-airflow-sdk.md](run-delta-lake-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-mysql-connector-using-cli.md" %}
-[run-mysql-connector-using-cli.md](run-mysql-connector-using-cli.md)
+{% content-ref url="run-delta-lake-connector-using-cli.md" %}
+[run-delta-lake-connector-using-cli.md](run-delta-lake-connector-using-cli.md)
 {% endcontent-ref %}
