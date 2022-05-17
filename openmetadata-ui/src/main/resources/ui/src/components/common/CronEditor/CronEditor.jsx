@@ -136,17 +136,13 @@ const CronEditor = (props) => {
   };
   const [value, setCronValue] = useState(props.value || '0 0 * * 0');
   const [state, setState] = useState(getStateValue(value));
-  const [periodOptions, setPeriodOptions] = useState(getPeriodOptions());
-  const [minuteSegmentOptions, setMinuteSegmentOptions] = useState(
-    getMinuteSegmentOptions()
-  );
-  const [minuteOptions, setMinuteOptions] = useState(getMinuteOptions());
-  const [hourOptions, setHourOptions] = useState(getHourOptions());
-  const [dayOptions, setDayOptions] = useState(getDayOptions());
-  const [monthDaysOptions, setMonthDaysOptions] = useState(
-    getMonthDaysOptions()
-  );
-  const [monthOptions, setMonthOptions] = useState(getMonthOptions());
+  const [periodOptions] = useState(getPeriodOptions());
+  const [minuteSegmentOptions] = useState(getMinuteSegmentOptions());
+  const [minuteOptions] = useState(getMinuteOptions());
+  const [hourOptions] = useState(getHourOptions());
+  const [dayOptions] = useState(getDayOptions());
+  const [monthDaysOptions] = useState(getMonthDaysOptions());
+  const [monthOptions] = useState(getMonthOptions());
 
   const { className, disabled } = props;
   const { selectedPeriod } = state;
@@ -180,10 +176,10 @@ const CronEditor = (props) => {
   };
 
   const onMinOptionSelect = (event, key) => {
-    const value = event.target.value;
+    const selectedValue = event.target.value;
     const obj = {};
 
-    obj[key] = value;
+    obj[key] = selectedValue;
     const { selectedMinOption } = state;
     const minOption = Object.assign({}, selectedMinOption, obj);
     changeValue({ ...state, selectedMinOption: minOption });
@@ -296,13 +292,11 @@ const CronEditor = (props) => {
   };
 
   const getMinuteSegmentSelect = (selectedOption, onChangeCB) => {
-    const { disabled } = props;
-
     return (
       <select
         className="tw-form-inputs tw-py-1 tw-px-1"
         data-testid="minute-segment-options"
-        disabled={disabled}
+        disabled={props.disabled}
         value={selectedOption.min}
         onChange={(e) => {
           e.persist();
