@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -47,9 +47,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Snowflake as the service type and click _Next._
+Select Databricks as the service type and click _Next._
 
-![](<../../../.gitbook/assets/image (1) (1).png>)
+![](<../../../.gitbook/assets/image (6).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 

@@ -4,7 +4,7 @@ The following database connectors supports usage workflow in OpenMetadata:
 
 * [BigQuery](../docs/integrations/connectors/bigquery/)
 * [Snowflake](../docs/integrations/connectors/snowflake/)
-* [MSSQL](../integrations/connectors/mssql-1-1/)
+* [MSSQL](../integrations/connectors/mssql-1/)
 * [Redshift](../docs/integrations/connectors/redshift/)
 * [Clickhouse](../docs/data-lineage/broken-reference/)
 

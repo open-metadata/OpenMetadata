@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the SingleStore
+  In this section, we provide the guides and references to use the Salesforce
   connector.
 ---
 
-# SingleStore
+# Salesforce
 
-Configure and schedule SingleStore **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Salesforce **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,12 +15,12 @@ Configure and schedule SingleStore **metadata** and **profiler** workflows from 
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
+{% content-ref url="../singlestore/run-singlestore-connector-using-airflow-sdk.md" %}
+[run-singlestore-connector-using-airflow-sdk.md](../singlestore/run-singlestore-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="../singlestore/run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](../singlestore/run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -39,7 +39,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select SingleStore as the service type and click _Next_.
+Select BigQuery as the service type and click _Next_.
 
 ![](<../../../docs/.gitbook/assets/image (11).png>)
 
@@ -245,14 +245,14 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="../singlestore/run-singlestore-connector-using-airflow-sdk.md" %}
+[run-singlestore-connector-using-airflow-sdk.md](../singlestore/run-singlestore-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
+{% content-ref url="../singlestore/run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](../singlestore/run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}

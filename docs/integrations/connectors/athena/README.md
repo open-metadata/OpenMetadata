@@ -32,7 +32,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -42,9 +42,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Athena as the service type and click _Next_.
+From the dropdown menu, select Database Services. Select Athena as the service type and click _Next_.
 
-![](../../../.gitbook/assets/athena-select-service.jpg)
+![](<../../../../.gitbook/assets/image (2).png>)
 
 ### 4. Name and Describe your Service
 

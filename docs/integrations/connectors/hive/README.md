@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -47,27 +47,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Snowflake as the service type and click _Next_.
+Select Hive as the service type and click _Next_.
 
-### 1. Visit the _Services_ Page
-
-The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
-
-To visit the _Services_ page, select _Services_ from the _Settings_ menu.
-
-![Find Services under the Settings Menu](<../../../.gitbook/assets/image (5) (1) (1) (1) (1).png>)
-
-### 2. Create a New Service
-
-Click on the _Add New Service_ button to start the Service creation.
-
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
-
-### 3. Select the Service Type
-
-Select Snowflake as the service type and click _Next._
-
-![Select your Service type](<../../../.gitbook/assets/image (3).png>)
+![](<../../../../.gitbook/assets/image (10).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
