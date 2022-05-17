@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the Salesforce
+  In this section, we provide the guides and references to use the SingleStore
   connector.
 ---
 
-# Salesforce
+# SingleStore
 
-Configure and schedule Salesforce **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule SingleStore **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,12 +15,12 @@ Configure and schedule Salesforce **metadata** and **profiler** workflows from t
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
-{% endcontent-ref %}
-
 {% content-ref url="run-singlestore-connector-using-cli.md" %}
 [run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
+{% endcontent-ref %}
+
+{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
+[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select BigQuery as the service type and click _Next_.
+Select SingleStore as the service type and click _Next_.
 
 ![](<../../../docs/.gitbook/assets/image (11).png>)
 

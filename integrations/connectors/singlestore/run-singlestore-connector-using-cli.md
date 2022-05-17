@@ -1,23 +1,33 @@
 ---
-description: Use your own Airflow instance to schedule and run the SingleStore Connector.
+description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run SingleStore Connector using Airflow SDK
+# Run Salesforce Connector using CLI
 
-Configure and schedule SingleStore **metadata** and **profiler** workflows using your own Airflow instances.
+Configure and schedule Salesforce **metadata** and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-singlestore-connector-using-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-singlestore-connector-using-airflow-sdk.md#metadata-ingestion)
-* [Data Profiler and Quality Tests](run-singlestore-connector-using-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-singlestore-connector-using-airflow-sdk.md#dbt-integration)
+* [Requirements](run-singlestore-connector-using-cli.md#requirements)
+* [Metadata Ingestion](run-singlestore-connector-using-cli.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-singlestore-connector-using-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-singlestore-connector-using-cli.md#dbt-integration)
 
 ## Requirements
 
-Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](https://docs.open-metadata.org/overview/run-openmetadata#procedure) to learn how to install the `metadata` CLI.
+
+In order to execute the workflows, you will need a running OpenMetadata server.
+
+### Python requirements
+
+To run the Salesforce ingestion, you will need to install:
+
+```
+pip3 install 'openmetadata-ingestion[salesforce]'
+```
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json) you can find the structure to create a connection to SingleStore.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/salesforceConnection.json) you can find the structure to create a connection to Salesforce.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -25,21 +35,22 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the JSON Config
 
-This is a sample config for SingleStore:
+This is a sample config for Salesforce:
 
 ```json
 {
     "source": {
-        "type": "singlestore",
+        "type": "salesfoce",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {
-                "type": "SingleStore",
-                "username": "<username>",
-                "password": "<password>",
-                "hostPort": "<hostPort>",
-                "database": "<database>"
-            }
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "securityToken": "securityToken",
+                "scheme": "salesforce",
+                "sobjectName": "sobjectName"
+              }
         },
         "sourceConfig": {
             "config": {
@@ -70,14 +81,15 @@ This is a sample config for SingleStore:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/salesforceConnection.json).
 
-* **hostPort**: **** Host and port of the data source.
-* **username** (Optional): Specify the User to connect to SingleStore. It should have enough privileges to read all the metadata.
+* **username** (Optional): Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
 * **password** (Optional): Connection password.
+* **securityToken: C**onnection security Token
 * **database** (Optional): The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
-* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to SingleStore during the connection. These details must be added as Key-Value pairs.
-* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to SingleStore during the connection. These details must be added as Key-Value pairs.
+* **sobjectName :** object name where data is stored
+* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
+* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
 
 For the Connection Arguments, In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
@@ -91,7 +103,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -142,65 +154,15 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
 
-```python
-import pathlib
-import json
-from datetime import timedelta
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```
+metadata ingest -c <path-to-json>
 ```
 
-{% hint style="info" %}
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
-{% endhint %}
 
 ## Data Profiler and Quality Tests
 
@@ -208,21 +170,22 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 
 ### 1. Define the JSON configuration
 
-This is a sample config for a SingleStore profiler:
+This is a sample config for a Salesforce profiler:
 
 ```json
 {
     "source": {
-       "type": "singlestore",
+       "type": "salesforce",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {
-                "type": "SingleStore",
-                "username": "<username>",
-                "password": "<password>",
-                "hostPort": "<hostPort>",
-                "database": "<database>"
-            }
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "securityToken": "securityToken",
+                "scheme": "salesforce",
+                "sobjectName": "sobjectName"
+              }
         },
         "sourceConfig": {
             "config": {
@@ -250,10 +213,10 @@ This is a sample config for a SingleStore profiler:
 
 #### Source Configuration
 
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json).
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/salesforceConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {
@@ -307,63 +270,20 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-singlestore-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-singlestore-connector-using-cli.md#workflow-configuration) ingestion.
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
+Again, we will start by saving the JSON file.
 
-```python
-import json
-from datetime import timedelta
+Then, we can run the workflow as:
 
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
-
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-
-default_args = {
-    "owner": "user_name",
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(seconds=10),
-    "execution_timeout": timedelta(minutes=60),
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = ProfilerWorkflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-with DAG(
-    "profiler_example",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="profile_and_test_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
 ```
+metadata profile -c <path-to-json>
+```
+
+Note how instead of running `ingest`, we are using the `profile` command to select the `Profiler` workflow.
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
-
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).

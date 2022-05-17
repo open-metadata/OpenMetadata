@@ -10,7 +10,7 @@ This workflow is available ONLY for the following connectors:
 
 * [BigQuery](../integrations/connectors/bigquery/)
 * [Snowflake](../integrations/connectors/snowflake/)
-* [MSSQL](../../integrations/connectors/mssql-1/)
+* [MSSQL](../../integrations/connectors/mssql-1-1/)
 * [Redshift](../integrations/connectors/redshift/)
 * [Clickhouse](broken-reference/)
 

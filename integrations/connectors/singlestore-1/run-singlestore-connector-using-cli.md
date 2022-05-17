@@ -2,7 +2,7 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Salesforce Connector using CLI
+# Run SingleStore Connector using CLI
 
 Configure and schedule SingleStore **metadata** and **profiler** workflows using your own Airflow instances.
 
@@ -19,7 +19,7 @@ In order to execute the workflows, you will need a running OpenMetadata server.
 
 ### Python requirements
 
-To run the BigQuery ingestion, you will need to install:
+To run the SingleStore ingestion, you will need to install:
 
 ```
 pip3 install 'openmetadata-ingestion[singlestore]'
@@ -283,4 +283,4 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).

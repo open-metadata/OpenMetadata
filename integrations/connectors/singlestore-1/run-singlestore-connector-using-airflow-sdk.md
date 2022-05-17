@@ -2,9 +2,9 @@
 description: Use your own Airflow instance to schedule and run the SingleStore Connector.
 ---
 
-# Run Salesforce Connector using Airflow SDK
+# Run SingleStore Connector using Airflow SDK
 
-Configure and schedule Salesforce **metadata** and **profiler** workflows using your own Airflow instances.
+Configure and schedule SingleStore **metadata** and **profiler** workflows using your own Airflow instances.
 
 * [Requirements](run-singlestore-connector-using-airflow-sdk.md#requirements)
 * [Metadata Ingestion](run-singlestore-connector-using-airflow-sdk.md#metadata-ingestion)
