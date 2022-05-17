@@ -12,6 +12,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -35,6 +38,9 @@ class DynamodbSource(Source[Entity]):
         self.status = SQLSourceStatus()
 
         self.config = config
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
@@ -104,9 +110,10 @@ class DynamodbSource(Source[Entity]):
                     database_schema=schema_entity,
                 )
                 try:
-                    table_data = self.fetch_sample_data(schema_entity, table)
-                    if table_data:
-                        table_entity.sampleData = table_data
+                    if self.source_config.generateSampleData:
+                        table_data = self.fetch_sample_data(schema_entity, table)
+                        if table_data:
+                            table_entity.sampleData = table_data
                 # Catch any errors during the ingestion and continue
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(repr(err))
