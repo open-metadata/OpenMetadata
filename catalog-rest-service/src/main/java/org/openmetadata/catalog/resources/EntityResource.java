@@ -34,7 +34,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   private final boolean supportsOwner;
 
-  public EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
+  protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
     allowedFields = Entity.getAllowedFields(entityClass);
     supportsOwner = allowedFields.contains(FIELD_OWNER);
