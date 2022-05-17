@@ -203,7 +203,7 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (2) (1).png>)
 
 ## Data Profiler and Quality Tests
 
