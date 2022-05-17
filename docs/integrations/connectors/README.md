@@ -12,7 +12,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [ClickHouse](snowflake-2/)
 * [ClickHouse Usage](snowflake-2/)
 * [Databricks](../../../integrations/connectors/databricks/)
-* [Delta Lake](delta-lake.md)
+* [Delta Lake](../../../integrations/connectors/delta-lake/)
 * [DynamoDB](dynamodb.md)
 * [ElasticSearch](elastic-search.md)
 * [Glue Catalog](glue-catalog/)

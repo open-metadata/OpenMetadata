@@ -44,7 +44,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 From the dropdown menu, select Database Services. Select Athena as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (2).png>)
+![](<../../../../.gitbook/assets/image (2) (1).png>)
 
 ### 4. Name and Describe your Service
 
