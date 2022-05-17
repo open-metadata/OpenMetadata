@@ -1,0 +1,68 @@
+
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: py-tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - ingestion/**
+      - catalog-rest-service/**
+  pull_request_target:
+    branches: [main]
+    paths:
+      - ingestion/**
+      - catalog-rest-service/**
+
+concurrency: 
+  group: py-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  py-run-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
+    - name: Install open-metadata dependencies
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        make install_test install_dev generate install_all
+
+    - name: Start Server and Ingest Sample Data
+      env:
+        INGESTION_DEPENDENCY: "airflow-container,sample-data,elasticsearch"
+      run: ./docker/run_local_docker.sh
+      timeout-minutes: 30
+
+    - name: Run Python Tests & record coverage
+      run: |
+        source env/bin/activate
+        make coverage
