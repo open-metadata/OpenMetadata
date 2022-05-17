@@ -383,6 +383,10 @@ export interface StorageService {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to this storage service.
    */
   href: string;

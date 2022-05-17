@@ -212,6 +212,10 @@ export interface Rule {
    */
   entityTypeAttr?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Name for this Rule.
    *
    * Name that identifies this Rule.
@@ -619,6 +623,10 @@ export interface StorageService {
    * Display Name that identifies this storage service.
    */
   displayName?: string;
+  /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
   /**
    * Link to the resource corresponding to this storage service.
    */

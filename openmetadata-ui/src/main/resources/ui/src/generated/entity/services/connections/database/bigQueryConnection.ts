@@ -17,7 +17,7 @@
  */
 export interface BigQueryConnection {
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * GCS Credentials
    */
@@ -67,11 +67,6 @@ export interface BigQueryConnection {
    * Service Type
    */
   type?: BigqueryType;
-  /**
-   * Username to connect to Bigquery. This user should have privileges to read all the
-   * metadata in Bigquery.
-   */
-  username?: string;
 }
 
 /**

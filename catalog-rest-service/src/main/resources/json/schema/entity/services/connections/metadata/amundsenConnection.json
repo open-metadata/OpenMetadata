@@ -43,7 +43,7 @@
       "default": "false"
     },
     "encrypted": {
-      "description": "Enable Encyption for the Amundsen Neo4j Connection.",
+      "description": "Enable encryption for the Amundsen Neo4j Connection.",
       "type": "boolean",
       "default": "false"
     },

@@ -22,7 +22,7 @@ export interface OpenMetadataConnection {
   apiVersion?: string;
   /**
    * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
-   * the one configured on OpenMetadaata server.
+   * the one configured on OpenMetadata server.
    */
   authProvider?: AuthProvider;
   /**
@@ -34,17 +34,37 @@ export interface OpenMetadataConnection {
    */
   includeDashboards?: boolean;
   /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
    * Include Glossary Terms for Indexing
    */
   includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
   /**
    * Include Pipelines for Indexing
    */
   includePipelines?: boolean;
   /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
    * Include Tables for Indexing
    */
   includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
   /**
    * Include Teams for Indexing
    */
@@ -74,7 +94,7 @@ export interface OpenMetadataConnection {
 
 /**
  * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
- * the one configured on OpenMetadaata server.
+ * the one configured on OpenMetadata server.
  */
 export enum AuthProvider {
   Auth0 = 'auth0',

@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
@@ -39,7 +40,6 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.ChangeEventParser;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 
@@ -82,14 +82,15 @@ public class ChangeEventHandler implements EventHandler {
         for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
           // Don't create a thread if there is no message
           if (!thread.getMessage().isEmpty()) {
-            Object entity = responseContext.getEntity();
+            EntityInterface entity;
             // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
-            if (entity instanceof ChangeEvent) {
-              ChangeEvent change = (ChangeEvent) entity;
-              entity = change.getEntity();
+            if (responseContext.getEntity() instanceof ChangeEvent) {
+              ChangeEvent change = (ChangeEvent) responseContext.getEntity();
+              entity = (EntityInterface) change.getEntity();
+            } else {
+              entity = (EntityInterface) responseContext.getEntity();
             }
-            var entityInterface = Entity.getEntityInterface(entity);
-            EntityReference entityReference = Entity.getEntityReference(entity);
+            EntityReference entityReference = entity.getEntityReference();
             EntityReference owner;
             try {
               owner = Entity.getOwner(entityReference);
@@ -97,7 +98,7 @@ public class ChangeEventHandler implements EventHandler {
               owner = null;
             }
             EntityLink about = EntityLink.parse(thread.getAbout());
-            feedDao.create(thread, entityInterface.getId(), owner, about);
+            feedDao.create(thread, entity.getId(), owner, about);
           }
         }
       }
@@ -113,8 +114,7 @@ public class ChangeEventHandler implements EventHandler {
       return null;
     }
 
-    Object entity = responseContext.getEntity();
-    if (entity == null) {
+    if (responseContext.getEntity() == null) {
       return null; // Response has no entity to produce change event from
     }
 
@@ -123,12 +123,12 @@ public class ChangeEventHandler implements EventHandler {
 
     // Entity was created by either POST .../entities or PUT .../entities
     if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
-      var entityInterface = Entity.getEntityInterface(entity);
-      EntityReference entityReference = Entity.getEntityReference(entity);
+      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
       return getChangeEvent(EventType.ENTITY_CREATED, entityType, entityInterface)
-          .withEntity(entity)
+          .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }
 
@@ -140,8 +140,8 @@ public class ChangeEventHandler implements EventHandler {
     // Entity was updated by either PUT .../entities or PATCH .../entities
     // Entity was soft deleted by DELETE .../entities/{id} that updated the attribute `deleted` to true
     if (changeType.equals(RestUtil.ENTITY_UPDATED) || changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
-      var entityInterface = Entity.getEntityInterface(entity);
-      EntityReference entityReference = Entity.getEntityReference(entity);
+      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
       EventType eventType = null;
@@ -156,31 +156,30 @@ public class ChangeEventHandler implements EventHandler {
 
       return getChangeEvent(eventType, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
-          .withEntity(entity)
+          .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }
 
     // Entity field was updated by PUT .../entities/{id}/fieldName - Example PUT ../tables/{id}/follower
     if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)) {
-      return (ChangeEvent) entity;
+      return (ChangeEvent) responseContext.getEntity();
     }
 
     // Entity was hard deleted by DELETE .../entities/{id}
     if (changeType.equals(RestUtil.ENTITY_DELETED)) {
-      var entityInterface = Entity.getEntityInterface(entity);
-      EntityReference entityReference = Entity.getEntityReference(entity);
+      var entityInterface = (EntityInterface) responseContext.getEntity();
+      EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();
       String entityFQN = entityReference.getFullyQualifiedName();
       return getChangeEvent(ENTITY_DELETED, entityType, entityInterface)
           .withPreviousVersion(entityInterface.getVersion())
-          .withEntity(entity)
+          .withEntity(entityInterface)
           .withEntityFullyQualifiedName(entityFQN);
     }
     return null;
   }
 
-  private static ChangeEvent getChangeEvent(
-      EventType eventType, String entityType, EntityInterface<?> entityInterface) {
+  private static ChangeEvent getChangeEvent(EventType eventType, String entityType, EntityInterface entityInterface) {
     return new ChangeEvent()
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
@@ -214,23 +213,20 @@ public class ChangeEventHandler implements EventHandler {
     // Get the actual entity from ChangeEvent in those cases.
     if (entity instanceof ChangeEvent) {
       ChangeEvent changeEvent = (ChangeEvent) entity;
-      Object realEntity = changeEvent.getEntity();
+      EntityInterface realEntity = (EntityInterface) changeEvent.getEntity();
       if (realEntity != null) {
         return getThreads(realEntity, changeEvent.getChangeDescription(), loggedInUserName);
-      } else {
-        return null; // Cannot create a thread without entity
       }
+      return null; // Cannot create a thread without entity
     }
-    var entityInterface = Entity.getEntityInterface(entity);
 
-    if (entityInterface != null && RestUtil.ENTITY_DELETED.equals(changeType)) {
+    var entityInterface = (EntityInterface) entity;
+    if (RestUtil.ENTITY_DELETED.equals(changeType)) {
+      String entityType = Entity.getEntityTypeFromClass(entity.getClass());
       // In this case, the entity itself got deleted
       // for which there will be no change description.
-      String message =
-          String.format(
-              "Deleted **%s**: `%s`", entityInterface.getEntityType(), entityInterface.getFullyQualifiedName());
-      EntityLink about =
-          new EntityLink(entityInterface.getEntityType(), entityInterface.getFullyQualifiedName(), null, null, null);
+      String message = String.format("Deleted **%s**: `%s`", entityType, entityInterface.getFullyQualifiedName());
+      EntityLink about = new EntityLink(entityType, entityInterface.getFullyQualifiedName(), null, null, null);
       Thread thread =
           new Thread()
               .withId(UUID.randomUUID())
@@ -243,16 +239,15 @@ public class ChangeEventHandler implements EventHandler {
       return List.of(thread);
     }
 
-    // entityInterface can be null in case of Tags
-    // TODO: remove this null check when entityInterface should never be null
-    if (entityInterface == null || entityInterface.getChangeDescription() == null) {
+    if (entityInterface.getChangeDescription() == null) {
       return null;
     }
 
-    return getThreads(entity, entityInterface.getChangeDescription(), loggedInUserName);
+    return getThreads(entityInterface, entityInterface.getChangeDescription(), loggedInUserName);
   }
 
-  private List<Thread> getThreads(Object entity, ChangeDescription changeDescription, String loggedInUserName) {
+  private List<Thread> getThreads(
+      EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
     Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, entity);
 

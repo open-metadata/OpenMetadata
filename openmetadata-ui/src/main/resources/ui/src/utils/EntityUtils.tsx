@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
-import Avatar from '../components/common/avatar/Avatar';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -382,9 +382,10 @@ export const getInfoElements = (data: ExtraInfo) => {
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
               <div className="tw-inline-block tw-mr-2">
-                <Avatar
-                  name={displayVal}
-                  textClass="tw-text-xs"
+                <ProfilePicture
+                  displayName={displayVal}
+                  id=""
+                  name={data.profileName || ''}
                   width={data.avatarWidth || '20'}
                 />
               </div>

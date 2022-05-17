@@ -37,6 +37,10 @@
       "description": "Name for this Rule.",
       "type": "string"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "entityTypeAttr": {
       "description": "Entity type that the rule should match on.",
       "type": "string",

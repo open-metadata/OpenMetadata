@@ -408,7 +408,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }

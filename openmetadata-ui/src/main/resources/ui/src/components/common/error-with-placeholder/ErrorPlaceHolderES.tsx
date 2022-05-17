@@ -28,27 +28,27 @@ const stepsData = [
     step: 1,
     title: 'Ingest Sample Data',
     description:
-      'Run sample data to ingest sample entities into your OpenMetadata',
-    link: 'https://docs.open-metadata.org/install/metadata-ingestion/ingest-sample-data',
+      'Run sample data to ingest sample entities into your OpenMetadata.',
+    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data',
   },
   {
     step: 2,
     title: 'Start Elasticsearch Docker',
-    description: 'Run ingestion to index entities into OpenMetadata',
-    link: 'https://docs.open-metadata.org/install/metadata-ingestion/ingest-sample-data#index-sample-data-into-elasticsearch',
+    description: 'Ensure that the Elasticsearch docker is up and running.',
+    link: 'https://docs.open-metadata.org/integrations/ingest-sample-data#index-sample-data-into-elasticsearch',
   },
   {
     step: 3,
     title: 'Install Service Connectors',
     description:
-      'There are a lot of connectors available here to index data from your services. Please checkout our connectors',
-    link: 'https://docs.open-metadata.org/connectors',
+      'There are a lot of connectors available here to index data from your services. Please checkout our connectors.',
+    link: 'https://docs.open-metadata.org/integrations/connectors',
   },
   {
     step: 4,
     title: 'More Help',
     description:
-      'If you are still running into issues, please reach out to us on slack',
+      'If you are still running into issues, please reach out to us on slack.',
     link: 'https://slack.open-metadata.org',
   },
 ];
@@ -81,11 +81,11 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
     const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
     return (
-      <div className="tw-mb-5">
+      <div className="tw-mb-5" data-testid="es-error">
         <div className="tw-mb-3 tw-text-center">
           <p>
             <span>Welcome to OpenMetadata. </span>
-            {`We are unable to ${errorText} Elasticsearch for entity indexes.`}
+            <span data-testid="error-text">{`We are unable to ${errorText} Elasticsearch for entity indexes.`}</span>
           </p>
 
           <p>

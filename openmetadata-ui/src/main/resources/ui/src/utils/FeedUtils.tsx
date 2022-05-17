@@ -41,6 +41,7 @@ import {
 } from '../constants/feed.constants';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { getEncodedFqn } from './StringsUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
 
 export const getEntityType = (entityLink: string) => {
@@ -158,9 +159,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
           ),
-          link: `${document.location.protocol}//${document.location.host}/${
-            entityUrlMap[entityType as keyof typeof entityUrlMap]
-          }/${hit._source.name}`,
+          link: `/${entityUrlMap[entityType as keyof typeof entityUrlMap]}/${
+            hit._source.name
+          }`,
         };
       });
     } else {
@@ -176,9 +177,9 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
             `@${hit._source.name ?? hit._source.display_name}`,
             hit._source.deleted
           ),
-          link: `${document.location.protocol}//${document.location.host}/${
-            entityUrlMap[entityType as keyof typeof entityUrlMap]
-          }/${hit._source.name}`,
+          link: `/${entityUrlMap[entityType as keyof typeof entityUrlMap]}/${
+            hit._source.name
+          }`,
         };
       });
     }
@@ -196,7 +197,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         return {
           id: hit._id,
           value: `#${entityType}/${hit._source.name}`,
-          link: `${document.location.protocol}//${document.location.host}/${entityType}/${hit._source.fqdn}`,
+          link: `/${entityType}/${getEncodedFqn(hit._source.fqdn)}`,
         };
       });
     } else {
@@ -209,7 +210,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
         return {
           id: hit._id,
           value: `#${entityType}/${hit._source.name}`,
-          link: `${document.location.protocol}//${document.location.host}/${entityType}/${hit._source.fqdn}`,
+          link: `/${entityType}/${getEncodedFqn(hit._source.fqdn)}`,
         };
       });
     }

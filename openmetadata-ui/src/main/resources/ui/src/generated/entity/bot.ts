@@ -39,6 +39,10 @@ export interface Bot {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to this bot.
    */
   href?: string;

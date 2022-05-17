@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.metrics;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -173,7 +174,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
     addToMetrics(securityContext, metrics);
-    return createOrUpdate(uriInfo, securityContext, metrics);
+    return createOrUpdate(uriInfo, securityContext, metrics, ADMIN | BOT | OWNER);
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {

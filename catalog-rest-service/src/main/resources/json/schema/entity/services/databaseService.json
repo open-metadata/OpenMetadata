@@ -4,6 +4,8 @@
   "title": "Database Service",
   "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.DatabaseService",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "databaseServiceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
@@ -215,6 +217,10 @@
     "name": {
       "description": "Name that identifies this database service.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this database service.",

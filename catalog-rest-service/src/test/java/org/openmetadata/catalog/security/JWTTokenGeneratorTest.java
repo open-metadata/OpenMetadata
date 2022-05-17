@@ -53,7 +53,7 @@ public class JWTTokenGeneratorTest {
             .withDisplayName("ingestion-bot");
     JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
     DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
-    assertEquals(jwt.getClaims().get("sub").asString(), "ingestion-bot");
+    assertEquals("ingestion-bot", jwt.getClaims().get("sub").asString());
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);

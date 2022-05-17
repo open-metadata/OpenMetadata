@@ -3,5 +3,6 @@
   "viewportWidth": 1240,
   "viewportHeight": 660,
   "watchForFileChanges": false,
-  "baseUrl": "http://localhost:8585"
+  "baseUrl": "http://localhost:8585",
+  "defaultCommandTimeout": 5000
 }

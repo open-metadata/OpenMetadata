@@ -27,7 +27,6 @@ import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -52,14 +51,12 @@ import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseUtil;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
@@ -75,7 +72,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -142,14 +138,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface<Table> getEntityInterface(Table entity) {
-    return new TableEntityInterface(entity);
-  }
-
-  public static String getFQN(Table table) {
-    return (table != null && table.getDatabaseSchema() != null)
-        ? FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName())
-        : null;
+  public void setFullyQualifiedName(Table table) {
+    table.setFullyQualifiedName(
+        FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
   }
 
   @Transaction
@@ -541,13 +532,12 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void prepare(Table table) throws IOException {
     DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabaseSchema(new DatabaseSchemaEntityInterface(schema).getEntityReference());
+    table.setDatabaseSchema(schema.getEntityReference());
     table.setDatabase(schema.getDatabase());
     table.setService(schema.getService());
     table.setServiceType(schema.getServiceType());
+    setFullyQualifiedName(table);
 
-    // Set data in table entity based on database relationship
-    table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
@@ -887,144 +877,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public static class TableEntityInterface extends EntityInterface<Table> {
-    public TableEntityInterface(Table entity) {
-      super(Entity.TABLE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : TableRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public Table getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getDatabase();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Table withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends EntityUpdater {
     public TableUpdater(Table original, Table updated, Operation operation) {
@@ -1033,13 +885,13 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Table origTable = original.getEntity();
-      Table updatedTable = updated.getEntity();
+      Table origTable = original;
+      Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
       updateConstraints(origTable, updatedTable);
-      updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), EntityUtil.columnMatch);
+      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
@@ -1128,17 +980,17 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField = getColumnField(original.getEntity(), origColumn, FIELD_DESCRIPTION);
+      String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "constraint");
+      String columnField = getColumnField(original, origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "dataLength");
+      String columnField = getColumnField(original, origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
       if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
         // The data length of a column was reduced. Treat it as backward-incompatible change
@@ -1147,7 +999,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "precision");
+      String columnField = getColumnField(original, origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
       if (origColumn.getPrecision() != null) { // Previously precision was set
         if (updated && updatedColumn.getPrecision() < origColumn.getPrecision()) {
@@ -1158,7 +1010,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "scale");
+      String columnField = getColumnField(original, origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
       if (origColumn.getScale() != null) { // Previously scale was set
         if (updated && updatedColumn.getScale() < origColumn.getScale()) {

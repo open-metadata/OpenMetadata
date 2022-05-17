@@ -98,9 +98,10 @@ const RelatedTermsModal = ({
         isCheckBoxes
         item={{
           name: '',
-          description: d.displayName || d.name,
+          displayName: d.displayName || d.name,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
+          type: d.type,
         }}
         key={d.id}
         onSelect={selectionHandler}

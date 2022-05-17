@@ -4,6 +4,8 @@
   "title": "Team",
   "description": "This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.teams.Team",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -11,6 +13,10 @@
     "name": {
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Science team'.",

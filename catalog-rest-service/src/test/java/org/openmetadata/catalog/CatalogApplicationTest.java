@@ -49,6 +49,7 @@ public abstract class CatalogApplicationTest {
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     final String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     final String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+    LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
     SQL_CONTAINER =
         (JdbcDatabaseContainer<?>)

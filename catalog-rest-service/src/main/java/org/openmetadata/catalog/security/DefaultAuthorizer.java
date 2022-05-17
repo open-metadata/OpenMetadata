@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -127,8 +128,9 @@ public class DefaultAuthorizer implements Authorizer {
         return RoleEvaluator.getInstance().hasPermissions(allRoles, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      EntityInterface entity =
+          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
+      EntityReference owner = entity.getOwner();
 
       if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
         return true; // Entity is owned by the user.
@@ -156,8 +158,9 @@ public class DefaultAuthorizer implements Authorizer {
       if (entityReference == null) {
         return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
       }
-      Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      EntityInterface entity =
+          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
+      EntityReference owner = entity.getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());

@@ -60,7 +60,6 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
@@ -84,7 +83,7 @@ import org.openmetadata.catalog.util.ResultList;
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
-  private JWTTokenGenerator jwtTokenGenerator;
+  private final JWTTokenGenerator jwtTokenGenerator;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -319,11 +318,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response createUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+    User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
     // TODO do we need to authenticate user is creating himself?
-    User user = getUser(securityContext, create);
     addHref(uriInfo, dao.create(uriInfo, user));
     return Response.created(user.getHref()).entity(user).build();
   }
@@ -342,13 +341,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+    User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } else {
+      SecurityUtil.authorize(authorizer, securityContext, null, user.getEntityReference(), ADMIN | BOT | OWNER);
     }
-    // TODO this is different from POST method
-    User user = getUser(securityContext, create);
-    SecurityUtil.authorize(
-        authorizer, securityContext, null, new UserEntityInterface(user).getEntityReference(), ADMIN | BOT | OWNER);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -533,6 +531,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return new User()
         .withId(UUID.randomUUID())
         .withName(create.getName())
+        .withFullyQualifiedName(create.getName())
         .withEmail(create.getEmail())
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())

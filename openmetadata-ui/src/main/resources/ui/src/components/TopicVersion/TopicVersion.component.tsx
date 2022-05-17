@@ -16,6 +16,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -172,6 +173,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',
