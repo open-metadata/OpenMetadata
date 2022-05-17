@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-tests
+name: py-tests-3.7
 on:
   push:
     branches: [main]
