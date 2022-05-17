@@ -1,0 +1,24 @@
+source:
+  type: glue
+  serviceName: local_glue
+  serviceConnection:
+    config:
+      type: Glue
+      awsConfig:
+        awsAccessKeyId: aws accessKey id
+        awsSecretAccessKey: aws secret access key
+        awsRegion: aws region
+        endPointURL: https://glue.<region_name>.amazonaws.com/
+      database: local_glue_db
+      storageServiceName: storage_name
+      pipelineServiceName: pipeline_name
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
