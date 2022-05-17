@@ -14,6 +14,10 @@
 
 export interface MessagingServiceMetadataPipelineClass {
   /**
+   * Option to turn on/off generating sample data during metadata extraction.
+   */
+  generateSampleData?: boolean;
+  /**
    * Regex to only fetch topics that matches the pattern.
    */
   topicFilterPattern?: FilterPattern;

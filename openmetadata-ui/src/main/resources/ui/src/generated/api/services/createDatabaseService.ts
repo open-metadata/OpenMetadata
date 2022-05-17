@@ -89,10 +89,12 @@ export interface DatabaseConnection {
  * Vertica Connection Config
  *
  * Sample Data Connection Config
+ *
+ * PinotDB Database Connection Config
  */
 export interface Connection {
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * GCS Credentials
    */
@@ -152,11 +154,11 @@ export interface Connection {
    *
    * Host and port of the SingleStore service.
    *
-   * Host and port of the Snowflake service.
-   *
    * Host and port of the Trino service.
    *
    * Host and port of the Vertica service.
+   *
+   * Host and port of the PinotDB service.
    */
   hostPort?: string;
   /**
@@ -190,10 +192,62 @@ export interface Connection {
    * Service Type
    */
   type?: DatabaseServiceType;
+  awsConfig?: AWSCredentials;
   /**
-   * Username to connect to Bigquery. This user should have privileges to read all the
-   * metadata in Bigquery.
+   * S3 Staging Directory.
+   */
+  s3StagingDir?: string;
+  /**
+   * Athena workgroup.
+   */
+  workgroup?: string;
+  /**
+   * SQLAlchemy driver for AzureSQL.
+   */
+  driver?: string;
+  /**
+   * Password to connect to AzureSQL.
    *
+   * Password to connect to Clickhouse.
+   *
+   * Password to connect to Databricks.
+   *
+   * Password to connect to DB2.
+   *
+   * Password to connect to Druid.
+   *
+   * Password to connect to Hive.
+   *
+   * Password to connect to MariaDB.
+   *
+   * Password to connect to MSSQL.
+   *
+   * Password to connect to MySQL.
+   *
+   * Password to connect to SQLite. Blank for in-memory database.
+   *
+   * Password to connect to Oracle.
+   *
+   * Password to connect to Postgres.
+   *
+   * Password to connect to Presto.
+   *
+   * Password to connect to Redshift.
+   *
+   * Password to connect to the Salesforce.
+   *
+   * Password to connect to SingleStore.
+   *
+   * Password to connect to Snowflake.
+   *
+   * Password to connect to Trino.
+   *
+   * Password to connect to Vertica.
+   *
+   * password to connect  to the PinotDB.
+   */
+  password?: string;
+  /**
    * Username to connect to AzureSQL. This user should have privileges to read the metadata.
    *
    * Username to connect to Clickhouse. This user should have privileges to read all the
@@ -248,61 +302,11 @@ export interface Connection {
    *
    * Username to connect to Vertica. This user should have privileges to read all the metadata
    * in Vertica.
+   *
+   * username to connect  to the PinotDB. This user should have privileges to read all the
+   * metadata in PinotDB.
    */
   username?: string;
-  awsConfig?: AWSCredentials;
-  /**
-   * S3 Staging Directory.
-   */
-  s3StagingDir?: string;
-  /**
-   * Athena workgroup.
-   */
-  workgroup?: string;
-  /**
-   * SQLAlchemy driver for AzureSQL.
-   */
-  driver?: string;
-  /**
-   * Password to connect to AzureSQL.
-   *
-   * Password to connect to Clickhouse.
-   *
-   * Password to connect to Databricks.
-   *
-   * Password to connect to DB2.
-   *
-   * Password to connect to Druid.
-   *
-   * Password to connect to Hive.
-   *
-   * Password to connect to MariaDB.
-   *
-   * Password to connect to MSSQL.
-   *
-   * Password to connect to MySQL.
-   *
-   * Password to connect to SQLite. Blank for in-memory database.
-   *
-   * Password to connect to Oracle.
-   *
-   * Password to connect to Postgres.
-   *
-   * Password to connect to Presto.
-   *
-   * Password to connect to Redshift.
-   *
-   * Password to connect to the Salesforce.
-   *
-   * Password to connect to SingleStore.
-   *
-   * Password to connect to Snowflake.
-   *
-   * Password to connect to Trino.
-   *
-   * Password to connect to Vertica.
-   */
-  password?: string;
   /**
    * Clickhouse SQL connection duration.
    */
@@ -367,7 +371,8 @@ export interface Connection {
    */
   sobjectName?: string;
   /**
-   * Snowflake Account.
+   * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
+   * account is xyz1234.us-east-1.gcp
    */
   account?: string;
   /**
@@ -398,6 +403,10 @@ export interface Connection {
    * Sample Data File Path
    */
   sampleDataFolder?: string;
+  /**
+   * Pinot Broker Host and Port of the data source.
+   */
+  pinotControllerHost?: string;
 }
 
 /**
@@ -500,6 +509,9 @@ export enum Scheme {
   MssqlPytds = 'mssql+pytds',
   MysqlPymysql = 'mysql+pymysql',
   OracleCxOracle = 'oracle+cx_oracle',
+  Pinot = 'pinot',
+  PinotHTTP = 'pinot+http',
+  PinotHTTPS = 'pinot+https',
   PostgresqlPsycopg2 = 'postgresql+psycopg2',
   Presto = 'presto',
   RedshiftPsycopg2 = 'redshift+psycopg2',
@@ -533,6 +545,7 @@ export enum DatabaseServiceType {
   Mssql = 'Mssql',
   Mysql = 'Mysql',
   Oracle = 'Oracle',
+  PinotDB = 'PinotDB',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',

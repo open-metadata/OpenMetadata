@@ -13,28 +13,36 @@
  */
 
 /**
- * Sample Data Connection Config
+ * Create a Type to be used for extending entities.
  */
-export interface SampleDataConnection {
-  connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: string };
+export interface CreateType {
+  category?: Category;
   /**
-   * Sample Data File Path
+   * Optional description of the type.
    */
-  sampleDataFolder?: string;
-  supportsMetadataExtraction?: boolean;
-  supportsUsageExtraction?: boolean;
+  description: string;
   /**
-   * Service Type
+   * Display Name that identifies this Type.
    */
-  type?: SampleDataType;
+  displayName?: string;
+  /**
+   * Unique name that identifies a Type.
+   */
+  name: string;
+  /**
+   * Namespace or group to which this type belongs to.
+   */
+  nameSpace: string;
+  /**
+   * JSON schema encoded as string. This will be used to validate the type values.
+   */
+  schema: string;
 }
 
 /**
- * Service Type
- *
- * Service type.
+ * Metadata category to which a type belongs to.
  */
-export enum SampleDataType {
-  SampleData = 'SampleData',
+export enum Category {
+  Entity = 'entity',
+  Field = 'field',
 }

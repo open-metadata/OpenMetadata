@@ -13,9 +13,9 @@
  */
 
 /**
- * Oracle Database Connection Config
+ * PinotDB Database Connection Config
  */
-export interface OracleConnection {
+export interface PinotDBConnection {
   connectionArguments?: { [key: string]: any };
   connectionOptions?: { [key: string]: string };
   /**
@@ -25,40 +25,41 @@ export interface OracleConnection {
    */
   database?: string;
   /**
-   * Host and port of the Oracle service.
+   * Host and port of the PinotDB service.
    */
   hostPort: string;
   /**
-   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
-   * sent, not both.
-   */
-  oracleServiceName?: string;
-  /**
-   * Password to connect to Oracle.
+   * password to connect  to the PinotDB.
    */
   password?: string;
   /**
+   * Pinot Broker Host and Port of the data source.
+   */
+  pinotControllerHost: string;
+  /**
    * SQLAlchemy driver scheme options.
    */
-  scheme?: OracleScheme;
+  scheme?: PinotDBScheme;
   supportsMetadataExtraction?: boolean;
   supportsProfiler?: boolean;
   /**
    * Service Type
    */
-  type?: OracleType;
+  type?: PinotDBType;
   /**
-   * Username to connect to Oracle. This user should have privileges to read all the metadata
-   * in Oracle.
+   * username to connect  to the PinotDB. This user should have privileges to read all the
+   * metadata in PinotDB.
    */
-  username: string;
+  username?: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
-export enum OracleScheme {
-  OracleCxOracle = 'oracle+cx_oracle',
+export enum PinotDBScheme {
+  Pinot = 'pinot',
+  PinotHTTP = 'pinot+http',
+  PinotHTTPS = 'pinot+https',
 }
 
 /**
@@ -66,6 +67,6 @@ export enum OracleScheme {
  *
  * Service type.
  */
-export enum OracleType {
-  Oracle = 'Oracle',
+export enum PinotDBType {
+  PinotDB = 'PinotDB',
 }

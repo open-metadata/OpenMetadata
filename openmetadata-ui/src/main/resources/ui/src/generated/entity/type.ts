@@ -13,86 +13,54 @@
  */
 
 /**
- * This schema defines the User entity. A user can be part of 0 or more teams. A special
- * type of user called Bot is used for automation. A user can be an owner of zero or more
- * data assets. A user can also follow zero or more data assets.
+ * This schema defines a type as an entity. Types includes field types and entity types.
+ * Custom types can also be defined by the users to extend the metadata system.
  */
-export interface User {
-  authenticationMechanism?: AuthenticationMechanism;
+export interface Type {
+  category?: Category;
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * When `true` indicates the entity has been soft deleted.
+   * Custom fields added to extend the entity. Only available for entity type
    */
-  deleted?: boolean;
+  customFields?: CustomField[];
   /**
-   * Used for user biography.
+   * Optional description of entity.
    */
-  description?: string;
+  description: string;
   /**
-   * Name used for display purposes. Example 'FirstName LastName'.
+   * Display Name that identifies this type.
    */
   displayName?: string;
-  /**
-   * Email address of the user.
-   */
-  email: string;
-  /**
-   * List of entities followed by the user.
-   */
-  follows?: EntityReference[];
   /**
    * FullyQualifiedName same as `name`.
    */
   fullyQualifiedName?: string;
   /**
-   * Link to the resource corresponding to this entity.
+   * Link to this table resource.
    */
-  href: string;
+  href?: string;
   /**
-   * Unique identifier that identifies a user entity instance.
+   * Unique identifier of the type instance.
    */
-  id: string;
+  id?: string;
   /**
-   * Roles that a user is inheriting either as part of system default role or through
-   * membership in teams that have set team default roles.
-   */
-  inheritedRoles?: EntityReference[];
-  /**
-   * When true indicates user is an administrator for the system with superuser privileges.
-   */
-  isAdmin?: boolean;
-  /**
-   * When true indicates a special type of user called Bot.
-   */
-  isBot?: boolean;
-  /**
-   * A unique name of the user, typically the user ID from an identity provider. Example - uid
-   * from LDAP.
+   * Unique name that identifies the type.
    */
   name: string;
   /**
-   * List of entities owned by the user.
+   * Namespace or group to which this type belongs to. For example, some of the field types
+   * commonly used can come from `basic` namespace. Some of the entities such as `table`,
+   * `database`, etc. come from `data` namespace.
    */
-  owns?: EntityReference[];
+  nameSpace?: string;
   /**
-   * Profile of the user.
+   * JSON schema encoded as string that defines the type. This will be used to validate the
+   * type values.
    */
-  profile?: Profile;
-  /**
-   * Roles that the user has been assigned.
-   */
-  roles?: EntityReference[];
-  /**
-   * Teams that the user belongs to.
-   */
-  teams?: EntityReference[];
-  /**
-   * Timezone of the user.
-   */
-  timezone?: string;
+  schema?: string;
   /**
    * Last update time corresponding to the new version of the entity in Unix epoch time
    * milliseconds.
@@ -109,62 +77,11 @@ export interface User {
 }
 
 /**
- * User/Bot Authentication Mechanism.
+ * Metadata category to which a type belongs to.
  */
-export interface AuthenticationMechanism {
-  authType?: AuthType;
-  config?: AuthMechanism;
-}
-
-export enum AuthType {
-  Jwt = 'JWT',
-  Sso = 'SSO',
-}
-
-/**
- * User/Bot SSOAuthN.
- *
- * User/Bot JWTAuthMechanism.
- */
-export interface AuthMechanism {
-  /**
-   * Type of database service such as Amundsen, Atlas...
-   */
-  ssoServiceType?: SsoServiceType;
-  /**
-   * JWT Auth Token.
-   */
-  JWTToken?: string;
-  /**
-   * JWT Auth Token expiration time.
-   */
-  JWTTokenExpiresAt?: number;
-  /**
-   * JWT Auth Token expiration in days
-   */
-  JWTTokenExpiry?: JWTTokenExpiry;
-}
-
-/**
- * JWT Auth Token expiration in days
- */
-export enum JWTTokenExpiry {
-  The30 = '30',
-  The60 = '60',
-  The7 = '7',
-  The90 = '90',
-  Unlimited = 'Unlimited',
-}
-
-/**
- * Type of database service such as Amundsen, Atlas...
- */
-export enum SsoServiceType {
-  Auth0 = 'Auth0',
-  Azure = 'Azure',
-  CustomOIDC = 'CustomOIDC',
-  Google = 'Google',
-  Okta = 'Okta',
+export enum Category {
+  Entity = 'entity',
+  Field = 'field',
 }
 
 /**
@@ -209,7 +126,26 @@ export interface FieldChange {
 }
 
 /**
- * List of entities followed by the user.
+ * Type used for adding custom field to an entity to extend it.
+ */
+export interface CustomField {
+  description: string;
+  /**
+   * Reference to a field type. Only field types are allows and entity types are not allowed
+   * as custom fields to extend an existing entity
+   */
+  fieldType: EntityReference;
+  /**
+   * Name of the entity field. Note a field name must be unique for an entity. Field name must
+   * follow camelCase naming adopted by openMetadata - must start with lower case with no
+   * space, underscore, or dots.
+   */
+  name: string;
+}
+
+/**
+ * Reference to a field type. Only field types are allows and entity types are not allowed
+ * as custom fields to extend an existing entity
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -252,26 +188,4 @@ export interface EntityReference {
    * `dashboardService`...
    */
   type: string;
-}
-
-/**
- * Profile of the user.
- *
- * This schema defines the type for a profile of a user, team, or organization.
- */
-export interface Profile {
-  images?: ImageList;
-}
-
-/**
- * Links to a list of images of varying resolutions/sizes.
- */
-export interface ImageList {
-  image?: string;
-  image192?: string;
-  image24?: string;
-  image32?: string;
-  image48?: string;
-  image512?: string;
-  image72?: string;
 }
