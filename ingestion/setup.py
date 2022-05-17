@@ -168,7 +168,7 @@ setup(
     description="Ingestion Framework for OpenMetadata",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     zip_safe=False,
