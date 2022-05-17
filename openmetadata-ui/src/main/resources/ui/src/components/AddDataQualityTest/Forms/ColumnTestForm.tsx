@@ -16,12 +16,9 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EditorContentRef } from 'Models';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
-import { ColumnTestType } from '../../../enums/columnTest.enum';
-import { Table } from '../../../generated/entity/data/table';
-import {
-  ColumnTest,
-  ModifiedTableColumn,
-} from '../../../interface/dataQuality.interface';
+import { CreateColumnTest } from '../../../generated/api/tests/createColumnTest';
+import { ColumnTestType, Table } from '../../../generated/entity/data/table';
+import { ModifiedTableColumn } from '../../../interface/dataQuality.interface';
 import {
   errorMsg,
   getCurrentUserId,
@@ -37,11 +34,11 @@ import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 
 type Props = {
-  data?: ColumnTest;
+  data?: CreateColumnTest;
   selectedColumn: string;
   isTableDeleted?: boolean;
   column: ModifiedTableColumn[];
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   onFormCancel: () => void;
 };
 
@@ -95,7 +92,7 @@ const ColumnTestForm = ({
 
   const [columnName, setColumnName] = useState(data?.columnName || '');
   const [missingValueMatch, setMissingValueMatch] = useState<string[]>(
-    data?.testCase?.config?.missingValueMatch || ['']
+    (data?.testCase?.config?.missingValueMatch as Array<string>) || ['']
   );
   const [missingCountValue, setMissingCountValue] = useState<
     number | undefined
@@ -149,7 +146,7 @@ const ColumnTestForm = ({
       const selectedColumn = column.find((d) => d.name === name);
       const existingTests =
         selectedColumn?.columnTests?.map(
-          (d: ColumnTest) => d.testCase.columnTestType
+          (d: CreateColumnTest) => d.testCase.columnTestType
         ) || [];
       if (existingTests.length) {
         const newTest = filteredColumnTestOption(
@@ -195,8 +192,8 @@ const ColumnTestForm = ({
     errMsg.testName = isEmpty(columnTest);
 
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
         errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
         if (!isUndefined(minValue) && !isUndefined(maxValue)) {
           errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
@@ -204,19 +201,19 @@ const ColumnTestForm = ({
 
         break;
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual:
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual:
         errMsg.missingCountValue = isEmpty(missingCountValue);
 
         break;
 
-      case ColumnTestType.columnValuesToBeNotInSet: {
+      case ColumnTestType.ColumnValuesToBeNotInSet: {
         const actualValues = forbiddenValues.filter((v) => !isEmpty(v));
         errMsg.values = actualValues.length < 1;
 
         break;
       }
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToMatchRegex:
         errMsg.regex = isEmpty(regex);
 
         break;
@@ -229,18 +226,18 @@ const ColumnTestForm = ({
 
   const getTestConfi = () => {
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
         return {
           minLength: !isEmpty(minValue) ? minValue : undefined,
           maxLength: !isEmpty(maxValue) ? maxValue : undefined,
         };
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
         return {
           minValue: !isEmpty(minValue) ? minValue : undefined,
           maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual: {
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual: {
         const filterMatchValue = missingValueMatch.filter(
           (value) => !isEmpty(value)
         );
@@ -252,21 +249,21 @@ const ColumnTestForm = ({
             : undefined,
         };
       }
-      case ColumnTestType.columnValuesToBeNotInSet:
+      case ColumnTestType.ColumnValuesToBeNotInSet:
         return {
           forbiddenValues: forbiddenValues.filter((v) => !isEmpty(v)),
         };
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToMatchRegex:
         return {
           regex: regex,
         };
 
-      case ColumnTestType.columnValuesToBeNotNull:
+      case ColumnTestType.ColumnValuesToBeNotNull:
         return {
           columnValuesToBeNotNull: true,
         };
-      case ColumnTestType.columnValuesToBeUnique:
+      case ColumnTestType.ColumnValuesToBeUnique:
         return {
           columnValuesToBeUnique: true,
         };
@@ -277,7 +274,7 @@ const ColumnTestForm = ({
 
   const handleSave = () => {
     if (validateForm()) {
-      const columnTestObj: ColumnTest = {
+      const columnTestObj: CreateColumnTest = {
         columnName: columnName,
         description: markdownRef.current?.getEditorContent() || undefined,
         testCase: {
@@ -560,21 +557,21 @@ const ColumnTestForm = ({
 
   const getColumnTestConfig = () => {
     switch (columnTest) {
-      case ColumnTestType.columnValueLengthsToBeBetween:
-      case ColumnTestType.columnValuesToBeBetween:
+      case ColumnTestType.ColumnValueLengthsToBeBetween:
+      case ColumnTestType.ColumnValuesToBeBetween:
         return getMinMaxField();
 
-      case ColumnTestType.columnValuesMissingCountToBeEqual:
+      case ColumnTestType.ColumnValuesMissingCountToBeEqual:
         return getMissingCountToBeEqualFields();
 
-      case ColumnTestType.columnValuesToBeNotInSet:
+      case ColumnTestType.ColumnValuesToBeNotInSet:
         return getColumnValuesToBeNotInSetField();
 
-      case ColumnTestType.columnValuesToMatchRegex:
+      case ColumnTestType.ColumnValuesToMatchRegex:
         return getColumnValuesToMatchRegexFields();
 
-      case ColumnTestType.columnValuesToBeNotNull:
-      case ColumnTestType.columnValuesToBeUnique:
+      case ColumnTestType.ColumnValuesToBeNotNull:
+      case ColumnTestType.ColumnValuesToBeUnique:
       default:
         return <></>;
     }

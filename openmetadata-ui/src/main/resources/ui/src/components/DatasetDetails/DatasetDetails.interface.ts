@@ -19,10 +19,11 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
-import { ColumnTestType } from '../../enums/columnTest.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
+  ColumnTestType,
   Table,
   TableData,
   TableJoins,
@@ -36,7 +37,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
@@ -103,7 +103,7 @@ export interface DatasetDetailsProps {
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   handleRemoveColumnTest: (
     columnName: string,

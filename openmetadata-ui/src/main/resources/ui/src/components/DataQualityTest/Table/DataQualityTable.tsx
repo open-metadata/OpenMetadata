@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
-import { ColumnTestType } from '../../../enums/columnTest.enum';
+import { ColumnTestType } from '../../../generated/entity/data/table';
 import {
   TableTestType,
   TestCaseStatus,
