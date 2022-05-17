@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import UserDataCard from './UserDataCard';
 
 const mockItem = {
-  description: 'description1',
+  displayName: 'description1',
   name: 'name1',
   id: 'id1',
   email: 'string@email.com',
@@ -41,8 +41,10 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('../../components/common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p data-testid="avatar">Avatar</p>);
+jest.mock('../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>);
 });
 
 jest.mock('../../utils/SvgUtils', () => {
@@ -69,7 +71,7 @@ describe('Test UserDataCard component', () => {
     );
 
     const cardContainer = await findByTestId(container, 'user-card-container');
-    const avatar = await findByTestId(container, 'avatar');
+    const avatar = await findByTestId(container, 'profile-picture');
 
     expect(avatar).toBeInTheDocument();
     expect(cardContainer).toBeInTheDocument();

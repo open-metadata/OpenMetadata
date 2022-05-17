@@ -347,7 +347,7 @@ const UserList: FunctionComponent<Props> = ({
           data-testid="user-card-container">
           {listUserData.map((user, index) => {
             const User = {
-              description: getEntityName(user as unknown as EntityReference),
+              displayName: getEntityName(user as unknown as EntityReference),
               name: user.name || '',
               id: user.id,
               email: user.email || '',

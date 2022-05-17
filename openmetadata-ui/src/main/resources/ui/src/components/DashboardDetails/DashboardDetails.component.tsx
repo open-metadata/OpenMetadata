@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -21,6 +21,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -197,7 +198,7 @@ const DashboardDetails = ({
     },
   ];
 
-  const extraInfo = [
+  const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
@@ -210,6 +211,7 @@ const DashboardDetails = ({
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
       key: 'Tier',

@@ -24,8 +24,17 @@
 
 .profile-image svg,
 .profile-image img {
-  border-radius: 50%;
   display: inline-block;
+}
+
+.profile-image.circle svg,
+.profile-image.circle img {
+  border-radius: 50%;
+}
+
+.profile-image.square svg,
+.profile-image.square img {
+  border-radius: 4px;
 }
 
 .teams-dropdown {

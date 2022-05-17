@@ -30,8 +30,10 @@ jest.mock('../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p data-testid="replied-user">Avatar</p>);
+jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="replied-user">ProfilePicture</p>);
 });
 
 const mockFeedCardFooterPorps = {
