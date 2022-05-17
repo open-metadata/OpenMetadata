@@ -917,6 +917,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   useEffect(() => {
     if (!isEmpty(entityLineage)) {
       setLineageData(entityLineage);
+      setUpdatedLineageData(entityLineage);
     }
   }, [entityLineage]);
 
