@@ -21,7 +21,7 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 
 The name of the s3 bucket and prefix path to the folder in which `manifest.json` and `catalog.json` files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
-![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (4) (1).png>)
+![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (4) (1) (1).png>)
 
 #### Google Cloud Storage Buckets
 
@@ -33,7 +33,7 @@ GCS credentials can be stored in two ways:
 
 Entering the credentials directly into the form
 
-![Enter the GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (3).png>)
+![Enter the GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (3) (1).png>)
 
 Entering the path of file in which the GCS bucket credentials are stored.
 
@@ -45,10 +45,10 @@ For more information on Google Cloud Storage authentication click [here](https:/
 
 Path of the `manifest.json` and `catalog.json` files stored in the local system or in the container in which openmetadata server is running can be directly provided.
 
-![Enter the path of the DBT files](<../../.gitbook/assets/image (2).png>)
+![Enter the path of the DBT files](<../../.gitbook/assets/image (2) (1).png>)
 
 #### File Server
 
 File server path of the `manifest.json` and `catalog.json` files stored on a file server directly provided.
 
-![Enter the file server path of the DBT files](<../../.gitbook/assets/image (2) (1).png>)
+![Enter the file server path of the DBT files](<../../.gitbook/assets/image (2) (1) (1).png>)

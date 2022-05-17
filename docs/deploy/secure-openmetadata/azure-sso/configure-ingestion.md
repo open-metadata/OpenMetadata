@@ -38,7 +38,7 @@ All Connectors have the **workflowConfig** section. Pass the JSON file generated
 
 * **clientSecret:** The clientSecret can be accessed from the Certificates & secret section of the application.
 
-![](<../../../.gitbook/assets/image (22) (1) (1) (1) (1) (1).png>)
+![](<../../../../.gitbook/assets/image (100).png>)
 
 {% hint style="warning" %}
 Ensure that you configure the workflowConfig section on all of the connector configs if you are ingesting into a secured OpenMetadata Server.

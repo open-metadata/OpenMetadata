@@ -8,11 +8,11 @@ description: This is a guide to create ingestion bot service account.
 
 * Go to your project dashboard.
 
-![](<../../../.gitbook/assets/image (23) (2).png>)
+![](<../../../../.gitbook/assets/image (58) (1).png>)
 
 * Navigate to `Applications > Applications`
 
-![](<../../../.gitbook/assets/image (80).png>)
+![](<../../../.gitbook/assets/image (80) (1).png>)
 
 * Select your application from the list.
 
@@ -39,7 +39,7 @@ description: This is a guide to create ingestion bot service account.
 
 * You will see the `Auth0 Management API`.
 
-![](<../../../.gitbook/assets/image (32) (2) (1) (1).png>)
+![](<../../../.gitbook/assets/image (32) (2).png>)
 
 * Click on the `Auth0 Management API`.
 

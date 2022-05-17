@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (5) (1) (1) (1) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (27).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (123).png>)
 
 ### 3. Select the Service Type
 
 Select Snowflake as the service type and click _Next._
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (1).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
@@ -59,13 +59,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (6).png>)
+![](<../../../.gitbook/assets/image (6) (1).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
 
-![](<../../../.gitbook/assets/image (4).png>)
+![](<../../../.gitbook/assets/image (4) (1).png>)
 
 <details>
 
@@ -103,13 +103,13 @@ To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
 
 </details>
 
-![Service has been saved](../../../.gitbook/assets/image.png)
+![Service has been saved](<../../../.gitbook/assets/image (16).png>)
 
 ### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (7).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (7) (1).png>)
 
 <details>
 
@@ -163,9 +163,9 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../docs/.gitbook/assets/generate\_sample\_data (2).png>)
+![](../../../docs/.gitbook/assets/generate\_sample\_data.png)
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (89).png>)
 
 <details>
 
@@ -207,9 +207,9 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](../../../docs/.gitbook/assets/dbt.png)
+![](<../../../docs/.gitbook/assets/dbt (1).png>)
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (8).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (8) (1).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
@@ -217,7 +217,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (32) (2) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (99).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -237,7 +237,7 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
 
-![](<../../../docs/.gitbook/assets/explore (2).png>)
+![](<../../../.gitbook/assets/next\_steps (1).png>)
 
 ## One-time ingestion with the CLI
 

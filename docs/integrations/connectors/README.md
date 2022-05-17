@@ -18,10 +18,10 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Glue Catalog](glue-catalog/)
 * [Hive](hive/)
 * [IBM Db2](ibm-db2.md)
-* [MariaDB](mariadb.md)
+* [MariaDB](broken-reference)
 * [MSSQL](../../../integrations/connectors/mssql-1/)
 * [MSSQL Usage](../../../integrations/connectors/mssql-1/)
-* [MySQL](../../../integrations/connectors/mysql-1-1/)
+* [MySQL](../../../integrations/connectors/mysql-1-1-1/)
 * [Oracle](mysql-2/)
 * [Postgres](<snowflake/README (1).md>)
 * [Presto](presto.md)
@@ -36,8 +36,8 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Dashboard Services
 
-* [Looker](broken-reference)
-* [Metabase](../../../integrations/connectors/mysql-1/)
+* [Looker](broken-reference/)
+* [Metabase](../../../integrations/connectors/mysql-1-1/)
 * Power BI
 * [Redash](redash.md)
 * [Superset](superset.md)
@@ -56,4 +56,4 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 **ML Services**
 
-* [MLflow](mlflow/)
+* [MLflow](../../../integrations/connectors/mlflow.md)
