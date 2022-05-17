@@ -19,9 +19,9 @@ export interface TrinoConnection {
   /**
    * Catalog of the data source.
    */
-  catalog?: string;
+  catalog: string;
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion

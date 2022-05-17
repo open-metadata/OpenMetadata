@@ -215,7 +215,7 @@ public class UserRepository extends EntityRepository<User> {
     List<String> teamIds = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
     List<EntityReference> teams = EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
     // return only the non-deleted teams
-    return teams.stream().filter((team) -> !team.getDeleted()).collect(Collectors.toList());
+    return teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {

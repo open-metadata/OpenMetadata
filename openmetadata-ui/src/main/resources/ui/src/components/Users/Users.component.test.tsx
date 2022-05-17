@@ -109,8 +109,8 @@ const mockUserData = {
   ],
 };
 
-jest.mock('../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p>Avatar</p>);
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 jest.mock('../../pages/teams/UserCard', () => {

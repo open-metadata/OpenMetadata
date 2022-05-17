@@ -21,7 +21,7 @@ export interface DeltaLakeConnection {
    */
   appName?: string;
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * File path of the local Hive Metastore.
    */

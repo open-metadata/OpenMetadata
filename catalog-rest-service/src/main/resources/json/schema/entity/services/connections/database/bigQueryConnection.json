@@ -38,11 +38,6 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username to connect to Bigquery. This user should have privileges to read all the metadata in Bigquery.",
-      "type": "string"
-    },
     "projectId": {
       "title": "Project ID",
       "description": "BigQuery project ID. Only required if using credentials path instead of values.",

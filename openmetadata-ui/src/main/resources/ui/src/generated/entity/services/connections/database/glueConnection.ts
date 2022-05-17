@@ -18,21 +18,15 @@
 export interface GlueConnection {
   awsConfig: AWSCredentials;
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
-  /**
-   * Database of the data source. This is optional parameter, if you would like to restrict
-   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-   * attempts to scan all the databases.
-   */
-  database?: string;
+  connectionOptions?: { [key: string]: string };
   /**
    * AWS pipelineServiceName Name.
    */
-  pipelineServiceName?: string;
+  pipelineServiceName: string;
   /**
    * AWS storageServiceName Name.
    */
-  storageServiceName?: string;
+  storageServiceName: string;
   supportsMetadataExtraction?: boolean;
   supportsProfiler?: boolean;
   /**

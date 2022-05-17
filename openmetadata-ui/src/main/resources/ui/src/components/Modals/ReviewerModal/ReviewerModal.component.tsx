@@ -116,9 +116,11 @@ const ReviewerModal = ({
         isIconVisible
         item={{
           name: d.name,
-          description: d.displayName,
+          displayName: d.displayName || d.name,
+          email: d.email,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
+          type: d.type,
         }}
         key={d.id}
         onSelect={selectionHandler}

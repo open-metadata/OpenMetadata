@@ -694,13 +694,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
     assertTrue(daysBetween >= 6);
-    assertEquals(jwt.getClaims().get("sub").asString(), "ingestion-bot-jwt");
-    assertEquals(jwt.getClaims().get("isBot").asBoolean(), true);
+    assertEquals("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
+    assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
     TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
     jwtAuthMechanism =
         TestUtils.get(
             getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
-    assertEquals(jwtAuthMechanism.getJWTToken(), StringUtils.EMPTY);
+    assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
   }
 
   private DecodedJWT decodedJWT(String token) throws MalformedURLException, JwkException, HttpResponseException {

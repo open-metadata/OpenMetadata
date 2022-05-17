@@ -25,9 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -177,19 +174,6 @@ public class RoleRepository extends EntityRepository<Role> {
       daoCollection
           .relationshipDAO()
           .deleteTo(role.getId().toString(), Entity.ROLE, Relationship.HAS.ordinal(), Entity.USER);
-    }
-
-    private List<User> getAllUsers() {
-      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-      try {
-        // Assumptions:
-        // - we will not have more than Integer.MAX_VALUE users in the system.
-        // - we do not need to update deleted user's roles.
-        ListFilter filter = new ListFilter();
-        return userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, Integer.MAX_VALUE - 1, null).getData();
-      } catch (IOException e) {
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
-      }
     }
   }
 }

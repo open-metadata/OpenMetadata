@@ -622,7 +622,7 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity: EntityReference) => {
+export const getEntityName = (entity?: EntityReference) => {
   return entity?.displayName || entity?.name || '';
 };
 

@@ -17,21 +17,18 @@
  */
 export interface SnowflakeConnection {
   /**
-   * Snowflake Account.
+   * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
+   * account is xyz1234.us-east-1.gcp
    */
   account: string;
   connectionArguments?: { [key: string]: any };
-  connectionOptions?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
   /**
    * Database of the data source. This is optional parameter, if you would like to restrict
    * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
    * attempts to scan all the databases.
    */
   database?: string;
-  /**
-   * Host and port of the Snowflake service.
-   */
-  hostPort?: string;
   /**
    * Password to connect to Snowflake.
    */

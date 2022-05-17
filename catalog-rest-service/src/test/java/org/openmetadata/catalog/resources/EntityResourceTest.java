@@ -145,6 +145,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
+  protected boolean supportsNameWithDot = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -623,14 +624,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void post_entityCreateWithInvalidName_400() {
+  protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    assertResponse(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponseContains(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
@@ -698,6 +699,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
+    if (!supportsNameWithDot) {
+      return;
+    }
     // Entity without "." should not have quoted fullyQualifiedName
     String name = format("%s_foo_bar", entityType);
     K request = createRequest(name, "", null, null);

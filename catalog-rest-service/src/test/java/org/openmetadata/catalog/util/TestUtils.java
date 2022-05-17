@@ -104,8 +104,7 @@ public final class TestUtils {
             .withConfig(
                 new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
     BIGQUERY_DATABASE_CONNECTION =
-        new DatabaseConnection()
-            .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
+        new DatabaseConnection().withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
     SNOWFLAKE_DATABASE_CONNECTION =
         new DatabaseConnection()
             .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));

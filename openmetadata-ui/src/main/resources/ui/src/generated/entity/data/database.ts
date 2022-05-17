@@ -208,6 +208,7 @@ export enum DatabaseServiceType {
   Mssql = 'Mssql',
   Mysql = 'Mysql',
   Oracle = 'Oracle',
+  PinotDB = 'PinotDB',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
