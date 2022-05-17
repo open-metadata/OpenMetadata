@@ -445,7 +445,7 @@ export const getDataLabel = (
   } else {
     return (
       <span
-        className="tw-break-words tw-self-center tw-text-left tw-w-60"
+        className="tw-break-words tw-self-center tw-w-60"
         data-testid="lineage-entity">
         {type === 'table'
           ? databaseName && schemaName
