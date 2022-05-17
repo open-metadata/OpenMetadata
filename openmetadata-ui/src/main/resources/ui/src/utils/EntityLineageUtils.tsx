@@ -558,3 +558,17 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
       : targetEntity
   }"?`;
 };
+
+export const getUniqueFlowElements = (elements: FlowElement[]) => {
+  const flag: { [x: string]: boolean } = {};
+  const uniqueElements: Elements = [];
+
+  elements.forEach((elem) => {
+    if (!flag[elem.id]) {
+      flag[elem.id] = true;
+      uniqueElements.push(elem);
+    }
+  });
+
+  return uniqueElements;
+};

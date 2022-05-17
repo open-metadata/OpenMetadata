@@ -58,6 +58,7 @@ import {
   getLayoutedElements,
   getLineageData,
   getModalBodyText,
+  getUniqueFlowElements,
   onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
@@ -234,7 +235,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
       removeLineageHandler(edgeData);
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      setElements((es) => es.filter((e) => e.id !== data.id));
+      setElements((es) =>
+        getUniqueFlowElements(es.filter((e) => e.id !== data.id))
+      );
 
       /**
        * Get new downstreamEdges
@@ -309,8 +312,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @returns unique flow elements
    */
   const setElementsHandle = () => {
-    const flag: { [x: string]: boolean } = {};
-    const uniqueElements: Elements = [];
+    let uniqueElements: Elements = [];
     if (!isEmpty(updatedLineageData)) {
       const graphElements = getLineageData(
         updatedLineageData,
@@ -324,12 +326,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         onEdgeClick
       ) as Elements;
 
-      graphElements.forEach((elem) => {
-        if (!flag[elem.id]) {
-          flag[elem.id] = true;
-          uniqueElements.push(elem);
-        }
-      });
+      uniqueElements = getUniqueFlowElements(graphElements);
     }
 
     return uniqueElements;
@@ -366,7 +363,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @returns updated elements list
    */
   const onElementsRemove = (elementsToRemove: Elements) =>
-    setElements((els) => removeElements(elementsToRemove, els));
+    setElements((els) =>
+      getUniqueFlowElements(removeElements(elementsToRemove, els))
+    );
 
   /**
    * take edge or connection to add new element in the graph
@@ -429,13 +428,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
       setElements((els) => {
         const newEdgeData = {
-          id: `edge-${params.source}`,
+          id: `edge-${params.source}-${params.target}`,
           source: `${params.source}`,
           target: `${params.target}`,
           type: isEditMode ? 'buttonedge' : 'custom',
           arrowHeadType: ArrowHeadType.ArrowClosed,
           data: {
-            id: `edge-${params.source}`,
+            id: `edge-${params.source}-${params.target}`,
             source: `${params.source}`,
             target: `${params.target}`,
             sourceType: sourceNode?.type,
@@ -444,7 +443,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           },
         };
 
-        return addEdge(newEdgeData, els);
+        return getUniqueFlowElements(addEdge(newEdgeData, els));
       });
 
       const updatedDownStreamEdges = () => {
@@ -600,7 +599,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param node
    */
   const removeNodeHandler = (node: FlowElement) => {
-    setElements((es) => es.filter((n) => n.id !== node.id));
+    setElements((es) =>
+      getUniqueFlowElements(es.filter((n) => n.id !== node.id))
+    );
     setNewAddedNode({} as FlowElement);
   };
 
@@ -667,7 +668,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       };
       setNewAddedNode(newNode as FlowElement);
 
-      setElements((es) => es.concat(newNode as FlowElement));
+      setElements((es) =>
+        getUniqueFlowElements(es.concat(newNode as FlowElement))
+      );
     }
   };
 
@@ -892,7 +895,16 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [lineageData, isNodeLoading, isEditMode]);
 
   useEffect(() => {
-    entityLineageHandler(updatedLineageData);
+    const newNodes = updatedLineageData.nodes?.filter(
+      (n) =>
+        !isUndefined(
+          updatedLineageData.downstreamEdges?.find((d) => d.toEntity === n.id)
+        ) ||
+        !isUndefined(
+          updatedLineageData.upstreamEdges?.find((u) => u.fromEntity === n.id)
+        )
+    );
+    entityLineageHandler({ ...updatedLineageData, nodes: newNodes });
   }, [isEditMode]);
 
   useEffect(() => {
