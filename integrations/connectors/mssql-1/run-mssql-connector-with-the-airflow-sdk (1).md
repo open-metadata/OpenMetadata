@@ -6,11 +6,11 @@ description: Use your own Airflow instance to schedule and run the MSSQL Connect
 
 Configure and schedule MSSQL **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-mssql-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-mssql-connector-with-the-airflow-sdk.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-mssql-connector-with-the-airflow-sdk.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-mssql-connector-with-the-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-mssql-connector-with-the-airflow-sdk.md#dbt-integration)
+* [Requirements](<run-mssql-connector-with-the-airflow-sdk (1).md#requirements>)
+* [Metadata Ingestion](<run-mssql-connector-with-the-airflow-sdk (1).md#metadata-ingestion>)
+* [Query Usage and Lineage Ingestion](<run-mssql-connector-with-the-airflow-sdk (1).md#query-usage-and-lineage-ingestion>)
+* [Data Profiler and Quality Tests](<run-mssql-connector-with-the-airflow-sdk (1).md#data-profiler-and-quality-tests>)
+* [DBT Integration](<run-mssql-connector-with-the-airflow-sdk (1).md#dbt-integration>)
 
 ## Requirements
 
@@ -284,7 +284,7 @@ To specify where the staging files will be located.
 
 #### Workflow Configuration
 
-The same as the [metadata](run-mssql-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](<run-mssql-connector-with-the-airflow-sdk (1).md#workflow-configuration>) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 
@@ -396,7 +396,7 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
 
 #### Workflow Configuration
 
-The same as the [metadata](run-mssql-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](<run-mssql-connector-with-the-airflow-sdk (1).md#workflow-configuration>) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 

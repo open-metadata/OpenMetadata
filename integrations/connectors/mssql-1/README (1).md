@@ -1,18 +1,18 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the MSSQL
+  In this section, we provide the guides and reference to use the AzureSQL
   connector.
 ---
 
-# MSSQL
+# AzureSQL
 
-Configure and schedule MSSQL **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule AzureSQL **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
-* [Requirements](./#requirements)
-* [Metadata Ingestion](./#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
-* [DBT Integration](./#dbt-integration)
+* [Requirements](<README (1).md#requirements>)
+* [Metadata Ingestion](<README (1).md#metadata-ingestion>)
+* [Query Usage and Lineage Ingestion](<README (1).md#query-usage-and-lineage-ingestion>)
+* [Data Profiler and Quality Tests](<README (1).md#data-profiler-and-quality-tests>)
+* [DBT Integration](<README (1).md#dbt-integration>)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
@@ -50,9 +50,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select `MSSQL` as the service type and click _Next_.
+Select `AzureSQL` as the service type and click _Next_.
 
-![](<../../../docs/.gitbook/assets/image (68).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.10.41 PM.png>)
 
 ### 4. Name and Describe your Service
 
@@ -60,15 +60,15 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MSSQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other AzureSQL services that you might be ingesting metadata from.
 
 ![](<../../../docs/.gitbook/assets/image (52).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your AzureSQL service as desired.
 
-![](<../../../docs/.gitbook/assets/image (55) (1).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 4.59.14 PM.png>)
 
 <details>
 
@@ -122,13 +122,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (54) (3).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.04 PM.png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.24 PM.png>)
 
 <details>
 
@@ -228,7 +228,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../docs/.gitbook/assets/image (18) (2).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.14.12 PM.png>)
 
 ### 9. Workflow Deployment Error
 

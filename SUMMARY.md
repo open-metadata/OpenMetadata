@@ -19,7 +19,7 @@
     * [Run Athena Connector using Airflow SDK](docs/integrations/connectors/athena/run-athena-connector-using-airflow-sdk.md)
     * [Run Athena Connector with the CLI](docs/integrations/connectors/athena/run-athena-connector-with-the-cli.md)
     * [AWS Credentials](docs/integrations/connectors/athena/aws-credentials.md)
-  * [AzureSQL](integrations/connectors/mssql-1/README.md)
+  * [AzureSQL](<integrations/connectors/mssql-1/README (1).md>)
     * [Run AzureSQL Connector with the Airflow SDK](integrations/connectors/mssql-1/run-mssql-connector-with-the-airflow-sdk.md)
     * [Run AzureSQL Connector with the CLI](integrations/connectors/mssql-1/run-mssql-connector-with-the-cli.md)
   * [BigQuery](docs/integrations/connectors/bigquery/README.md)
@@ -53,9 +53,9 @@
     * [Run Metabase Connector with the CLI](integrations/connectors/mysql-1/run-metabase-connector-with-the-cli.md)
   * [MLflow](docs/integrations/connectors/mlflow/README.md)
     * [MLflow Metadata Extraction](docs/integrations/connectors/mlflow/mlflow-metadata-extraction.md)
-  * [MSSQL](integrations/connectors/mssql-1-1/README.md)
-    * [Run MSSQL Connector with the Airflow SDK](integrations/connectors/mssql-1-1/run-mssql-connector-with-the-airflow-sdk.md)
-    * [Run MSSQL Connector with the CLI](integrations/connectors/mssql-1-1/run-mssql-connector-with-the-cli.md)
+  * [MSSQL](integrations/connectors/mssql-1/README.md)
+    * [Run MSSQL Connector with the Airflow SDK](<integrations/connectors/mssql-1/run-mssql-connector-with-the-airflow-sdk (1).md>)
+    * [Run MSSQL Connector with the CLI](<integrations/connectors/mssql-1/run-mssql-connector-with-the-cli (1).md>)
   * [MySQL](integrations/connectors/mysql-1-1/README.md)
     * [Run MySQL Connector with the Airflow SDK](integrations/connectors/mysql-1-1/run-mysql-connector-with-the-airflow-sdk.md)
     * [Run MySQL Connector using CLI](integrations/connectors/mysql-1-1/run-mysql-connector-using-cli.md)
@@ -254,6 +254,7 @@
   * [Add DBT while ingesting from CLI](data-lineage/dbt-integration/add-dbt-while-ingesting-from-cli.md)
   * [DBT Python SDK](data-lineage/dbt-integration/dbt-python-sdk.md)
 * [Usage Workflow](docs/data-lineage/usage-workflow.md)
+* [Usage Workflow Through Query Logs](data-lineage/usage-workflow-through-query-logs.md)
 
 ## 📗 Controlled Vocabulary
 
