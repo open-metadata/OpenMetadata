@@ -13,13 +13,19 @@
  */
 
 /**
- * This schema defines a type entity used for extending an entity with custom attributes.
+ * This schema defines a type as an entity. Types includes field types and entity types.
+ * Custom types can also be defined by the users to extend the metadata system.
  */
 export interface Type {
+  category?: Category;
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
+  /**
+   * Custom fields added to extend the entity. Only available for entity type
+   */
+  customFields?: CustomField[];
   /**
    * Optional description of entity.
    */
@@ -45,9 +51,11 @@ export interface Type {
    */
   name: string;
   /**
-   * Namespace or group to which this type belongs to.
+   * Namespace or group to which this type belongs to. For example, some of the field types
+   * commonly used can come from `basic` namespace. Some of the entities such as `table`,
+   * `database`, etc. come from `data` namespace.
    */
-  nameSpace: string;
+  nameSpace?: string;
   /**
    * JSON schema encoded as string that defines the type. This will be used to validate the
    * type values.
@@ -66,6 +74,14 @@ export interface Type {
    * Metadata version of the entity.
    */
   version?: number;
+}
+
+/**
+ * Metadata category to which a type belongs to.
+ */
+export enum Category {
+  Entity = 'entity',
+  Field = 'field',
 }
 
 /**
@@ -107,4 +123,69 @@ export interface FieldChange {
    * field type to deserialize it.
    */
   oldValue?: any;
+}
+
+/**
+ * Type used for adding custom field to an entity to extend it.
+ */
+export interface CustomField {
+  description: string;
+  /**
+   * Reference to a field type. Only field types are allows and entity types are not allowed
+   * as custom fields to extend an existing entity
+   */
+  fieldType: EntityReference;
+  /**
+   * Name of the entity field. Note a field name must be unique for an entity. Field name must
+   * follow camelCase naming adopted by openMetadata - must start with lower case with no
+   * space, underscore, or dots.
+   */
+  name: string;
+}
+
+/**
+ * Reference to a field type. Only field types are allows and entity types are not allowed
+ * as custom fields to extend an existing entity
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ */
+export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
 }

@@ -16,6 +16,7 @@
  * Create a Type to be used for extending entities.
  */
 export interface CreateType {
+  category?: Category;
   /**
    * Optional description of the type.
    */
@@ -36,4 +37,12 @@ export interface CreateType {
    * JSON schema encoded as string. This will be used to validate the type values.
    */
   schema: string;
+}
+
+/**
+ * Metadata category to which a type belongs to.
+ */
+export enum Category {
+  Entity = 'entity',
+  Field = 'field',
 }
