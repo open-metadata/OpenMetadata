@@ -1,26 +1,27 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the Databricks
+  In this section, we provide the guides and reference to use the AzureSQL
   connector.
 ---
 
-# Databricks
+# AzureSQL
 
-Configure and schedule Databricks **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule AzureSQL **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
 * [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
 * [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-databricks-connector-using-airflow-sdk.md" %}
-[run-databricks-connector-using-airflow-sdk.md](run-databricks-connector-using-airflow-sdk.md)
+{% content-ref url="run-mssql-connector-with-the-airflow-sdk.md" %}
+[run-mssql-connector-with-the-airflow-sdk.md](run-mssql-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-databricks-connector-with-the-cli.md" %}
-[run-databricks-connector-with-the-cli.md](run-databricks-connector-with-the-cli.md)
+{% content-ref url="run-mssql-connector-with-the-cli.md" %}
+[run-mssql-connector-with-the-cli.md](run-mssql-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -30,6 +31,8 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
+
+## Metadata Ingestion
 
 ### 1. Visit the _Services_ Page
 
@@ -43,49 +46,59 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
-Select Snowflake as the service type and click _Next._
+Select `AzureSQL` as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (1) (1).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.10.41 PM.png>)
 
-### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
+### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-#### Service Name <a href="#service-name" id="service-name"></a>
+#### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other AzureSQL services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (6) (1).png>)
+![](<../../../docs/.gitbook/assets/image (52).png>)
 
-### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
+### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your AzureSQL service as desired.
 
-![](<../../../.gitbook/assets/image (4) (1).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 4.59.14 PM.png>)
 
 <details>
 
-<summary>Connection Arguments</summary>
+<summary>Connection Options</summary>
+
+**Connection Scheme**
+
+The _Connection Scheme_ can be configured using any one of the following three options.
+
+`'mssql+pyodbc'`
+
+`'mssql+pytds'`
+
+`'mssql+pymssql'`
 
 **Username**
 
-Enter the username of your Hive user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your MSSQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Hive user in the _Password_ field.
+Enter the password for your MSSQL user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Hive deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your MSSQL deployment in the _Host and Port_ field.
 
-**Http Path**
+**uriString (in case of pyodbc)**
 
-Enter the http path of Databricks cluster.
+If the connection scheme is '`mssql+pyodbc`', then you need to add a `uriString`
 
 **Database (optional)**
 
@@ -93,23 +106,29 @@ If you want to limit metadata ingestion to a single database, enter the name of 
 
 **Connection Options (Optional)**
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
-To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
+In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "sso_login_url"`
+
+In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
+
+`"authenticator" : "externalbrowser"`
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (44).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.04 PM.png>)
 
-### 6. Configure the Metadata Ingestion <a href="#6.-configure-the-metadata-ingestion" id="6.-configure-the-metadata-ingestion"></a>
+### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (7) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.24 PM.png>)
 
 <details>
 
@@ -155,6 +174,8 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
+![](<../../../docs/.gitbook/assets/image (14) (1).png>)
+
 ### 7. Schedule the Ingestion and Deploy
 
 Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
@@ -163,9 +184,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](../../../.gitbook/assets/sample-data.png)
-
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (94).png>)
 
 <details>
 
@@ -199,27 +218,35 @@ Use the _Start date_ selector to choose the date at which to begin ingesting met
 
 Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
+
 </details>
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-### 8. View the Ingestion Pipeline <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
+### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/dbt (1).png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.14.12 PM.png>)
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (8) (1).png>)
-
-### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
+### 9. Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (32) (2) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+## Query Usage and Lineage Ingestion
+
+You can learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI below:
+
+{% content-ref url="../../../docs/data-lineage/usage-workflow.md" %}
+[usage-workflow.md](../../../docs/data-lineage/usage-workflow.md)
+{% endcontent-ref %}
 
 ## Data Profiler and Quality Tests
 
@@ -231,14 +258,24 @@ You can learn more about how to configure the Data Profiler and about executing 
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage below:
+
+{% content-ref url="../../../data-lineage/dbt-integration/" %}
+[dbt-integration](../../../data-lineage/dbt-integration/)
+{% endcontent-ref %}
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-![](<../../../.gitbook/assets/explore (1) (2).png>)
+{% content-ref url="run-mssql-connector-with-the-airflow-sdk.md" %}
+[run-mssql-connector-with-the-airflow-sdk.md](run-mssql-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../../../docs/integrations/connectors/hive/run-hive-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
+
+{% content-ref url="run-mssql-connector-with-the-cli.md" %}
+[run-mssql-connector-with-the-cli.md](run-mssql-connector-with-the-cli.md)
+{% endcontent-ref %}
