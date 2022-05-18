@@ -38,7 +38,6 @@ import ReactFlow, {
   isNode,
   OnLoadParams,
   ReactFlowProvider,
-  removeElements,
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
@@ -360,16 +359,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     });
     setSelectedNode({} as SelectedNode);
   };
-
-  /**
-   * take list of elements to remove it from the graph
-   * @param elementsToRemove
-   * @returns updated elements list
-   */
-  const onElementsRemove = (elementsToRemove: Elements) =>
-    setElements((els) =>
-      getUniqueFlowElements(removeElements(elementsToRemove, els))
-    );
 
   /**
    * take edge or connection to add new element in the graph
@@ -998,7 +987,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onDragOver={onDragOver}
               onDrop={onDrop}
               onElementClick={(_e, el) => onElementClick(el)}
-              onElementsRemove={onElementsRemove}
               onLoad={(reactFlowInstance: OnLoadParams) => {
                 onLoad(reactFlowInstance);
                 setReactFlowInstance(reactFlowInstance);
