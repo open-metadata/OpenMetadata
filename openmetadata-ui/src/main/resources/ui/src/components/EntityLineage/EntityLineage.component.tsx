@@ -58,6 +58,7 @@ import {
   getLayoutedElements,
   getLineageData,
   getModalBodyText,
+  getNodeRemoveButton,
   getUniqueFlowElements,
   onLoad,
   onNodeContextMenu,
@@ -602,21 +603,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       getUniqueFlowElements(es.filter((n) => n.id !== node.id))
     );
     setNewAddedNode({} as FlowElement);
-  };
-
-  /**
-   *
-   * @param onClick - callback
-   * @returns - Button element with attach callback
-   */
-  const getNodeRemoveButton = (onClick: () => void) => {
-    return (
-      <button
-        className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-        onClick={() => onClick()}>
-        <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-      </button>
-    );
   };
 
   /**

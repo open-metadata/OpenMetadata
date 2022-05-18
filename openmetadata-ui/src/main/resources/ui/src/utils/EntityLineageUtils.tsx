@@ -59,6 +59,7 @@ import {
   prepareLabel,
 } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
+import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 
 export const getHeaderLabel = (
@@ -567,4 +568,19 @@ export const getUniqueFlowElements = (elements: FlowElement[]) => {
   });
 
   return uniqueElements;
+};
+
+/**
+ *
+ * @param onClick - callback
+ * @returns - Button element with attach callback
+ */
+export const getNodeRemoveButton = (onClick: () => void) => {
+  return (
+    <button
+      className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+      onClick={() => onClick()}>
+      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
+    </button>
+  );
 };
