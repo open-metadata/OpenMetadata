@@ -605,6 +605,21 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
+   *
+   * @param onClick - callback
+   * @returns - Button element with attach callback
+   */
+  const getNodeRemoveButton = (onClick: () => void) => {
+    return (
+      <button
+        className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+        onClick={() => onClick()}>
+        <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
+      </button>
+    );
+  };
+
+  /**
    * handle node drag event
    * @param event
    */
@@ -637,17 +652,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         data: {
           label: (
             <div className="tw-relative">
-              <button
-                className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-                onClick={() => {
-                  removeNodeHandler(newNode as FlowElement);
-                }}>
-                <SVGIcons
-                  alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
-                />
-              </button>
+              {getNodeRemoveButton(() => {
+                removeNodeHandler(newNode as FlowElement);
+              })}
               <div className="tw-flex">
                 <SVGIcons
                   alt="entity-icon"
@@ -705,20 +712,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   label: (
                     <Fragment>
                       {getNodeLabel(selectedEntity)}
-                      <button
-                        className="tw-absolute tw--top-5 tw--right-4 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-                        onClick={() => {
-                          removeNodeHandler({
-                            ...el,
-                            id: selectedEntity.id,
-                          } as FlowElement);
-                        }}>
-                        <SVGIcons
-                          alt="times-circle"
-                          icon="icon-times-circle"
-                          width="16px"
-                        />
-                      </button>
+                      {getNodeRemoveButton(() => {
+                        removeNodeHandler({
+                          ...el,
+                          id: selectedEntity.id,
+                        } as FlowElement);
+                      })}
                     </Fragment>
                   ),
                 },
