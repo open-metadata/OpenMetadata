@@ -36,10 +36,10 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "connections/messaging/kafkaConnection.json"
+              "$ref": "./connections/messaging/kafkaConnection.json"
             },
             {
-              "$ref": "connections/messaging/pulsarConnection.json"
+              "$ref": "./connections/messaging/pulsarConnection.json"
             }
           ]
         }

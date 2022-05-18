@@ -47,22 +47,22 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "connections/dashboard/lookerConnection.json"
+              "$ref": "./connections/dashboard/lookerConnection.json"
             },
             {
-              "$ref": "connections/dashboard/metabaseConnection.json"
+              "$ref": "./connections/dashboard/metabaseConnection.json"
             },
             {
-              "$ref": "connections/dashboard/powerBIConnection.json"
+              "$ref": "./connections/dashboard/powerBIConnection.json"
             },
             {
-              "$ref": "connections/dashboard/redashConnection.json"
+              "$ref": "./connections/dashboard/redashConnection.json"
             },
             {
-              "$ref": "connections/dashboard/supersetConnection.json"
+              "$ref": "./connections/dashboard/supersetConnection.json"
             },
             {
-              "$ref": "connections/dashboard/tableauConnection.json"
+              "$ref": "./connections/dashboard/tableauConnection.json"
             }
           ]
         }

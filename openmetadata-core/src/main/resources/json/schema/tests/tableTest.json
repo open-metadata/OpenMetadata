@@ -14,13 +14,13 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "table/tableRowCountToEqual.json"
+              "$ref": "./table/tableRowCountToEqual.json"
             },
             {
-              "$ref": "table/tableRowCountToBeBetween.json"
+              "$ref": "./table/tableRowCountToBeBetween.json"
             },
             {
-              "$ref": "table/tableColumnCountToEqual.json"
+              "$ref": "./table/tableColumnCountToEqual.json"
             }
           ]
         },
@@ -52,13 +52,13 @@
       "$ref": "#/definitions/tableTestCase"
     },
     "executionFrequency": {
-      "$ref": "basic.json#/definitions/testCaseExecutionFrequency"
+      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
     },
     "results": {
       "description": "List of results of the test case.",
       "type": "array",
       "items": {
-        "$ref": "basic.json#/definitions/testCaseResult"
+        "$ref": "./basic.json#/definitions/testCaseResult"
       }
     },
     "owner": {

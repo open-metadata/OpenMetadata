@@ -14,10 +14,10 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "authN/ssoAuth.json"
+              "$ref": "./authN/ssoAuth.json"
             },
             {
-              "$ref": "authN/jwtAuth.json"
+              "$ref": "./authN/jwtAuth.json"
             }
           ]
         },

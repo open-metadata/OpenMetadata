@@ -4,6 +4,9 @@
   "title": "CreateTeamRequest",
   "description": "Team entity",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.teams.CreateTeam",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"

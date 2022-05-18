@@ -4,10 +4,16 @@
   "title": "CreateTagCategoryRequest",
   "description": "Create tag category request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.CreateTagCategory",
+  "javaType": "org.openmetadata.catalog.api.tags.CreateTagCategory",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+
   "properties": {
     "name": {
       "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this tag category.",
+      "type": "string"
     },
     "description": {
       "description": "Description of the tag category",

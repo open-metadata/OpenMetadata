@@ -126,82 +126,82 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "connections/database/bigQueryConnection.json"
+              "$ref": "./connections/database/bigQueryConnection.json"
             },
             {
-              "$ref": "connections/database/athenaConnection.json"
+              "$ref": "./connections/database/athenaConnection.json"
             },
             {
-              "$ref": "connections/database/azureSQLConnection.json"
+              "$ref": "./connections/database/azureSQLConnection.json"
             },
             {
-              "$ref": "connections/database/clickhouseConnection.json"
+              "$ref": "./connections/database/clickhouseConnection.json"
             },
             {
-              "$ref": "connections/database/databricksConnection.json"
+              "$ref": "./connections/database/databricksConnection.json"
             },
             {
-              "$ref": "connections/database/db2Connection.json"
+              "$ref": "./connections/database/db2Connection.json"
             },
             {
-              "$ref": "connections/database/deltaLakeConnection.json"
+              "$ref": "./connections/database/deltaLakeConnection.json"
             },
             {
-              "$ref": "connections/database/druidConnection.json"
+              "$ref": "./connections/database/druidConnection.json"
             },
             {
-              "$ref": "connections/database/dynamoDBConnection.json"
+              "$ref": "./connections/database/dynamoDBConnection.json"
             },
             {
-              "$ref": "connections/database/glueConnection.json"
+              "$ref": "./connections/database/glueConnection.json"
             },
             {
-              "$ref": "connections/database/hiveConnection.json"
+              "$ref": "./connections/database/hiveConnection.json"
             },
             {
-              "$ref": "connections/database/mariaDBConnection.json"
+              "$ref": "./connections/database/mariaDBConnection.json"
             },
             {
-              "$ref": "connections/database/mssqlConnection.json"
+              "$ref": "./connections/database/mssqlConnection.json"
             },
             {
-              "$ref": "connections/database/mysqlConnection.json"
+              "$ref": "./connections/database/mysqlConnection.json"
             },
             {
-              "$ref": "connections/database/sqliteConnection.json"
+              "$ref": "./connections/database/sqliteConnection.json"
             },
             {
-              "$ref": "connections/database/oracleConnection.json"
+              "$ref": "./connections/database/oracleConnection.json"
             },
             {
-              "$ref": "connections/database/postgresConnection.json"
+              "$ref": "./connections/database/postgresConnection.json"
             },
             {
-              "$ref": "connections/database/prestoConnection.json"
+              "$ref": "./connections/database/prestoConnection.json"
             },
             {
-              "$ref": "connections/database/redshiftConnection.json"
+              "$ref": "./connections/database/redshiftConnection.json"
             },
             {
-              "$ref": "connections/database/salesforceConnection.json"
+              "$ref": "./connections/database/salesforceConnection.json"
             },
             {
-              "$ref": "connections/database/singleStoreConnection.json"
+              "$ref": "./connections/database/singleStoreConnection.json"
             },
             {
-              "$ref": "connections/database/snowflakeConnection.json"
+              "$ref": "./connections/database/snowflakeConnection.json"
             },
             {
-              "$ref": "connections/database/trinoConnection.json"
+              "$ref": "./connections/database/trinoConnection.json"
             },
             {
-              "$ref": "connections/database/verticaConnection.json"
+              "$ref": "./connections/database/verticaConnection.json"
             },
             {
-              "$ref": "connections/database/sampleDataConnection.json"
+              "$ref": "./connections/database/sampleDataConnection.json"
             },
             {
-              "$ref": "connections/database/pinotDBConnection.json"
+              "$ref": "./connections/database/pinotDBConnection.json"
             }
           ]
         }

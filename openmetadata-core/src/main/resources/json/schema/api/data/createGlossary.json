@@ -4,6 +4,9 @@
   "title": "CreateGlossaryRequest",
   "description": "Create Glossary entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreateGlossary",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+
   "properties": {
     "name": {
       "description": "Name that identifies this glossary.",

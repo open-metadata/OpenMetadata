@@ -80,7 +80,7 @@
       "description": "Link to a reference from an external glossary.",
       "type": "array",
       "items": {
-        "$ref": "glossaryTerm.json#/definitions/termReference"
+        "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
       }
     },
     "version": {

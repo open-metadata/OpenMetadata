@@ -14,25 +14,25 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "column/columnValuesToBeUnique.json"
+              "$ref": "./column/columnValuesToBeUnique.json"
             },
             {
-              "$ref": "column/columnValuesToBeNotNull.json"
+              "$ref": "./column/columnValuesToBeNotNull.json"
             },
             {
-              "$ref": "column/columnValuesToMatchRegex.json"
+              "$ref": "./column/columnValuesToMatchRegex.json"
             },
             {
-              "$ref": "column/columnValuesToBeNotInSet.json"
+              "$ref": "./column/columnValuesToBeNotInSet.json"
             },
             {
               "$ref": "column/columnValuesToBeBetween.json"
             },
             {
-              "$ref": "column/columnValuesMissingCountToBeEqual.json"
+              "$ref": "./column/columnValuesMissingCountToBeEqual.json"
             },
             {
-              "$ref": "column/columnValuesLengthsToBeBetween.json"
+              "$ref": "./column/columnValuesLengthsToBeBetween.json"
             }
           ]
         },
@@ -72,13 +72,13 @@
       "$ref": "#/definitions/columnTestCase"
     },
     "executionFrequency": {
-      "$ref": "basic.json#/definitions/testCaseExecutionFrequency"
+      "$ref": "./basic.json#/definitions/testCaseExecutionFrequency"
     },
     "results": {
       "description": "List of results of the test case.",
       "type": "array",
       "items": {
-        "$ref": "basic.json#/definitions/testCaseResult"
+        "$ref": "./basic.json#/definitions/testCaseResult"
       }
     },
     "owner": {

@@ -4,6 +4,8 @@
   "title": "CreateDashboardRequest",
   "description": "Create Dashboard entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreateDashboard",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name that identifies this dashboard.",

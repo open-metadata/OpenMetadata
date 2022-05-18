@@ -1,18 +1,16 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createType.json",
+  "$id": "https://open-metadata.org/schema/api/createType.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "createType",
   "description": "Create a Type to be used for extending entities.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.CreateType",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+
   "properties": {
     "name": {
       "description": "Unique name that identifies a Type.",
       "$ref": "../entity/type.json#/definitions/typeName"
-    },
-    "nameSpace": {
-      "description": "Namespace or group to which this type belongs to.",
-      "type": "string",
-      "default" : "custom"
     },
     "displayName": {
       "description": "Display Name that identifies this Type.",
@@ -21,6 +19,11 @@
     "description": {
       "description": "Optional description of the type.",
       "$ref" : "../type/basic.json#/definitions/markdown"
+    },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to.",
+      "type": "string",
+      "default" : "custom"
     },
     "category" : {
       "$ref" : "../entity/type.json#/definitions/category"

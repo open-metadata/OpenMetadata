@@ -4,6 +4,9 @@
   "title": "CreateRoleRequest",
   "description": "Request for creating a Role entity",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.teams.CreateRole",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+
   "properties": {
     "name": {
       "$ref": "../../entity/teams/role.json#/definitions/roleName"

@@ -28,13 +28,13 @@
         "config": {
           "oneOf": [
             {
-              "$ref": "connections/metadata/amundsenConnection.json"
+              "$ref": "./connections/metadata/amundsenConnection.json"
             },
             {
-              "$ref": "connections/metadata/metadataESConnection.json"
+              "$ref": "./connections/metadata/metadataESConnection.json"
             },
             {
-              "$ref": "connections/metadata/openMetadataConnection.json"
+              "$ref": "./connections/metadata/openMetadataConnection.json"
             }
           ]
         }

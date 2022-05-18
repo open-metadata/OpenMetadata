@@ -4,6 +4,8 @@
   "title": "CreatePipelineRequest",
   "description": "Create Pipeline entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreatePipeline",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
 
   "properties": {
     "name": {
