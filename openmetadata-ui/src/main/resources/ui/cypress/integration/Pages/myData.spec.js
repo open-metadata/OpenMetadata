@@ -12,7 +12,15 @@
  */
 
 import { visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_TERMS } from '../../constants/constants';
+import {
+  FOLLOWING_TITLE,
+  MYDATA_SUMMARY_OPTIONS,
+  MY_DATA_TITLE,
+  NO_SEARCHED_TERMS,
+  RECENT_SEARCH_TITLE,
+  RECENT_VIEW_TITLE,
+  SEARCH_TERMS,
+} from '../../constants/constants';
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -57,6 +65,60 @@ describe('MyData page should work', () => {
       .invoke('show')
       .click();
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
+  };
+
+  const followAndOwnTheEntity = (termObj) => {
+    // search for the term and redirect to the respective entity tab
+    cy.get('[data-testid="searchBox"]').should('be.visible');
+    cy.get('[data-testid="searchBox"]').scrollIntoView().type(termObj.term);
+    cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+    cy.get(`[data-testid="${termObj.entity}-tab"]`)
+      .should('be.visible')
+      .click();
+    cy.get(`[data-testid="${termObj.entity}-tab"]`)
+      .should('be.visible')
+      .should('have.class', 'active')
+      .click();
+
+    // click on the 1st result and go to entity details page and follow the entity
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+    cy.get('[data-testid="follow-button"]').should('be.visible').click();
+
+    // got to manage tab and search for logged in user and set the owner
+    cy.get('[data-testid="Manage"]').should('be.visible').click();
+
+    cy.get(
+      '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
+    )
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="greeting-text"] > a > :nth-child(1)')
+      .should('be.visible')
+      .invoke('text')
+      .then((name) => {
+        cy.get('.tw-z-10').click();
+        cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
+        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="list-item"]').should('be.visible').click();
+        cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
+          .invoke('text')
+          .then((text) => {
+            expect(text).equal(name);
+          });
+        cy.clickOnLogo();
+
+        // checks newly generated feed for follow and setting owner
+        cy.get('[data-testid="message-container"]')
+          .first()
+          .contains(`Added owner: ${name}`)
+          .should('be.visible');
+
+        cy.get('[data-testid="message-container"]')
+          .eq(1)
+          .scrollIntoView()
+          .contains(`Started to follow ${termObj.entity.slice(0, -1)}`)
+          .should('be.visible');
+      });
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -107,9 +169,44 @@ describe('MyData page should work', () => {
   it('Listing Recent search terms with redirection should work properly', () => {
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
 
-    checkRecentlySearchElement(SEARCH_TERMS.eta_predictions_performance);
-    checkRecentlySearchElement(SEARCH_TERMS.fact_session);
-    checkRecentlySearchElement(SEARCH_TERMS.hive_etl);
-    checkRecentlySearchElement(SEARCH_TERMS.sales);
+    checkRecentlySearchElement(SEARCH_TERMS.eta_predictions_performance.term);
+    checkRecentlySearchElement(SEARCH_TERMS.fact_session.term);
+    checkRecentlySearchElement(SEARCH_TERMS.hive_etl.term);
+    checkRecentlySearchElement(SEARCH_TERMS.sales.term);
+  });
+
+  it('My data, following & feed section should work properly', () => {
+    const termArr = Object.values(SEARCH_TERMS);
+
+    termArr.forEach((term) => {
+      followAndOwnTheEntity(term);
+    });
+
+    cy.get('[data-testid="my-data-container"]')
+      .children()
+      .should('have.length', 9);
+    cy.get('[data-testid="following-data-container"]')
+      .children()
+      .should('have.length', 9);
+
+    cy.get('[data-testid="my-data-total-count"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal(`(${termArr.length})`);
+      });
+
+    cy.get('[data-testid="my-data-total-count"]').click();
+    cy.get('[data-testid="table-data-card"]').first().should('be.visible');
+    cy.clickOnLogo();
+
+    cy.get('[data-testid="following-data-total-count"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal(`(${termArr.length})`);
+      });
+
+    cy.get('[data-testid="following-data-total-count"]').click();
+    cy.get('[data-testid="table-data-card"]').first().should('be.visible');
+    cy.clickOnLogo();
   });
 });

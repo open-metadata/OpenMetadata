@@ -22,16 +22,31 @@ export const MYDATA_SUMMARY_OPTIONS = {
 };
 
 export const SEARCH_TERMS = {
-  raw_product_catalog: 'raw_product_catalog',
-  raw_customer: 'raw_customer',
-  fact_session: 'fact_session',
-  sales: 'sales',
-  orders: 'orders',
-  eta_predictions_performance: 'ETA Predictions Performance',
-  video_game_sales: 'Video Game Sales',
-  unicode_test: 'Unicode Test',
-  snowflake_etl: 'Snowflake ETL',
-  hive_etl: 'Hive ETL',
+  raw_product_catalog: {
+    term: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  },
+  raw_customer: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  fact_session: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  sales: { term: 'sales', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  orders: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  eta_predictions_performance: {
+    term: 'ETA Predictions Performance',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  video_game_sales: {
+    term: 'Video Game Sales',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  unicode_test: {
+    term: 'Unicode Test',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  snowflake_etl: {
+    term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+  hive_etl: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
 };
 
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';

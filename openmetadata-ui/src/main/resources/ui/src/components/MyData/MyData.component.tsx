@@ -123,53 +123,63 @@ const MyData: React.FC<MyDataProps> = ({
   const getRightPanel = useCallback(() => {
     return (
       <div className="tw-mt-12">
-        <EntityList
-          entityList={ownedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              My Data
-              {ownedData.length ? (
-                <Link
-                  data-testid="my-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.OWNER,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({ownedDataCount})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not owned anything yet.</>}
-          testIDText="My data"
-        />
+        <div data-testid="my-data-container">
+          <EntityList
+            entityList={ownedData}
+            headerText={
+              <div className="tw-flex tw-justify-between">
+                My Data
+                {ownedData.length ? (
+                  <Link
+                    data-testid="my-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.OWNER,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="my-data-total-count">
+                        ({ownedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            }
+            noDataPlaceholder={<>You have not owned anything yet.</>}
+            testIDText="My data"
+          />
+        </div>
         <div className="tw-filter-seperator tw-mt-3" />
-        <EntityList
-          entityList={followedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              Following
-              {followedData.length ? (
-                <Link
-                  data-testid="following-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.FOLLOWERS,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({followedDataCount})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not followed anything yet.</>}
-          testIDText="Following data"
-        />
+        <div data-testid="following-data-container">
+          <EntityList
+            entityList={followedData}
+            headerText={
+              <div className="tw-flex tw-justify-between">
+                Following
+                {followedData.length ? (
+                  <Link
+                    data-testid="following-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.FOLLOWERS,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="following-data-total-count">
+                        ({followedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            }
+            noDataPlaceholder={<>You have not followed anything yet.</>}
+            testIDText="Following data"
+          />
+        </div>
         <div className="tw-filter-seperator tw-mt-3" />
       </div>
     );
