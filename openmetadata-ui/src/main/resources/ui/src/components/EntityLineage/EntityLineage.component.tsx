@@ -142,6 +142,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const [updatedLineageData, setUpdatedLineageData] =
     useState<EntityLineage>(entityLineage);
 
+  /**
+   * Custom Node Type Object
+   */
   const nodeTypes = useMemo(
     () => ({
       output: CustomNode,
@@ -682,7 +685,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
-   * handle onNode select logic
+   * After dropping node to graph user will search and select entity
+   * and this method will take care of changing node information based on selected entity.
    */
   const onEntitySelect = () => {
     if (!isEmpty(selectedEntity)) {
@@ -739,6 +743,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   * This method will handle the delete edge modal confirmation
+   */
   const onRemove = () => {
     setDeletionState({ ...ELEMENT_DELETE_STATE, loading: true });
     setTimeout(() => {
@@ -751,6 +758,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }, 500);
   };
 
+  /**
+   *
+   * @returns Custom control elements
+   */
   const getCustomControlElements = () => {
     return (
       <CustomControls
@@ -808,6 +819,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
   };
 
+  /**
+   *
+   * @returns Grid background if editmode is enabled otherwise null
+   */
   const getGraphBackGround = () => {
     if (!isEditMode) {
       return null;
@@ -816,6 +831,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  /**
+   *
+   * @returns Side drawer if node is selected and view mode is enabled otherwise null
+   */
   const getEntityDrawer = () => {
     if (isEmpty(selectedNode) || isEditMode) {
       return null;
