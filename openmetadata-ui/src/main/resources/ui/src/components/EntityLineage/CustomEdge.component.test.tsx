@@ -40,6 +40,7 @@ const mockCustomEdgeProp = {
       id: 'node1',
     },
   },
+  selected: true,
 } as EdgeProps;
 
 describe('Test CustomEdge Component', () => {
@@ -58,12 +59,9 @@ describe('Test CustomEdge Component', () => {
     expect(edgePathElement).toBeInTheDocument();
   });
 
-  it('Check if CustomEdge has selectedNode as empty object', async () => {
+  it('Check if CustomEdge has selected as false', async () => {
     const { container } = render(
-      <CustomEdge
-        {...mockCustomEdgeProp}
-        data={{ ...mockCustomEdgeProp.data, selectedNode: {} }}
-      />,
+      <CustomEdge {...mockCustomEdgeProp} selected={false} />,
       {
         wrapper: MemoryRouter,
       }
