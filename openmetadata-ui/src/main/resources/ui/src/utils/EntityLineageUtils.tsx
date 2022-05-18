@@ -525,27 +525,19 @@ export const getLayoutedElements = (
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
   let sourceEntity = '';
   let targetEntity = '';
+  const sourceFQN = selectedEdge.source.fullyQualifiedName || '';
+  const targetFQN = selectedEdge.target.fullyQualifiedName || '';
 
   if (selectedEdge.source.type === EntityType.TABLE) {
-    sourceEntity = getPartialNameFromTableFQN(
-      selectedEdge.source.name as string,
-      [FqnPart.Table]
-    );
+    sourceEntity = getPartialNameFromTableFQN(sourceFQN, [FqnPart.Table]);
   } else {
-    sourceEntity = getPartialNameFromFQN(selectedEdge.source.name as string, [
-      'database',
-    ]);
+    sourceEntity = getPartialNameFromFQN(sourceFQN, ['database']);
   }
 
   if (selectedEdge.target.type === EntityType.TABLE) {
-    targetEntity = getPartialNameFromTableFQN(
-      selectedEdge.target.name as string,
-      [FqnPart.Table]
-    );
+    targetEntity = getPartialNameFromTableFQN(targetFQN, [FqnPart.Table]);
   } else {
-    targetEntity = getPartialNameFromFQN(selectedEdge.target.name as string, [
-      'database',
-    ]);
+    targetEntity = getPartialNameFromFQN(targetFQN, ['database']);
   }
 
   return `Are you sure you want to remove the edge between "${
