@@ -40,5 +40,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/db:0.10.0,openmetadata/db:latest'
+          tags: 'openmetadata/db:0.10.1,openmetadata/db:latest'
           file: ./docker/local-metadata/Dockerfile_mysql
