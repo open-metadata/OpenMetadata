@@ -177,7 +177,7 @@ Note that from connector to connector, this recipe will always be the same. By u
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
-### 1. Define the YAML configuration
+### 1. Define the JSON configuration
 
 This is a sample config for the profiler:
 
