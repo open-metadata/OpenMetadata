@@ -29,7 +29,7 @@ from metadata.ingestion.ometa.utils import (
     get_entity_type,
     ometa_logger,
 )
-from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils import fqn
 
 logger = ometa_logger()
 
@@ -157,11 +157,12 @@ class OMetaLineageMixin(Generic[T]):
         try:
             from_table = str(from_table).replace("<default>", "")
             to_table = str(to_table).replace("<default>", "")
-            from_fqdn = get_fqdn(
-                AddLineageRequest,
-                service_name,
-                database,
-                _get_formmated_table_name(str(from_table)),
+            # TODO: FIXME
+            from_fqdn = fqn.build(
+                entity_type=AddLineageRequest,  # ???
+                service_name=service_name,
+                database_name=database,
+                table_name=_get_formmated_table_name(str(from_table)),
             )
             from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
             if not from_entity:
@@ -173,6 +174,7 @@ class OMetaLineageMixin(Generic[T]):
                 )
             else:
                 multiple_from_fqns = [from_entity]
+            # TODO: FIXME
             to_fqdn = get_fqdn(
                 AddLineageRequest,
                 service_name,

@@ -28,7 +28,7 @@ from metadata.ingestion.models.table_queries import (
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils import fqn
 from metadata.utils.helpers import _get_formmated_table_name
 from metadata.utils.logger import ingestion_logger
 
@@ -239,8 +239,12 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_table_entity(
         self, database_name: str, database_schema: str, table_name: str
     ) -> List[Table]:
-        table_fqn = get_fqdn(
-            Table, self.service_name, database_name, database_schema, table_name
+        table_fqn = fqn.build(
+            entity_type=Table,
+            service_name=self.service_name,
+            database_name=database_name,
+            schema_name=database_schema,
+            table_name=table_name,
         )
         table_fqn = _get_formmated_table_name(table_fqn)
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)

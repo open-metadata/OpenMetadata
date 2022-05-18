@@ -8,31 +8,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from collections import namedtuple
-from typing import Type, TypeVar
-
-from pydantic import BaseModel
-
-T = TypeVar("T", bound=BaseModel)
+"""
+Helper class to handle FQN splitting logic
+"""
+from metadata.generated.antlr.FqnListener import FqnListener
+from metadata.generated.antlr.FqnParser import FqnParser
 
 
-def register_fqdn_build():
-    """
-    Helps us register custom functions for FQDN building
-    """
-    registry = dict()
+class SplitListener(FqnListener):
+    def __init__(self):
+        self.xs = []
 
-    def add(entity_type: Type[T]):
-        def inner(fn):
-            _name = entity_type.__name__
-            registry[_name] = fn
-            return fn
+    def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
+        self.xs.append(ctx.getText())
 
-        return inner
+    def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
+        self.xs.append(ctx.getText())
 
-    Register = namedtuple("Register", ["add", "registry"])
-    return Register(add, registry)
-
-
-fqdn_build_registry = register_fqdn_build()
+    def split(self):
+        return self.xs

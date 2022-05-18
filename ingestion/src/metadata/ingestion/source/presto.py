@@ -28,8 +28,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
-from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -134,10 +134,10 @@ class PrestoSource(SQLSource):
             if self.source_config.includeViews:
                 logger.info("Presto includes views when fetching tables.")
             if self.source_config.markDeletedTables:
-                schema_fqdn = get_fqdn(
-                    DatabaseSchema,
-                    self.config.serviceName,
-                    self.service_connection.catalog,
-                    schema,
+                schema_fqdn = fqn.build(
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.service_connection.catalog,
+                    schema_name=schema,
                 )
                 yield from self.delete_tables(schema_fqdn)
