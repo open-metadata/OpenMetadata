@@ -14,7 +14,10 @@ Mixin class containing Server and client specific methods
 To be used by OpenMetadata class
 """
 import re
-from importlib.metadata import version
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
 
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
