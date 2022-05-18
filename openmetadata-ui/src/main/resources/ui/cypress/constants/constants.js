@@ -21,7 +21,37 @@ export const MYDATA_SUMMARY_OPTIONS = {
   terms: 'terms',
 };
 
+export const SEARCH_TERMS = {
+  raw_product_catalog: {
+    term: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  },
+  raw_customer: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  fact_session: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  sales: { term: 'sales', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  orders: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+  eta_predictions_performance: {
+    term: 'ETA Predictions Performance',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  video_game_sales: {
+    term: 'Video Game Sales',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  unicode_test: {
+    term: 'Unicode Test',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  snowflake_etl: {
+    term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+  hive_etl: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+};
+
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
+
+export const NO_SEARCHED_TERMS = 'No searched terms';
