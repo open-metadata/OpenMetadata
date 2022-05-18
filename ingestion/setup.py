@@ -29,6 +29,7 @@ base_requirements = {
     "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
+    "typing-compat~=0.1.0",
     "pydantic>=1.7.4",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
