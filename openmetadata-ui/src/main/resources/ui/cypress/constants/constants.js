@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export const MYDATA_SUMMERY_OPTIONS = {
+export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
   dashboards: 'dashboards',
