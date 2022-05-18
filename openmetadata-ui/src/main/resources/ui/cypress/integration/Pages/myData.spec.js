@@ -12,15 +12,7 @@
  */
 
 import { visitEntityTab } from '../../common/common';
-import {
-  FOLLOWING_TITLE,
-  MYDATA_SUMMARY_OPTIONS,
-  MY_DATA_TITLE,
-  NO_SEARCHED_TERMS,
-  RECENT_SEARCH_TITLE,
-  RECENT_VIEW_TITLE,
-  SEARCH_TERMS,
-} from '../../constants/constants';
+import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_TERMS } from '../../constants/constants';
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -59,6 +51,12 @@ describe('MyData page should work', () => {
         expect(text).equal(term);
       });
     cy.clickOnLogo();
+    cy.get(
+      `[data-testid="Recently-Search-${term}"] > :nth-child(1) > .tw-flex > .tw-opacity-0 > [data-testid="image"]`
+    )
+      .invoke('show')
+      .click();
+    cy.contains(NO_SEARCHED_TERMS).should('be.visible');
   };
 
   it('MyData Page should render properly with all the required components', () => {
