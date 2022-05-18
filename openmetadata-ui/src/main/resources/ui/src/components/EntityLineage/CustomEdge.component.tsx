@@ -34,8 +34,9 @@ export const CustomEdge = ({
   arrowHeadType,
   markerEndId,
   data,
+  selected,
 }: EdgeProps) => {
-  const { onEdgeClick, selectedNode, ...rest } = data;
+  const { onEdgeClick, ...rest } = data;
 
   const edgePath = getBezierPath({
     sourceX,
@@ -53,13 +54,6 @@ export const CustomEdge = ({
     targetY,
   });
 
-  const isSelectedNode = () => {
-    return (
-      (rest as CustomEdgeData)?.source === selectedNode?.id ||
-      (rest as CustomEdgeData)?.target === selectedNode?.id
-    );
-  };
-
   return (
     <Fragment>
       <path
@@ -70,7 +64,7 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={style}
       />
-      {isSelectedNode() ? (
+      {selected ? (
         <foreignObject
           data-testid="delete-button"
           height={foreignObjectSize}

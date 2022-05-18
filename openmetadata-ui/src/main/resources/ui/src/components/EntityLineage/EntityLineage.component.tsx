@@ -35,7 +35,10 @@ import ReactFlow, {
   Edge,
   Elements,
   FlowElement,
+  getConnectedEdges,
+  isEdge,
   isNode,
+  Node,
   OnLoadParams,
   ReactFlowProvider,
 } from 'react-flow-renderer';
@@ -327,7 +330,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         getNodeLabel,
         isEditMode,
         'buttonedge',
-        onEdgeClick
+        onEdgeClick,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        removeNodeHandler
       ) as Elements;
 
       uniqueElements = getUniqueFlowElements(graphElements);
@@ -598,12 +603,48 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * take node and remove it from the graph
    * @param node
    */
-  const removeNodeHandler = (node: FlowElement) => {
+  function removeNodeHandler(node: Node) {
+    // Get all edges for the flow
+    const edges = elements.filter((element) => isEdge(element));
+
+    // Get edges connected to selected node
+    const edgesToRemove = getConnectedEdges([node], edges as Edge[]);
+
+    edgesToRemove.forEach((edge) => {
+      let targetNode = updatedLineageData.nodes?.find((n) =>
+        edge.target?.includes(n.id)
+      );
+
+      let sourceNode = updatedLineageData.nodes?.find((n) =>
+        edge.source?.includes(n.id)
+      );
+
+      if (isUndefined(targetNode)) {
+        targetNode = isEmpty(selectedEntity)
+          ? updatedLineageData.entity
+          : selectedEntity;
+      }
+      if (isUndefined(sourceNode)) {
+        sourceNode = isEmpty(selectedEntity)
+          ? updatedLineageData.entity
+          : selectedEntity;
+      }
+
+      removeEdgeHandler(
+        {
+          id: edge.id,
+          source: sourceNode,
+          target: targetNode,
+        },
+        true
+      );
+    });
+
     setElements((es) =>
       getUniqueFlowElements(es.filter((n) => n.id !== node.id))
     );
     setNewAddedNode({} as FlowElement);
-  };
+  }
 
   /**
    * handle node drag event
@@ -639,7 +680,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           label: (
             <div className="tw-relative">
               {getNodeRemoveButton(() => {
-                removeNodeHandler(newNode as FlowElement);
+                removeNodeHandler(newNode as Node);
               })}
               <div className="tw-flex">
                 <SVGIcons
@@ -655,6 +696,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               </div>
             </div>
           ),
+          removeNodeHandler,
+          isEditMode,
           isNewNode: true,
         },
       };
@@ -702,7 +745,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                         removeNodeHandler({
                           ...el,
                           id: selectedEntity.id,
-                        } as FlowElement);
+                        } as Node);
                       })}
                     </Fragment>
                   ),
@@ -920,9 +963,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     if (!isEmpty(selectedNode)) {
       setExpandNode(undefined);
     }
-    setElements((pre) => {
-      return pre.map((el) => ({ ...el, data: { ...el.data, selectedNode } }));
-    });
   }, [selectedNode]);
 
   useEffect(() => {

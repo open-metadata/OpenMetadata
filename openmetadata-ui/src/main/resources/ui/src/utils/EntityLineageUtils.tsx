@@ -126,7 +126,8 @@ export const getLineageData = (
   onEdgeClick: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
-  ) => void
+  ) => void,
+  removeNodeHandler: (node: Node) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [
@@ -165,6 +166,8 @@ export const getLineageData = (
       data: {
         label: getNodeLabel(node),
         entityType: node.type,
+        removeNodeHandler,
+        isEditMode,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
@@ -335,6 +338,8 @@ export const getLineageData = (
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
         label: getNodeLabel(mainNode),
+        isEditMode,
+        removeNodeHandler,
       },
       position: { x: x, y: y },
     },
@@ -349,6 +354,7 @@ export const getLineageData = (
             ...up,
             type: isEditMode ? 'default' : 'input',
             data: {
+              ...up.data,
               label: (
                 <div className="tw-flex">
                   <div
@@ -393,6 +399,7 @@ export const getLineageData = (
             ...down,
             type: isEditMode ? 'default' : 'output',
             data: {
+              ...down.data,
               label: (
                 <div className="tw-flex tw-justify-between">
                   <div>{down?.data?.label}</div>

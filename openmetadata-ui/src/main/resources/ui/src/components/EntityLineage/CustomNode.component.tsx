@@ -13,7 +13,8 @@
 
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleProps, Position } from 'react-flow-renderer';
+import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 
 const handleStyles = {
@@ -189,19 +190,22 @@ const getHandle = (
   }
 };
 
-/* eslint-disable-next-line */
-const CustomNode = (props: any) => {
+const CustomNode = (props: NodeProps) => {
+  const { data, type, isConnectable, selected } = props;
   /* eslint-disable-next-line */
-  const { data, type, isConnectable } = props;
-  /* eslint-disable-next-line */
-  const { label, columns, isNewNode } = data;
+  const { label, columns, isNewNode, removeNodeHandler, isEditMode } = data;
 
   return (
     <div className="tw-relative nowheel ">
       {getHandle(type, isConnectable, isNewNode)}
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')} data-testid="node-label">
-        {label}
+        {label}{' '}
+        {selected && isEditMode
+          ? getNodeRemoveButton(() => {
+              removeNodeHandler?.(props);
+            })
+          : null}
       </div>
 
       {columns?.length ? (
