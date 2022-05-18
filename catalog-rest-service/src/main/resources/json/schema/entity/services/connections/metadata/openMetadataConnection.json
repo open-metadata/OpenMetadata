@@ -116,6 +116,11 @@
       "type": "boolean",
       "default": true
     },
+    "enableVersionValidation": {
+      "description": "Validate Openmetadata Server & Client Version.",
+      "type": "boolean",
+      "default": true
+    },
     "includeDatabaseServices": {
       "description": "Include Database Services for Indexing",
       "type": "boolean",

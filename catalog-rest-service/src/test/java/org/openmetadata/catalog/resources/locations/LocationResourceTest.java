@@ -58,13 +58,8 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   }
 
   @Override
-  public CreateLocation createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateLocation()
-        .withName(name)
-        .withPath(name)
-        .withService(getContainer())
-        .withDescription(description)
-        .withOwner(owner);
+  public CreateLocation createRequest(String name) {
+    return new CreateLocation().withName(name).withPath(name).withService(getContainer());
   }
 
   @Override

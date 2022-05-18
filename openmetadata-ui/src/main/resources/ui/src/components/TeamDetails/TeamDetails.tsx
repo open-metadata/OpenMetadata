@@ -515,7 +515,7 @@ const TeamDetails = ({
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
-              className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"

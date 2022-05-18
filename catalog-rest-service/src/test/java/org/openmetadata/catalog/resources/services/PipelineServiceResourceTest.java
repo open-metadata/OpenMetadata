@@ -38,7 +38,6 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -214,14 +213,11 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public CreatePipelineService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreatePipelineService createRequest(String name) {
     return new CreatePipelineService()
         .withName(name)
         .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
         .withPipelineUrl(PIPELINE_SERVICE_URL)
-        .withDescription(description)
-        .withOwner(owner)
         .withIngestionSchedule(null);
   }
 

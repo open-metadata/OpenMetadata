@@ -2014,16 +2014,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public CreateTable createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateTable createRequest(String name) {
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
         .withDatabaseSchema(getContainer())
         .withColumns(COLUMNS)
-        .withTableConstraints(List.of(constraint))
-        .withDescription(description)
-        .withOwner(owner);
+        .withTableConstraints(List.of(constraint));
   }
 
   @Override

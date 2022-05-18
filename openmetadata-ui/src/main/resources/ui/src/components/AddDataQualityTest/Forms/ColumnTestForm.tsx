@@ -382,7 +382,7 @@ const ColumnTestForm = ({
               Min:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="min"
               id="min"
               name="min"
@@ -397,7 +397,7 @@ const ColumnTestForm = ({
               Max:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="max"
               id="max"
               name="max"
@@ -423,7 +423,7 @@ const ColumnTestForm = ({
             {requiredField('Count:')}
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="missingCountValue"
             id="missingCountValue"
             name="missingCountValue"
@@ -454,7 +454,7 @@ const ColumnTestForm = ({
               <div className="tw-w-11/12">
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`value-key-${i}`}
                     name="key"
                     placeholder="Missing value to be match"
@@ -491,7 +491,7 @@ const ColumnTestForm = ({
           {requiredField('Regex:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="regex"
           id="regex"
           name="regex"
@@ -524,7 +524,7 @@ const ColumnTestForm = ({
             <div className="tw-w-11/12">
               <Field>
                 <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-form-inputs-padding"
                   id={`option-key-${i}`}
                   name="key"
                   placeholder="Values not to be in the set"
@@ -589,7 +589,7 @@ const ColumnTestForm = ({
               {requiredField('Column Name:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="columnName"
@@ -617,7 +617,7 @@ const ColumnTestForm = ({
               {requiredField('Test Type:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="columTestType"

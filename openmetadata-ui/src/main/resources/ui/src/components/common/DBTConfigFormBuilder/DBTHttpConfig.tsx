@@ -68,7 +68,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           DBT catalog file to extract dbt models with their column schemas.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="catalog-url"
           id="catalog-url"
           name="catalog-url"
@@ -89,7 +89,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
           tables.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="manifest-url"
           id="manifest-url"
           name="manifest-url"

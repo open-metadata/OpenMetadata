@@ -275,7 +275,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
-    Dashboard dashboard = getDashboard(securityContext, create);
+    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboard, ADMIN | BOT);
   }
 
@@ -320,7 +320,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboard create)
       throws IOException {
-    Dashboard dashboard = getDashboard(securityContext, create);
+    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboard, ADMIN | BOT | OWNER);
   }
 
@@ -386,18 +386,11 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Dashboard getDashboard(SecurityContext securityContext, CreateDashboard create) {
-    return new Dashboard()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private Dashboard getDashboard(CreateDashboard create, String user) {
+    return copy(new Dashboard(), create, user)
         .withService(create.getService())
         .withCharts(create.getCharts())
         .withDashboardUrl(create.getDashboardUrl())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

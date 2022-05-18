@@ -367,15 +367,12 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Override
-  public CreateMlModel createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateMlModel createRequest(String name) {
     return new CreateMlModel()
         .withName(name)
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
         .withDashboard(DASHBOARD_REFERENCE);
   }
 

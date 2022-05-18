@@ -275,7 +275,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
 
@@ -318,7 +318,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
   }
 
@@ -398,11 +398,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Topic getTopic(SecurityContext securityContext, CreateTopic create) {
-    return new Topic()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private Topic getTopic(CreateTopic create, String user) {
+    return copy(new Topic(), create, user)
         .withService(create.getService())
         .withPartitions(create.getPartitions())
         .withSchemaText(create.getSchemaText())
@@ -414,9 +411,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

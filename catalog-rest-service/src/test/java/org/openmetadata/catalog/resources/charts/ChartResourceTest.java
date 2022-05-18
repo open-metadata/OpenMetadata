@@ -101,14 +101,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public CreateChart createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateChart()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withService(getContainer())
-        .withChartType(ChartType.Area);
+  public CreateChart createRequest(String name) {
+    return new CreateChart().withName(name).withService(getContainer()).withChartType(ChartType.Area);
   }
 
   @Override

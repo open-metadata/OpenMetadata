@@ -41,7 +41,6 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DashboardConnection;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -128,8 +127,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public CreateDashboardService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateDashboardService createRequest(String name) {
     try {
       return new CreateDashboardService()
           .withName(name)
@@ -140,9 +138,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                       new SupersetConnection()
                           .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
-                          .withPassword("admin")))
-          .withOwner(owner)
-          .withDescription(description);
+                          .withPassword("admin")));
     } catch (URISyntaxException e) {
       e.printStackTrace();
     }

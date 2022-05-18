@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -267,7 +266,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
-    PipelineService service = getService(create, securityContext);
+    PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
@@ -289,7 +288,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
-    PipelineService service = getService(update, securityContext);
+    PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
@@ -321,16 +320,10 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private PipelineService getService(CreatePipelineService create, SecurityContext securityContext) {
-    return new PipelineService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private PipelineService getService(CreatePipelineService create, String user) {
+    return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withPipelineUrl(create.getPipelineUrl())
-        .withIngestionSchedule(create.getIngestionSchedule())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withIngestionSchedule(create.getIngestionSchedule());
   }
 }

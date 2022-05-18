@@ -728,15 +728,9 @@
       "type": "boolean",
       "default": false
     },
-    "customAttributes" : {
-      "description": "Custom attributes added to the entity",
-      "type" : "array",
-      "items" : {
-        "$ref" : "../type.json"
-      }
-    },
-    "displayConfig" : {
-
+    "extension" : {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref" : "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name", "columns"],

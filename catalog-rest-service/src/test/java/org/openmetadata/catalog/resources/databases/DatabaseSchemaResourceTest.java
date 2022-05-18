@@ -100,13 +100,8 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   }
 
   @Override
-  public CreateDatabaseSchema createRequest(
-      String name, String description, String displayName, EntityReference owner) {
-    return new CreateDatabaseSchema()
-        .withName(name)
-        .withDescription(description)
-        .withOwner(owner)
-        .withDatabase(getContainer());
+  public CreateDatabaseSchema createRequest(String name) {
+    return new CreateDatabaseSchema().withName(name).withDatabase(getContainer());
   }
 
   @Override
