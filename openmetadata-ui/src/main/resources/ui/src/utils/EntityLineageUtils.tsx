@@ -172,6 +172,10 @@ export const getLineageData = (
     };
   };
 
+  const makeEdge = (edge: FlowElement) => {
+    lineageEdges.push(edge);
+  };
+
   const getNodes = (
     id: string,
     pos: LineagePos,
@@ -188,7 +192,7 @@ export const getLineageData = (
           if (node) {
             UPNodes.push(node);
             UPStreamNodes.push(makeNode(node, 'from', depth, upDepth));
-            lineageEdges.push({
+            makeEdge({
               id: `edge-${up.fromEntity}-${id}-${depth}`,
               source: `${node.id}`,
               target: edg ? edg.id : `${id}`,
@@ -230,7 +234,7 @@ export const getLineageData = (
           if (node) {
             DOWNNodes.push(node);
             DOWNStreamNodes.push(makeNode(node, 'to', depth, downDepth));
-            lineageEdges.push({
+            makeEdge({
               id: `edge-${id}-${down.toEntity}`,
               source: edg ? edg.id : `${id}`,
               target: `${node.id}`,
