@@ -86,7 +86,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <label className="tw-form-label required-field">Name</label>
               <input
                 autoComplete="off"
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="name"
                 name="name"
                 placeholder="Name"
@@ -102,7 +102,7 @@ const Form: React.FC<FormProp> = forwardRef(
               </label>
               <input
                 autoComplete="off"
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="displayName"
                 name="displayName"
                 placeholder="Display name"

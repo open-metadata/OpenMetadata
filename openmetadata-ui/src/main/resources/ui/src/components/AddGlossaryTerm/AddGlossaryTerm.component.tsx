@@ -308,7 +308,7 @@ const AddGlossaryTerm = ({
           </label>
 
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="name"
             id="name"
             name="name"
@@ -346,7 +346,7 @@ const AddGlossaryTerm = ({
           </label>
 
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="synonyms"
             id="synonyms"
             name="synonyms"
@@ -375,7 +375,7 @@ const AddGlossaryTerm = ({
               <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`name-${i}`}
                     name="key"
                     placeholder="Name"
@@ -388,7 +388,7 @@ const AddGlossaryTerm = ({
                 </Field>
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`url-${i}`}
                     name="endpoint"
                     placeholder="url"

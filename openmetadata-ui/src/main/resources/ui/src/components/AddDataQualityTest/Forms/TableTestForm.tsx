@@ -210,7 +210,7 @@ const TableTestForm = ({
           {requiredField('Value:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="value"
           id="value"
           name="value"
@@ -233,7 +233,7 @@ const TableTestForm = ({
               Min:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="min"
               id="min"
               name="min"
@@ -248,7 +248,7 @@ const TableTestForm = ({
               Max:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="max"
               id="max"
               name="max"
@@ -279,7 +279,7 @@ const TableTestForm = ({
               {requiredField('Test Type:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="tableTestType"
