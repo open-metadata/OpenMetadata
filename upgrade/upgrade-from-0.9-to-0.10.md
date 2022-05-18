@@ -1,6 +1,10 @@
 # Upgrade from 0.9 to 0.10
 
-The 0.10.0 release contains backward incompatible changes this guide will help you to migrate your metadata from 0.9 version to 0.10 version. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
+The 0.10.x release contains backward incompatible changes this guide will help you to migrate your metadata from 0.9 version to 0.10 version. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
+
+## Requirements
+
+* Backup your metadata. The steps to backup metadata depending on the depending on the method of deployment are defined below:
 
 {% tabs %}
 {% tab title="Docker" %}
@@ -22,11 +26,7 @@ The 0.10.0 release contains backward incompatible changes this guide will help y
 {% endtab %}
 {% endtabs %}
 
-## Requirements
-
-To migrate the metadata from 0.9 to 0.10 version you need to ingest all the connectors in 0.10 version with the same service name as done in 0.9 version.
-
-For example if you have ingested snowflake connector in 0.9 version with service name `Snowflake_Prod` then in 0.10 version you need to ingest the snowflake connector again with name `Snowflake_Prod`.
+* To migrate the metadata from 0.9 to 0.10 version you need to ingest all the connectors in 0.10 version with the same service name as done in 0.9 version. For example if you have ingested snowflake connector in 0.9 version with service name `Snowflake_Prod` then in 0.10 version you need to ingest the snowflake connector again with name `Snowflake_Prod`.
 
 ## Metadata Migration <a href="#requirements" id="requirements"></a>
 
@@ -73,7 +73,7 @@ bulkSink:
     dirPath: <Directory Path to store data>
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://<hostport of 0.10.0 Openmetadata Server>/api
+    hostPort: http://<hostport of 0.10.x Openmetadata Server>/api
     authProvider: no-auth
 ```
 
@@ -124,7 +124,7 @@ For a simple, local installation using our docker containers, this looks like:
 ```
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: http://<hostport of 0.10.0 Openmetadata Server>/api
+    hostPort: http://<hostport of 0.10.x Openmetadata Server>/api
     authProvider: no-auth
 ```
 
