@@ -159,7 +159,7 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
         count > 1 ? noun : noun.slice(0, noun.length - 1)
       }`;
     } else {
-      return `${countString} ${noun}${count !== 1 ? suffix : ''}`;
+      return `${countString} ${noun}${count > 1 ? suffix : ''}`;
     }
   }
 };

@@ -14,6 +14,7 @@
 /* eslint-disable */
 
 import React, { useState } from 'react';
+import { pluralize } from '../../../utils/CommonUtils';
 import {
   combinations,
   getDayCron,
@@ -347,7 +348,9 @@ const CronEditor = (props) => {
             )}
           </div>
           <div className="tw-col-span-2">
-            {getTextComp(`${cronPeriodString} ${selectedMinOption.min} minute`)}
+            {getTextComp(
+              `${cronPeriodString} ${selectedMinOption.min} minutes`
+            )}
           </div>
         </>
       )
@@ -368,7 +371,10 @@ const CronEditor = (props) => {
           </div>
           <div className="tw-col-span-2">
             {getTextComp(
-              `${cronPeriodString} ${selectedHourOption.min} minute past the hour`
+              `${cronPeriodString} ${pluralize(
+                +selectedHourOption.min,
+                'minute'
+              )} past the hour`
             )}
           </div>
         </>
