@@ -59,7 +59,7 @@ sink:
 workflowConfig:
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>2. Configure service settings
+    authProvider: <OpenMetadata auth provider>
 ```
 
 #### Source Configuration - Source Config
