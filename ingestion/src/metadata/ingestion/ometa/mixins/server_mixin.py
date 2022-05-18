@@ -14,6 +14,7 @@ Mixin class containing Server and client specific methods
 To be used by OpenMetadata class
 """
 import re
+
 try:
     from importlib.metadata import version
 except ImportError:

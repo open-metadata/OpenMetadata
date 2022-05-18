@@ -25,7 +25,7 @@ def get_long_description():
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
-    "click>=7.1.1,<8",
+    "click>=7.1.1",
     "typing_extensions>=3.7.4",
     "mypy_extensions>=0.4.3",
     "typing-inspect",
@@ -45,11 +45,9 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
-
-
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
-    "importlib-metadata~=4.11.3"
+    "importlib-metadata~=4.11.3",
 }
 
 report_requirements = {
@@ -144,8 +142,8 @@ dev = {
     "boto3==1.20.14",
     "botocore==1.23.14",
     "datamodel-code-generator==0.11.14",
-    "black==21.12b0",  # required for datamodel-code-generator==0.11.14
-    "pycln",
+    "black==22.3.0",  # required for datamodel-code-generator==0.11.14
+    "pycln==1.3.2",
     "docker",
     "google-cloud-storage==1.43.0",
     "twine",
