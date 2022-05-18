@@ -530,21 +530,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           type: node?.type as string,
           entityId: node?.id as string,
         });
-        setElements((prevElements) => {
-          return prevElements.map((preEl) => {
-            if (preEl.id === el.id) {
-              return {
-                ...preEl,
-                className: `${preEl.className} selected-node`,
-              };
-            } else {
-              return {
-                ...preEl,
-                className: getNodeClass(preEl),
-              };
-            }
-          });
-        });
       } else {
         expandButton.current = null;
       }
@@ -562,7 +547,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         if (preEl.id.includes(expandNode?.id as string)) {
           return {
             ...preEl,
-            className: `${preEl.className} selected-node`,
             data: { ...preEl.data, columns: tableColumns },
           };
         } else {
@@ -603,48 +587,51 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * take node and remove it from the graph
    * @param node
    */
-  function removeNodeHandler(node: Node) {
-    // Get all edges for the flow
-    const edges = elements.filter((element) => isEdge(element));
+  const removeNodeHandler = useCallback(
+    (node: Node) => {
+      // Get all edges for the flow
+      const edges = elements.filter((element) => isEdge(element));
 
-    // Get edges connected to selected node
-    const edgesToRemove = getConnectedEdges([node], edges as Edge[]);
+      // Get edges connected to selected node
+      const edgesToRemove = getConnectedEdges([node], edges as Edge[]);
 
-    edgesToRemove.forEach((edge) => {
-      let targetNode = updatedLineageData.nodes?.find((n) =>
-        edge.target?.includes(n.id)
+      edgesToRemove.forEach((edge) => {
+        let targetNode = updatedLineageData.nodes?.find((n) =>
+          edge.target?.includes(n.id)
+        );
+
+        let sourceNode = updatedLineageData.nodes?.find((n) =>
+          edge.source?.includes(n.id)
+        );
+
+        if (isUndefined(targetNode)) {
+          targetNode = isEmpty(selectedEntity)
+            ? updatedLineageData.entity
+            : selectedEntity;
+        }
+        if (isUndefined(sourceNode)) {
+          sourceNode = isEmpty(selectedEntity)
+            ? updatedLineageData.entity
+            : selectedEntity;
+        }
+
+        removeEdgeHandler(
+          {
+            id: edge.id,
+            source: sourceNode,
+            target: targetNode,
+          },
+          true
+        );
+      });
+
+      setElements((es) =>
+        getUniqueFlowElements(es.filter((n) => n.id !== node.id))
       );
-
-      let sourceNode = updatedLineageData.nodes?.find((n) =>
-        edge.source?.includes(n.id)
-      );
-
-      if (isUndefined(targetNode)) {
-        targetNode = isEmpty(selectedEntity)
-          ? updatedLineageData.entity
-          : selectedEntity;
-      }
-      if (isUndefined(sourceNode)) {
-        sourceNode = isEmpty(selectedEntity)
-          ? updatedLineageData.entity
-          : selectedEntity;
-      }
-
-      removeEdgeHandler(
-        {
-          id: edge.id,
-          source: sourceNode,
-          target: targetNode,
-        },
-        true
-      );
-    });
-
-    setElements((es) =>
-      getUniqueFlowElements(es.filter((n) => n.id !== node.id))
-    );
-    setNewAddedNode({} as FlowElement);
-  }
+      setNewAddedNode({} as FlowElement);
+    },
+    [elements, updatedLineageData]
+  );
 
   /**
    * handle node drag event
@@ -676,6 +663,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         position,
         className: 'leaf-node',
         connectable: false,
+        selectable: false,
         data: {
           label: (
             <div className="tw-relative">
@@ -721,7 +709,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           es
             .map((n) =>
               n.id.includes(selectedEntity.id)
-                ? { ...n, className: `${n.className} selected-node` }
+                ? {
+                    ...n,
+                    selectable: true,
+                    className: `${n.className} selected`,
+                  }
                 : n
             )
             .filter((es) => es.id !== newAddedNode.id)
@@ -735,9 +727,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               return {
                 ...el,
                 connectable: true,
+                selectable: true,
                 id: selectedEntity.id,
                 data: {
                   ...el.data,
+                  removeNodeHandler,
+                  isEditMode,
                   label: (
                     <Fragment>
                       {getNodeLabel(selectedEntity)}
