@@ -12,7 +12,15 @@
  */
 
 import { visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE } from '../../constants/constants';
+import {
+  FOLLOWING_TITLE,
+  MYDATA_SUMMARY_OPTIONS,
+  MY_DATA_TITLE,
+  NO_SEARCHED_TERMS,
+  RECENT_SEARCH_TITLE,
+  RECENT_VIEW_TITLE,
+  SEARCH_TERMS,
+} from '../../constants/constants';
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -28,9 +36,29 @@ describe('MyData page should work', () => {
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
       .then((text) => {
-        cy.get('#openmetadata_logo > [data-testid="image"]').click();
-        cy.get(`[title="${text}"]`).should('be.visible');
+        cy.clickOnLogo();
+        cy.get(`[title="${text}"]`).should('be.visible').click();
+        cy.get('[data-testid="inactive-link"]')
+          .invoke('text')
+          .then((newText) => {
+            expect(newText).equal(text);
+          });
+        cy.clickOnLogo();
       });
+  };
+
+  const checkRecentlySearchElement = (term) => {
+    cy.get('[data-testid="searchBox"]').should('be.visible');
+    cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
+    cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+    cy.clickOnLogo();
+    cy.get(`[data-testid="search-term-${term}"]`).should('be.visible').click();
+    cy.get('[data-testid="searchBox"]')
+      .invoke('val')
+      .then((text) => {
+        expect(text).equal(term);
+      });
+    cy.clickOnLogo();
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -64,7 +92,7 @@ describe('MyData page should work', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
   });
 
-  it('Listing entity in Recent views section should work properly', () => {
+  it('Listing entity in Recent views section with redirection should work properly', () => {
     // checking for table entity
     checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.tables);
 
@@ -76,5 +104,14 @@ describe('MyData page should work', () => {
 
     // checking for pipeline entity
     checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.pipelines);
+  });
+
+  it('Listing Recent search terms with redirection should work properly', () => {
+    cy.contains(NO_SEARCHED_TERMS).should('be.visible');
+
+    checkRecentlySearchElement(SEARCH_TERMS.eta_predictions_performance);
+    checkRecentlySearchElement(SEARCH_TERMS.fact_session);
+    checkRecentlySearchElement(SEARCH_TERMS.hive_etl);
+    checkRecentlySearchElement(SEARCH_TERMS.sales);
   });
 });

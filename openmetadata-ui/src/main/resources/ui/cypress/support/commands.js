@@ -69,3 +69,7 @@ Cypress.Commands.add('goToHomePage', () => {
   cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
   cy.get('[data-testid="tables"]').should('be.visible');
 });
+
+Cypress.Commands.add('clickOnLogo', () => {
+  cy.get('#openmetadata_logo > [data-testid="image"]').click();
+});
