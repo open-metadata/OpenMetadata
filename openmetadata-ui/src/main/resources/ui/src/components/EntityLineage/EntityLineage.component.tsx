@@ -35,6 +35,7 @@ import ReactFlow, {
   Edge,
   Elements,
   FlowElement,
+  isNode,
   OnLoadParams,
   ReactFlowProvider,
   removeElements,
@@ -516,33 +517,39 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param el
    */
   const onElementClick = (el: FlowElement) => {
-    const node = [
-      ...(updatedLineageData.nodes as Array<EntityReference>),
-      updatedLineageData.entity,
-    ].find((n) => el.id.includes(n.id));
-    if (!expandButton.current) {
-      selectNodeHandler(true, {
-        name: node?.name as string,
-        fqn: node?.fullyQualifiedName as string,
-        id: el.id,
-        displayName: node?.displayName,
-        type: node?.type as string,
-        entityId: node?.id as string,
-      });
-      setElements((prevElements) => {
-        return prevElements.map((preEl) => {
-          if (preEl.id === el.id) {
-            return { ...preEl, className: `${preEl.className} selected-node` };
-          } else {
-            return {
-              ...preEl,
-              className: getNodeClass(preEl),
-            };
-          }
+    if (isNode(el)) {
+      const node = [
+        ...(updatedLineageData.nodes as Array<EntityReference>),
+        updatedLineageData.entity,
+      ].find((n) => el.id.includes(n.id));
+
+      if (!expandButton.current) {
+        selectNodeHandler(true, {
+          name: node?.name as string,
+          fqn: node?.fullyQualifiedName as string,
+          id: el.id,
+          displayName: node?.displayName,
+          type: node?.type as string,
+          entityId: node?.id as string,
         });
-      });
-    } else {
-      expandButton.current = null;
+        setElements((prevElements) => {
+          return prevElements.map((preEl) => {
+            if (preEl.id === el.id) {
+              return {
+                ...preEl,
+                className: `${preEl.className} selected-node`,
+              };
+            } else {
+              return {
+                ...preEl,
+                className: getNodeClass(preEl),
+              };
+            }
+          });
+        });
+      } else {
+        expandButton.current = null;
+      }
     }
   };
 
@@ -961,14 +968,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               data-testid="react-flow-component"
               edgeTypes={{ buttonedge: CustomEdge }}
               elements={elements as Elements}
-              elementsSelectable={!isEditMode}
               maxZoom={2}
               minZoom={0.5}
               nodeTypes={nodeTypes}
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               zoomOnDoubleClick={false}
-              zoomOnPinch={false}
               zoomOnScroll={false}
               onConnect={onConnect}
               onDragOver={onDragOver}
