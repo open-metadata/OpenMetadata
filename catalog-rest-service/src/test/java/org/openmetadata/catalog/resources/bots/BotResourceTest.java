@@ -57,12 +57,8 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Override
-  public CreateBot createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateBot()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withBotUser(botUserRef);
+  public CreateBot createRequest(String name) {
+    return new CreateBot().withName(name).withBotUser(botUserRef);
   }
 
   @SneakyThrows // TODO remove

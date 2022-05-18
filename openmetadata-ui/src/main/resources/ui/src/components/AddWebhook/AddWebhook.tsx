@@ -472,7 +472,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           </label>
           {!data?.name ? (
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="name"
               id="name"
               name="name"
@@ -484,7 +484,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           ) : (
             <input
               disabled
-              className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
+              className="tw-form-inputs tw-form-inputs-padding tw-cursor-not-allowed"
               id="name"
               name="name"
               value={name}
@@ -514,7 +514,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
             {requiredField('Endpoint URL:')}
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="endpoint-url"
             disabled={!allowAccess}
             id="endpoint-url"
@@ -686,7 +686,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     Batch Size:
                   </label>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     data-testid="batch-size"
                     disabled={!allowAccess}
                     id="batch-size"
@@ -704,7 +704,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     Connection Timeout (s):
                   </label>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     data-testid="connection-timeout"
                     disabled={!allowAccess}
                     id="connection-timeout"
@@ -729,7 +729,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                     <div className="tw-flex tw-items-center">
                       <input
                         readOnly
-                        className="tw-form-inputs tw-px-3 tw-py-1"
+                        className="tw-form-inputs tw-form-inputs-padding"
                         data-testid="secret-key"
                         id="secret-key"
                         name="secret-key"
@@ -778,7 +778,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
                   <div className="tw-flex tw-items-center">
                     <input
                       readOnly
-                      className="tw-form-inputs tw-px-3 tw-py-1"
+                      className="tw-form-inputs tw-form-inputs-padding"
                       data-testid="secret-key"
                       id="secret-key"
                       name="secret-key"

@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -319,7 +318,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
       throws IOException {
-    IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, create);
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT);
   }
 
@@ -364,7 +363,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
       throws IOException {
-    IngestionPipeline ingestionPipeline = getIngestionPipeline(securityContext, update);
+    IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, ingestionPipeline, ADMIN | BOT | OWNER);
   }
 
@@ -473,25 +472,17 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private IngestionPipeline getIngestionPipeline(SecurityContext securityContext, CreateIngestionPipeline create)
-      throws IOException {
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     Source source = buildIngestionSource(create);
     OpenMetadataServerConnection openMetadataServerConnection =
         OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
-    return new IngestionPipeline()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+    return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withSource(source)
         .withLoggerLevel(create.getLoggerLevel())
-        .withOwner(create.getOwner())
-        .withService(create.getService())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withService(create.getService());
   }
 
   private Source buildIngestionSource(CreateIngestionPipeline create) throws IOException {

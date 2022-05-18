@@ -298,7 +298,7 @@ const ConfigureIngestion = ({
             process usage data.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="query-log-duration"
             id="query-log-duration"
             name="query-log-duration"
@@ -319,7 +319,7 @@ const ConfigureIngestion = ({
             Absolute file path required.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="stage-file-location"
             id="stage-file-location"
             name="stage-file-location"
@@ -339,7 +339,7 @@ const ConfigureIngestion = ({
             Configuration to set the limit for query logs.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="result-limit"
             id="result-limit"
             name="result-limit"
@@ -366,7 +366,7 @@ const ConfigureIngestion = ({
               Name that identifies this pipeline instance uniquely.
             </p>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="name"
               id="name"
               name="name"

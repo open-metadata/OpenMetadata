@@ -172,8 +172,8 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
-
-        self.validate_versions()
+        if self.config.enableVersionValidation:
+            self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """

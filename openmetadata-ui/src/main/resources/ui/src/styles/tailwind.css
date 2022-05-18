@@ -198,6 +198,10 @@
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
+  .tw-form-inputs-padding {
+    @apply tw-px-2 tw-py-1;
+  }
+
   .tw-form-inputs-bottom-border {
     @apply tw-w-full tw-text-grey-body tw-border-b tw-bg-body-main tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
@@ -395,7 +399,7 @@
   }
 
   .rjsf .form-control {
-    @apply tw-w-full tw-px-3 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
+    @apply tw-w-full tw-px-2 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 

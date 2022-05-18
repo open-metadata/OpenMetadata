@@ -4,6 +4,8 @@
   "title": "CreateChartRequest",
   "description": "Create Chart entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreateChart",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name that identifies this Chart.",

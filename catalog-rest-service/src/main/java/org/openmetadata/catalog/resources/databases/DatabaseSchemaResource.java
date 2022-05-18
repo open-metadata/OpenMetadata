@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -278,7 +277,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
-    DatabaseSchema schema = getDatabaseSchema(securityContext, create);
+    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, schema, ADMIN | BOT);
   }
 
@@ -322,7 +321,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
       throws IOException {
-    DatabaseSchema schema = getDatabaseSchema(securityContext, create);
+    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, schema, ADMIN | BOT | OWNER);
   }
 
@@ -352,14 +351,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private DatabaseSchema getDatabaseSchema(SecurityContext securityContext, CreateDatabaseSchema create) {
-    return new DatabaseSchema()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withDatabase(create.getDatabase())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
+    return copy(new DatabaseSchema(), create, user).withDatabase(create.getDatabase());
   }
 }

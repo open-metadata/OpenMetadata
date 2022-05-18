@@ -222,7 +222,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
-    MlModel mlModel = getMlModel(securityContext, create);
+    MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, mlModel, ADMIN | BOT);
   }
 
@@ -266,7 +266,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
       throws IOException {
-    MlModel mlModel = getMlModel(securityContext, create);
+    MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, mlModel, ADMIN | BOT | OWNER);
   }
 
@@ -380,12 +380,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private MlModel getMlModel(SecurityContext securityContext, CreateMlModel create) {
-    return new MlModel()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private MlModel getMlModel(CreateMlModel create, String user) {
+    return copy(new MlModel(), create, user)
         .withDashboard(create.getDashboard())
         .withAlgorithm(create.getAlgorithm())
         .withMlFeatures(create.getMlFeatures())
@@ -393,9 +389,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .withMlStore(create.getMlStore())
         .withServer(create.getServer())
         .withTarget(create.getTarget())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

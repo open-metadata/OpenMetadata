@@ -198,14 +198,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Override
-  public CreateDashboard createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateDashboard()
-        .withName(name)
-        .withService(getContainer())
-        .withCharts(CHART_REFERENCES)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreateDashboard createRequest(String name) {
+    return new CreateDashboard().withName(name).withService(getContainer()).withCharts(CHART_REFERENCES);
   }
 
   @Override

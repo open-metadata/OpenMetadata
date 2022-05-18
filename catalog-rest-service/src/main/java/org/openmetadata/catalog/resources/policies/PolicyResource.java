@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -278,7 +277,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
-    Policy policy = getPolicy(securityContext, create);
+    Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, policy, ADMIN | BOT);
     PolicyEvaluator.getInstance().update((Policy) response.getEntity());
     return response;
@@ -326,7 +325,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
       throws IOException {
-    Policy policy = getPolicy(securityContext, create);
+    Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, policy, ADMIN | BOT | OWNER);
     PolicyEvaluator.getInstance().update((Policy) response.getEntity());
     return response;
@@ -356,18 +355,11 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return response;
   }
 
-  private Policy getPolicy(SecurityContext securityContext, CreatePolicy create) {
+  private Policy getPolicy(CreatePolicy create, String user) {
     Policy policy =
-        new Policy()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withOwner(create.getOwner())
+        copy(new Policy(), create, user)
             .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(System.currentTimeMillis())
             .withRules(create.getRules())
             .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {

@@ -37,7 +37,6 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
 import org.openmetadata.catalog.services.connections.messaging.PulsarConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -184,8 +183,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public CreateMessagingService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateMessagingService createRequest(String name) {
     return new CreateMessagingService()
         .withName(name)
         .withServiceType(MessagingServiceType.Kafka)
@@ -194,9 +192,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                 .withConfig(
                     new KafkaConnection()
                         .withBootstrapServers(KAFKA_BROKERS)
-                        .withSchemaRegistryURL(SCHEMA_REGISTRY_URL)))
-        .withDescription(description)
-        .withOwner(owner);
+                        .withSchemaRegistryURL(SCHEMA_REGISTRY_URL)));
   }
 
   @Override

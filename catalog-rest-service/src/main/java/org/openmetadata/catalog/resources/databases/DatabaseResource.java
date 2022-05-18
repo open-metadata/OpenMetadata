@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -273,7 +272,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database, ADMIN | BOT);
   }
 
@@ -316,7 +315,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
   }
 
@@ -359,14 +358,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
-    return new Database()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withService(create.getService())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Database getDatabase(CreateDatabase create, String user) {
+    return copy(new Database(), create, user).withService(create.getService());
   }
 }
