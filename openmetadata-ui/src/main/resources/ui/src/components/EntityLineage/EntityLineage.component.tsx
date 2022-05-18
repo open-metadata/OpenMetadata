@@ -919,7 +919,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setElements((els) => {
       return els.map((el) => {
         if (el.id === newlyAddedNode?.id) {
-          return { ...el, data: { label: getNodeLabel(newlyAddedNode) } };
+          return {
+            ...el,
+            data: { ...el.data, label: getNodeLabel(newlyAddedNode) },
+          };
         } else {
           return el;
         }
