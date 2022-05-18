@@ -23,7 +23,6 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion-core==0.10.0",
     "commonregex",
     "idna<3,>=2.5",
     "click>=7.1.1,<8",
@@ -74,7 +73,7 @@ plugins: Dict[str, Set[str]] = {
     "atlas": {},
     "azuresql": {"pyodbc"},
     "bigquery": {
-        "sqlalchemy-bigquery==1.2.2",
+        "sqlalchemy-bigquery>=1.2.2",
         "pyarrow~=6.0.1",
         "google-cloud-datacatalog==3.6.2",
     },
@@ -169,7 +168,7 @@ setup(
     description="Ingestion Framework for OpenMetadata",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     zip_safe=False,

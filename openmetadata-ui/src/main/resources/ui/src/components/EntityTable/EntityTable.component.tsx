@@ -25,16 +25,14 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
+  ColumnTest,
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import {
-  ColumnTest,
-  ModifiedTableColumn,
-} from '../../interface/dataQuality.interface';
+import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
   getHtmlForNonAdminAction,
   getPartialNameFromTableFQN,
