@@ -16,7 +16,12 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+
+try:
+    from typing import get_args
+except ImportError as err:
+    from typing_compat import get_args
 
 from pydantic import BaseModel
 
