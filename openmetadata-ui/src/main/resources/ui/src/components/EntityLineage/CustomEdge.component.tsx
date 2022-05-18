@@ -37,6 +37,7 @@ export const CustomEdge = ({
   selected,
 }: EdgeProps) => {
   const { onEdgeClick, ...rest } = data;
+  const offset = 4;
 
   const edgePath = getBezierPath({
     sourceX,
@@ -46,6 +47,22 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
+  const invisibleEdgePath = getBezierPath({
+    sourceX: sourceX + offset,
+    sourceY: sourceY + offset,
+    sourcePosition,
+    targetX: targetX + offset,
+    targetY: targetY + offset,
+    targetPosition,
+  });
+  const invisibleEdgePath1 = getBezierPath({
+    sourceX: sourceX - offset,
+    sourceY: sourceY - offset,
+    sourcePosition,
+    targetX: targetX - offset,
+    targetY: targetY - offset,
+    targetPosition,
+  });
   const markerEnd = getMarkerEnd(arrowHeadType, markerEndId);
   const [edgeCenterX, edgeCenterY] = getEdgeCenter({
     sourceX,
@@ -53,6 +70,19 @@ export const CustomEdge = ({
     targetX,
     targetY,
   });
+
+  const getInvisiblePath = (path: string) => {
+    return (
+      <path
+        className="react-flow__edge-path"
+        d={path}
+        data-testid="react-flow-edge-path"
+        id={id}
+        markerEnd={markerEnd}
+        style={{ ...style, strokeWidth: '6px', opacity: 0 }}
+      />
+    );
+  };
 
   return (
     <Fragment>
@@ -64,14 +94,17 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={style}
       />
+      {getInvisiblePath(invisibleEdgePath)}
+      {getInvisiblePath(invisibleEdgePath1)}
+
       {selected ? (
         <foreignObject
           data-testid="delete-button"
           height={foreignObjectSize}
           requiredExtensions="http://www.w3.org/1999/xhtml"
           width={foreignObjectSize}
-          x={edgeCenterX - foreignObjectSize / 4}
-          y={edgeCenterY - foreignObjectSize / 4}>
+          x={edgeCenterX - foreignObjectSize / offset}
+          y={edgeCenterY - foreignObjectSize / offset}>
           <button
             className="tw-cursor-pointer tw-flex tw-z-9999"
             onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>

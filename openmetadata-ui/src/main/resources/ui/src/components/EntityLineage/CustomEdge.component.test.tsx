@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findAllByTestId,
+  findByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { ArrowHeadType, EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
@@ -50,13 +55,13 @@ describe('Test CustomEdge Component', () => {
     });
 
     const deleteButton = await findByTestId(container, 'delete-button');
-    const edgePathElement = await findByTestId(
+    const edgePathElement = await findAllByTestId(
       container,
       'react-flow-edge-path'
     );
 
     expect(deleteButton).toBeInTheDocument();
-    expect(edgePathElement).toBeInTheDocument();
+    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
   it('Check if CustomEdge has selected as false', async () => {
@@ -67,7 +72,7 @@ describe('Test CustomEdge Component', () => {
       }
     );
 
-    const edgePathElement = await findByTestId(
+    const edgePathElement = await findAllByTestId(
       container,
       'react-flow-edge-path'
     );
@@ -75,6 +80,6 @@ describe('Test CustomEdge Component', () => {
     const deleteButton = queryByTestId(container, 'delete-button');
 
     expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toBeInTheDocument();
+    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 });
