@@ -41,6 +41,9 @@ jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
     .fn()
     .mockReturnValue(<p data-testid="description">MarkdownWithPreview</p>);
 });
+jest.mock('../../common/CronEditor/CronEditor', () => {
+  return jest.fn().mockReturnValue(<p>CronEditor.component</p>);
+});
 
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
